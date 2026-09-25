@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "home-assistant-smart-plants"
+version = "0.1.0"
+description = "Home Assistant custom integration for first-class plant management"
+readme = "README.md"
+requires-python = ">=3.14.2"
+license = { text = "MIT" }
+dependencies = [
+  "homeassistant==2026.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy==1.18.1",
+  "pytest==9.0.3",
+  "pytest-asyncio==1.4.0",
+  "pytest-homeassistant-custom-component==0.13.344",
+  "ruff==0.12.12",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+  "ignore::DeprecationWarning",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+src = ["custom_components", "tests"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "ANN401",
+  "ARG001",
+  "C901",
+  "COM812",
+  # EXE002 fires under Docker-on-Windows bind mounts because NTFS reports
+  # every file as executable. Git tracks these files without the executable
+  # bit, and native Linux CI does not trip this rule.
+  "EXE002",
+  "D100",
+  "D101",
+  "D102",
+  "D103",
+  "D104",
+  "D105",
+  "D107",
+  "D203",
+  "D212",
+  "EM101",
+  # EM102 pairs with EM101 to force intermediate variables for exception
+  # messages. Validation helpers with parametrized field-name f-strings read
+  # more clearly with the message inlined; matches the existing EM101/TRY003
+  # relaxations already applied to this project.
+  "EM102",
+  "ISC001",
+  "TC002",
+  "TC003",
+  "TRY003",
+  "TRY004",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "SLF001", "PLR2004"]
+"scripts/**/*.py" = ["INP001", "T201"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+show_error_codes = true
+explicit_package_bases = true
+files = ["custom_components/smart_plants", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["pytest_homeassistant_custom_component.*"]
+ignore_missing_imports = true

@@ -1,0 +1,68 @@
+# Local planning and agent context
+plan/
+AGENTS.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Node/frontend artifacts
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+coverage/
+frontend/playwright-report/
+frontend/test-results/
+
+# Local browser-automation tool output (Playwright MCP snapshots/console logs)
+.playwright-mcp/
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Secrets and local environment
+.env
+.env.*
+secrets.yaml
+known_devices.yaml
+
+# Live HA dev rig runtime state — seeded from dev/ha-config-seed/ by
+# scripts/ha-up. See docs/development/local-ha-testing.md.
+dev/ha-config/
+dev/.env
+
+# A dev seed may intentionally contain only these reviewed HA storage keys.
+# Ignore every other generated key so credentials/runtime state cannot become
+# an accidental broad-stage addition after regenerating the seed.
+dev/ha-config-seed/.storage/*
+!dev/ha-config-seed/.storage/auth
+!dev/ha-config-seed/.storage/auth_provider.homeassistant
+!dev/ha-config-seed/.storage/onboarding
+!dev/ha-config-seed/.storage/person
+!dev/ha-config-seed/.storage/core.config_entries
+!dev/ha-config-seed/.storage/core.device_registry
+!dev/ha-config-seed/.storage/core.entity_registry
+!dev/ha-config-seed/.storage/core.area_registry
+!dev/ha-config-seed/.storage/core.uuid
+!dev/ha-config-seed/.storage/homeassistant.exposed_entities
+!dev/ha-config-seed/.storage/http
+!dev/ha-config-seed/.storage/http.auth
+!dev/ha-config-seed/.storage/lovelace_dashboards
+!dev/ha-config-seed/.storage/lovelace.map

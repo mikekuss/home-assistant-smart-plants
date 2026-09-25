@@ -1,0 +1,19 @@
+# Normalize line endings to LF in the repository and in the working tree so
+# checkouts under core.autocrlf=true stop rewriting LF->CRLF and back, which was
+# churning every diff on Windows. Existing blobs are already LF, so this only
+# fixes future behavior; it does not renormalize the tree.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# The built frontend artifact is verified by SHA; keep git out of its content.
+custom_components/smart_plants/frontend/smart-plants-panel.js -whitespace

@@ -1,0 +1,152 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Smart Plants is already configured.",
+      "reauth_successful": "OpenPlantBook authentication was updated."
+    },
+    "error": {
+      "credentials_required": "Enter both an OpenPlantBook client ID and client secret, or disable the provider.",
+      "credentials_invalid": "The OpenPlantBook client ID or client secret is too long.",
+      "invalid_auth": "OpenPlantBook rejected these credentials.",
+      "cannot_connect": "OpenPlantBook could not be reached. Try again later or disable the provider."
+    },
+    "step": {
+      "user": {
+        "title": "Set up Smart Plants",
+        "description": "OpenPlantBook is optional and uses its API directly. You need an OpenPlantBook account and client credentials. [Get OpenPlantBook API credentials]({openplantbook_credentials_url}). Do not install the separate Home Assistant OpenPlantBook integration. Manual plant management works without credentials.",
+        "data": {
+          "openplantbook_enabled": "Enable direct OpenPlantBook provider",
+          "openplantbook_client_id": "OpenPlantBook client ID",
+          "openplantbook_client_secret": "OpenPlantBook client secret"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate OpenPlantBook",
+        "description": "Update the direct OpenPlantBook credentials. Smart Plants local inventory remains available while authentication is unavailable.",
+        "data": {
+          "openplantbook_enabled": "Enable direct OpenPlantBook provider",
+          "openplantbook_client_id": "OpenPlantBook client ID",
+          "openplantbook_client_secret": "OpenPlantBook client secret"
+        }
+      }
+    }
+  },
+  "options": {
+    "error": {
+      "credentials_required": "Enter both an OpenPlantBook client ID and client secret, or disable the provider.",
+      "credentials_invalid": "The OpenPlantBook client ID or client secret is too long.",
+      "invalid_auth": "OpenPlantBook rejected these credentials.",
+      "cannot_connect": "OpenPlantBook could not be reached. Try again later or disable the provider."
+    },
+    "step": {
+      "init": {
+        "title": "Smart Plants options",
+        "data": {
+          "preserve_inventory_on_removal": "Preserve inventory when the integration is removed",
+          "openplantbook_enabled": "Enable direct OpenPlantBook provider",
+          "openplantbook_client_id": "OpenPlantBook client ID",
+          "openplantbook_client_secret": "OpenPlantBook client secret"
+        },
+        "description": "OpenPlantBook API credentials are optional. Create an account and client credentials. [Get OpenPlantBook API credentials]({openplantbook_credentials_url}). Smart Plants connects directly; the separate Home Assistant OpenPlantBook integration is not required. Provider failures never disable local inventory."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "moisture": {
+        "name": "Soil moisture"
+      },
+      "health_score": {
+        "name": "Health score"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "humidity": {
+        "name": "Humidity"
+      },
+      "illuminance": {
+        "name": "Illuminance"
+      },
+      "battery": {
+        "name": "Battery"
+      },
+      "conductivity": {
+        "name": "Conductivity"
+      },
+      "soil_temperature": {
+        "name": "Soil temperature"
+      },
+      "co2": {
+        "name": "CO2"
+      }
+    },
+    "binary_sensor": {
+      "needs_water": {
+        "name": "Needs water"
+      },
+      "too_wet": {
+        "name": "Too wet"
+      },
+      "sensor_stale": {
+        "name": "Sensor stale"
+      },
+      "low_light": {
+        "name": "Low light"
+      },
+      "low_battery": {
+        "name": "Low battery"
+      },
+      "temperature_stress": {
+        "name": "Temperature stress"
+      },
+      "humidity_stress": {
+        "name": "Humidity stress"
+      },
+      "soil_temperature_stress": {
+        "name": "Soil temperature stress"
+      },
+      "co2_stress": {
+        "name": "CO2 stress"
+      },
+      "conductivity_stress": {
+        "name": "Conductivity stress"
+      }
+    },
+    "number": {
+      "moisture_min": {
+        "name": "Moisture minimum"
+      },
+      "moisture_target": {
+        "name": "Moisture target"
+      },
+      "moisture_max": {
+        "name": "Moisture maximum"
+      }
+    }
+  },
+  "issues": {
+    "moisture_source_missing": {
+      "title": "Smart Plants: assigned source missing",
+      "fix_flow": {
+        "step": {
+          "source": {
+            "title": "Repair missing plant source",
+            "description": "The {role} source {entity_id} assigned to {plant_name} is missing. Choose a replacement, or leave the field empty to remove the assignment.",
+            "data": {
+              "replacement_entity_id": "Replacement entity"
+            }
+          }
+        },
+        "error": {
+          "invalid_source": "The replacement is unavailable, incompatible, or no longer matches the entity registry. Choose another entity."
+        },
+        "abort": {
+          "integration_not_loaded": "Smart Plants is not loaded.",
+          "invalid_issue": "This repair does not contain a valid source assignment.",
+          "issue_resolved": "The source assignment has already been repaired or removed."
+        }
+      }
+    }
+  }
+}

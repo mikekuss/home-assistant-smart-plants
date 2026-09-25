@@ -1,0 +1,152 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Smart Plants ist bereits eingerichtet.",
+      "reauth_successful": "Die OpenPlantBook-Anmeldung wurde aktualisiert."
+    },
+    "error": {
+      "credentials_required": "Client-ID und Client-Secret eingeben oder den Anbieter deaktivieren.",
+      "credentials_invalid": "Die OpenPlantBook-Client-ID oder das Client-Secret ist zu lang.",
+      "invalid_auth": "OpenPlantBook hat diese Zugangsdaten abgelehnt.",
+      "cannot_connect": "OpenPlantBook ist nicht erreichbar. Später erneut versuchen oder den Anbieter deaktivieren."
+    },
+    "step": {
+      "user": {
+        "title": "Smart Plants einrichten",
+        "description": "OpenPlantBook ist optional und wird direkt über seine API angebunden. Du benötigst ein OpenPlantBook-Konto und Client-Zugangsdaten. [OpenPlantBook-API-Zugangsdaten abrufen]({openplantbook_credentials_url}). Die separate Home-Assistant-OpenPlantBook-Integration muss nicht installiert werden. Die manuelle Pflanzenverwaltung funktioniert ohne Zugangsdaten.",
+        "data": {
+          "openplantbook_enabled": "Direkten OpenPlantBook-Anbieter aktivieren",
+          "openplantbook_client_id": "OpenPlantBook Client-ID",
+          "openplantbook_client_secret": "OpenPlantBook Client-Secret"
+        }
+      },
+      "reauth_confirm": {
+        "title": "OpenPlantBook erneut anmelden",
+        "description": "Aktualisiert die direkten OpenPlantBook-Zugangsdaten. Das lokale Inventar bleibt bei Anmeldefehlern verfügbar.",
+        "data": {
+          "openplantbook_enabled": "Direkten OpenPlantBook-Anbieter aktivieren",
+          "openplantbook_client_id": "OpenPlantBook Client-ID",
+          "openplantbook_client_secret": "OpenPlantBook Client-Secret"
+        }
+      }
+    }
+  },
+  "options": {
+    "error": {
+      "credentials_required": "Client-ID und Client-Secret eingeben oder den Anbieter deaktivieren.",
+      "credentials_invalid": "Die OpenPlantBook-Client-ID oder das Client-Secret ist zu lang.",
+      "invalid_auth": "OpenPlantBook hat diese Zugangsdaten abgelehnt.",
+      "cannot_connect": "OpenPlantBook ist nicht erreichbar. Später erneut versuchen oder den Anbieter deaktivieren."
+    },
+    "step": {
+      "init": {
+        "title": "Smart-Plants-Optionen",
+        "data": {
+          "preserve_inventory_on_removal": "Inventar beim Entfernen der Integration behalten",
+          "openplantbook_enabled": "Direkten OpenPlantBook-Anbieter aktivieren",
+          "openplantbook_client_id": "OpenPlantBook Client-ID",
+          "openplantbook_client_secret": "OpenPlantBook Client-Secret"
+        },
+        "description": "OpenPlantBook-API-Zugangsdaten sind optional. Erstelle ein Konto und Client-Zugangsdaten. [OpenPlantBook-API-Zugangsdaten abrufen]({openplantbook_credentials_url}). Smart Plants verbindet sich direkt; die separate Home-Assistant-OpenPlantBook-Integration ist nicht erforderlich. Anbieterfehler deaktivieren nie das lokale Inventar."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "moisture": {
+        "name": "Bodenfeuchte"
+      },
+      "health_score": {
+        "name": "Gesundheitswert"
+      },
+      "temperature": {
+        "name": "Temperatur"
+      },
+      "humidity": {
+        "name": "Luftfeuchte"
+      },
+      "illuminance": {
+        "name": "Beleuchtungsstärke"
+      },
+      "battery": {
+        "name": "Batterie"
+      },
+      "conductivity": {
+        "name": "Leitfähigkeit"
+      },
+      "soil_temperature": {
+        "name": "Bodentemperatur"
+      },
+      "co2": {
+        "name": "CO2"
+      }
+    },
+    "binary_sensor": {
+      "needs_water": {
+        "name": "Braucht Wasser"
+      },
+      "too_wet": {
+        "name": "Zu nass"
+      },
+      "sensor_stale": {
+        "name": "Sensor veraltet"
+      },
+      "low_light": {
+        "name": "Zu wenig Licht"
+      },
+      "low_battery": {
+        "name": "Batterie niedrig"
+      },
+      "temperature_stress": {
+        "name": "Temperaturstress"
+      },
+      "humidity_stress": {
+        "name": "Luftfeuchtestress"
+      },
+      "soil_temperature_stress": {
+        "name": "Bodentemperaturstress"
+      },
+      "co2_stress": {
+        "name": "CO2-Stress"
+      },
+      "conductivity_stress": {
+        "name": "Leitfähigkeitsstress"
+      }
+    },
+    "number": {
+      "moisture_min": {
+        "name": "Feuchte Minimum"
+      },
+      "moisture_target": {
+        "name": "Feuchte Zielwert"
+      },
+      "moisture_max": {
+        "name": "Feuchte Maximum"
+      }
+    }
+  },
+  "issues": {
+    "moisture_source_missing": {
+      "title": "Smart Plants: Zugewiesene Quelle fehlt",
+      "fix_flow": {
+        "step": {
+          "source": {
+            "title": "Fehlende Pflanzenquelle reparieren",
+            "description": "Die {role}-Quelle {entity_id} für {plant_name} fehlt. Wählen Sie einen Ersatz oder lassen Sie das Feld leer, um die Zuweisung zu entfernen.",
+            "data": {
+              "replacement_entity_id": "Ersatzentität"
+            }
+          }
+        },
+        "error": {
+          "invalid_source": "Der Ersatz ist nicht verfügbar, inkompatibel oder stimmt nicht mehr mit der Entitätsregistrierung überein. Wählen Sie eine andere Entität."
+        },
+        "abort": {
+          "integration_not_loaded": "Smart Plants ist nicht geladen.",
+          "invalid_issue": "Diese Reparatur enthält keine gültige Quellenzuweisung.",
+          "issue_resolved": "Die Quellenzuweisung wurde bereits repariert oder entfernt."
+        }
+      }
+    }
+  }
+}

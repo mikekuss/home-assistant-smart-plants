@@ -1,0 +1,14 @@
+{
+  "domain": "smart_plants",
+  "name": "Smart Plants",
+  "codeowners": ["@mikekuss"],
+  "config_flow": true,
+  "dependencies": ["frontend", "http", "panel_custom", "websocket_api"],
+  "documentation": "https://github.com/mikekuss/home-assistant-smart-plants",
+  "integration_type": "hub",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/mikekuss/home-assistant-smart-plants/issues",
+  "requirements": ["Pillow==12.2.0"],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

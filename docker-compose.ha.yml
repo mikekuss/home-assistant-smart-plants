@@ -1,0 +1,34 @@
+# Isolated Home Assistant dev rig for the Smart Plants integration.
+#
+# This is NOT the pytest suite — that lives in docker-compose.yml. Boot
+# this stack to click through the actual HA UI at http://localhost:8123
+# with the working-tree copy of custom_components/smart_plants mounted.
+#
+# Usage: scripts/ha-up.ps1 (or ha-up.sh). See docs/development/local-ha-testing.md.
+
+name: smart-plants-ha
+
+services:
+  homeassistant:
+    image: homeassistant/home-assistant:2026.7.0
+    container_name: smart-plants-ha
+    restart: "no"
+    ports:
+      - "127.0.0.1:${HA_HOST_PORT:-8123}:8123"
+    volumes:
+      - ./dev/ha-config:/config
+      - ./custom_components/smart_plants:/config/custom_components/smart_plants:ro
+    environment:
+      TZ: ${TZ:-Europe/Berlin}
+    networks: [smart-plants]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8123/manifest.json"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+networks:
+  smart-plants:
+    driver: bridge
+    internal: true

@@ -1,0 +1,12 @@
+homeassistant==2026.7.0
+# Required so the pytest environment can load the `frontend` and
+# `panel_custom` components that Smart Plants declares as manifest
+# dependencies. Version must match the pin in
+# `homeassistant/components/frontend/manifest.json` for the pinned
+# `homeassistant` above.
+home-assistant-frontend==20260624.3
+mypy==1.18.1
+pytest==9.0.3
+pytest-asyncio==1.4.0
+pytest-homeassistant-custom-component==0.13.344
+ruff==0.12.12

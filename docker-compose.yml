@@ -1,0 +1,60 @@
+# Local Linux test pipeline for the Smart Plants integration.
+#
+# Usage:
+#   docker compose build test
+#   docker compose run --rm test                # pytest (default)
+#   docker compose run --rm test pytest -k init # any pytest args
+#   docker compose run --rm test ruff check .
+#   docker compose run --rm test mypy
+#   docker compose run --rm test bash           # interactive shell
+#   docker compose run --rm hassfest            # HA manifest validator
+#   docker compose run --rm hacs                # HACS validator
+#
+# The `test` service mounts only test inputs, all read-only. It has no
+# network access and cannot see the local HA runtime configuration.
+
+name: smart-plants-tests
+
+services:
+  test:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: smart-plants-test:local
+    working_dir: /app
+    volumes:
+      - ./custom_components:/app/custom_components:ro
+      - ./tests:/app/tests:ro
+      - ./scripts:/app/scripts:ro
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./requirements-dev.txt:/app/requirements-dev.txt:ro
+      - ./hacs.json:/app/hacs.json:ro
+      - ./README.md:/app/README.md:ro
+      - ./LICENSE:/app/LICENSE:ro
+    environment:
+      PYTHONPATH: /app
+      PY_COLORS: "1"
+    # Overridable — see examples above.
+    command: ["pytest", "-q"]
+    network_mode: none
+
+  hassfest:
+    # Official Home Assistant manifest / translations / dependency
+    # validator. Same image the `home-assistant/actions/hassfest` GitHub
+    # Action wraps.
+    image: ghcr.io/home-assistant/hassfest:latest
+    volumes:
+      - ./custom_components:/github/workspace/custom_components:ro
+
+  hacs:
+    # Official HACS validator. Equivalent to the `hacs/action` GitHub
+    # Action with `category: integration`.
+    image: ghcr.io/hacs/action:main
+    environment:
+      INPUT_CATEGORY: integration
+      INPUT_GITHUB_TOKEN: ""
+    volumes:
+      - ./custom_components:/github/workspace/custom_components:ro
+      - ./hacs.json:/github/workspace/hacs.json:ro
+      - ./README.md:/github/workspace/README.md:ro
+      - ./LICENSE:/github/workspace/LICENSE:ro

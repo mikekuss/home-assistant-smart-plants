@@ -1,0 +1,60 @@
+name: Bug report
+description: Something in Smart Plants does not work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please search existing issues first.
+        Before attaching diagnostics or logs, check them for anything you do not want to share publicly.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the Smart Plants panel
+        2. ...
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.7.0"
+    validations:
+      required: true
+  - type: input
+    id: integration_version
+    attributes:
+      label: Smart Plants version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installation method
+      options:
+        - HACS
+        - Manual
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Settings → Devices & services → Smart Plants → ⋮ → Download diagnostics. Attach the file here.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Enable debug logging for `custom_components.smart_plants` and paste the relevant lines.
+      render: text
+  - type: textarea
+    id: browser
+    attributes:
+      label: Panel issues only — browser and console errors
+      description: Browser/app and version, plus any errors from the browser developer console.

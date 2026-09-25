@@ -1,0 +1,20 @@
+# Optional overlay for docker-compose.ha.yml.
+#
+# The base stack's `smart-plants` network is `internal: true`, which on
+# Docker Desktop disables the userland port proxy so 127.0.0.1:8123
+# never actually binds on the host. Applying this overlay attaches the
+# HA container to an additional non-internal bridge network so the
+# published port becomes reachable, while the internal network stays
+# available for future mock services that must not egress.
+#
+# Enable via scripts/ha-up.ps1 -Expose or scripts/ha-up.sh --expose.
+
+services:
+  homeassistant:
+    networks:
+      - smart-plants
+      - smart-plants-host
+
+networks:
+  smart-plants-host:
+    driver: bridge

@@ -1,0 +1,30 @@
+{
+  "name": "smart-plants-panel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal Lovelace panel for the Smart Plants Home Assistant integration.",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint src e2e vite.config.ts vitest.config.ts playwright.config.ts scripts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "vite build && node scripts/check-artifact.mjs",
+    "check-artifact": "node scripts/check-artifact.mjs",
+    "test:browser": "node e2e/verify-artifact.mjs && playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.55.0",
+    "@types/node": "22.10.6",
+    "@typescript-eslint/eslint-plugin": "8.20.0",
+    "@typescript-eslint/parser": "8.20.0",
+    "eslint": "9.18.0",
+    "happy-dom": "16.3.0",
+    "typescript": "5.7.3",
+    "vite": "6.0.7",
+    "vitest": "3.0.4"
+  },
+  "dependencies": {
+    "lit": "3.2.1"
+  }
+}

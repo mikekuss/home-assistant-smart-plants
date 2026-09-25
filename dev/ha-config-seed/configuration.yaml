@@ -1,0 +1,52 @@
+# Seed configuration for the live HA dev rig.
+#
+# scripts/ha-up copies this file into dev/ha-config/configuration.yaml
+# on first run (or after ha-reset). Edit here to change the committed
+# default; edit dev/ha-config/configuration.yaml to try a change without
+# affecting other contributors.
+
+default_config:
+
+# The default `http:` from default_config already binds 0.0.0.0:8123
+# inside the container and does not require a trusted-proxy setup.
+# Only override this if you add a reverse proxy in front of the rig.
+
+logger:
+  default: warning
+  logs:
+    custom_components.smart_plants: debug
+    homeassistant.components.frontend: warning
+    homeassistant.components.recorder: warning
+
+recorder:
+  purge_keep_days: 2
+
+# Simulated soil-moisture, temperature, and illuminance sensors. Phase 4+
+# attaches to these via entity selector. Extend as new roles are added.
+template:
+  - sensor:
+      - name: "Mock Fiddle Leaf Moisture"
+        unique_id: mock_fiddle_moisture
+        unit_of_measurement: "%"
+        device_class: moisture
+        state: "{{ (range(30, 55) | random) }}"
+      - name: "Mock Fiddle Leaf Temperature"
+        unique_id: mock_fiddle_temperature
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state: "{{ (range(18, 24) | random) }}"
+      - name: "Mock Fiddle Leaf Illuminance"
+        unique_id: mock_fiddle_illuminance
+        unit_of_measurement: "lx"
+        device_class: illuminance
+        state: "{{ (range(200, 1200) | random) }}"
+      - name: "Mock Monstera Moisture"
+        unique_id: mock_monstera_moisture
+        unit_of_measurement: "%"
+        device_class: moisture
+        state: "{{ (range(35, 60) | random) }}"
+      - name: "Mock Monstera Temperature"
+        unique_id: mock_monstera_temperature
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state: "{{ (range(19, 25) | random) }}"
