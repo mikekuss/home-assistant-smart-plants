@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 const _e = globalThis, Ne = _e.ShadowRoot && (_e.ShadyCSS === void 0 || _e.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype, Oe = Symbol(), We = /* @__PURE__ */ new WeakMap();
-let ft = class {
+let mt = class {
   constructor(e, t, i) {
     if (this._$cssResult$ = !0, i !== Oe) throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");
     this.cssText = e, this.t = t;
@@ -22,13 +22,13 @@ let ft = class {
     return this.cssText;
   }
 };
-const Lt = (s) => new ft(typeof s == "string" ? s : s + "", void 0, Oe), Ut = (s, ...e) => {
+const Lt = (s) => new mt(typeof s == "string" ? s : s + "", void 0, Oe), Ut = (s, ...e) => {
   const t = s.length === 1 ? s[0] : e.reduce((i, r, a) => i + ((o) => {
     if (o._$cssResult$ === !0) return o.cssText;
     if (typeof o == "number") return o;
     throw Error("Value passed to 'css' function must be a 'css' function result: " + o + ". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.");
   })(r) + s[a + 1], s[0]);
-  return new ft(t, s, Oe);
+  return new mt(t, s, Oe);
 }, qt = (s, e) => {
   if (Ne) s.adoptedStyleSheets = e.map((t) => t instanceof CSSStyleSheet ? t : t.styleSheet);
   else for (const t of e) {
@@ -45,7 +45,7 @@ const Lt = (s) => new ft(typeof s == "string" ? s : s + "", void 0, Oe), Ut = (s
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const { is: Ht, defineProperty: Dt, getOwnPropertyDescriptor: Mt, getOwnPropertyNames: jt, getOwnPropertySymbols: zt, getPrototypeOf: Ft } = Object, L = globalThis, Ge = L.trustedTypes, Wt = Ge ? Ge.emptyScript : "", Kt = L.reactiveElementPolyfillSupport, te = (s, e) => s, me = { toAttribute(s, e) {
+const { is: Ht, defineProperty: Dt, getOwnPropertyDescriptor: Mt, getOwnPropertyNames: jt, getOwnPropertySymbols: zt, getPrototypeOf: Ft } = Object, L = globalThis, Ge = L.trustedTypes, Wt = Ge ? Ge.emptyScript : "", Kt = L.reactiveElementPolyfillSupport, te = (s, e) => s, fe = { toAttribute(s, e) {
   switch (e) {
     case Boolean:
       s = s ? Wt : null;
@@ -73,7 +73,7 @@ const { is: Ht, defineProperty: Dt, getOwnPropertyDescriptor: Mt, getOwnProperty
       }
   }
   return t;
-} }, Te = (s, e) => !Ht(s, e), Ye = { attribute: !0, type: String, converter: me, reflect: !1, useDefault: !1, hasChanged: Te };
+} }, Te = (s, e) => !Ht(s, e), Ye = { attribute: !0, type: String, converter: fe, reflect: !1, useDefault: !1, hasChanged: Te };
 Symbol.metadata ?? (Symbol.metadata = Symbol("metadata")), L.litPropertyMetadata ?? (L.litPropertyMetadata = /* @__PURE__ */ new WeakMap());
 let Y = class extends HTMLElement {
   static addInitializer(e) {
@@ -172,14 +172,14 @@ let Y = class extends HTMLElement {
   _$ET(e, t) {
     const i = this.constructor.elementProperties.get(e), r = this.constructor._$Eu(e, i);
     if (r !== void 0 && i.reflect === !0) {
-      const a = (i.converter?.toAttribute !== void 0 ? i.converter : me).toAttribute(t, i.type);
+      const a = (i.converter?.toAttribute !== void 0 ? i.converter : fe).toAttribute(t, i.type);
       this._$Em = e, a == null ? this.removeAttribute(r) : this.setAttribute(r, a), this._$Em = null;
     }
   }
   _$AK(e, t) {
     const i = this.constructor, r = i._$Eh.get(e);
     if (r !== void 0 && this._$Em !== r) {
-      const a = i.getPropertyOptions(r), o = typeof a.converter == "function" ? { fromAttribute: a.converter } : a.converter?.fromAttribute !== void 0 ? a.converter : me;
+      const a = i.getPropertyOptions(r), o = typeof a.converter == "function" ? { fromAttribute: a.converter } : a.converter?.fromAttribute !== void 0 ? a.converter : fe;
       this._$Em = r;
       const n = o.fromAttribute(t, a.type);
       this[r] = n ?? this._$Ej?.get(r) ?? n, this._$Em = null;
@@ -262,9 +262,9 @@ Y.elementStyles = [], Y.shadowRootOptions = { mode: "open" }, Y[te("elementPrope
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const ie = globalThis, Je = (s) => s, fe = ie.trustedTypes, Ve = fe ? fe.createPolicy("lit-html", { createHTML: (s) => s }) : void 0, gt = "$lit$", B = `lit$${Math.random().toFixed(9).slice(2)}$`, yt = "?" + B, Gt = `<${yt}>`, W = document, ne = () => W.createComment(""), oe = (s) => s === null || typeof s != "object" && typeof s != "function", Ie = Array.isArray, Yt = (s) => Ie(s) || typeof s?.[Symbol.iterator] == "function", be = `[ 	
+const ie = globalThis, Je = (s) => s, me = ie.trustedTypes, Ve = me ? me.createPolicy("lit-html", { createHTML: (s) => s }) : void 0, gt = "$lit$", B = `lit$${Math.random().toFixed(9).slice(2)}$`, yt = "?" + B, Gt = `<${yt}>`, K = document, ne = () => K.createComment(""), oe = (s) => s === null || typeof s != "object" && typeof s != "function", Ie = Array.isArray, Yt = (s) => Ie(s) || typeof s?.[Symbol.iterator] == "function", be = `[ 	
 \f\r]`, Q = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, Ze = /-->/g, Xe = />/g, D = RegExp(`>|${be}(?:([^\\s"'>=/]+)(${be}*=${be}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`, "g"), Qe = /'/g, et = /"/g, bt = /^(?:script|style|textarea|title)$/i, Jt = (s) => (e, ...t) => ({ _$litType$: s, strings: e, values: t }), c = Jt(1), Z = Symbol.for("lit-noChange"), u = Symbol.for("lit-nothing"), tt = /* @__PURE__ */ new WeakMap(), j = W.createTreeWalker(W, 129);
+\f\r"'\`<>=]|("|')|))|$)`, "g"), Qe = /'/g, et = /"/g, bt = /^(?:script|style|textarea|title)$/i, Jt = (s) => (e, ...t) => ({ _$litType$: s, strings: e, values: t }), c = Jt(1), Z = Symbol.for("lit-noChange"), u = Symbol.for("lit-nothing"), tt = /* @__PURE__ */ new WeakMap(), z = K.createTreeWalker(K, 129);
 function vt(s, e) {
   if (!Ie(s) || !s.hasOwnProperty("raw")) throw Error("invalid template strings array");
   return Ve !== void 0 ? Ve.createHTML(e) : e;
@@ -274,10 +274,10 @@ const Vt = (s, e) => {
   let r, a = e === 2 ? "<svg>" : e === 3 ? "<math>" : "", o = Q;
   for (let n = 0; n < t; n++) {
     const l = s[n];
-    let d, h, m = -1, _ = 0;
-    for (; _ < l.length && (o.lastIndex = _, h = o.exec(l), h !== null); ) _ = o.lastIndex, o === Q ? h[1] === "!--" ? o = Ze : h[1] !== void 0 ? o = Xe : h[2] !== void 0 ? (bt.test(h[2]) && (r = RegExp("</" + h[2], "g")), o = D) : h[3] !== void 0 && (o = D) : o === D ? h[0] === ">" ? (o = r ?? Q, m = -1) : h[1] === void 0 ? m = -2 : (m = o.lastIndex - h[2].length, d = h[1], o = h[3] === void 0 ? D : h[3] === '"' ? et : Qe) : o === et || o === Qe ? o = D : o === Ze || o === Xe ? o = Q : (o = D, r = void 0);
+    let d, h, f = -1, _ = 0;
+    for (; _ < l.length && (o.lastIndex = _, h = o.exec(l), h !== null); ) _ = o.lastIndex, o === Q ? h[1] === "!--" ? o = Ze : h[1] !== void 0 ? o = Xe : h[2] !== void 0 ? (bt.test(h[2]) && (r = RegExp("</" + h[2], "g")), o = D) : h[3] !== void 0 && (o = D) : o === D ? h[0] === ">" ? (o = r ?? Q, f = -1) : h[1] === void 0 ? f = -2 : (f = o.lastIndex - h[2].length, d = h[1], o = h[3] === void 0 ? D : h[3] === '"' ? et : Qe) : o === et || o === Qe ? o = D : o === Ze || o === Xe ? o = Q : (o = D, r = void 0);
     const x = o === D && s[n + 1].startsWith("/>") ? " " : "";
-    a += o === Q ? l + Gt : m >= 0 ? (i.push(d), l.slice(0, m) + gt + l.slice(m) + B + x) : l + B + (m === -2 ? n : x);
+    a += o === Q ? l + Gt : f >= 0 ? (i.push(d), l.slice(0, f) + gt + l.slice(f) + B + x) : l + B + (f === -2 ? n : x);
   }
   return [vt(s, a + (s[t] || "<?>") + (e === 2 ? "</svg>" : e === 3 ? "</math>" : "")), i];
 };
@@ -287,34 +287,34 @@ class le {
     this.parts = [];
     let a = 0, o = 0;
     const n = e.length - 1, l = this.parts, [d, h] = Vt(e, t);
-    if (this.el = le.createElement(d, i), j.currentNode = this.el.content, t === 2 || t === 3) {
-      const m = this.el.content.firstChild;
-      m.replaceWith(...m.childNodes);
+    if (this.el = le.createElement(d, i), z.currentNode = this.el.content, t === 2 || t === 3) {
+      const f = this.el.content.firstChild;
+      f.replaceWith(...f.childNodes);
     }
-    for (; (r = j.nextNode()) !== null && l.length < n; ) {
+    for (; (r = z.nextNode()) !== null && l.length < n; ) {
       if (r.nodeType === 1) {
-        if (r.hasAttributes()) for (const m of r.getAttributeNames()) if (m.endsWith(gt)) {
-          const _ = h[o++], x = r.getAttribute(m).split(B), O = /([.?@])?(.*)/.exec(_);
-          l.push({ type: 1, index: a, name: O[2], strings: x, ctor: O[1] === "." ? Xt : O[1] === "?" ? Qt : O[1] === "@" ? ei : ye }), r.removeAttribute(m);
-        } else m.startsWith(B) && (l.push({ type: 6, index: a }), r.removeAttribute(m));
+        if (r.hasAttributes()) for (const f of r.getAttributeNames()) if (f.endsWith(gt)) {
+          const _ = h[o++], x = r.getAttribute(f).split(B), O = /([.?@])?(.*)/.exec(_);
+          l.push({ type: 1, index: a, name: O[2], strings: x, ctor: O[1] === "." ? Xt : O[1] === "?" ? Qt : O[1] === "@" ? ei : ye }), r.removeAttribute(f);
+        } else f.startsWith(B) && (l.push({ type: 6, index: a }), r.removeAttribute(f));
         if (bt.test(r.tagName)) {
-          const m = r.textContent.split(B), _ = m.length - 1;
+          const f = r.textContent.split(B), _ = f.length - 1;
           if (_ > 0) {
-            r.textContent = fe ? fe.emptyScript : "";
-            for (let x = 0; x < _; x++) r.append(m[x], ne()), j.nextNode(), l.push({ type: 2, index: ++a });
-            r.append(m[_], ne());
+            r.textContent = me ? me.emptyScript : "";
+            for (let x = 0; x < _; x++) r.append(f[x], ne()), z.nextNode(), l.push({ type: 2, index: ++a });
+            r.append(f[_], ne());
           }
         }
       } else if (r.nodeType === 8) if (r.data === yt) l.push({ type: 2, index: a });
       else {
-        let m = -1;
-        for (; (m = r.data.indexOf(B, m + 1)) !== -1; ) l.push({ type: 7, index: a }), m += B.length - 1;
+        let f = -1;
+        for (; (f = r.data.indexOf(B, f + 1)) !== -1; ) l.push({ type: 7, index: a }), f += B.length - 1;
       }
       a++;
     }
   }
   static createElement(e, t) {
-    const i = W.createElement("template");
+    const i = K.createElement("template");
     return i.innerHTML = e, i;
   }
 }
@@ -335,17 +335,17 @@ class Zt {
     return this._$AM._$AU;
   }
   u(e) {
-    const { el: { content: t }, parts: i } = this._$AD, r = (e?.creationScope ?? W).importNode(t, !0);
-    j.currentNode = r;
-    let a = j.nextNode(), o = 0, n = 0, l = i[0];
+    const { el: { content: t }, parts: i } = this._$AD, r = (e?.creationScope ?? K).importNode(t, !0);
+    z.currentNode = r;
+    let a = z.nextNode(), o = 0, n = 0, l = i[0];
     for (; l !== void 0; ) {
       if (o === l.index) {
         let d;
         l.type === 2 ? d = new ce(a, a.nextSibling, this, e) : l.type === 1 ? d = new l.ctor(a, l.name, l.strings, this, e) : l.type === 6 && (d = new ti(a, this, e)), this._$AV.push(d), l = i[++n];
       }
-      o !== l?.index && (a = j.nextNode(), o++);
+      o !== l?.index && (a = z.nextNode(), o++);
     }
-    return j.currentNode = W, r;
+    return z.currentNode = K, r;
   }
   p(e) {
     let t = 0;
@@ -380,7 +380,7 @@ class ce {
     this._$AH !== e && (this._$AR(), this._$AH = this.O(e));
   }
   _(e) {
-    this._$AH !== u && oe(this._$AH) ? this._$AA.nextSibling.data = e : this.T(W.createTextNode(e)), this._$AH = e;
+    this._$AH !== u && oe(this._$AH) ? this._$AA.nextSibling.data = e : this.T(K.createTextNode(e)), this._$AH = e;
   }
   $(e) {
     const { values: t, _$litType$: i } = e, r = typeof i == "number" ? this._$AC(e) : (i.el === void 0 && (i.el = le.createElement(vt(i.h, i.h[0]), this.options)), i);
@@ -525,7 +525,7 @@ ri?.({ LitElement: V });
  * Copyright 2017 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-const ai = { attribute: !0, type: String, converter: me, reflect: !1, hasChanged: Te }, ni = (s = ai, e, t) => {
+const ai = { attribute: !0, type: String, converter: fe, reflect: !1, hasChanged: Te }, ni = (s = ai, e, t) => {
   const { kind: i, metadata: r } = t;
   let a = globalThis.litPropertyMetadata.get(r);
   if (a === void 0 && globalThis.litPropertyMetadata.set(r, a = /* @__PURE__ */ new Map()), i === "setter" && ((s = Object.create(s)).wrapped = !0), a.set(t.name, s), i === "accessor") {
@@ -560,7 +560,7 @@ function I(s) {
 function p(s) {
   return I({ ...s, state: !0, attribute: !1 });
 }
-const S = (s) => typeof s == "object" && s !== null && !Array.isArray(s), b = (s, e = 500) => typeof s == "string" && s.length > 0 && s.length <= e, P = (s, e = 500) => s === null || b(s, e), F = (s, e, t) => typeof s == "number" && Number.isSafeInteger(s) && s >= e && s <= t, U = (s) => b(s, 64) && /^\d{4}-\d\d-\d\dT/.test(s) && Number.isFinite(Date.parse(s)), ue = (s, e) => S(s) && Object.keys(s).length <= 32 && Object.entries(s).every(([t, i]) => b(t, 60) && e(i)), re = {
+const S = (s) => typeof s == "object" && s !== null && !Array.isArray(s), b = (s, e = 500) => typeof s == "string" && s.length > 0 && s.length <= e, P = (s, e = 500) => s === null || b(s, e), W = (s, e, t) => typeof s == "number" && Number.isSafeInteger(s) && s >= e && s <= t, U = (s) => b(s, 64) && /^\d{4}-\d\d-\d\dT/.test(s) && Number.isFinite(Date.parse(s)), ue = (s, e) => S(s) && Object.keys(s).length <= 32 && Object.entries(s).every(([t, i]) => b(t, 60) && e(i)), re = {
   provider: (s) => b(s, 60),
   provider_id: (s) => P(s, 200),
   provider_ref: (s) => P(s, 200),
@@ -586,7 +586,7 @@ function $t(s) {
 function ee(s) {
   if (!S(s)) return !1;
   const e = s.placement, t = s.species, i = s.image;
-  return b(s.id, 200) && F(s.revision, 1, Number.MAX_SAFE_INTEGER) && b(s.name, 200) && U(s.created_at) && (s.acquired_at === null || U(s.acquired_at)) && ["active", "disabled"].includes(String(s.lifecycle_state)) && P(s.category, 60) && Array.isArray(s.tags) && s.tags.length <= 32 && s.tags.every((r) => b(r, 60)) && new Set(s.tags).size === s.tags.length && (e === null || S(e) && b(e.mode, 60) && P(e.exposure, 60) && P(e.rain_exposure, 60) && (e.container === null || typeof e.container == "boolean")) && (t === null || S(t) && $t(t.snapshot) && S(t.snapshot) && t.provider === t.snapshot.provider) && (i === null || S(i) && b(i.id, 200) && i.content_type === "image/webp" && F(i.width, 1, 2048) && F(i.height, 1, 2048) && U(i.created_at)) && (s.care_events === void 0 || Array.isArray(s.care_events) && s.care_events.length <= 256 && s.care_events.every(Pe));
+  return b(s.id, 200) && W(s.revision, 1, Number.MAX_SAFE_INTEGER) && b(s.name, 200) && U(s.created_at) && (s.acquired_at === null || U(s.acquired_at)) && ["active", "disabled"].includes(String(s.lifecycle_state)) && P(s.category, 60) && Array.isArray(s.tags) && s.tags.length <= 32 && s.tags.every((r) => b(r, 60)) && new Set(s.tags).size === s.tags.length && (e === null || S(e) && b(e.mode, 60) && P(e.exposure, 60) && P(e.rain_exposure, 60) && (e.container === null || typeof e.container == "boolean")) && (t === null || S(t) && $t(t.snapshot) && S(t.snapshot) && t.provider === t.snapshot.provider) && (i === null || S(i) && b(i.id, 200) && i.content_type === "image/webp" && W(i.width, 1, 2048) && W(i.height, 1, 2048) && U(i.created_at)) && (s.care_events === void 0 || Array.isArray(s.care_events) && s.care_events.length <= 256 && s.care_events.every(Pe));
 }
 function Pe(s) {
   if (!S(s) || s.schema_version !== 1 || !b(s.id, 36) || !["watering", "fertilizing", "pruning", "repotting", "note"].includes(String(s.kind)) || s.provenance !== "manual" || !U(s.occurred_at) || !/(?:Z|[+-]\d\d:\d\d)$/.test(String(s.occurred_at)) || typeof s.local_date != "string" || !/^\d{4}-\d\d-\d\d$/.test(s.local_date) || s.local_date !== String(s.occurred_at).slice(0, 10) || !U(s.created_at) || !U(s.updated_at) || !S(s.payload)) return !1;
@@ -601,7 +601,7 @@ function xe(s, e) {
   return r[0] - i[0] || r[1] - i[1] || (String(s.id) < String(e.id) ? -1 : String(s.id) > String(e.id) ? 1 : 0);
 }
 function ve(s) {
-  if (!S(s) || !F(s.revision, 1, Number.MAX_SAFE_INTEGER) || !Array.isArray(s.events) || s.events.length > 256 || !s.events.every(Pe) || !S(s.summary)) return !1;
+  if (!S(s) || !W(s.revision, 1, Number.MAX_SAFE_INTEGER) || !Array.isArray(s.events) || s.events.length > 256 || !s.events.every(Pe) || !S(s.summary)) return !1;
   const e = s.events, t = s.summary, i = e.filter((r) => r.kind === "watering");
   return new Set(e.map((r) => r.id)).size === e.length && t.watering_count === i.length && e.every((r, a) => a === 0 || xe(e[a - 1], r) <= 0) && t.last_watered_at === (i[0]?.occurred_at ?? null) && t.last_watered_local_date === (i[0]?.local_date ?? null);
 }
@@ -613,16 +613,16 @@ function Ee(s) {
 }
 const li = /* @__PURE__ */ new Set(["high", "medium", "low", "unknown"]);
 function ci(s) {
-  return !S(s) || typeof s.available != "boolean" || typeof s.confidence != "number" || !Number.isFinite(s.confidence) || s.confidence < 0 || s.confidence > 1 || typeof s.confidence_label != "string" || !li.has(s.confidence_label) || !Array.isArray(s.contributors) || !s.contributors.every((e) => b(e, 60)) || !Array.isArray(s.configured) || !s.configured.every((e) => b(e, 60)) || !Array.isArray(s.reasons) || !s.reasons.every((e) => b(e, 4e3)) ? !1 : s.available ? F(s.health_score, 0, 100) : s.health_score === null;
+  return !S(s) || typeof s.available != "boolean" || typeof s.confidence != "number" || !Number.isFinite(s.confidence) || s.confidence < 0 || s.confidence > 1 || typeof s.confidence_label != "string" || !li.has(s.confidence_label) || !Array.isArray(s.contributors) || !s.contributors.every((e) => b(e, 60)) || !Array.isArray(s.configured) || !s.configured.every((e) => b(e, 60)) || !Array.isArray(s.reasons) || !s.reasons.every((e) => b(e, 4e3)) ? !1 : s.available ? W(s.health_score, 0, 100) : s.health_score === null;
 }
 function di(s) {
-  return !S(s) || typeof s.computed_available != "boolean" || typeof s.sensor_stale != "boolean" || !Array.isArray(s.reasons) || !s.reasons.every((e) => b(e, 4e3)) ? !1 : s.computed_available ? typeof s.computed_percent == "number" && Number.isFinite(s.computed_percent) && s.computed_percent >= 0 && s.computed_percent <= 100 && F(s.health_score, 0, 100) && typeof s.needs_water == "boolean" && typeof s.too_wet == "boolean" : s.computed_percent === null && s.health_score === null && s.needs_water === null && s.too_wet === null;
+  return !S(s) || typeof s.computed_available != "boolean" || typeof s.sensor_stale != "boolean" || !Array.isArray(s.reasons) || !s.reasons.every((e) => b(e, 4e3)) ? !1 : s.computed_available ? typeof s.computed_percent == "number" && Number.isFinite(s.computed_percent) && s.computed_percent >= 0 && s.computed_percent <= 100 && W(s.health_score, 0, 100) && typeof s.needs_water == "boolean" && typeof s.too_wet == "boolean" : s.computed_percent === null && s.health_score === null && s.needs_water === null && s.too_wet === null;
 }
 function hi(s, e) {
   const t = String(s.type);
   if (!t.startsWith("smart_plants/") || t === "smart_plants/panel/info") return !0;
   if (!S(e)) return !1;
-  if (t === "smart_plants/wizard/start") return typeof e.draft_id == "string" && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(e.draft_id) && typeof e.draft_token == "string" && /^[A-Za-z0-9_-]{43}$/.test(e.draft_token) && e.revision === 0 && F(e.expires_in, 1, 600);
+  if (t === "smart_plants/wizard/start") return typeof e.draft_id == "string" && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(e.draft_id) && typeof e.draft_token == "string" && /^[A-Za-z0-9_-]{43}$/.test(e.draft_token) && e.revision === 0 && W(e.expires_in, 1, 600);
   if (t.endsWith("/preview") || t.endsWith("/refresh_preview")) return oi(e, s);
   if (t === "smart_plants/species/search") return Array.isArray(e.results) && e.results.length <= 50 && e.results.every((i) => S(i) && i.provider === s.provider && b(i.provider_ref, 100) && b(i.latin_name) && P(i.common_name) && P(i.category) && b(i.attribution));
   if (t === "smart_plants/moisture/evaluation") return di(e.evaluation);
@@ -920,7 +920,7 @@ const q = ["min", "target", "max"], J = { min: 15, target: 35, max: 55 }, pi = [
   "low_light",
   "low_battery",
   "conductivity_stress"
-], mi = {
+], fi = {
   moisture: "Moisture",
   temperature: "Temperature",
   humidity: "Humidity",
@@ -929,7 +929,7 @@ const q = ["min", "target", "max"], J = { min: 15, target: 35, max: 55 }, pi = [
   conductivity: "Conductivity",
   soil_temperature: "Soil temperature",
   co2: "CO2"
-}, fi = {
+}, mi = {
   high: "every configured role is currently available.",
   medium: "at least half of the configured roles are currently available.",
   low: "fewer than half of the configured roles are currently available.",
@@ -950,11 +950,11 @@ function Be(s) {
   };
 }
 function st(s, e) {
-  const t = mi[s] ?? s.replaceAll("_", " ");
+  const t = fi[s] ?? s.replaceAll("_", " ");
   return Be(e)(`component.smart_plants.panel.health_contributor.${s}`, t);
 }
 function gi(s, e) {
-  const t = fi[s] ?? "no additional detail available.";
+  const t = mi[s] ?? "no additional detail available.";
   return Be(e)(`component.smart_plants.panel.section.confidence_${s}`, t);
 }
 const $e = {
@@ -1282,7 +1282,7 @@ function ae(s, e) {
 function Nt(s, e) {
   return !s.trim() && !e.trim() ? null : { provider: "manual", snapshot: { provider: "manual", provider_id: null, provider_ref: null, fetched_at: (/* @__PURE__ */ new Date()).toISOString(), locale: "und", source_status: "manual", attribution: "User supplied", common_name: s.trim() || null, latin_name: e.trim() || null, category: null, confidence: null, care_text: {}, field_sources: { ...s.trim() ? { common_name: "User supplied" } : {}, ...e.trim() ? { latin_name: "User supplied" } : {} }, threshold_defaults: {} } };
 }
-function K(s, e) {
+function G(s, e) {
   return e.find((t) => t.identifiers.some(([i, r]) => i === "smart_plants" && r === s.id));
 }
 function N(s, e) {
@@ -1315,11 +1315,11 @@ const Re = [
 function we(s) {
   return Re.find((e) => e.role === s);
 }
-function G(s, e) {
+function j(s, e) {
   const t = s.roles?.[e];
   return !t || !Array.isArray(t.sources) || t.sources.length > 32 || !t.sources.every((i) => i && typeof i.entity_id == "string" && /^sensor\.[a-z0-9_]+$/.test(i.entity_id) && (i.registry_id === null || typeof i.registry_id == "string")) || typeof t.aggregation != "string" || !["primary", "average", "min", "max"].includes(t.aggregation) || !Number.isInteger(t.stale_after_seconds) || t.stale_after_seconds < 60 || t.stale_after_seconds > 604800 || !(t.primary_entity_id === null || typeof t.primary_entity_id == "string" && t.sources.some((i) => i.entity_id === t.primary_entity_id)) ? null : { sources: t.sources, primary_entity_id: t.primary_entity_id ?? null, aggregation: t.aggregation, stale_after_seconds: t.stale_after_seconds };
 }
-function mt(s) {
+function ft(s) {
   return structuredClone({ sources: s.sources, primary_entity_id: s.primary_entity_id, aggregation: s.aggregation, stale_after_seconds: s.stale_after_seconds });
 }
 function hs(s) {
@@ -1342,7 +1342,7 @@ function ps(s, e, t, i) {
   }
   return o.join(". ");
 }
-function z(s) {
+function F(s) {
   return [...new Set(s.split(",").map((e) => e.trim()).filter(Boolean))];
 }
 function ke(s, e) {
@@ -1372,24 +1372,24 @@ function ge(s, e, t, i, r, a, o, n = "all") {
     <p>Assign up to 32 sources. Primary never falls back automatically. Unavailable sensors can be assigned.</p>
     <label class="check"><input type="checkbox" .checked=${r} @change=${(h) => a(h.target.checked)}>Show all sensors (metadata fallback)</label>
     ${T("Add moisture sensor", "", [{ value: "", label: "Choose a sensor" }, ...d.map((h) => ({ value: h, label: `${typeof i[h]?.attributes.friendly_name == "string" ? i[h]?.attributes.friendly_name : h} · ${h} · unit: ${i[h]?.attributes.unit_of_measurement ?? "not supplied"} · class: ${i[h]?.attributes.device_class ?? "not supplied"} · ${i[h]?.state ?? "unavailable"}` }))], (h) => {
-    h && !s.sources.some((m) => m.entity_id === h) && l({ sources: [...s.sources, { entity_id: h, registry_id: t.find((m) => m.entity_id === h)?.id ?? null }] });
+    h && !s.sources.some((f) => f.entity_id === h) && l({ sources: [...s.sources, { entity_id: h, registry_id: t.find((f) => f.entity_id === h)?.id ?? null }] });
   })}
     <label>Assign an unavailable or unregistered sensor<input placeholder="sensor.soil_moisture" @keydown=${(h) => {
     if (h.key === "Enter") {
       h.preventDefault();
-      const m = h.target, _ = m.value.trim();
-      /^sensor\.[a-z0-9_]+$/.test(_) && !s.sources.some((x) => x.entity_id === _) && (l({ sources: [...s.sources, { entity_id: _, registry_id: t.find((x) => x.entity_id === _)?.id ?? null }] }), m.value = "");
+      const f = h.target, _ = f.value.trim();
+      /^sensor\.[a-z0-9_]+$/.test(_) && !s.sources.some((x) => x.entity_id === _) && (l({ sources: [...s.sources, { entity_id: _, registry_id: t.find((x) => x.entity_id === _)?.id ?? null }] }), f.value = "");
     }
   }}></label><small>Press Enter to add an entity ID.</small>
     <ul>${s.sources.map((h) => {
-    const m = N(h, t), _ = h.registry_id && !m ? void 0 : i[m?.entity_id ?? h.entity_id];
-    return c`<li><strong>${m?.entity_id ?? h.entity_id}</strong><p>${_?.state ?? "Unavailable"} ${_?.attributes.unit_of_measurement ?? ""}${h.entity_id === s.primary_entity_id ? " · Primary" : ""}</p><p>Device class: ${_?.attributes.device_class ?? "Not supplied"} · Unit: ${_?.attributes.unit_of_measurement ?? "Not supplied"} · ${m ? "Registered" : "Not in registry"}</p><small>${ds(h, t, i)}</small>${m ? c`<a href="/config/entities/entity/${encodeURIComponent(m.id)}">Native sensor settings</a>` : u}<button type="button" @click=${() => l({ sources: s.sources.filter((x) => x !== h), primary_entity_id: s.primary_entity_id === h.entity_id ? null : s.primary_entity_id })}>Remove ${h.entity_id}</button></li>`;
+    const f = N(h, t), _ = h.registry_id && !f ? void 0 : i[f?.entity_id ?? h.entity_id];
+    return c`<li><strong>${f?.entity_id ?? h.entity_id}</strong><p>${_?.state ?? "Unavailable"} ${_?.attributes.unit_of_measurement ?? ""}${h.entity_id === s.primary_entity_id ? " · Primary" : ""}</p><p>Device class: ${_?.attributes.device_class ?? "Not supplied"} · Unit: ${_?.attributes.unit_of_measurement ?? "Not supplied"} · ${f ? "Registered" : "Not in registry"}</p><small>${ds(h, t, i)}</small>${f ? c`<a href="/config/entities/entity/${encodeURIComponent(f.id)}">Native sensor settings</a>` : u}<button type="button" @click=${() => l({ sources: s.sources.filter((x) => x !== h), primary_entity_id: s.primary_entity_id === h.entity_id ? null : s.primary_entity_id })}>Remove ${h.entity_id}</button></li>`;
   })}</ul>
     ${s.sources.some((h) => h.registry_id && !N(h, t)) ? c`<a href="/config/repairs">Open Home Assistant Repairs</a>` : u}
     ${T("Primary sensor", s.primary_entity_id ?? "", [{ value: "", label: "None (primary aggregation unavailable)" }, ...s.sources.map((h) => ({ value: h.entity_id, label: N(h, t)?.entity_id ?? h.entity_id }))], (h) => l({ primary_entity_id: h || null }))}
     ${T("Aggregation", s.aggregation, ["primary", "average", "min", "max"].map((h) => ({ value: h, label: h })), (h) => l({ aggregation: h }))}
     ${A("Stale after (seconds, 60–604800)", String(s.stale_after_seconds), (h) => l({ stale_after_seconds: Number(h) }), "number")}` : u}
-    ${n !== "sources" ? c`<p>Blank overrides explicitly inherit defaults. Save applies the complete configuration atomically.</p><div class="grid">${q.map((h) => c`<div>${A(`${h} override (%)`, s.threshold_overrides[h] === null ? "" : String(s.threshold_overrides[h]), (m) => l({ threshold_overrides: { ...s.threshold_overrides, [h]: m.trim() === "" ? null : Number(m) } }), "number")}<small>Default ${e[h]}% · effective ${s.threshold_overrides[h] ?? e[h]}%</small><button type="button" @click=${() => l({ threshold_overrides: { ...s.threshold_overrides, [h]: null } })}>Inherit ${h}</button></div>`)}</div>` : u}`;
+    ${n !== "sources" ? c`<p>Blank overrides explicitly inherit defaults. Save applies the complete configuration atomically.</p><div class="grid">${q.map((h) => c`<div>${A(`${h} override (%)`, s.threshold_overrides[h] === null ? "" : String(s.threshold_overrides[h]), (f) => l({ threshold_overrides: { ...s.threshold_overrides, [h]: f.trim() === "" ? null : Number(f) } }), "number")}<small>Default ${e[h]}% · effective ${s.threshold_overrides[h] ?? e[h]}%</small><button type="button" @click=${() => l({ threshold_overrides: { ...s.threshold_overrides, [h]: null } })}>Inherit ${h}</button></div>`)}</div>` : u}`;
 }
 function _s(s, e, t, i, r, a, o) {
   const n = (d) => o({ ...e, ...d }), l = [.../* @__PURE__ */ new Set([...t.map((d) => d.entity_id), ...Object.keys(i)])].filter((d) => d.startsWith("sensor.") && (r || i[d]?.attributes.device_class === s.deviceClass && typeof i[d]?.attributes.unit_of_measurement == "string" && s.acceptedUnits.includes(i[d]?.attributes.unit_of_measurement))).sort();
@@ -1402,13 +1402,13 @@ function _s(s, e, t, i, r, a, o) {
     <label>Assign an unavailable or unregistered sensor<input placeholder="sensor.${s.role}" @keydown=${(d) => {
     if (d.key === "Enter") {
       d.preventDefault();
-      const h = d.target, m = h.value.trim();
-      /^sensor\.[a-z0-9_]+$/.test(m) && !e.sources.some((_) => _.entity_id === m) && (n({ sources: [...e.sources, { entity_id: m, registry_id: t.find((_) => _.entity_id === m)?.id ?? null }] }), h.value = "");
+      const h = d.target, f = h.value.trim();
+      /^sensor\.[a-z0-9_]+$/.test(f) && !e.sources.some((_) => _.entity_id === f) && (n({ sources: [...e.sources, { entity_id: f, registry_id: t.find((_) => _.entity_id === f)?.id ?? null }] }), h.value = "");
     }
   }}></label><small>Press Enter to add an entity ID.</small>
     <ul>${e.sources.map((d) => {
-    const h = N(d, t), m = d.registry_id && !h ? void 0 : i[h?.entity_id ?? d.entity_id];
-    return c`<li><strong>${h?.entity_id ?? d.entity_id}</strong><p>${m?.state ?? "Unavailable"} ${m?.attributes.unit_of_measurement ?? ""}${d.entity_id === e.primary_entity_id ? " · Primary" : ""}</p><p>Device class: ${m?.attributes.device_class ?? "Not supplied"} · Unit: ${m?.attributes.unit_of_measurement ?? "Not supplied"} · ${h ? "Registered" : "Not in registry"}</p><small>${ps(d, t, i, s)}</small>${h ? c`<a href="/config/entities/entity/${encodeURIComponent(h.id)}">Native sensor settings</a>` : u}<button type="button" @click=${() => n({ sources: e.sources.filter((_) => _ !== d), primary_entity_id: e.primary_entity_id === d.entity_id ? null : e.primary_entity_id })}>Remove ${d.entity_id}</button></li>`;
+    const h = N(d, t), f = d.registry_id && !h ? void 0 : i[h?.entity_id ?? d.entity_id];
+    return c`<li><strong>${h?.entity_id ?? d.entity_id}</strong><p>${f?.state ?? "Unavailable"} ${f?.attributes.unit_of_measurement ?? ""}${d.entity_id === e.primary_entity_id ? " · Primary" : ""}</p><p>Device class: ${f?.attributes.device_class ?? "Not supplied"} · Unit: ${f?.attributes.unit_of_measurement ?? "Not supplied"} · ${h ? "Registered" : "Not in registry"}</p><small>${ps(d, t, i, s)}</small>${h ? c`<a href="/config/entities/entity/${encodeURIComponent(h.id)}">Native sensor settings</a>` : u}<button type="button" @click=${() => n({ sources: e.sources.filter((_) => _ !== d), primary_entity_id: e.primary_entity_id === d.entity_id ? null : e.primary_entity_id })}>Remove ${d.entity_id}</button></li>`;
   })}</ul>
     ${e.sources.some((d) => d.registry_id && !N(d, t)) ? c`<a href="/config/repairs">Open Home Assistant Repairs</a>` : u}
     ${T("Primary sensor", e.primary_entity_id ?? "", [{ value: "", label: "None (primary aggregation unavailable)" }, ...e.sources.map((d) => ({ value: d.entity_id, label: N(d, t)?.entity_id ?? d.entity_id }))], (d) => n({ primary_entity_id: d || null }))}
@@ -1472,10 +1472,10 @@ const Bt = Ut`
   .inventory-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px;padding:0;border:0;background:transparent}.inventory-summary article{display:grid;gap:4px;margin:0;padding:16px 20px;background:var(--card-background-color,#fff)}.inventory-summary article span{color:var(--secondary-text-color,#666);font-size:.9rem}.inventory-summary article strong{font-size:1.6rem;line-height:1.2}.filter-disclosure{margin-bottom:16px}.filter-disclosure>summary{cursor:pointer;font-weight:600;list-style:none;padding:4px 0}.filter-disclosure>summary::-webkit-details-marker{display:none}.filter-disclosure>summary:before{content:"▸";display:inline-block;width:1.4em;color:var(--secondary-text-color,#666)}.filter-disclosure[open]>summary:before{content:"▾"}.filter-disclosure>section{margin:12px 0 0}.plant-count{font-weight:600;color:var(--secondary-text-color,#666)}.plant-card{display:grid;gap:16px;padding:18px}.plant-card-heading{display:flex;align-items:center;gap:14px}.plant-avatar{display:grid;place-items:center;flex:0 0 52px;width:52px;height:52px;border-radius:16px;background:var(--secondary-background-color,#f5f5f5);color:var(--primary-color,#007bad);font-size:1.45rem;font-weight:700}.plant-card-heading>div{display:grid;gap:2px}.plant-card .name{padding:0;border:0;background:transparent;font-size:1.1rem;font-weight:650}.plant-status{text-transform:capitalize;color:var(--secondary-text-color,#666);font-size:.9rem}.plant-card-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}.plant-card-metrics>div{display:grid;gap:2px;padding:12px;border-radius:10px;background:var(--secondary-background-color,#f5f5f5)}.plant-card-metrics>div>strong{font-size:1.3rem}.plant-card-metrics>div>strong small{display:inline;font-size:.8rem;font-weight:400}.plant-meta{line-height:1.6}
   @media(max-width:600px){.panel-content{padding:16px 16px 16px}.inventory-summary{gap:8px}.inventory-summary article{padding:12px 10px}.inventory-summary article span{font-size:.78rem}.inventory-summary article strong{font-size:1.35rem}.plant-card{padding:14px}section,article{padding:16px}.actions button{flex:1 1 auto}header{align-items:flex-start}dl{grid-template-columns:1fr}dd{margin-bottom:8px}.stepper li span:last-child{display:none}.stepper li[aria-current=step] span:last-child{display:inline}.choice-card{min-height:0}.overview-heading{align-items:flex-start;flex-direction:column;padding:18px}.overview-metrics{grid-template-columns:1fr;padding:14px}.detail-tabs button{font-size:.9rem;padding:8px}}
 `;
-var ms = Object.defineProperty, w = (s, e, t, i) => {
+var fs = Object.defineProperty, w = (s, e, t, i) => {
   for (var r = void 0, a = s.length - 1, o; a >= 0; a--)
     (o = s[a]) && (r = o(e, t, r) || r);
-  return r && ms(e, t, r), r;
+  return r && fs(e, t, r), r;
 };
 const ze = class ze extends V {
   constructor() {
@@ -1544,7 +1544,7 @@ const ze = class ze extends V {
     }
   }
   validate() {
-    return !this.name.trim() || this.name.trim().length > 200 ? "Enter a plant name (1–200 characters)." : this.acquired && !Number.isFinite(Date.parse(this.acquired)) ? "Enter a valid acquired date." : this.area && !this.areas.some((e) => e.area_id === this.area) ? "The selected Home Assistant area no longer exists. Choose a current area or No area." : this.provider !== "manual" && (!this.preview || !this.accepted) ? "Review and explicitly accept the selected species preview, or continue manually." : ae(this.moisture, this.defaults) ?? ke(this.category, z(this.tagText));
+    return !this.name.trim() || this.name.trim().length > 200 ? "Enter a plant name (1–200 characters)." : this.acquired && !Number.isFinite(Date.parse(this.acquired)) ? "Enter a valid acquired date." : this.area && !this.areas.some((e) => e.area_id === this.area) ? "The selected Home Assistant area no longer exists. Choose a current area or No area." : this.provider !== "manual" && (!this.preview || !this.accepted) ? "Review and explicitly accept the selected species preview, or continue manually." : ae(this.moisture, this.defaults) ?? ke(this.category, F(this.tagText));
   }
   async next() {
     if (this.busy || this.blocked || !this.draft || this.step >= 6) return;
@@ -1561,7 +1561,7 @@ const ze = class ze extends V {
       }
       if (e !== this.lifecycle || !this.isConnected) return;
     }
-    this.step === 1 && this.provider !== "manual" && !this.preview && (this.error = "Choose a species result or continue manually."), this.step === 2 && this.provider !== "manual" && !this.accepted && (this.error = "Explicitly accept the preview or continue manually."), this.step === 3 && (this.error = ae({ ...this.moisture, threshold_overrides: { min: null, target: null, max: null } }, J) ?? ""), this.step === 4 && (this.error = ae(this.moisture, this.defaults) ?? ""), this.step === 5 && (this.error = ke(this.category, z(this.tagText)) ?? ""), this.error || (this.step = this.step === 1 && this.provider === "manual" ? 3 : this.step + 1, await this.focusStep());
+    this.step === 1 && this.provider !== "manual" && !this.preview && (this.error = "Choose a species result or continue manually."), this.step === 2 && this.provider !== "manual" && !this.accepted && (this.error = "Explicitly accept the preview or continue manually."), this.step === 3 && (this.error = ae({ ...this.moisture, threshold_overrides: { min: null, target: null, max: null } }, J) ?? ""), this.step === 4 && (this.error = ae(this.moisture, this.defaults) ?? ""), this.step === 5 && (this.error = ke(this.category, F(this.tagText)) ?? ""), this.error || (this.step = this.step === 1 && this.provider === "manual" ? 3 : this.step + 1, await this.focusStep());
   }
   async focusStep() {
     await this.updateComplete, this.shadowRoot?.querySelector("h2")?.focus();
@@ -1580,7 +1580,7 @@ const ze = class ze extends V {
         area_id: this.area || null,
         placement: this.placement,
         category: this.category.trim() || null,
-        tags: z(this.tagText),
+        tags: F(this.tagText),
         moisture: Ot(this.moisture, this.entities),
         ...this.accepted && this.preview ? { accepted_preview: { preview_token: this.preview.preview_token, provider: this.preview.provider, operation: "select" } } : { species: Nt(this.common, this.latin) }
       });
@@ -1632,7 +1632,7 @@ const ze = class ze extends V {
         <dt>Container</dt><dd>${this.placement?.container === null || !this.placement ? "Not specified" : this.placement.container ? "In a container" : "In the ground"}</dd>
         <dt>Acquired</dt><dd>${this.acquired || "Not specified"}</dd>
         <dt>Species</dt><dd>${this.accepted && this.preview ? [this.preview.snapshot.common_name, this.preview.snapshot.latin_name].filter(Boolean).join(" · ") : [this.common, this.latin].filter(Boolean).join(" · ") || "No species selected"}</dd>
-        <dt>Category / tags</dt><dd>${this.category} / ${z(this.tagText).join(", ")}</dd>
+        <dt>Category / tags</dt><dd>${this.category} / ${F(this.tagText).join(", ")}</dd>
         <dt>Sources</dt><dd>${this.moisture.sources.map((e) => e.entity_id).join(", ") || "None"}</dd>
         <dt>Primary / aggregation</dt><dd>${this.moisture.primary_entity_id ?? "None"} / ${this.moisture.aggregation}</dd>
         <dt>Staleness</dt><dd>${this.moisture.stale_after_seconds} seconds</dd>
@@ -1747,10 +1747,10 @@ w([
   p()
 ], $.prototype, "rejected");
 customElements.get("smart-plants-wizard") || customElements.define("smart-plants-wizard", $);
-var fs = Object.defineProperty, g = (s, e, t, i) => {
+var ms = Object.defineProperty, g = (s, e, t, i) => {
   for (var r = void 0, a = s.length - 1, o; a >= 0; a--)
     (o = s[a]) && (r = o(e, t, r) || r);
-  return r && fs(e, t, r), r;
+  return r && ms(e, t, r), r;
 };
 const gs = [
   {
@@ -1860,7 +1860,7 @@ const gs = [
   }
 ], Se = Object.fromEntries(gs.map((s) => [s.problemRole, s])), ys = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", bs = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Fe = class Fe extends V {
   constructor() {
-    super(...arguments), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._filters = {}, this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._wizardStarted = !1, this._creationNotice = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceSaved = {}, this._pendingSourceSwitch = null, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._request = 0, this._careRequest = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ready = () => {
+    super(...arguments), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._filters = {}, this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._wizardStarted = !1, this._creationNotice = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._request = 0, this._careRequest = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ready = () => {
       this._refresh();
     }, this._disconnected = () => {
       this._context++, this._formBusy = !1, this._blocked = !0, this._request++, this._providerRequest++, this._preview = null, this._clearImage(), this._error = "Disconnected. Local edits and creation retries are retained. Reconnect before saving.";
@@ -1933,11 +1933,11 @@ const gs = [
       try {
         const [n, l, d, h] = await Promise.all([y.areas(i), y.entities(i), y.devices(i), y.states(i)]);
         if (t !== this._request) return;
-        if (this._areas = n, this._entities = l, this._devices = d, this._states = i.states ? Object.fromEntries(Object.entries(i.states).filter(([m, _]) => Ee(_) && _.entity_id === m)) : Object.fromEntries(h.map((m) => [m.entity_id, m])), this._registryError = "", this._base && this._edits) {
-          const m = K(this._base, d)?.area_id ?? "";
-          if (m !== this._baseArea) {
+        if (this._areas = n, this._entities = l, this._devices = d, this._states = i.states ? Object.fromEntries(Object.entries(i.states).filter(([f, _]) => Ee(_) && _.entity_id === f)) : Object.fromEntries(h.map((f) => [f.entity_id, f])), this._registryError = "", this._base && this._edits) {
+          const f = G(this._base, d)?.area_id ?? "";
+          if (f !== this._baseArea) {
             const _ = this._edits.area !== this._baseArea;
-            this._notice = `Home Assistant area changed from ${this._areaName(this._baseArea)} to ${this._areaName(m)}.${_ ? " Your area selection is retained; review it before saving." : " The area selector now reflects the native area."}`, _ || this._edit({ area: m }), this._areaReview = _, this._baseArea = m;
+            this._notice = `Home Assistant area changed from ${this._areaName(this._baseArea)} to ${this._areaName(f)}.${_ ? " Your area selection is retained; review it before saving." : " The area selector now reflects the native area."}`, _ || this._edit({ area: f }), this._areaReview = _, this._baseArea = f;
           }
         }
       } catch (n) {
@@ -1998,8 +1998,8 @@ const gs = [
   }
   _beginEdit(e) {
     const t = M(e);
-    this._base = structuredClone(e), this._baseArea = K(e, this._devices)?.area_id ?? "", this._edits = { name: e.name, acquired: e.acquired_at ?? "", placement: structuredClone(e.placement), category: e.category ?? "", tagText: e.tags.join(", "), area: this._baseArea, common: e.species?.snapshot.common_name ?? "", latin: e.species?.snapshot.latin_name ?? "", moisture: t ? _t(t) : null }, this._conflict = null, this._areaReview = !1, this._preview = null, this._results = [], this._provider = "manual", this._related = [], this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceSaved = {}, this._pendingSourceSwitch = null, this._allSourceSensors = !1;
-    const i = K(e, this._devices), r = this._context;
+    this._base = structuredClone(e), this._baseArea = G(e, this._devices)?.area_id ?? "", this._edits = { name: e.name, acquired: e.acquired_at ?? "", placement: structuredClone(e.placement), category: e.category ?? "", tagText: e.tags.join(", "), area: this._baseArea, common: e.species?.snapshot.common_name ?? "", latin: e.species?.snapshot.latin_name ?? "", moisture: t ? _t(t) : null }, this._conflict = null, this._areaReview = !1, this._preview = null, this._results = [], this._provider = "manual", this._related = [], this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceSaved = {}, this._pendingSourceSwitch = null, this._allSourceSensors = !1, this._sourceUnavailable = null;
+    const i = G(e, this._devices), r = this._context;
     i && this.hass && y.related(this.hass, i.id).then((a) => {
       r === this._context && this._base?.id === e.id && (this._related = a);
     }).catch(() => {
@@ -2087,7 +2087,7 @@ const gs = [
       this._careError = "Enter a note of 1 to 1000 characters.";
       return;
     }
-    if (Object.values(r).some((m) => m.length > 120)) {
+    if (Object.values(r).some((f) => f.length > 120)) {
       this._careError = "Care details must be at most 120 characters.";
       return;
     }
@@ -2139,7 +2139,7 @@ const gs = [
   }
   _matches(e) {
     const t = this._filters, i = this._status(e), r = this._evaluations[e.id], a = [e.name, e.species?.snapshot.common_name, e.species?.snapshot.latin_name, e.category, ...e.tags].join(" ").toLocaleLowerCase();
-    return (!t.search || a.includes(t.search.toLocaleLowerCase())) && (!t.status || (t.status === "problems" ? ["needs water", "too wet", "stale", "unavailable"].includes(i) || this._missing(e) : i === t.status)) && (!t.area || (K(e, this._devices)?.area_id ?? "none") === t.area) && (!t.placement || (e.placement?.mode ?? "none") === t.placement) && (!t.lifecycle || e.lifecycle_state === t.lifecycle) && (!t.species || (e.species?.snapshot.latin_name ?? e.species?.snapshot.common_name ?? "none") === t.species) && (!t.category || (e.category ?? "none") === t.category) && (!t.tag || e.tags.includes(t.tag)) && (!t.sensor || (t.sensor === "missing" ? this._missing(e) : t.sensor === "stale" ? !!r?.sensor_stale : t.sensor === "unavailable" ? !r?.computed_available : this._missing(e) || !!r?.sensor_stale));
+    return (!t.search || a.includes(t.search.toLocaleLowerCase())) && (!t.status || (t.status === "problems" ? ["needs water", "too wet", "stale", "unavailable"].includes(i) || this._missing(e) : i === t.status)) && (!t.area || (G(e, this._devices)?.area_id ?? "none") === t.area) && (!t.placement || (e.placement?.mode ?? "none") === t.placement) && (!t.lifecycle || e.lifecycle_state === t.lifecycle) && (!t.species || (e.species?.snapshot.latin_name ?? e.species?.snapshot.common_name ?? "none") === t.species) && (!t.category || (e.category ?? "none") === t.category) && (!t.tag || e.tags.includes(t.tag)) && (!t.sensor || (t.sensor === "missing" ? this._missing(e) : t.sensor === "stale" ? !!r?.sensor_stale : t.sensor === "unavailable" ? !r?.computed_available : this._missing(e) || !!r?.sensor_stale));
   }
   _filter(e, t, i) {
     return T(e, this._filters[t] ?? "", [{ value: "", label: `All ${e.toLowerCase()}` }, ...[...new Set(i)].sort().map((r) => ({ value: r, label: t === "area" ? this._areaName(r === "none" ? "" : r) : r }))], (r) => this._filters = { ...this._filters, [t]: r });
@@ -2157,7 +2157,7 @@ const gs = [
       ${this._filter("Category", "category", this._plants.map((r) => r.category ?? "none"))}
       ${this._filter("Sensor condition", "sensor", ["missing", "stale", "unavailable", "missing or stale"])}
       ${this._filter("Tags", "tag", this._plants.flatMap((r) => r.tags))}</div><button @click=${() => this._filters = {}}>Clear filters</button></section></details>
-      ${this._plants.length ? e.length ? c`<p class="plant-count" role="status">${e.length === this._plants.length ? `${e.length} plants` : `${e.length} of ${this._plants.length} plants`}</p><ul class="plants">${e.map((r) => c`<li class="plant plant-card"><div class="plant-card-heading"><span class="plant-avatar" aria-hidden="true">${(r.name.trim()[0] ?? "?").toLocaleUpperCase()}</span><div><button class="name" @click=${() => this._show({ kind: "detail", plantId: r.id })}>${r.name}</button><span class="plant-status">${this._status(r)}${this._missing(r) ? " · missing source" : ""}</span></div></div><div class="plant-card-metrics"><div><small>Soil moisture</small><strong>${this._evaluations[r.id]?.computed_percent ?? "—"}<small>%</small></strong></div><div><small>Moisture health</small><strong>${this._evaluations[r.id]?.health_score ?? "—"}<small>/100</small></strong></div></div><small class="plant-meta">${this._areaName(K(r, this._devices)?.area_id ?? "")} · ${r.placement?.mode ?? "No placement"}<br>${r.species?.snapshot.common_name ?? r.species?.snapshot.latin_name ?? "Manual plant"} · ${r.category ?? "Uncategorized"}${r.tags.length ? c`<br>${r.tags.join(" · ")}` : u}</small></li>`)}</ul>` : c`<p role="status">No plants match these filters.</p>` : c`<section class="empty"><h2>A home for every plant</h2><p>Create a lasting plant profile, connect replaceable moisture sensors, and use its entities in native Home Assistant automations. Species and sensors are optional.</p><button class="primary" ?disabled=${this._blocked} @click=${() => this._show({ kind: "create" })}>Add your first plant</button></section>`}`;
+      ${this._plants.length ? e.length ? c`<p class="plant-count" role="status">${e.length === this._plants.length ? `${e.length} plants` : `${e.length} of ${this._plants.length} plants`}</p><ul class="plants">${e.map((r) => c`<li class="plant plant-card"><div class="plant-card-heading"><span class="plant-avatar" aria-hidden="true">${(r.name.trim()[0] ?? "?").toLocaleUpperCase()}</span><div><button class="name" @click=${() => this._show({ kind: "detail", plantId: r.id })}>${r.name}</button><span class="plant-status">${this._status(r)}${this._missing(r) ? " · missing source" : ""}</span></div></div><div class="plant-card-metrics"><div><small>Soil moisture</small><strong>${this._evaluations[r.id]?.computed_percent ?? "—"}<small>%</small></strong></div><div><small>Moisture health</small><strong>${this._evaluations[r.id]?.health_score ?? "—"}<small>/100</small></strong></div></div><small class="plant-meta">${this._areaName(G(r, this._devices)?.area_id ?? "")} · ${r.placement?.mode ?? "No placement"}<br>${r.species?.snapshot.common_name ?? r.species?.snapshot.latin_name ?? "Manual plant"} · ${r.category ?? "Uncategorized"}${r.tags.length ? c`<br>${r.tags.join(" · ")}` : u}</small></li>`)}</ul>` : c`<p role="status">No plants match these filters.</p>` : c`<section class="empty"><h2>A home for every plant</h2><p>Create a lasting plant profile, connect replaceable moisture sensors, and use its entities in native Home Assistant automations. Species and sensors are optional.</p><button class="primary" ?disabled=${this._blocked} @click=${() => this._show({ kind: "create" })}>Add your first plant</button></section>`}`;
   }
   async _save(e) {
     const t = this._base, i = this._edits;
@@ -2175,12 +2175,12 @@ const gs = [
       Object.assign(a, { name: i.name.trim(), acquired_at: i.acquired ? new Date(i.acquired).toISOString() : null, placement: i.placement });
     }
     if (e === "taxonomy") {
-      const o = ke(i.category, z(i.tagText));
+      const o = ke(i.category, F(i.tagText));
       if (o) {
         this._error = o;
         return;
       }
-      Object.assign(a, { category: i.category.trim() || null, tags: z(i.tagText) });
+      Object.assign(a, { category: i.category.trim() || null, tags: F(i.tagText) });
     }
     if (e === "species" && (a.species = Nt(i.common, i.latin)), e === "moisture") {
       if (!i.moisture) return;
@@ -2231,13 +2231,13 @@ const gs = [
   }
   _sourceConflictFields(e) {
     if (!this._sourceRole || !this._sourceEdits || !this._sourceBaseline) return [];
-    const t = G(e, this._sourceRole);
+    const t = j(e, this._sourceRole);
     return t ? ["sources", "primary_entity_id", "aggregation", "stale_after_seconds"].filter((i) => JSON.stringify(this._sourceEdits[i]) !== JSON.stringify(this._sourceBaseline[i]) && JSON.stringify(t[i]) !== JSON.stringify(this._sourceBaseline[i])) : [];
   }
   _rebaseEdits(e, t, i) {
     if (!this._edits) return;
-    const r = this._edits, a = this._areaReview, o = this._sourceRole, n = this._sourceEdits, l = this._sourceBaseline, d = this._thresholdRole, h = this._thresholdEdits, m = this._thresholdBaseline, _ = {};
-    r.name !== e.name && (_.name = r.name), r.acquired !== (e.acquired_at ?? "") && (_.acquired = r.acquired), JSON.stringify(r.placement) !== JSON.stringify(e.placement) && (_.placement = r.placement), r.category !== (e.category ?? "") && (_.category = r.category), JSON.stringify(z(r.tagText)) !== JSON.stringify(e.tags) && (_.tagText = r.tagText), r.area !== this._baseArea && (_.area = r.area), r.common !== (e.species?.snapshot.common_name ?? "") && (_.common = r.common), r.latin !== (e.species?.snapshot.latin_name ?? "") && (_.latin = r.latin);
+    const r = this._edits, a = this._areaReview, o = this._sourceRole, n = this._sourceEdits, l = this._sourceBaseline, d = this._thresholdRole, h = this._thresholdEdits, f = this._thresholdBaseline, _ = {};
+    r.name !== e.name && (_.name = r.name), r.acquired !== (e.acquired_at ?? "") && (_.acquired = r.acquired), JSON.stringify(r.placement) !== JSON.stringify(e.placement) && (_.placement = r.placement), r.category !== (e.category ?? "") && (_.category = r.category), JSON.stringify(F(r.tagText)) !== JSON.stringify(e.tags) && (_.tagText = r.tagText), r.area !== this._baseArea && (_.area = r.area), r.common !== (e.species?.snapshot.common_name ?? "") && (_.common = r.common), r.latin !== (e.species?.snapshot.latin_name ?? "") && (_.latin = r.latin);
     const x = M(e), O = M(t);
     if (r.moisture && x && O) {
       const R = _t(O);
@@ -2249,19 +2249,19 @@ const gs = [
     const he = { identity: ["name", "acquired", "placement"], taxonomy: ["category", "tagText"], area: ["area"], species: ["common", "latin"], moisture: ["moisture"] };
     if (i) for (const R of he[i]) delete _[R];
     if (this._beginEdit(t), this._edit(_), this._areaReview = a, o && n && l) {
-      const R = G(t, o);
+      const R = j(t, o);
       if (R) {
-        const k = mt(R), H = structuredClone(k);
+        const k = ft(R), H = structuredClone(k);
         for (const C of ["sources", "primary_entity_id", "aggregation", "stale_after_seconds"])
           JSON.stringify(n[C]) !== JSON.stringify(l[C]) && Object.assign(H, { [C]: structuredClone(n[C]) });
         this._sourceRole = o, this._sourceBaseline = k, this._sourceEdits = H;
       }
     }
-    if (d && h && m) {
+    if (d && h && f) {
       const R = Se[d];
       if (R) {
         const k = R.seed(this._persistedRoleOverrides(R, t)), H = { ...k };
-        for (const C of R.keys) h[C] !== m[C] && (H[C] = h[C]);
+        for (const C of R.keys) h[C] !== f[C] && (H[C] = h[C]);
         this._thresholdRole = d, this._thresholdBaseline = k, this._thresholdEdits = H;
       }
     }
@@ -2368,7 +2368,7 @@ const gs = [
     return Be(this.hass?.localize)(`component.smart_plants.${e}`, t, i);
   }
   _renderOverallHealth(e) {
-    const t = this._health[e.id], i = this.hass?.localize, r = this._t("panel.section.overall_health", "Overall health"), a = this._t("panel.section.overall_health_unavailable", "Overall health is unavailable."), o = this._t("panel.section.overall_health_unavailable_detail", "Overall health is unavailable — no configured role is currently reporting a valid value."), n = this._t("panel.section.overall_health_confidence", "Confidence"), l = this._t("panel.section.overall_health_included_roles", "Included roles"), d = this._t("panel.section.overall_health_none_contributing", "No roles are currently contributing to the composite."), h = this._t("panel.section.overall_health_configured_unavailable", "Configured but unavailable"), m = this._t("panel.section.overall_health_all_included", "None — every configured role is currently included.");
+    const t = this._health[e.id], i = this.hass?.localize, r = this._t("panel.section.overall_health", "Overall health"), a = this._t("panel.section.overall_health_unavailable", "Overall health is unavailable."), o = this._t("panel.section.overall_health_unavailable_detail", "Overall health is unavailable — no configured role is currently reporting a valid value."), n = this._t("panel.section.overall_health_confidence", "Confidence"), l = this._t("panel.section.overall_health_included_roles", "Included roles"), d = this._t("panel.section.overall_health_none_contributing", "No roles are currently contributing to the composite."), h = this._t("panel.section.overall_health_configured_unavailable", "Configured but unavailable"), f = this._t("panel.section.overall_health_all_included", "None — every configured role is currently included.");
     return c`<section aria-labelledby="overall-health-heading"><h2 id="overall-health-heading">${r}</h2>
       ${t ? c`
         <p role="status" aria-live="polite">${t.available && t.health_score !== null ? this._t("panel.section.overall_health_available_summary", "{score} out of 100", { score: t.health_score }) : o}</p>
@@ -2377,16 +2377,16 @@ const gs = [
           <dt>${l}</dt><dd>${t.contributors.length ? c`<ul class="contributors">${t.contributors.map((_) => c`<li>${st(_, i)}</li>`)}</ul>` : d}</dd>
           <dt>${h}</dt><dd>${(() => {
       const _ = t.configured.filter((x) => !t.contributors.includes(x));
-      return _.length ? c`<ul class="configured-unavailable">${_.map((x) => c`<li>${st(x, i)}</li>`)}</ul>` : m;
+      return _.length ? c`<ul class="configured-unavailable">${_.map((x) => c`<li>${st(x, i)}</li>`)}</ul>` : f;
     })()}</dd>
         </dl>
       ` : c`<p role="status">${this._healthError ? `${a} ${this._healthError}` : a}</p>`}
     </section>`;
   }
   _renderDiagnostics(e) {
-    const t = ls(e, this._entities, this._states), i = t.filter((_) => _.status === "on").length, r = (_) => _ === "on" ? this._t("panel.section.advanced_diagnostics_status_problem", "problem detected") : _ === "off" ? this._t("panel.section.advanced_diagnostics_status_ok", "no problem") : _ === "unavailable" ? this._t("panel.section.advanced_diagnostics_status_unavailable", "unavailable") : this._t("panel.section.advanced_diagnostics_status_not_configured", "not configured"), a = this._pendingThresholdSwitch, o = this._thresholdRole ? Se[this._thresholdRole] : null, n = o ? o.problemRole.replaceAll("_", " ") : "", l = a ? a.spec.problemRole.replaceAll("_", " ") : "", d = this._t("panel.section.advanced_diagnostics", "Advanced diagnostics"), h = this._t("panel.section.advanced_diagnostics_description", "Status of the problem indicators for this plant. Threshold editing is available for every role: temperature, humidity, conductivity, CO2, soil temperature stress, low battery, and low light."), m = i === 0 ? this._t("panel.section.advanced_diagnostics_zero_active", "No active problems.") : i === 1 ? this._t("panel.section.advanced_diagnostics_one_active", "1 active problem.") : this._t("panel.section.advanced_diagnostics_many_active", "{count} active problems.", { count: i });
+    const t = ls(e, this._entities, this._states), i = t.filter((_) => _.status === "on").length, r = (_) => _ === "on" ? this._t("panel.section.advanced_diagnostics_status_problem", "problem detected") : _ === "off" ? this._t("panel.section.advanced_diagnostics_status_ok", "no problem") : _ === "unavailable" ? this._t("panel.section.advanced_diagnostics_status_unavailable", "unavailable") : this._t("panel.section.advanced_diagnostics_status_not_configured", "not configured"), a = this._pendingThresholdSwitch, o = this._thresholdRole ? Se[this._thresholdRole] : null, n = o ? o.problemRole.replaceAll("_", " ") : "", l = a ? a.spec.problemRole.replaceAll("_", " ") : "", d = this._t("panel.section.advanced_diagnostics", "Advanced diagnostics"), h = this._t("panel.section.advanced_diagnostics_description", "Status of the problem indicators for this plant. Threshold editing is available for every role: temperature, humidity, conductivity, CO2, soil temperature stress, low battery, and low light."), f = i === 0 ? this._t("panel.section.advanced_diagnostics_zero_active", "No active problems.") : i === 1 ? this._t("panel.section.advanced_diagnostics_one_active", "1 active problem.") : this._t("panel.section.advanced_diagnostics_many_active", "{count} active problems.", { count: i });
     return c`<section aria-labelledby="diagnostics-heading"><h2 id="diagnostics-heading">${d}</h2>
-      <p role="status" aria-live="polite">${m}</p>
+      <p role="status" aria-live="polite">${f}</p>
       <p>${h}</p>
       ${a ? c`<p class="notice threshold-switch-alert" role="alert">${this._t("panel.section.advanced_diagnostics_switch_prompt", "Unsaved changes in the {current} editor. Discard them and switch to the {pending} editor?", { current: n, pending: l })}
         <button type="button" class="primary" @click=${() => this._confirmDiscardAndSwitch()}>${this._t("panel.section.advanced_diagnostics_switch_discard", "Discard and switch")}</button>
@@ -2471,7 +2471,7 @@ const gs = [
   }
   // ---- Sensors section: generic per-role source assignment ----
   _sourceSummary(e, t) {
-    const i = G(e, t);
+    const i = j(e, t);
     return i ? i.sources.length ? `${i.sources.length} source${i.sources.length === 1 ? "" : "s"} · ${i.aggregation}${i.primary_entity_id ? ` · primary ${i.primary_entity_id}` : ""}` : "no sources — this role has no computed entity yet" : "role data unavailable";
   }
   _toggleSourceEdit(e, t) {
@@ -2486,13 +2486,17 @@ const gs = [
     this._openSourceEditor(e, t);
   }
   _openSourceEditor(e, t) {
-    const i = G(t, e);
+    const i = j(t, e);
     if (!i) {
-      this._sourceError = "Role source data is missing or incompatible. Refresh or upgrade before editing; defaults will not be guessed.";
+      this._sourceUnavailable = { role: e, plantId: t.id, revision: t.revision }, this._pendingSourceSwitch = null;
       return;
     }
-    const r = mt(i);
-    this._sourceRole = e, this._sourceEdits = r, this._sourceBaseline = structuredClone(r), this._sourceError = "", this._pendingSourceSwitch = null, this._allSourceSensors = !1, this._sourceSaved = { ...this._sourceSaved, [e]: "" };
+    const r = ft(i);
+    this._sourceRole = e, this._sourceEdits = r, this._sourceBaseline = structuredClone(r), this._sourceError = "", this._pendingSourceSwitch = null, this._allSourceSensors = !1, this._sourceUnavailable = null, this._sourceSaved = { ...this._sourceSaved, [e]: "" };
+  }
+  _sourceRefused(e, t) {
+    const i = this._sourceUnavailable;
+    return !!i && i.role === t && i.plantId === e.id && i.revision === e.revision && !j(e, t);
   }
   _hasUnsavedSourceChanges() {
     return !this._sourceEdits || !this._sourceBaseline ? !1 : JSON.stringify(this._sourceEdits) !== JSON.stringify(this._sourceBaseline);
@@ -2518,6 +2522,7 @@ const gs = [
       return c`<dt>${i.label}</dt><dd>${this._sourceSummary(e, i.role)}
           <button class="source-toggle" type="button" aria-expanded=${r ? "true" : "false"} aria-controls=${`${i.role}-sources-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleSourceEdit(i.role, e)}>${r ? "Cancel" : "Edit sources"}</button>
           ${r ? this._renderSourceEditor(i.role, e) : u}
+          ${!r && this._sourceRefused(e, i.role) ? c`<p id=${`${i.role}-sources-unavailable`} class="error" role="alert">${i.label} source data is missing or incompatible. Refresh or upgrade before editing; defaults will not be guessed.</p>` : u}
           ${a && !r ? c`<p class="notice" role="status">${a}</p>` : u}</dd>`;
     })}</dl></section>`;
   }
@@ -2545,7 +2550,7 @@ const gs = [
       return;
     }
     this._sourceError = "";
-    const r = this.hass, a = us(this._sourceEdits, this._entities), o = G(t, e);
+    const r = this.hass, a = us(this._sourceEdits, this._entities), o = j(t, e);
     await this._mutate(async () => {
       let n = t.revision, l = t;
       return (!o || JSON.stringify(o.sources) !== JSON.stringify(a.sources)) && (l = await y.setRoleSources(r, t.id, n, e, a.sources), n = l.revision), (!o || o.primary_entity_id !== a.primary_entity_id) && (l = await y.setRolePrimary(r, t.id, n, e, a.primary_entity_id), n = l.revision), (!o || o.aggregation !== a.aggregation) && (l = await y.setRoleAggregation(r, t.id, n, e, a.aggregation), n = l.revision), (!o || o.stale_after_seconds !== a.stale_after_seconds) && (l = await y.setRoleStaleAfter(r, t.id, n, e, a.stale_after_seconds), n = l.revision), l;
@@ -2554,7 +2559,7 @@ const gs = [
   _renderPlantOverview(e, t) {
     const i = M(e), r = i?.sources.map((n) => N(n, this._entities)?.entity_id ?? n.entity_id) ?? [], a = Re.flatMap((n) => {
       if (n.role === "moisture") return [];
-      const l = G(e, n.role);
+      const l = j(e, n.role);
       return l?.sources.length ? [{ label: n.label, count: l.sources.length }] : [];
     }), o = this._careHistory?.events.slice(0, 3) ?? [];
     return c`<section class="plant-overview-card"><div class="overview-heading">${this._imageUrl ? c`<img class="overview-avatar" src=${this._imageUrl} alt=${`Photo of ${e.name}`}>` : c`<div class="overview-avatar placeholder" aria-hidden="true">${e.name.slice(0, 1).toLocaleUpperCase()}</div>`}<div><p class="eyebrow">PLANT OVERVIEW</p><p>${e.species?.snapshot.common_name ?? e.species?.snapshot.latin_name ?? "No species selected"}</p>${e.category ? c`<span class="muted">${e.category}</span>` : u}<button type="button" @click=${() => this._detailSection = "details"}>Plant details and photo</button></div></div>
@@ -2567,7 +2572,7 @@ const gs = [
   _renderDetail(e) {
     const t = this._plantById(e), i = this._edits;
     if (!t || !i) return c`<p>Plant not found — it may have been deleted in another session.</p>`;
-    const r = this._evaluations[e], a = M(t), o = K(t, this._devices);
+    const r = this._evaluations[e], a = M(t), o = G(t, this._devices);
     return c`${this._conflict ? c`<section class="notice" role="alert"><h2>Review changes from another session</h2><p>Revision ${this._conflict.before.revision} → ${this._conflict.after.revision}. Saving is paused. Local edits are retained.</p><ul>${this._conflict.changes.map((n) => c`<li class="prose">${n}</li>`)}</ul>${this._sourceConflictFields(this._conflict.after).length ? c`<p>Both sessions changed these source fields: ${this._sourceConflictFields(this._conflict.after).join(", ")}. Review the refreshed role summary and your draft before retrying; Save will replace the refreshed values for these fields.</p>` : u}<button @click=${() => this._reviewConflict()}>I reviewed changes; retain my edits for reapply</button><button @click=${() => this._beginEdit(t)}>Discard my edits and use refreshed values</button></section>` : u}
        <header class="detail-heading"><div><h2>${t.name}</h2><p>${this._status(t)}</p></div>${o ? c`<a href="/config/devices/device/${encodeURIComponent(o.id)}">Open Home Assistant device</a>` : u}</header>
       <nav class="detail-tabs" aria-label="Plant sections">${[["overview", "Overview"], ["sensors", "Sensors"], ["care", "Care history"], ["details", "Plant details"], ["diagnostics", "Diagnostics"]].map(([n, l]) => c`<button type="button" aria-current=${this._detailSection === n ? "page" : u} @click=${() => this._detailSection = n}>${l}</button>`)}</nav>
@@ -2643,179 +2648,182 @@ const gs = [
   }
 };
 Fe.styles = Bt;
-let f = Fe;
+let m = Fe;
 g([
   I({ attribute: !1 })
-], f.prototype, "hass");
+], m.prototype, "hass");
 g([
   I({ attribute: !1 })
-], f.prototype, "panel");
+], m.prototype, "panel");
 g([
   I({ type: Boolean, reflect: !0 })
-], f.prototype, "narrow");
+], m.prototype, "narrow");
 g([
   p()
-], f.prototype, "_plants");
+], m.prototype, "_plants");
 g([
   p()
-], f.prototype, "_loading");
+], m.prototype, "_loading");
 g([
   p()
-], f.prototype, "_error");
+], m.prototype, "_error");
 g([
   p()
-], f.prototype, "_notice");
+], m.prototype, "_notice");
 g([
   p()
-], f.prototype, "_view");
+], m.prototype, "_view");
 g([
   p()
-], f.prototype, "_detailSection");
+], m.prototype, "_detailSection");
 g([
   p()
-], f.prototype, "_formBusy");
+], m.prototype, "_formBusy");
 g([
   p()
-], f.prototype, "_capabilities");
+], m.prototype, "_capabilities");
 g([
   p()
-], f.prototype, "_blocked");
+], m.prototype, "_blocked");
 g([
   p()
-], f.prototype, "_areas");
+], m.prototype, "_areas");
 g([
   p()
-], f.prototype, "_entities");
+], m.prototype, "_entities");
 g([
   p()
-], f.prototype, "_devices");
+], m.prototype, "_devices");
 g([
   p()
-], f.prototype, "_states");
+], m.prototype, "_states");
 g([
   p()
-], f.prototype, "_evaluations");
+], m.prototype, "_evaluations");
 g([
   p()
-], f.prototype, "_health");
+], m.prototype, "_health");
 g([
   p()
-], f.prototype, "_healthError");
+], m.prototype, "_healthError");
 g([
   p()
-], f.prototype, "_careHistory");
+], m.prototype, "_careHistory");
 g([
   p()
-], f.prototype, "_careError");
+], m.prototype, "_careError");
 g([
   p()
-], f.prototype, "_careDate");
+], m.prototype, "_careDate");
 g([
   p()
-], f.prototype, "_careNote");
+], m.prototype, "_careNote");
 g([
   p()
-], f.prototype, "_careKind");
+], m.prototype, "_careKind");
 g([
   p()
-], f.prototype, "_careFields");
+], m.prototype, "_careFields");
 g([
   p()
-], f.prototype, "_careEditingId");
+], m.prototype, "_careEditingId");
 g([
   p()
-], f.prototype, "_registryError");
+], m.prototype, "_registryError");
 g([
   p()
-], f.prototype, "_areaReview");
+], m.prototype, "_areaReview");
 g([
   p()
-], f.prototype, "_filters");
+], m.prototype, "_filters");
 g([
   p()
-], f.prototype, "_edits");
+], m.prototype, "_edits");
 g([
   p()
-], f.prototype, "_conflict");
+], m.prototype, "_conflict");
 g([
   p()
-], f.prototype, "_allSensors");
+], m.prototype, "_allSensors");
 g([
   p()
-], f.prototype, "_preview");
+], m.prototype, "_preview");
 g([
   p()
-], f.prototype, "_provider");
+], m.prototype, "_provider");
 g([
   p()
-], f.prototype, "_query");
+], m.prototype, "_query");
 g([
   p()
-], f.prototype, "_results");
+], m.prototype, "_results");
 g([
   p()
-], f.prototype, "_related");
+], m.prototype, "_related");
 g([
   p()
-], f.prototype, "_imageUrl");
+], m.prototype, "_imageUrl");
 g([
   p()
-], f.prototype, "_imageLoading");
+], m.prototype, "_imageLoading");
 g([
   p()
-], f.prototype, "_imageError");
+], m.prototype, "_imageError");
 g([
   p()
-], f.prototype, "_dialog");
+], m.prototype, "_dialog");
 g([
   p()
-], f.prototype, "_wizardStarted");
+], m.prototype, "_wizardStarted");
 g([
   p()
-], f.prototype, "_creationNotice");
+], m.prototype, "_creationNotice");
 g([
   p()
-], f.prototype, "_createdPlantId");
+], m.prototype, "_createdPlantId");
 g([
   p()
-], f.prototype, "_thresholdRole");
+], m.prototype, "_thresholdRole");
 g([
   p()
-], f.prototype, "_thresholdEdits");
+], m.prototype, "_thresholdEdits");
 g([
   p()
-], f.prototype, "_thresholdBaseline");
+], m.prototype, "_thresholdBaseline");
 g([
   p()
-], f.prototype, "_thresholdError");
+], m.prototype, "_thresholdError");
 g([
   p()
-], f.prototype, "_thresholdSaved");
+], m.prototype, "_thresholdSaved");
 g([
   p()
-], f.prototype, "_pendingThresholdSwitch");
+], m.prototype, "_pendingThresholdSwitch");
 g([
   p()
-], f.prototype, "_sourceRole");
+], m.prototype, "_sourceRole");
 g([
   p()
-], f.prototype, "_sourceEdits");
+], m.prototype, "_sourceEdits");
 g([
   p()
-], f.prototype, "_sourceBaseline");
+], m.prototype, "_sourceBaseline");
 g([
   p()
-], f.prototype, "_sourceError");
+], m.prototype, "_sourceError");
 g([
   p()
-], f.prototype, "_sourceSaved");
+], m.prototype, "_sourceUnavailable");
 g([
   p()
-], f.prototype, "_pendingSourceSwitch");
+], m.prototype, "_sourceSaved");
 g([
   p()
-], f.prototype, "_allSourceSensors");
-customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", f);
+], m.prototype, "_pendingSourceSwitch");
+g([
+  p()
+], m.prototype, "_allSourceSensors");
+customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", m);
 export {
-  f as SmartPlantsPanel
+  m as SmartPlantsPanel
 };

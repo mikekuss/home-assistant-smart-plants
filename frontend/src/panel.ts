@@ -188,6 +188,8 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _sourceEdits: RoleSourceInput | null = null;
   @state() private _sourceBaseline: RoleSourceInput | null = null;
   @state() private _sourceError = "";
+  // Fail-closed refusal to open a role's editor, keyed to the plant snapshot it was raised against.
+  @state() private _sourceUnavailable: { role: string; plantId: string; revision: number } | null = null;
   @state() private _sourceSaved: Record<string, string> = {};
   @state() private _pendingSourceSwitch: { role: string; plant: PlantRecord } | null = null;
   @state() private _allSourceSensors = false;
@@ -354,7 +356,7 @@ export class SmartPlantsPanel extends LitElement {
     const m = moistureRole(plant); this._base = structuredClone(plant); this._baseArea = plantDevice(plant, this._devices)?.area_id ?? "";
     this._edits = { name: plant.name, acquired: plant.acquired_at ?? "", placement: structuredClone(plant.placement), category: plant.category ?? "", tagText: plant.tags.join(", "), area: this._baseArea, common: plant.species?.snapshot.common_name ?? "", latin: plant.species?.snapshot.latin_name ?? "", moisture: m ? moistureInput(m) : null };
     this._conflict = null; this._areaReview = false; this._preview = null; this._results = []; this._provider = "manual"; this._related = []; this._thresholdRole = null; this._thresholdEdits = null; this._thresholdBaseline = null; this._thresholdError = ""; this._thresholdSaved = {}; this._pendingThresholdSwitch = null;
-    this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._sourceSaved = {}; this._pendingSourceSwitch = null; this._allSourceSensors = false;
+    this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._sourceSaved = {}; this._pendingSourceSwitch = null; this._allSourceSensors = false; this._sourceUnavailable = null;
     const device = plantDevice(plant, this._devices);
     const context = this._context;
     if (device && this.hass) void api.related(this.hass, device.id).then(ids => { if (context === this._context && this._base?.id === plant.id) this._related = ids; }).catch(() => { if (context === this._context && this._base?.id === plant.id) this._notice = "Related automations could not be loaded. Open the native device page to inspect them."; });
@@ -877,11 +879,16 @@ export class SmartPlantsPanel extends LitElement {
   }
   private _openSourceEditor(role: string, plant: PlantRecord): void {
     const c = roleSourceConfig(plant, role);
-    if (!c) { this._sourceError = "Role source data is missing or incompatible. Refresh or upgrade before editing; defaults will not be guessed."; return; }
+    if (!c) { this._sourceUnavailable = { role, plantId: plant.id, revision: plant.revision }; this._pendingSourceSwitch = null; return; }
     const seeded = roleSourceInput(c);
     this._sourceRole = role; this._sourceEdits = seeded; this._sourceBaseline = structuredClone(seeded);
-    this._sourceError = ""; this._pendingSourceSwitch = null; this._allSourceSensors = false;
+    this._sourceError = ""; this._pendingSourceSwitch = null; this._allSourceSensors = false; this._sourceUnavailable = null;
     this._sourceSaved = { ...this._sourceSaved, [role]: "" };
+  }
+  private _sourceRefused(plant: PlantRecord, role: string): boolean {
+    const u = this._sourceUnavailable;
+    // Stale once the plant data changes; the next click re-evaluates the fresh snapshot.
+    return !!u && u.role === role && u.plantId === plant.id && u.revision === plant.revision && !roleSourceConfig(plant, role);
   }
   private _hasUnsavedSourceChanges(): boolean {
     if (!this._sourceEdits || !this._sourceBaseline) return false;
@@ -907,6 +914,7 @@ export class SmartPlantsPanel extends LitElement {
         return html`<dt>${spec.label}</dt><dd>${this._sourceSummary(plant, spec.role)}
           <button class="source-toggle" type="button" aria-expanded=${editing ? "true" : "false"} aria-controls=${`${spec.role}-sources-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleSourceEdit(spec.role, plant)}>${editing ? "Cancel" : "Edit sources"}</button>
           ${editing ? this._renderSourceEditor(spec.role, plant) : nothing}
+          ${!editing && this._sourceRefused(plant, spec.role) ? html`<p id=${`${spec.role}-sources-unavailable`} class="error" role="alert">${spec.label} source data is missing or incompatible. Refresh or upgrade before editing; defaults will not be guessed.</p>` : nothing}
           ${saved && !editing ? html`<p class="notice" role="status">${saved}</p>` : nothing}</dd>`;
       })}</dl></section>`;
   }

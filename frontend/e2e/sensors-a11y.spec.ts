@@ -9,9 +9,17 @@ import { writeFile } from "node:fs/promises";
 const url = "/frontend/e2e/harness.html";
 const button = (page: Page, name: string) => page.getByRole("button", { name, exact: true });
 
-async function openSensors(page: Page) {
+async function openSensors(page: Page, malformedRole?: string) {
   await page.goto(`${url}?seed`);
   await expect(button(page, "Menu")).toBeVisible();
+  if (malformedRole) {
+    // Corrupt one role in the synthetic store and push it through a registry refresh.
+    await page.evaluate(role => {
+      const harness = (window as unknown as { __smartPlantsHarness: { plants: { roles: Record<string, { aggregation: string }> }[]; emit: (event: string) => void } }).__smartPlantsHarness;
+      harness.plants[0].roles[role].aggregation = "median";
+      harness.emit("ready");
+    }, malformedRole);
+  }
   await button(page, "Office Aloe").click();
   await button(page, "Sensors").click();
   await expect(page.getByRole("heading", { name: "Office Aloe", exact: true })).toBeVisible();
@@ -87,4 +95,20 @@ test("single active editor: switching with unsaved changes prompts", async ({ pa
   await audit(page, info, "sensors-switch-alert");
   await alert.getByRole("button", { name: "Discard and switch", exact: true }).click();
   await expect(page.locator("smart-plants-panel div#humidity-sources-editor")).toBeVisible();
+});
+
+test("malformed role: Edit sources refuses fail-closed with a row-scoped alert, axe", async ({ page }, info) => {
+  await openSensors(page, "temperature");
+  const row = roleRow(page, "Air temperature");
+  await expect(row).toContainText("role data unavailable");
+  await row.getByRole("button", { name: "Edit sources", exact: true }).click();
+  const alert = row.getByRole("alert");
+  await expect(alert).toHaveText("Air temperature source data is missing or incompatible. Refresh or upgrade before editing; defaults will not be guessed.");
+  await expect(page.locator("smart-plants-panel div#temperature-sources-editor")).toHaveCount(0);
+  await expect(row.locator("button.source-toggle")).toHaveAttribute("aria-expanded", "false");
+  await expect(roleRow(page, "Air humidity").getByRole("alert")).toHaveCount(0);
+  await audit(page, info, "sensors-role-unavailable");
+  await roleRow(page, "Air humidity").getByRole("button", { name: "Edit sources", exact: true }).click();
+  await expect(page.locator("smart-plants-panel div#humidity-sources-editor")).toBeVisible();
+  await expect(alert).toHaveCount(0);
 });

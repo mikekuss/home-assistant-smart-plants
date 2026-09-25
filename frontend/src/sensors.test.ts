@@ -69,6 +69,35 @@ describe("Sensors section", () => {
     expect(section.textContent).toContain("role data unavailable");
   });
 
+  it("shows the fail-closed refusal in the affected role row when Edit sources is clicked", async () => {
+    const plant = withRoles({ temperature: { ...emptyRole(), aggregation: "median" as RoleSourceConfig["aggregation"] } });
+    let current = plant;
+    const h = harness([plant], msg => msg.type === "smart_plants/plants/list" ? { plants: [current] } : undefined);
+    const el = new SmartPlantsPanel(); el.hass = h.hass; document.body.append(el);
+    await settle(el); await click(el, "Aloe"); await click(el, "Sensors");
+    const row = (label: string) => [...sensorsSection(el).querySelectorAll("dt")].find(d => d.textContent === label)!.nextElementSibling!;
+    (row("Air temperature").querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
+    const alert = row("Air temperature").querySelector('[role="alert"]')!;
+    expect(alert.textContent).toContain("Air temperature source data is missing or incompatible");
+    expect(alert.textContent).toContain("defaults will not be guessed");
+    // Fail closed: no editor, and the refusal does not bleed into other rows.
+    expect(sensorsSection(el).querySelector("#temperature-sources-editor")).toBeNull();
+    expect(row("Air temperature").querySelector("button.source-toggle")!.getAttribute("aria-expanded")).toBe("false");
+    expect(sensorsSection(el).querySelectorAll('[role="alert"]')).toHaveLength(1);
+    // Opening another role's editor successfully clears the refusal.
+    (row("Air humidity").querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
+    expect(sensorsSection(el).querySelector("#humidity-sources-editor")).not.toBeNull();
+    expect(sensorsSection(el).querySelectorAll('[role="alert"]')).toHaveLength(0);
+    // Refused again, then the plant data changes: the stale refusal disappears.
+    (row("Air humidity").querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
+    (row("Air temperature").querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
+    expect(row("Air temperature").querySelector('[role="alert"]')).not.toBeNull();
+    current = { ...plant, revision: 2 };
+    h.events.get("ready")!(); await settle(el); await settle(el);
+    expect(row("Air temperature").textContent).toContain("role data unavailable");
+    expect(row("Air temperature").querySelector('[role="alert"]')).toBeNull();
+  });
+
   it("filters the picker by device class and unit, with a show-all fallback", async () => {
     const { el } = await mountDetail(withRoles(), [tempEntity()], [tempState(), moistureState()]);
     const section = sensorsSection(el);
