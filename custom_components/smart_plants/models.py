@@ -2685,6 +2685,33 @@ class PlantRecord:
             },
         }
 
+    def as_view(self) -> dict[str, Any]:
+        """
+        Serialize for the panel/API contract, never for persistence.
+
+        Storage keeps only roles that have been configured, so a new plant
+        stores just ``roles.moisture``. Clients still need every
+        source-accepting role's config to seed its sources editor, so each
+        unconfigured one is filled with its registered default here. The
+        manager falls back to the same default when mutating the role, so the
+        view matches what a save would start from.
+        """
+        from .roles import role_definitions  # noqa: PLC0415
+
+        view = self.as_storage()
+        roles: dict[str, Any] = view["roles"]
+        for definition in role_definitions():
+            if (
+                definition.key in roles
+                or definition.replace_sources is None
+                or definition.serialize_config is None
+            ):
+                continue
+            roles[definition.key] = definition.serialize_config(
+                definition.default_config()
+            )
+        return view
+
     def with_next_revision(self, **changes: Any) -> Self:
         return replace(self, revision=self.revision + 1, **changes)
 

@@ -25,6 +25,7 @@ from custom_components.smart_plants.manager import (
     SmartPlantsManager,
     SmartPlantsManagerUnavailableError,
 )
+from custom_components.smart_plants.roles import source_accepting_roles
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from PIL import Image
@@ -138,6 +139,9 @@ async def test_upload_then_get_returns_webp(
     assert body["plant"]["image"] is not None
     assert body["plant"]["image"]["content_type"] == "image/webp"
     assert body["plant"]["revision"] == plant.revision + 1
+    # Image responses use the same PlantView as the WS API, so the panel's
+    # role editors stay seeded after an upload replaces its plant copy.
+    assert set(body["plant"]["roles"]) == {"moisture", *source_accepting_roles()}
 
     resp = await client.get(_url(plant.id))
     assert resp.status == 200
@@ -209,6 +213,7 @@ async def test_delete_image_removes_file_and_record(
     assert resp.status == 200
     body = await resp.json()
     assert body["plant"]["image"] is None
+    assert set(body["plant"]["roles"]) == {"moisture", *source_accepting_roles()}
     assert not (images_dir / f"{image_id}.webp").is_file()
 
     # Second GET must 404 with a clean error envelope.

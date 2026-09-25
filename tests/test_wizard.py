@@ -428,7 +428,7 @@ async def test_ws_configure_retains_missing_uuid_through_edit_and_restart(
     assert (await client.receive_json())["error"]["code"] == "revision_conflict"
     request["expected_revision"] = updated.revision
     await client.send_json_auto_id(request)
-    assert (await client.receive_json())["result"]["plant"] == updated.as_storage()
+    assert (await client.receive_json())["result"]["plant"] == updated.as_view()
     assert len(events) == 1
     assert await hass.config_entries.async_unload(entry.entry_id)
     assert await hass.config_entries.async_setup(entry.entry_id)

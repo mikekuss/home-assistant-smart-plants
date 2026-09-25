@@ -13,10 +13,12 @@ async function openSensors(page: Page, malformedRole?: string) {
   await page.goto(`${url}?seed`);
   await expect(button(page, "Menu")).toBeVisible();
   if (malformedRole) {
-    // Corrupt one role in the synthetic store and push it through a registry refresh.
+    // Store a corrupt config for one role and push it through a registry refresh.
+    // Stored plants hold only configured roles (the PlantView adds defaults), so
+    // build the malformed config from the backend default instead of mutating it.
     await page.evaluate(role => {
-      const harness = (window as unknown as { __smartPlantsHarness: { plants: { roles: Record<string, { aggregation: string }> }[]; emit: (event: string) => void } }).__smartPlantsHarness;
-      harness.plants[0].roles[role].aggregation = "median";
+      const harness = (window as unknown as { __smartPlantsHarness: { plants: { roles: Record<string, unknown> }[]; roleDefaults: Record<string, object>; emit: (event: string) => void } }).__smartPlantsHarness;
+      harness.plants[0].roles[role] = { ...harness.roleDefaults[role], aggregation: "median" };
       harness.emit("ready");
     }, malformedRole);
   }

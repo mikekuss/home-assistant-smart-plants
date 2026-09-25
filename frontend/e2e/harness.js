@@ -17,11 +17,21 @@ const defaults = (provider = false) => Object.fromEntries(Object.entries({ min: 
   return [k, { value: imported || value, source: imported ? "provider" : "builtin", provider: imported ? "openplantbook" : null, provider_ref: imported ? "aloe vera" : null }];
 }));
 const moisture = () => ({ sources: [], primary_entity_id: null, aggregation: "primary", stale_after_seconds: 21600, threshold_defaults: defaults(), threshold_overrides: { min: null, target: null, max: null } });
-// Generic per-role source config, mirroring the backend as_storage shape so the
-// Sensors section renders every role like production does.
-const roleSources = () => ({ sources: [], primary_entity_id: null, aggregation: "primary", stale_after_seconds: 21600, stress_threshold_overrides: {} });
-const extraRoles = () => Object.fromEntries(["temperature", "humidity", "illuminance", "battery", "conductivity", "soil_temperature", "co2"].map(r => [r, roleSources()]));
-const plant = (n, name, changes = {}) => ({ id: uuid(n), revision: 1, name, created_at: now, lifecycle_state: "active", acquired_at: null, species: null, placement: null, tags: [], category: null, image: null, care_events: [], roles: { moisture: moisture(), ...extraRoles() }, ...changes });
+// Stored plants mirror backend storage: only roles.moisture until another role
+// is configured. Responses go through view(), mirroring PlantRecord.as_view(),
+// which fills each unconfigured source role with its registered default. These
+// defaults are a copy of tests/fixtures/plant_view_role_defaults.json (asserted
+// against the backend in pytest and against this copy in panel.spec.ts).
+const roleDefaults = {"temperature":{"sources":[],"primary_entity_id":null,"aggregation":"average","stale_after_seconds":21600,"stress_threshold_overrides":{"cold_threshold_celsius":null,"cold_clear_celsius":null,"hot_threshold_celsius":null,"hot_clear_celsius":null}},"humidity":{"sources":[],"primary_entity_id":null,"aggregation":"average","stale_after_seconds":21600,"stress_threshold_overrides":{"dry_threshold_percent":null,"dry_clear_percent":null,"damp_threshold_percent":null,"damp_clear_percent":null}},"illuminance":{"sources":[],"primary_entity_id":null,"aggregation":"primary","stale_after_seconds":21600,"stress_threshold_overrides":{"target_lux":null,"clear_lux":null}},"battery":{"sources":[],"primary_entity_id":null,"aggregation":"min","stale_after_seconds":21600,"stress_threshold_overrides":{"threshold_percent":null,"clear_percent":null}},"conductivity":{"sources":[],"primary_entity_id":null,"aggregation":"primary","stale_after_seconds":21600,"stress_threshold_overrides":{"low_threshold_micro_siemens_per_cm":null,"low_clear_micro_siemens_per_cm":null,"high_threshold_micro_siemens_per_cm":null,"high_clear_micro_siemens_per_cm":null}},"soil_temperature":{"sources":[],"primary_entity_id":null,"aggregation":"primary","stale_after_seconds":21600,"stress_threshold_overrides":{"cold_threshold_celsius":null,"cold_clear_celsius":null,"hot_threshold_celsius":null,"hot_clear_celsius":null}},"co2":{"sources":[],"primary_entity_id":null,"aggregation":"average","stale_after_seconds":21600,"stress_threshold_overrides":{"threshold_ppm":null,"clear_ppm":null}}};
+const roleConfig = (p, role) => copy(p.roles[role] ?? roleDefaults[role]);
+const view = p => ({ ...copy(p), roles: { ...copy(roleDefaults), ...copy(p.roles) } });
+const viewResult = result => {
+  if (!result || typeof result !== "object") return result;
+  if (result.plant) return { ...result, plant: view(result.plant) };
+  if (Array.isArray(result.plants)) return { ...result, plants: result.plants.map(view) };
+  return result;
+};
+const plant = (n, name, changes = {}) => ({ id: uuid(n), revision: 1, name, created_at: now, lifecycle_state: "active", acquired_at: null, species: null, placement: null, tags: [], category: null, image: null, care_events: [], roles: { moisture: moisture() }, ...changes });
 const entity = (n, id) => ({ id: uuid(n), entity_id: id, device_id: null, unique_id: `synthetic-${n}`, platform: "mock" });
 const sensor = (id, value, attributes) => ({ entity_id: id, state: value, attributes, last_updated: now });
 const unavailable = { computed_percent: null, health_score: null, needs_water: null, too_wet: null, sensor_stale: false, computed_available: false, reasons: ["No valid primary moisture source."] };
@@ -34,7 +44,7 @@ const state = {
   evaluations: {}, health: {}, failures: {}, malformed: {}, providerAvailable: true,
   conflictNext: false, loseCreateResponse: false, imageFailure: null,
   blobsCreated: [], blobsRevoked: [], imageSerial: 0,
-  holdNext: {}, pending: {},
+  holdNext: {}, pending: {}, roleDefaults: copy(roleDefaults),
 };
 // Deliberately allow an already-admitted response to arrive after disconnect or
 // abort, exercising the production component's generation checks as well.
@@ -113,123 +123,127 @@ const connection = {
     state.messages.push(copy(message));
     if (state.failures[message.type]) reject(state.failures[message.type]);
     if (Object.hasOwn(state.malformed, message.type)) return copy(state.malformed[message.type]);
-    const p = find(message.plant_id);
-    if (p && message.expected_revision !== undefined) {
-      if (state.conflictNext) { state.conflictNext = false; revise(p, { name: "Remote renamed plant", category: "Remote category" }); }
-      if (message.expected_revision !== p.revision) reject("revision_conflict");
-    }
-    switch (message.type) {
-      case "smart_plants/panel/info": return { api_version: 1, schema_version: 1, providers: [{ provider: "manual", available: true, search_supported: false }, { provider: "openplantbook", available: state.providerAvailable, search_supported: true }] };
-      case "smart_plants/plants/list": return { plants: copy(state.plants) };
-      case "config/area_registry/list": return copy(state.areas);
-      case "config/entity_registry/list": return copy(state.entities);
-      case "config/device_registry/list": return copy(state.devices);
-      case "get_states": return copy(state.states);
-      case "search/related": return { automation: ["automation.plant_reminder"] };
-      case "smart_plants/moisture/evaluation": return { evaluation: copy(p?.lifecycle_state === "disabled" ? unavailable : state.evaluations[message.plant_id] ?? unavailable) };
-      case "smart_plants/plants/health": {
-        const composite = state.health[message.plant_id];
-        if (composite) return { evaluation: copy(composite) };
-        return { evaluation: { health_score: null, available: false, confidence: 0.0, confidence_label: "unknown", contributors: [], configured: [], reasons: ["no_contributors"] } };
-      }
-      case "smart_plants/care/list": {
-        if (!p) reject("not_found");
-        const events = copy(p.care_events).sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at) || a.id.localeCompare(b.id));
-        const waterings = events.filter(e => e.kind === "watering");
-        return { revision: p.revision, events, summary: { watering_count: waterings.length, last_watered_at: waterings[0]?.occurred_at ?? null, last_watered_local_date: waterings[0]?.local_date ?? null } };
-      }
-      case "smart_plants/care/add_watering":
-      case "smart_plants/care/add": {
-        if (!p || !message.occurred_at || Date.parse(message.occurred_at) > Date.now()) reject("invalid_format");
-        const kind = message.type.endsWith("add_watering") ? "watering" : message.kind;
-        const payload = message.type.endsWith("add_watering") ? { note: message.note } : message.payload;
-        const event = { schema_version: 1, id: uuid(900 + p.care_events.length), kind, provenance: "manual", occurred_at: message.occurred_at, local_date: message.occurred_at.slice(0, 10), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), payload };
-        p.care_events.push(event);
-        const updated = revise(p, {});
-        const waterings = p.care_events.filter(e => e.kind === "watering").sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at) || a.id.localeCompare(b.id));
-        return { plant: updated, event: copy(event), summary: { watering_count: waterings.length, last_watered_at: waterings[0]?.occurred_at ?? null, last_watered_local_date: waterings[0]?.local_date ?? null } };
-      }
-      case "smart_plants/care/edit": {
-        const index = p.care_events.findIndex(e => e.id === message.event_id);
-        if (index < 0) reject("not_found");
-        const original = p.care_events[index];
-        p.care_events[index] = { ...original, kind: message.kind, occurred_at: message.occurred_at, local_date: message.occurred_at.slice(0, 10), updated_at: new Date().toISOString(), payload: copy(message.payload) };
-        const updated = revise(p, {});
-        const waterings = p.care_events.filter(e => e.kind === "watering").sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at) || a.id.localeCompare(b.id));
-        return { plant: updated, event: copy(p.care_events[index]), summary: { watering_count: waterings.length, last_watered_at: waterings[0]?.occurred_at ?? null, last_watered_local_date: waterings[0]?.local_date ?? null } };
-      }
-      case "smart_plants/care/delete": {
-        const index = p.care_events.findIndex(e => e.id === message.event_id);
-        if (index < 0) reject("not_found");
-        p.care_events.splice(index, 1);
-        const updated = revise(p, {});
-        const waterings = p.care_events.filter(e => e.kind === "watering").sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at) || a.id.localeCompare(b.id));
-        return { plant: updated, summary: { watering_count: waterings.length, last_watered_at: waterings[0]?.occurred_at ?? null, last_watered_local_date: waterings[0]?.local_date ?? null } };
-      }
-      case "smart_plants/wizard/start": {
-        const draft = { draft_id: uuid(500 + drafts.size), draft_token: "d".repeat(43), revision: 0, expires_in: 600 };
-        drafts.set(draft.draft_id, { ...draft, plant: null }); return copy(draft);
-      }
-      case "smart_plants/species/search": return { results: [{ provider: "openplantbook", provider_ref: "aloe vera", common_name: "Aloe vera", latin_name: "Aloe vera", category: "Succulent", attribution }] };
-      case "smart_plants/species/preview":
-      case "smart_plants/species/refresh_preview":
-      case "smart_plants/wizard/preview": return hold(message.type, preview(message));
-      case "smart_plants/wizard/create": {
-        const draft = drafts.get(message.draft_id);
-        if (!draft || draft.draft_token !== message.draft_token || message.confirmed !== true || message.expected_revision !== 0) reject("invalid_format");
-        if (draft.plant) return { plant: copy(find(draft.plant)) };
-        const accepted = message.accepted_preview && previews.get(message.accepted_preview.preview_token);
-        if (message.accepted_preview && (!accepted || accepted.draft_id !== draft.draft_id)) reject("invalid_format");
-        const created = plant(1000 + drafts.size, message.name, Object.fromEntries(["acquired_at", "placement", "tags", "category"].filter(k => Object.hasOwn(message, k)).map(k => [k, copy(message[k])])));
-        created.species = accepted ? { provider: accepted.provider, snapshot: copy(accepted.snapshot) } : copy(message.species ?? null);
-        created.roles.moisture = { ...copy(message.moisture), threshold_defaults: defaults(!!accepted) };
-        state.plants.push(created); state.devices.push(deviceFor(created, message.area_id ?? null)); draft.plant = created.id;
-        if (state.loseCreateResponse) { state.loseCreateResponse = false; reject("unknown_error"); }
-        return hold(message.type, { plant: copy(created) });
-      }
-      case "smart_plants/plants/update": return { plant: revise(p, Object.fromEntries(["name", "acquired_at", "placement", "category", "tags", "species"].filter(k => Object.hasOwn(message, k)).map(k => [k, message[k]]))) };
-      case "smart_plants/plants/set_area": state.devices.find(d => d.identifiers[0][1] === p.id).area_id = message.area_id; return { plant: revise(p, {}) };
-      case "smart_plants/moisture/configure": {
-        if (message.moisture.sources.some(s => {
-          if (!s.registry_id) return false;
-          const entry = state.entities.find(e => e.id === s.registry_id);
-          // An existing UUID must match its current entity ID. Only an EXACT
-          // preexisting missing pair can be retained, never a changed/new pair
-          // or a substitute registry entry that reused the old entity ID.
-          return entry ? entry.entity_id !== s.entity_id : !p.roles.moisture.sources.some(old => old.registry_id === s.registry_id && old.entity_id === s.entity_id);
-        })) reject("invalid_format");
-        return { plant: revise(p, { roles: { ...p.roles, moisture: { ...copy(message.moisture), threshold_defaults: copy(p.roles.moisture.threshold_defaults) } } }) };
-      }
-      case "smart_plants/species/apply": {
-        const accepted = previews.get(message.preview_token);
-        if (!accepted || accepted.plant_id !== p.id || accepted.revision !== p.revision || accepted.operation !== message.operation || message.confirmed !== true) reject("invalid_format");
-        return { plant: revise(p, { species: { provider: accepted.provider, snapshot: accepted.snapshot }, roles: { ...p.roles, moisture: { ...p.roles.moisture, threshold_defaults: defaults(true) } } }) };
-      }
-      case "smart_plants/roles/set_sources": {
-        const role = p.roles[message.role] ?? roleSources();
-        const primary = message.sources.some(s => s.entity_id === role.primary_entity_id) ? role.primary_entity_id : null;
-        return { plant: revise(p, { roles: { ...p.roles, [message.role]: { ...role, sources: copy(message.sources), primary_entity_id: primary } } }) };
-      }
-      case "smart_plants/roles/set_primary": {
-        const role = p.roles[message.role] ?? roleSources();
-        if (message.primary_entity_id !== null && !role.sources.some(s => s.entity_id === message.primary_entity_id)) reject("invalid_format");
-        return { plant: revise(p, { roles: { ...p.roles, [message.role]: { ...role, primary_entity_id: message.primary_entity_id } } }) };
-      }
-      case "smart_plants/roles/set_aggregation": {
-        const role = p.roles[message.role] ?? roleSources();
-        return { plant: revise(p, { roles: { ...p.roles, [message.role]: { ...role, aggregation: message.aggregation } } }) };
-      }
-      case "smart_plants/roles/set_stale_after": {
-        const role = p.roles[message.role] ?? roleSources();
-        return { plant: revise(p, { roles: { ...p.roles, [message.role]: { ...role, stale_after_seconds: message.stale_after_seconds } } }) };
-      }
-      case "smart_plants/plants/disable": return { plant: revise(p, { lifecycle_state: "disabled" }) };
-      case "smart_plants/plants/reenable": return { plant: revise(p, { lifecycle_state: "active" }) };
-      case "smart_plants/plants/delete": state.plants = state.plants.filter(v => v.id !== p.id); state.devices = state.devices.filter(d => d.identifiers[0][1] !== p.id); return {};
-      default: state.unexpected.push(message.type); throw new Error(`Unexpected WS command: ${message.type}`);
-    }
+    return viewResult(await respond(message));
   },
 };
+// Storage-shaped responses; sendMessagePromise applies the PlantView defaults.
+async function respond(message) {
+  const p = find(message.plant_id);
+  if (p && message.expected_revision !== undefined) {
+    if (state.conflictNext) { state.conflictNext = false; revise(p, { name: "Remote renamed plant", category: "Remote category" }); }
+    if (message.expected_revision !== p.revision) reject("revision_conflict");
+  }
+  switch (message.type) {
+    case "smart_plants/panel/info": return { api_version: 1, schema_version: 1, providers: [{ provider: "manual", available: true, search_supported: false }, { provider: "openplantbook", available: state.providerAvailable, search_supported: true }] };
+    case "smart_plants/plants/list": return { plants: copy(state.plants) };
+    case "config/area_registry/list": return copy(state.areas);
+    case "config/entity_registry/list": return copy(state.entities);
+    case "config/device_registry/list": return copy(state.devices);
+    case "get_states": return copy(state.states);
+    case "search/related": return { automation: ["automation.plant_reminder"] };
+    case "smart_plants/moisture/evaluation": return { evaluation: copy(p?.lifecycle_state === "disabled" ? unavailable : state.evaluations[message.plant_id] ?? unavailable) };
+    case "smart_plants/plants/health": {
+      const composite = state.health[message.plant_id];
+      if (composite) return { evaluation: copy(composite) };
+      return { evaluation: { health_score: null, available: false, confidence: 0.0, confidence_label: "unknown", contributors: [], configured: [], reasons: ["no_contributors"] } };
+    }
+    case "smart_plants/care/list": {
+      if (!p) reject("not_found");
+      const events = copy(p.care_events).sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at) || a.id.localeCompare(b.id));
+      const waterings = events.filter(e => e.kind === "watering");
+      return { revision: p.revision, events, summary: { watering_count: waterings.length, last_watered_at: waterings[0]?.occurred_at ?? null, last_watered_local_date: waterings[0]?.local_date ?? null } };
+    }
+    case "smart_plants/care/add_watering":
+    case "smart_plants/care/add": {
+      if (!p || !message.occurred_at || Date.parse(message.occurred_at) > Date.now()) reject("invalid_format");
+      const kind = message.type.endsWith("add_watering") ? "watering" : message.kind;
+      const payload = message.type.endsWith("add_watering") ? { note: message.note } : message.payload;
+      const event = { schema_version: 1, id: uuid(900 + p.care_events.length), kind, provenance: "manual", occurred_at: message.occurred_at, local_date: message.occurred_at.slice(0, 10), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), payload };
+      p.care_events.push(event);
+      const updated = revise(p, {});
+      const waterings = p.care_events.filter(e => e.kind === "watering").sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at) || a.id.localeCompare(b.id));
+      return { plant: updated, event: copy(event), summary: { watering_count: waterings.length, last_watered_at: waterings[0]?.occurred_at ?? null, last_watered_local_date: waterings[0]?.local_date ?? null } };
+    }
+    case "smart_plants/care/edit": {
+      const index = p.care_events.findIndex(e => e.id === message.event_id);
+      if (index < 0) reject("not_found");
+      const original = p.care_events[index];
+      p.care_events[index] = { ...original, kind: message.kind, occurred_at: message.occurred_at, local_date: message.occurred_at.slice(0, 10), updated_at: new Date().toISOString(), payload: copy(message.payload) };
+      const updated = revise(p, {});
+      const waterings = p.care_events.filter(e => e.kind === "watering").sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at) || a.id.localeCompare(b.id));
+      return { plant: updated, event: copy(p.care_events[index]), summary: { watering_count: waterings.length, last_watered_at: waterings[0]?.occurred_at ?? null, last_watered_local_date: waterings[0]?.local_date ?? null } };
+    }
+    case "smart_plants/care/delete": {
+      const index = p.care_events.findIndex(e => e.id === message.event_id);
+      if (index < 0) reject("not_found");
+      p.care_events.splice(index, 1);
+      const updated = revise(p, {});
+      const waterings = p.care_events.filter(e => e.kind === "watering").sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at) || a.id.localeCompare(b.id));
+      return { plant: updated, summary: { watering_count: waterings.length, last_watered_at: waterings[0]?.occurred_at ?? null, last_watered_local_date: waterings[0]?.local_date ?? null } };
+    }
+    case "smart_plants/wizard/start": {
+      const draft = { draft_id: uuid(500 + drafts.size), draft_token: "d".repeat(43), revision: 0, expires_in: 600 };
+      drafts.set(draft.draft_id, { ...draft, plant: null }); return copy(draft);
+    }
+    case "smart_plants/species/search": return { results: [{ provider: "openplantbook", provider_ref: "aloe vera", common_name: "Aloe vera", latin_name: "Aloe vera", category: "Succulent", attribution }] };
+    case "smart_plants/species/preview":
+    case "smart_plants/species/refresh_preview":
+    case "smart_plants/wizard/preview": return hold(message.type, preview(message));
+    case "smart_plants/wizard/create": {
+      const draft = drafts.get(message.draft_id);
+      if (!draft || draft.draft_token !== message.draft_token || message.confirmed !== true || message.expected_revision !== 0) reject("invalid_format");
+      if (draft.plant) return { plant: copy(find(draft.plant)) };
+      const accepted = message.accepted_preview && previews.get(message.accepted_preview.preview_token);
+      if (message.accepted_preview && (!accepted || accepted.draft_id !== draft.draft_id)) reject("invalid_format");
+      const created = plant(1000 + drafts.size, message.name, Object.fromEntries(["acquired_at", "placement", "tags", "category"].filter(k => Object.hasOwn(message, k)).map(k => [k, copy(message[k])])));
+      created.species = accepted ? { provider: accepted.provider, snapshot: copy(accepted.snapshot) } : copy(message.species ?? null);
+      created.roles.moisture = { ...copy(message.moisture), threshold_defaults: defaults(!!accepted) };
+      state.plants.push(created); state.devices.push(deviceFor(created, message.area_id ?? null)); draft.plant = created.id;
+      if (state.loseCreateResponse) { state.loseCreateResponse = false; reject("unknown_error"); }
+      return hold(message.type, { plant: copy(created) });
+    }
+    case "smart_plants/plants/update": return { plant: revise(p, Object.fromEntries(["name", "acquired_at", "placement", "category", "tags", "species"].filter(k => Object.hasOwn(message, k)).map(k => [k, message[k]]))) };
+    case "smart_plants/plants/set_area": state.devices.find(d => d.identifiers[0][1] === p.id).area_id = message.area_id; return { plant: revise(p, {}) };
+    case "smart_plants/moisture/configure": {
+      if (message.moisture.sources.some(s => {
+        if (!s.registry_id) return false;
+        const entry = state.entities.find(e => e.id === s.registry_id);
+        // An existing UUID must match its current entity ID. Only an EXACT
+        // preexisting missing pair can be retained, never a changed/new pair
+        // or a substitute registry entry that reused the old entity ID.
+        return entry ? entry.entity_id !== s.entity_id : !p.roles.moisture.sources.some(old => old.registry_id === s.registry_id && old.entity_id === s.entity_id);
+      })) reject("invalid_format");
+      return { plant: revise(p, { roles: { ...p.roles, moisture: { ...copy(message.moisture), threshold_defaults: copy(p.roles.moisture.threshold_defaults) } } }) };
+    }
+    case "smart_plants/species/apply": {
+      const accepted = previews.get(message.preview_token);
+      if (!accepted || accepted.plant_id !== p.id || accepted.revision !== p.revision || accepted.operation !== message.operation || message.confirmed !== true) reject("invalid_format");
+      return { plant: revise(p, { species: { provider: accepted.provider, snapshot: accepted.snapshot }, roles: { ...p.roles, moisture: { ...p.roles.moisture, threshold_defaults: defaults(true) } } }) };
+    }
+    case "smart_plants/roles/set_sources": {
+      const role = roleConfig(p, message.role);
+      const primary = message.sources.some(s => s.entity_id === role.primary_entity_id) ? role.primary_entity_id : null;
+      return { plant: revise(p, { roles: { ...p.roles, [message.role]: { ...role, sources: copy(message.sources), primary_entity_id: primary } } }) };
+    }
+    case "smart_plants/roles/set_primary": {
+      const role = roleConfig(p, message.role);
+      if (message.primary_entity_id !== null && !role.sources.some(s => s.entity_id === message.primary_entity_id)) reject("invalid_format");
+      return { plant: revise(p, { roles: { ...p.roles, [message.role]: { ...role, primary_entity_id: message.primary_entity_id } } }) };
+    }
+    case "smart_plants/roles/set_aggregation": {
+      const role = roleConfig(p, message.role);
+      return { plant: revise(p, { roles: { ...p.roles, [message.role]: { ...role, aggregation: message.aggregation } } }) };
+    }
+    case "smart_plants/roles/set_stale_after": {
+      const role = roleConfig(p, message.role);
+      return { plant: revise(p, { roles: { ...p.roles, [message.role]: { ...role, stale_after_seconds: message.stale_after_seconds } } }) };
+    }
+    case "smart_plants/plants/disable": return { plant: revise(p, { lifecycle_state: "disabled" }) };
+    case "smart_plants/plants/reenable": return { plant: revise(p, { lifecycle_state: "active" }) };
+    case "smart_plants/plants/delete": state.plants = state.plants.filter(v => v.id !== p.id); state.devices = state.devices.filter(d => d.identifiers[0][1] !== p.id); return {};
+    default: state.unexpected.push(message.type); throw new Error(`Unexpected WS command: ${message.type}`);
+  }
+}
 // Decodable WebP bytes generated locally, never fake text/PNG labelled as WebP.
 const canvas = document.createElement("canvas"); canvas.width = 160; canvas.height = 120;
 const ctx = canvas.getContext("2d"); ctx.fillStyle = "#eff5ed"; ctx.fillRect(0, 0, 160, 120); ctx.fillStyle = "#3b6b43"; ctx.beginPath(); ctx.ellipse(80, 50, 22, 40, .4, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#925c38"; ctx.fillRect(60, 80, 40, 30);
@@ -250,7 +264,7 @@ window.fetch = async (input, init = {}) => {
   if (method === "POST") revise(p, { image: { id: uuid(800 + ++state.imageSerial), content_type: "image/webp", width: 160, height: 120, created_at: now } });
   else if (method === "DELETE") revise(p, { image: null });
   else { state.unexpected.push(method); throw new Error("Unmocked image method"); }
-  return hold(`image/${method}`, Response.json({ plant: copy(p) }));
+  return hold(`image/${method}`, Response.json({ plant: view(p) }));
 };
 window.__smartPlantsHarness = state;
 // HA supplies these components in production. The fixture keeps their public

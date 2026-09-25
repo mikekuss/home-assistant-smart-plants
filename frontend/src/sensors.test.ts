@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { SmartPlantsPanel } from "./panel.js";
 import type { HAEntity, HAState, PlantRecord, RoleSourceConfig } from "./types.js";
-import { click, harness, sample, settle } from "./test-helpers.js";
+import { roleSourceConfig, ROLE_SOURCE_SPECS } from "./model.js";
+import { backendRoleDefaults, click, harness, newPlantView, sample, settle } from "./test-helpers.js";
 
 function emptyRole(): RoleSourceConfig {
   return { sources: [], primary_entity_id: null, aggregation: "primary", stale_after_seconds: 21600 };
@@ -96,6 +97,38 @@ describe("Sensors section", () => {
     h.events.get("ready")!(); await settle(el); await settle(el);
     expect(row("Air temperature").textContent).toContain("role data unavailable");
     expect(row("Air temperature").querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("accepts the backend PlantView default for every source role and still fails closed when absent", () => {
+    expect(Object.keys(backendRoleDefaults).sort()).toEqual(ROLE_SOURCE_SPECS.map(spec => spec.role).sort());
+    for (const spec of ROLE_SOURCE_SPECS) {
+      expect(roleSourceConfig(newPlantView, spec.role), spec.role).not.toBeNull();
+      // A storage-shaped record without the role is never guessed into a default.
+      expect(roleSourceConfig(sample, spec.role), spec.role).toBeNull();
+    }
+  });
+
+  it("opens and saves a role editor on a new plant from the backend defaults", async () => {
+    const { el, calls } = await mountDetail(structuredClone(newPlantView), [tempEntity()], [tempState()], msg => {
+      if (msg.type === "smart_plants/roles/set_sources") return { plant: { ...structuredClone(newPlantView), revision: 2 } };
+      return undefined;
+    });
+    const section = sensorsSection(el);
+    expect(section.textContent).not.toContain("role data unavailable");
+    (([...section.querySelectorAll("button")].find(b => b.textContent === "Edit sources")) as HTMLButtonElement).click();
+    await settle(el);
+    const editor = sensorsSection(el).querySelector("#temperature-sources-editor")!;
+    expect(editor).not.toBeNull();
+    const aggregation = [...editor.querySelectorAll("label")].find(l => l.textContent?.trim().startsWith("Aggregation"))!.querySelector("select")!;
+    expect(aggregation.value).toBe("average");
+    const picker = [...editor.querySelectorAll("select")].find(sel => [...sel.options].some(o => o.textContent?.includes("Choose a sensor")))!;
+    picker.value = "sensor.living_temp"; picker.dispatchEvent(new Event("change", { bubbles: true })); await settle(el);
+    [...sensorsSection(el).querySelectorAll("button")].find(b => b.textContent?.startsWith("Save"))!.click(); await settle(el);
+    expect(calls.filter(c => typeof c.type === "string" && c.type.startsWith("smart_plants/roles/set_"))).toEqual([
+      { type: "smart_plants/roles/set_sources", plant_id: newPlantView.id, expected_revision: 1, role: "temperature", sources: [{ entity_id: "sensor.living_temp", registry_id: "reg-temp" }] },
+    ]);
+    expect(sensorsSection(el).textContent).not.toContain("source data is missing or incompatible");
+    expect(sensorsSection(el).querySelectorAll('[role="alert"]')).toHaveLength(0);
   });
 
   it("filters the picker by device class and unit, with a show-all fallback", async () => {

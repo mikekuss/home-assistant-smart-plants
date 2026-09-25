@@ -9,6 +9,8 @@ must be identical.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -37,6 +39,11 @@ NON_MOISTURE_ROLES = (
     "co2",
 )
 SOURCE_ROLES = ("moisture", *NON_MOISTURE_ROLES)
+# Backend-owned PlantView defaults, shared with the frontend unit tests and the
+# e2e harness so their unconfigured-role data cannot drift from this contract.
+ROLE_VIEW_DEFAULTS_FIXTURE = (
+    Path(__file__).parent / "fixtures" / "plant_view_role_defaults.json"
+)
 
 
 async def _setup(hass: HomeAssistant) -> MockConfigEntry:
@@ -394,3 +401,67 @@ async def test_moisture_aliases_still_work(
     current = manager.get_plant(plant.id)
     assert current is not None
     assert [s.entity_id for s in current.moisture.sources] == ["sensor.soil"]
+
+
+async def test_new_plant_view_includes_default_for_every_source_role(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator
+) -> None:
+    # Regression: a freshly created plant persists only roles.moisture, but
+    # the panel needs every source-accepting role's config to open its
+    # sources editor. The WS view fills registered defaults without storing
+    # them, so the create/list payloads expose each role from the backend
+    # contract and storage stays moisture-only until a role is configured.
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {"type": "smart_plants/plants/create", "name": "Aloe"}
+    )
+    created = await client.receive_json()
+    assert created["success"] is True
+    await client.send_json_auto_id({"type": "smart_plants/plants/list"})
+    listed = await client.receive_json()
+    assert listed["success"] is True
+
+    for view in (created["result"]["plant"], listed["result"]["plants"][0]):
+        assert set(view["roles"]) == set(SOURCE_ROLES)
+        for role in NON_MOISTURE_ROLES:
+            definition = require_role(role)
+            assert definition.serialize_config is not None
+            assert view["roles"][role] == definition.serialize_config(
+                definition.default_config()
+            )
+
+    fixture = json.loads(ROLE_VIEW_DEFAULTS_FIXTURE.read_text(encoding="utf-8"))
+    assert fixture == {
+        role: created["result"]["plant"]["roles"][role] for role in NON_MOISTURE_ROLES
+    }
+
+    stored = manager.get_plant(created["result"]["plant"]["id"])
+    assert stored is not None
+    assert set(stored.extra_roles) == set()
+    assert set(stored.as_storage()["roles"]) == {"moisture"}
+
+
+async def test_role_set_sources_from_default_view_on_new_plant(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator
+) -> None:
+    # The panel seeds its editor from the default view and saves; the backend
+    # must accept it for a role that was never stored, and the persisted
+    # record then carries only the configured role.
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    client = await hass_ws_client(hass)
+    response = await _set_sources(
+        client, plant, "temperature", [{"entity_id": "sensor.air"}]
+    )
+    assert response["success"] is True
+    view = response["result"]["plant"]
+    assert [s["entity_id"] for s in view["roles"]["temperature"]["sources"]] == [
+        "sensor.air"
+    ]
+    assert set(view["roles"]) == set(SOURCE_ROLES)
+    stored = manager.get_plant(plant.id)
+    assert stored is not None
+    assert set(stored.as_storage()["roles"]) == {"moisture", "temperature"}

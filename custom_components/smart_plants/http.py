@@ -145,7 +145,7 @@ def _parse_expected_revision(request: web.Request) -> int:
 
 
 def _plant_view(manager: SmartPlantsManager, plant_id: str) -> dict[str, Any]:
-    return manager.get_plant(plant_id).as_storage()
+    return manager.get_plant(plant_id).as_view()
 
 
 class SmartPlantsImageView(HomeAssistantView):
@@ -288,7 +288,7 @@ class SmartPlantsImageView(HomeAssistantView):
                 ERR_UNKNOWN,
                 _UNKNOWN_ERROR_MESSAGE,
             )
-        return web.json_response({"plant": plant.as_storage()})
+        return web.json_response({"plant": plant.as_view()})
 
     async def delete(  # noqa: PLR0911
         self, request: web.Request, plant_id: str
@@ -329,7 +329,7 @@ class SmartPlantsImageView(HomeAssistantView):
                 ERR_UNKNOWN,
                 _UNKNOWN_ERROR_MESSAGE,
             )
-        return web.json_response({"plant": plant.as_storage()})
+        return web.json_response({"plant": plant.as_view()})
 
 
 def async_register(hass: HomeAssistant) -> None:

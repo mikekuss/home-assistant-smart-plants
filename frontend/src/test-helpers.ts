@@ -1,5 +1,6 @@
 import { expect, vi } from "vitest";
 import { builtin, emptyMoisture, keys } from "./model.js";
+import plantViewRoleDefaults from "../../tests/fixtures/plant_view_role_defaults.json";
 import type { Evaluation, HealthEvaluation, HomeAssistantLike, MoistureRoleConfig, PanelCapabilities, PlantRecord, SpeciesSnapshot } from "./types.js";
 
 export const capabilities: PanelCapabilities = { api_version: 1, schema_version: 1, providers: [{ provider: "manual", available: true, search_supported: false }, { provider: "openplantbook", available: true, search_supported: true }] };
@@ -7,7 +8,12 @@ export const draft = { draft_id: "12345678-1234-1234-1234-123456789abc", draft_t
 export const snapshot: SpeciesSnapshot = { provider: "openplantbook", provider_id: "aloe", provider_ref: "aloe", fetched_at: "2026-09-10T00:00:00Z", locale: "en", source_status: "provider", attribution: "OpenPlantBook", common_name: "Aloe", latin_name: "Aloe vera", category: "succulent", confidence: null, care_text: { watering: "Let soil dry." }, field_sources: { common_name: "OpenPlantBook", latin_name: "OpenPlantBook", category: "OpenPlantBook", watering: "OpenPlantBook", moisture_min: "OpenPlantBook", moisture_max: "OpenPlantBook" }, threshold_defaults: { moisture: { min: 20, max: 60 } } };
 export const preview = { draft_id: draft.draft_id, revision: 0, preview_token: "preview-1", provider: "openplantbook", operation: "select", snapshot, diff: { common_name: { before: null, after: "Aloe" } } };
 export const role: MoistureRoleConfig = { ...emptyMoisture(), threshold_defaults: Object.fromEntries(keys.map(k => [k, { value: builtin[k], source: "builtin", provider: null, provider_ref: null }])) as MoistureRoleConfig["threshold_defaults"] };
+// `sample` is storage-shaped (moisture only), as an older backend or a raw
+// record would send. The backend PlantView fills every unconfigured source role
+// with its registered default; this backend-owned fixture is that contract.
+export const backendRoleDefaults: Record<string, unknown> = plantViewRoleDefaults;
 export const sample: PlantRecord = { id: "plant-1", revision: 1, name: "Aloe", created_at: "2026-09-10T00:00:00Z", acquired_at: null, lifecycle_state: "active", species: null, placement: null, category: null, tags: [], image: null, roles: { moisture: role } };
+export const newPlantView: PlantRecord = { ...sample, roles: { ...structuredClone(backendRoleDefaults), moisture: role } };
 export const evaluation: Evaluation = { computed_percent: 30, health_score: 88, computed_available: true, needs_water: false, too_wet: false, sensor_stale: false, reasons: [] };
 export const healthEvaluation: HealthEvaluation = { health_score: 88, available: true, confidence: 1.0, confidence_label: "high", contributors: ["moisture"], configured: ["moisture"], reasons: [] };
 // Signature-only fixture for tests that mock the browser decoder explicitly.

@@ -25,6 +25,7 @@ interface Harness {
   blobsRevoked: string[];
   holdNext: Record<string, boolean>;
   pending: Record<string, unknown>;
+  roleDefaults: Record<string, unknown>;
   release(key: string): void;
   emit(event: string): void;
 }
@@ -412,6 +413,39 @@ test("existing-plant provider preview, cancel, reviewed apply and refresh preser
   await expect(button(page, "Preview species refresh")).toBeEnabled();
   expect((await messages(page, "species/apply"))[1]).toMatchObject({ confirmed: true, operation: "refresh", expected_revision: 3 });
   expect((await inventory(page))[1]!.roles!.moisture.threshold_overrides.target).toBe(42);
+});
+
+test("harness PlantView role defaults match the backend-owned fixture", async ({ page }) => {
+  await open(page, false);
+  const fixture = JSON.parse(await readFile("../tests/fixtures/plant_view_role_defaults.json", "utf8")) as unknown;
+  expect(await page.evaluate(() => window.__smartPlantsHarness.roleDefaults)).toEqual(fixture);
+});
+
+test("a newly created plant can assign and save non-moisture sources from backend defaults", async ({ page }) => {
+  // Regression: new plants persist only roles.moisture. The Sensors section
+  // must still open every role editor from the PlantView defaults and save.
+  await start(page, "Fresh Basil");
+  await finishManual(page);
+  const stored = (await inventory(page)).find(p => p.name === "Fresh Basil")!;
+  expect(Object.keys(stored.roles!)).toEqual(["moisture"]);
+  await button(page, "Sensors").click();
+  const row = (label: string) => page.locator(`smart-plants-panel dl.sensors dt:text-is("${label}") + dd`);
+  for (const label of ["Air temperature", "Air humidity", "Illuminance", "Battery", "Conductivity", "Soil temperature", "CO₂"]) {
+    await expect(row(label)).toContainText("no sources — this role has no computed entity yet");
+    await expect(row(label)).not.toContainText("role data unavailable");
+  }
+  await row("Air temperature").getByRole("button", { name: "Edit sources", exact: true }).click();
+  const editor = page.locator("smart-plants-panel div#temperature-sources-editor");
+  await expect(editor).toBeVisible();
+  await expect(editor.getByRole("combobox", { name: "Aggregation", exact: true })).toHaveValue("average");
+  await editor.getByRole("combobox", { name: "Add air temperature sensor", exact: true }).selectOption("sensor.living_temp");
+  await editor.getByRole("button", { name: "Save air temperature sources", exact: true }).click();
+  await expect(page.getByText("Air temperature sources saved.", { exact: true })).toBeVisible();
+  await expect(row("Air temperature")).toContainText("1 source · average");
+  expect((await messages(page, "roles/set_sources"))[0]).toMatchObject({ plant_id: stored.id, expected_revision: 1, role: "temperature", sources: [{ entity_id: "sensor.living_temp", registry_id: id(104) }] });
+  const saved = (await inventory(page)).find(p => p.id === stored.id)!;
+  expect(Object.keys(saved.roles!).sort()).toEqual(["moisture", "temperature"]);
+  expect(saved.roles!.temperature).toMatchObject({ sources: [{ entity_id: "sensor.living_temp", registry_id: id(104) }], aggregation: "average" });
 });
 
 test("UUID rename and successful retained missing-source saves never bind a reused entity ID", async ({ page }) => {

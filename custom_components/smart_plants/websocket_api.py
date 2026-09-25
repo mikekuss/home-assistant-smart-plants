@@ -23,6 +23,10 @@ The generic ``smart_plants/roles/*`` source commands take an additional
 aliases). Error mapping, revision checks, and retained-missing source
 semantics are identical across every role.
 
+``PlantView`` is the storage shape plus a registered default config for every
+source-accepting role the plant has not configured yet (``PlantRecord.as_view``).
+The defaults are view-only; storage keeps only configured roles.
+
 Error codes:
 
 * ``integration_not_loaded`` -- the singleton entry is missing or unloaded.
@@ -154,7 +158,7 @@ _PLACEMENT_SCHEMA = vol.Schema(
 
 def _plant_view(plant: PlantRecord) -> dict[str, Any]:
     """Serialize a PlantRecord for the WS frontend contract."""
-    return plant.as_storage()
+    return plant.as_view()
 
 
 def _current_manager(hass: HomeAssistant) -> SmartPlantsManager | None:
