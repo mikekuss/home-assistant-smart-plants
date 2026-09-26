@@ -9,4 +9,4 @@ mypy==1.18.1
 pytest==9.0.3
 pytest-asyncio==1.4.0
 pytest-homeassistant-custom-component==0.13.344
-ruff==0.12.12
+ruff==0.16.8
