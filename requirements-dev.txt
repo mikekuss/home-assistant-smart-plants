@@ -4,7 +4,7 @@ homeassistant==2026.7.0
 # dependencies. Version must match the pin in
 # `homeassistant/components/frontend/manifest.json` for the pinned
 # `homeassistant` above.
-home-assistant-frontend==20260624.3
+home-assistant-frontend==20260826.7
 mypy==1.18.1
 pytest==9.0.3
 pytest-asyncio==1.4.0
