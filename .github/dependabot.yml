@@ -4,11 +4,39 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    groups:
+      github-actions:
+        patterns: ["*"]
+
   - package-ecosystem: pip
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      # These pins define the minimum supported Home Assistant test environment
+      # (see hacs.json "homeassistant"). pytest and pytest-asyncio are pinned
+      # exactly by pytest-homeassistant-custom-component. Bump them together,
+      # manually, when the minimum supported Home Assistant version changes.
+      - dependency-name: homeassistant
+      - dependency-name: home-assistant-frontend
+      - dependency-name: pytest-homeassistant-custom-component
+      - dependency-name: pytest
+      - dependency-name: pytest-asyncio
+      # New ruff releases add lint rules; upgrade manually together with fixes.
+      - dependency-name: ruff
+    groups:
+      python-dev-tools:
+        patterns: ["*"]
+
   - package-ecosystem: npm
     directory: /frontend
     schedule:
       interval: monthly
+    ignore:
+      # Major upgrades of the build/lint/test toolchain need coordinated changes
+      # (peer dependencies, config, rebuilt bundle) and are done manually.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      frontend-minor-and-patch:
+        update-types: ["minor", "patch"]
