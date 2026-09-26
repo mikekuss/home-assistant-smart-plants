@@ -1,4 +1,4 @@
-homeassistant==2026.7.0
+homeassistant==2026.9.3
 # Required so the pytest environment can load the `frontend` and
 # `panel_custom` components that Smart Plants declares as manifest
 # dependencies. Version must match the pin in
