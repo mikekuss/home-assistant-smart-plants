@@ -13,7 +13,7 @@
     "test:browser": "node e2e/verify-artifact.mjs && playwright test"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.10.2",
+    "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.55.0",
     "@types/node": "22.10.6",
     "@typescript-eslint/eslint-plugin": "8.20.0",
