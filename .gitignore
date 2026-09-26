@@ -1,6 +1,7 @@
-# Local planning and agent context
+# Local planning and agent context (never publish)
 plan/
 AGENTS.md
+agents.md
 
 # Python
 __pycache__/
