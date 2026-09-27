@@ -64,5 +64,5 @@ PlantEvent = (
 # A subscriber may be sync or async. The manager awaits awaitables in
 # subscription order so a subscriber can safely rely on prior
 # subscribers having completed before it runs.
-EventCallback = Callable[[PlantEvent], "None | Awaitable[None]"]
+EventCallback = Callable[[PlantEvent], "Awaitable[None] | None"]
 Unsubscribe = Callable[[], None]

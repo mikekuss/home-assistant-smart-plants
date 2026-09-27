@@ -172,7 +172,7 @@ def test_config_from_storage_rejects_invalid_override_maps(
         "stale_after_seconds": 21_600,
         "stress_threshold_overrides": overrides,
     }
-    with pytest.raises(ValueError, match=".*") as excinfo:
+    with pytest.raises(ValueError, match=r".*") as excinfo:
         TemperatureConfig.from_storage(raw)
     assert message_substring in str(excinfo.value)
 

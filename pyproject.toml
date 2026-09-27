@@ -19,7 +19,7 @@ dev = [
   "pytest==9.0.3",
   "pytest-asyncio==1.4.0",
   "pytest-homeassistant-custom-component==0.13.354",
-  "ruff==0.12.12",
+  "ruff==0.16.9",
 ]
 
 [tool.pytest.ini_options]
@@ -41,6 +41,9 @@ ignore = [
   "ARG001",
   "C901",
   "COM812",
+  # CPY001: the MIT license lives in LICENSE; source files carry no per-file
+  # copyright headers, matching Home Assistant core and custom integrations.
+  "CPY001",
   # EXE002 fires under Docker-on-Windows bind mounts because NTFS reports
   # every file as executable. Git tracks these files without the executable
   # bit, and native Linux CI does not trip this rule.
@@ -68,7 +71,14 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S101", "SLF001", "PLR2004"]
+"tests/**/*.py" = [
+  "S101",
+  "SLF001",
+  "PLR2004",
+  # ASYNC240: async tests prepare and inspect temporary config directories
+  # inline; blocking the test event loop briefly is harmless there.
+  "ASYNC240",
+]
 "scripts/**/*.py" = ["INP001", "T201"]
 
 [tool.mypy]

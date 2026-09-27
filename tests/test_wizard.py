@@ -279,9 +279,9 @@ async def test_invalid_configuration_never_partially_creates_or_edits(
     existing = await manager.async_create_plant(name="Existing")
     before = manager.snapshot
     with patch.object(manager._store, "async_save", new_callable=AsyncMock) as save:
-        with pytest.raises(ValueError, match="moisture|source"):
+        with pytest.raises(ValueError, match=r"moisture|source"):
             await _create(service, draft, moisture=_moisture(**values))
-        with pytest.raises(ValueError, match="moisture|source"):
+        with pytest.raises(ValueError, match=r"moisture|source"):
             await manager.async_configure_moisture(
                 existing.id, expected_revision=1, moisture=_moisture(**values)
             )
