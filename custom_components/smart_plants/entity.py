@@ -222,7 +222,7 @@ class SmartPlantsPlatformLifecycle:
     entities exactly once, and Cut 3 handles deletion cleanup.
     """
 
-    def __init__(  # noqa: PLR0913 — every field is a distinct HA dependency
+    def __init__(  # noqa: PLR0913, PLR0917 — each is a distinct HA dependency
         self,
         hass: HomeAssistant,
         entry: ConfigEntry,

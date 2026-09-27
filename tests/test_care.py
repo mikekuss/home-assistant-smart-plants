@@ -71,7 +71,7 @@ def test_local_date_and_corrupt_events_fail_closed() -> None:
         {"payload": {"note": None, "amount": 10}},
     ):
         with pytest.raises(
-            ValueError, match="care event|occurred_at|unsupported|payload"
+            ValueError, match=r"care event|occurred_at|unsupported|payload"
         ):
             CareEvent.from_storage({**row, **alteration})
     with pytest.raises(ValueError, match="note"):
@@ -141,7 +141,7 @@ def test_non_watering_payloads_are_strict_and_validated() -> None:
         ("pruning", {"part": " leaves ", "note": None}),
         ("note", {"text": " "}),
     ):
-        with pytest.raises(ValueError, match="care event|amount|unit|text|part"):
+        with pytest.raises(ValueError, match=r"care event|amount|unit|text|part"):
             CareEvent.from_storage({**base, "kind": kind, "payload": payload})
     invalid_payloads = (
         (
@@ -163,7 +163,7 @@ def test_non_watering_payloads_are_strict_and_validated() -> None:
         ("note", {"text": "x" * 1001}),
     )
     for kind, payload in invalid_payloads:
-        with pytest.raises(ValueError, match="."):
+        with pytest.raises(ValueError, match=r"."):
             CareEvent.from_storage({**base, "kind": kind, "payload": payload})
 
 

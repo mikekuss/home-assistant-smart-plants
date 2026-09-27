@@ -317,23 +317,23 @@ class SmartPlantsDeviceReconciler:
             elif op.kind in ("create_image", "replace_image"):
                 if await self._replay_image_upsert(
                     op,
-                    _current(op.plant_id),
-                    plants,
-                    plant_updates,
-                    pending_operations,
-                    completed_ops,
-                    images_dir,
+                    plant=_current(op.plant_id),
+                    plants=plants,
+                    plant_updates=plant_updates,
+                    pending_operations=pending_operations,
+                    completed_ops=completed_ops,
+                    images_dir=images_dir,
                 ):
                     completed_ops.add(op.op_id)
             elif op.kind == "delete_image":
                 if await self._replay_image_delete(
                     op,
-                    _current(op.plant_id),
-                    plants,
-                    plant_updates,
-                    pending_operations,
-                    completed_ops,
-                    images_dir,
+                    plant=_current(op.plant_id),
+                    plants=plants,
+                    plant_updates=plant_updates,
+                    pending_operations=pending_operations,
+                    completed_ops=completed_ops,
+                    images_dir=images_dir,
                 ):
                     completed_ops.add(op.op_id)
             # disable_plant / reenable_plant have no Cut 2 side effect
@@ -432,6 +432,7 @@ class SmartPlantsDeviceReconciler:
     async def _replay_image_upsert(  # noqa: PLR0913
         self,
         op: PendingOperation,
+        *,
         plant: PlantRecord | None,
         plants: dict[str, PlantRecord],
         plant_updates: dict[str, PlantRecord],
@@ -521,6 +522,7 @@ class SmartPlantsDeviceReconciler:
     async def _replay_image_delete(  # noqa: PLR0913
         self,
         op: PendingOperation,
+        *,
         plant: PlantRecord | None,
         plants: dict[str, PlantRecord],
         plant_updates: dict[str, PlantRecord],
