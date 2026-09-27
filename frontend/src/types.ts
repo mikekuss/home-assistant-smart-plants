@@ -1,3 +1,4 @@
+import type { HALocale } from "./localize.js";
 // Public Smart Plants v1 wire shapes and the small public HA surface we use.
 // Optional roles are runtime-validated by model.ts before any editor consumes them.
 
@@ -164,6 +165,8 @@ export interface HomeAssistantLike {
   };
   states?: Record<string, HAState>;
   language?: string;
+  // Profile language and number/date/time format preferences (HA frontend).
+  locale?: HALocale;
   user?: {
     is_admin?: boolean;
     name?: string;

@@ -324,6 +324,9 @@ if (!customElements.get("ha-dropdown-item")) {
 if (!customElements.get("ha-svg-icon")) customElements.define("ha-svg-icon", class extends HTMLElement {});
 await import("/custom_components/smart_plants/frontend/smart-plants-panel.js");
 const panel = document.createElement("smart-plants-panel");
-panel.hass = { auth: { accessToken: "playwright-token" }, connection, language: "en", user: { is_admin: true, name: "Synthetic browser admin" } };
+// `?lang=de` renders the panel as a Home Assistant user with that profile language.
+const language = params.get("lang") ?? "en";
+document.documentElement.lang = language;
+panel.hass = { auth: { accessToken: "playwright-token" }, connection, language, locale: { language, number_format: "language", time_format: "language", date_format: "language" }, user: { is_admin: true, name: "Synthetic browser admin" } };
 panel.panel = { title: "Smart Plants", url_path: "smart-plants" };
 document.body.append(panel);

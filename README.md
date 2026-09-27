@@ -35,8 +35,7 @@ native Home Assistant automations — no YAML or template sensors required.
   help with bug reports.
 - **Safe by design.** Smart Plants detects plant needs but never switches valves or pumps
   itself. You decide how to act in your own automations.
-- Setup, entity names, and repairs are available in English and German; the sidebar panel is
-  English-only for now.
+- Setup, entity names, repairs, and the sidebar panel are available in English and German.
 
 ## Requirements
 

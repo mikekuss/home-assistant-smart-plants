@@ -1,3 +1,5 @@
+import { ENGLISH, isMessageKey } from "./localize.js";
+import type { Localizer, MessageKey } from "./localize.js";
 import type { HADevice, HAEntity, HAState, MoistureInput, MoistureRoleConfig, PlantRecord, PlantSpecies, RoleSourceConfig, RoleSourceInput, SensorSource } from "./types.js";
 
 export const keys = ["min", "target", "max"] as const;
@@ -17,62 +19,25 @@ export const PROBLEM_BINARY_ROLES = [
   "conductivity_stress",
 ] as const;
 export type ProblemBinaryRole = typeof PROBLEM_BINARY_ROLES[number];
-// Human-readable labels for every role key that may appear in a
+// Human-readable label for a role key that may appear in a
 // `smart_plants/plants/health` reply's `contributors` / `configured` lists.
-// Keys match the accepted CONTRIBUTOR_ORDER in the multi-role health contract.
-export const HEALTH_CONTRIBUTOR_LABELS: Record<string, string> = {
-  moisture: "Moisture",
-  temperature: "Temperature",
-  humidity: "Humidity",
-  illuminance: "Illuminance",
-  battery: "Battery",
-  conductivity: "Conductivity",
-  soil_temperature: "Soil temperature",
-  co2: "CO2",
-};
-// Plain-English gloss per confidence label. Text-only signalling per the
-// accepted Phase 6 detail-view a11y baseline.
-export const HEALTH_CONFIDENCE_GLOSS: Record<string, string> = {
-  high: "every configured role is currently available.",
-  medium: "at least half of the configured roles are currently available.",
-  low: "fewer than half of the configured roles are currently available.",
-  unknown: "no roles are configured for this plant yet.",
-};
-// Localize wrapper: reads hass.localize when supplied, interpolates `{key}`
-// placeholders from args, and falls back to `fallback` when localize is not
-// present or returns an empty/whitespace-only string. Kept parameter-position
-// free so callers can `_t = translator(this.hass?.localize)`.
-export type LocalizeFn = (key: string, ...args: unknown[]) => string;
-export function translator(localize: LocalizeFn | undefined): (key: string, fallback: string, args?: Record<string, string | number>) => string {
-  return (key, fallback, args) => {
-    let value = fallback;
-    if (localize) {
-      const flat: unknown[] = [];
-      if (args) for (const [k, v] of Object.entries(args)) { flat.push(k, v); }
-      const raw = localize(key, ...flat);
-      if (typeof raw === "string" && raw.trim() !== "") value = raw;
-    }
-    if (args) for (const [k, v] of Object.entries(args)) value = value.replaceAll(`{${k}}`, String(v));
-    return value;
-  };
+// Unknown future roles fall back to their key with spaces.
+export function contributorLabel(role: string, l: Localizer = ENGLISH): string {
+  const key = `section.health_contributor.${role}`;
+  return isMessageKey(key) ? l.t(key) : role.replaceAll("_", " ");
 }
-export function contributorLabel(role: string, localize: LocalizeFn | undefined): string {
-  const fallback = HEALTH_CONTRIBUTOR_LABELS[role] ?? role.replaceAll("_", " ");
-  return translator(localize)(`component.smart_plants.panel.health_contributor.${role}`, fallback);
+// Plain-language gloss per confidence label; text-only signalling.
+export function confidenceGloss(label: string, l: Localizer = ENGLISH): string {
+  const key = `section.confidence_${label}`;
+  return l.t(isMessageKey(key) ? key : "section.confidence_other");
 }
-export function confidenceGloss(label: string, localize: LocalizeFn | undefined): string {
-  const fallback = HEALTH_CONFIDENCE_GLOSS[label] ?? "no additional detail available.";
-  return translator(localize)(`component.smart_plants.panel.section.confidence_${label}`, fallback);
+export function confidenceLabel(label: string, l: Localizer = ENGLISH): string {
+  const key = `section.confidence_label_${label}`;
+  return isMessageKey(key) ? l.t(key) : label;
 }
-export const PROBLEM_BINARY_LABELS: Record<ProblemBinaryRole, string> = {
-  temperature_stress: "Temperature stress",
-  humidity_stress: "Humidity stress",
-  soil_temperature_stress: "Soil temperature stress",
-  co2_stress: "CO2 stress",
-  low_light: "Low light",
-  low_battery: "Low battery",
-  conductivity_stress: "Conductivity stress",
-};
+export function problemLabel(role: ProblemBinaryRole, l: Localizer = ENGLISH): string {
+  return l.t(`problem.${role}`);
+}
 export type ProblemStatus = "on" | "off" | "unavailable" | "not_configured";
 export interface ProblemBinaryReading {
   role: ProblemBinaryRole;
@@ -84,43 +49,43 @@ export interface ProblemBinaryReading {
 // diagnostics section surfaces these read-only. Overrides (storage minor 8/9)
 // are applied backend-side so `value` already reflects the effective (built-in
 // or overridden) threshold.
-export interface ThresholdSpec { key: string; label: string; unit: string }
+export interface ThresholdSpec { key: string; label: MessageKey; unit: string }
 export const THRESHOLD_SPECS: Record<ProblemBinaryRole, readonly ThresholdSpec[]> = {
   temperature_stress: [
-    { key: "cold_threshold_celsius", label: "Cold threshold", unit: "°C" },
-    { key: "cold_clear_celsius", label: "Cold clear", unit: "°C" },
-    { key: "hot_clear_celsius", label: "Hot clear", unit: "°C" },
-    { key: "hot_threshold_celsius", label: "Hot threshold", unit: "°C" },
+    { key: "cold_threshold_celsius", label: "threshold_label.cold_threshold", unit: "°C" },
+    { key: "cold_clear_celsius", label: "threshold_label.cold_clear", unit: "°C" },
+    { key: "hot_clear_celsius", label: "threshold_label.hot_clear", unit: "°C" },
+    { key: "hot_threshold_celsius", label: "threshold_label.hot_threshold", unit: "°C" },
   ],
   humidity_stress: [
-    { key: "dry_threshold_percent", label: "Dry threshold", unit: "%" },
-    { key: "dry_clear_percent", label: "Dry clear", unit: "%" },
-    { key: "damp_clear_percent", label: "Damp clear", unit: "%" },
-    { key: "damp_threshold_percent", label: "Damp threshold", unit: "%" },
+    { key: "dry_threshold_percent", label: "threshold_label.dry_threshold", unit: "%" },
+    { key: "dry_clear_percent", label: "threshold_label.dry_clear", unit: "%" },
+    { key: "damp_clear_percent", label: "threshold_label.damp_clear", unit: "%" },
+    { key: "damp_threshold_percent", label: "threshold_label.damp_threshold", unit: "%" },
   ],
   soil_temperature_stress: [
-    { key: "cold_threshold_celsius", label: "Cold threshold", unit: "°C" },
-    { key: "cold_clear_celsius", label: "Cold clear", unit: "°C" },
-    { key: "hot_clear_celsius", label: "Hot clear", unit: "°C" },
-    { key: "hot_threshold_celsius", label: "Hot threshold", unit: "°C" },
+    { key: "cold_threshold_celsius", label: "threshold_label.cold_threshold", unit: "°C" },
+    { key: "cold_clear_celsius", label: "threshold_label.cold_clear", unit: "°C" },
+    { key: "hot_clear_celsius", label: "threshold_label.hot_clear", unit: "°C" },
+    { key: "hot_threshold_celsius", label: "threshold_label.hot_threshold", unit: "°C" },
   ],
   co2_stress: [
-    { key: "threshold_ppm", label: "High threshold", unit: "ppm" },
-    { key: "clear_ppm", label: "High clear", unit: "ppm" },
+    { key: "threshold_ppm", label: "threshold_label.high_threshold", unit: "ppm" },
+    { key: "clear_ppm", label: "threshold_label.high_clear", unit: "ppm" },
   ],
   low_light: [
-    { key: "target_lux", label: "Target", unit: "lx" },
-    { key: "clear_lux", label: "Clear", unit: "lx" },
+    { key: "target_lux", label: "threshold_label.target", unit: "lx" },
+    { key: "clear_lux", label: "threshold_label.clear", unit: "lx" },
   ],
   low_battery: [
-    { key: "threshold_percent", label: "Low threshold", unit: "%" },
-    { key: "clear_percent", label: "Low clear", unit: "%" },
+    { key: "threshold_percent", label: "threshold_label.low_threshold", unit: "%" },
+    { key: "clear_percent", label: "threshold_label.low_clear", unit: "%" },
   ],
   conductivity_stress: [
-    { key: "low_threshold_micro_siemens_per_cm", label: "Low threshold", unit: "µS/cm" },
-    { key: "low_clear_micro_siemens_per_cm", label: "Low clear", unit: "µS/cm" },
-    { key: "high_clear_micro_siemens_per_cm", label: "High clear", unit: "µS/cm" },
-    { key: "high_threshold_micro_siemens_per_cm", label: "High threshold", unit: "µS/cm" },
+    { key: "low_threshold_micro_siemens_per_cm", label: "threshold_label.low_threshold", unit: "µS/cm" },
+    { key: "low_clear_micro_siemens_per_cm", label: "threshold_label.low_clear", unit: "µS/cm" },
+    { key: "high_clear_micro_siemens_per_cm", label: "threshold_label.high_clear", unit: "µS/cm" },
+    { key: "high_threshold_micro_siemens_per_cm", label: "threshold_label.high_threshold", unit: "µS/cm" },
   ],
 };
 export interface ThresholdReading { key: string; label: string; unit: string; value: number | null }
@@ -155,18 +120,18 @@ export function parseTemperatureStressField(raw: string): number | null | "inval
 }
 // Validate an entire override map for temperature_stress and return the WebSocket
 // payload (all four keys, number | null) plus an inline error string if invalid.
-export function validateTemperatureStressOverrides(input: TemperatureStressInput): { values: Record<TemperatureStressKey, number | null>; error: string | null } {
+export function validateTemperatureStressOverrides(input: TemperatureStressInput, l: Localizer = ENGLISH): { values: Record<TemperatureStressKey, number | null>; error: string | null } {
   const parsed: Partial<Record<TemperatureStressKey, number | null>> = {};
   for (const key of TEMPERATURE_STRESS_KEYS) {
     const result = parseTemperatureStressField(input[key]);
-    if (result === "invalid") return { values: {} as Record<TemperatureStressKey, number | null>, error: "Effective thresholds must satisfy cold trigger < cold clear < hot clear < hot trigger, with ≥ 0.5 °C hysteresis and a ≥ 1.0 °C stable band, all within −40.0…80.0 °C." };
+    if (result === "invalid") return { values: {} as Record<TemperatureStressKey, number | null>, error: l.t("threshold_error.temperature_stress") };
     parsed[key] = result;
   }
   const values = parsed as Record<TemperatureStressKey, number | null>;
   const eff = (k: TemperatureStressKey) => values[k] ?? TEMPERATURE_STRESS_BUILTIN_DEFAULTS[k];
   const ct = eff("cold_threshold_celsius"), cc = eff("cold_clear_celsius"), hc = eff("hot_clear_celsius"), ht = eff("hot_threshold_celsius");
   if (!(ct < cc && cc < hc && hc < ht) || cc - ct < _TEMP_MIN_HYST || ht - hc < _TEMP_MIN_HYST || hc - cc < _TEMP_MIN_STABLE) {
-    return { values, error: "Effective thresholds must satisfy cold trigger < cold clear < hot clear < hot trigger, with ≥ 0.5 °C hysteresis and a ≥ 1.0 °C stable band, all within −40.0…80.0 °C." };
+    return { values, error: l.t("threshold_error.temperature_stress") };
   }
   return { values, error: null };
 }
@@ -204,19 +169,18 @@ export function parseHumidityStressField(raw: string): number | null | "invalid"
   if (rounded < _HUM_LOW || rounded > _HUM_HIGH) return "invalid";
   return rounded;
 }
-const _HUM_ERROR = "Effective thresholds must satisfy dry trigger < dry clear < damp clear < damp trigger, with ≥ 1.0 % hysteresis and a ≥ 5.0 % stable band, all within 0.0…100.0 %.";
-export function validateHumidityStressOverrides(input: HumidityStressInput): { values: Record<HumidityStressKey, number | null>; error: string | null } {
+export function validateHumidityStressOverrides(input: HumidityStressInput, l: Localizer = ENGLISH): { values: Record<HumidityStressKey, number | null>; error: string | null } {
   const parsed: Partial<Record<HumidityStressKey, number | null>> = {};
   for (const key of HUMIDITY_STRESS_KEYS) {
     const result = parseHumidityStressField(input[key]);
-    if (result === "invalid") return { values: {} as Record<HumidityStressKey, number | null>, error: _HUM_ERROR };
+    if (result === "invalid") return { values: {} as Record<HumidityStressKey, number | null>, error: l.t("threshold_error.humidity_stress") };
     parsed[key] = result;
   }
   const values = parsed as Record<HumidityStressKey, number | null>;
   const eff = (k: HumidityStressKey) => values[k] ?? HUMIDITY_STRESS_BUILTIN_DEFAULTS[k];
   const dt = eff("dry_threshold_percent"), dc = eff("dry_clear_percent"), pc = eff("damp_clear_percent"), pt = eff("damp_threshold_percent");
   if (!(dt < dc && dc < pc && pc < pt) || dc - dt < _HUM_MIN_HYST || pt - pc < _HUM_MIN_HYST || pc - dc < _HUM_MIN_STABLE) {
-    return { values, error: _HUM_ERROR };
+    return { values, error: l.t("threshold_error.humidity_stress") };
   }
   return { values, error: null };
 }
@@ -254,19 +218,18 @@ export function parseConductivityStressField(raw: string): number | null | "inva
   if (rounded < _COND_LOW || rounded > _COND_HIGH) return "invalid";
   return rounded;
 }
-const _COND_ERROR = "Effective thresholds must satisfy low trigger < low clear < high clear < high trigger, with ≥ 10.0 µS/cm hysteresis and a ≥ 50.0 µS/cm stable band, all within 0.0…10000.0 µS/cm.";
-export function validateConductivityStressOverrides(input: ConductivityStressInput): { values: Record<ConductivityStressKey, number | null>; error: string | null } {
+export function validateConductivityStressOverrides(input: ConductivityStressInput, l: Localizer = ENGLISH): { values: Record<ConductivityStressKey, number | null>; error: string | null } {
   const parsed: Partial<Record<ConductivityStressKey, number | null>> = {};
   for (const key of CONDUCTIVITY_STRESS_KEYS) {
     const result = parseConductivityStressField(input[key]);
-    if (result === "invalid") return { values: {} as Record<ConductivityStressKey, number | null>, error: _COND_ERROR };
+    if (result === "invalid") return { values: {} as Record<ConductivityStressKey, number | null>, error: l.t("threshold_error.conductivity_stress") };
     parsed[key] = result;
   }
   const values = parsed as Record<ConductivityStressKey, number | null>;
   const eff = (k: ConductivityStressKey) => values[k] ?? CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS[k];
   const lt = eff("low_threshold_micro_siemens_per_cm"), lc = eff("low_clear_micro_siemens_per_cm"), hc = eff("high_clear_micro_siemens_per_cm"), ht = eff("high_threshold_micro_siemens_per_cm");
   if (!(lt < lc && lc < hc && hc < ht) || lc - lt < _COND_MIN_HYST || ht - hc < _COND_MIN_HYST || hc - lc < _COND_MIN_STABLE) {
-    return { values, error: _COND_ERROR };
+    return { values, error: l.t("threshold_error.conductivity_stress") };
   }
   return { values, error: null };
 }
@@ -305,19 +268,18 @@ export function parseCo2StressField(raw: string): number | null | "invalid" {
   if (rounded < _CO2_LOW || rounded > _CO2_HIGH) return "invalid";
   return rounded;
 }
-const _CO2_ERROR = "Effective thresholds must satisfy clear_ppm < threshold_ppm with ≥ 100 ppm hysteresis, both integers within 0…10000 ppm.";
-export function validateCo2StressOverrides(input: Co2StressInput): { values: Record<Co2StressKey, number | null>; error: string | null } {
+export function validateCo2StressOverrides(input: Co2StressInput, l: Localizer = ENGLISH): { values: Record<Co2StressKey, number | null>; error: string | null } {
   const parsed: Partial<Record<Co2StressKey, number | null>> = {};
   for (const key of CO2_STRESS_KEYS) {
     const result = parseCo2StressField(input[key]);
-    if (result === "invalid") return { values: {} as Record<Co2StressKey, number | null>, error: _CO2_ERROR };
+    if (result === "invalid") return { values: {} as Record<Co2StressKey, number | null>, error: l.t("threshold_error.co2_stress") };
     parsed[key] = result;
   }
   const values = parsed as Record<Co2StressKey, number | null>;
   const eff = (k: Co2StressKey) => values[k] ?? CO2_STRESS_BUILTIN_DEFAULTS[k];
   const clear = eff("clear_ppm"), threshold = eff("threshold_ppm");
   if (!(clear < threshold) || threshold - clear < _CO2_MIN_HYST) {
-    return { values, error: _CO2_ERROR };
+    return { values, error: l.t("threshold_error.co2_stress") };
   }
   return { values, error: null };
 }
@@ -355,19 +317,18 @@ export function parseSoilTemperatureStressField(raw: string): number | null | "i
   if (rounded < _SOIL_TEMP_LOW || rounded > _SOIL_TEMP_HIGH) return "invalid";
   return rounded;
 }
-const _SOIL_TEMP_ERROR = "Effective thresholds must satisfy cold trigger < cold clear < hot clear < hot trigger, with ≥ 0.5 °C hysteresis and a ≥ 1.0 °C stable band, all within −20.0…60.0 °C.";
-export function validateSoilTemperatureStressOverrides(input: SoilTemperatureStressInput): { values: Record<SoilTemperatureStressKey, number | null>; error: string | null } {
+export function validateSoilTemperatureStressOverrides(input: SoilTemperatureStressInput, l: Localizer = ENGLISH): { values: Record<SoilTemperatureStressKey, number | null>; error: string | null } {
   const parsed: Partial<Record<SoilTemperatureStressKey, number | null>> = {};
   for (const key of SOIL_TEMPERATURE_STRESS_KEYS) {
     const result = parseSoilTemperatureStressField(input[key]);
-    if (result === "invalid") return { values: {} as Record<SoilTemperatureStressKey, number | null>, error: _SOIL_TEMP_ERROR };
+    if (result === "invalid") return { values: {} as Record<SoilTemperatureStressKey, number | null>, error: l.t("threshold_error.soil_temperature_stress") };
     parsed[key] = result;
   }
   const values = parsed as Record<SoilTemperatureStressKey, number | null>;
   const eff = (k: SoilTemperatureStressKey) => values[k] ?? SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS[k];
   const ct = eff("cold_threshold_celsius"), cc = eff("cold_clear_celsius"), hc = eff("hot_clear_celsius"), ht = eff("hot_threshold_celsius");
   if (!(ct < cc && cc < hc && hc < ht) || cc - ct < _SOIL_TEMP_MIN_HYST || ht - hc < _SOIL_TEMP_MIN_HYST || hc - cc < _SOIL_TEMP_MIN_STABLE) {
-    return { values, error: _SOIL_TEMP_ERROR };
+    return { values, error: l.t("threshold_error.soil_temperature_stress") };
   }
   return { values, error: null };
 }
@@ -403,19 +364,18 @@ export function parseLowBatteryField(raw: string): number | null | "invalid" {
   if (rounded < _LOW_BATTERY_LOW || rounded > _LOW_BATTERY_HIGH) return "invalid";
   return rounded;
 }
-const _LOW_BATTERY_ERROR = "Effective thresholds must satisfy threshold_percent < clear_percent with ≥ 1 % hysteresis, both integers within 0…100 %.";
-export function validateLowBatteryOverrides(input: LowBatteryStressInput): { values: Record<LowBatteryStressKey, number | null>; error: string | null } {
+export function validateLowBatteryOverrides(input: LowBatteryStressInput, l: Localizer = ENGLISH): { values: Record<LowBatteryStressKey, number | null>; error: string | null } {
   const parsed: Partial<Record<LowBatteryStressKey, number | null>> = {};
   for (const key of LOW_BATTERY_STRESS_KEYS) {
     const result = parseLowBatteryField(input[key]);
-    if (result === "invalid") return { values: {} as Record<LowBatteryStressKey, number | null>, error: _LOW_BATTERY_ERROR };
+    if (result === "invalid") return { values: {} as Record<LowBatteryStressKey, number | null>, error: l.t("threshold_error.low_battery") };
     parsed[key] = result;
   }
   const values = parsed as Record<LowBatteryStressKey, number | null>;
   const eff = (k: LowBatteryStressKey) => values[k] ?? LOW_BATTERY_STRESS_BUILTIN_DEFAULTS[k];
   const threshold = eff("threshold_percent"), clear = eff("clear_percent");
   if (!(threshold < clear) || clear - threshold < _LOW_BATTERY_MIN_HYST) {
-    return { values, error: _LOW_BATTERY_ERROR };
+    return { values, error: l.t("threshold_error.low_battery") };
   }
   return { values, error: null };
 }
@@ -452,19 +412,18 @@ export function parseLowLightField(raw: string): number | null | "invalid" {
   if (rounded < _LOW_LIGHT_LOW || rounded > _LOW_LIGHT_HIGH) return "invalid";
   return rounded;
 }
-const _LOW_LIGHT_ERROR = "Effective thresholds must satisfy target_lux < clear_lux with ≥ 10.0 lx hysteresis, both within 0.0…200000.0 lx.";
-export function validateLowLightOverrides(input: LowLightStressInput): { values: Record<LowLightStressKey, number | null>; error: string | null } {
+export function validateLowLightOverrides(input: LowLightStressInput, l: Localizer = ENGLISH): { values: Record<LowLightStressKey, number | null>; error: string | null } {
   const parsed: Partial<Record<LowLightStressKey, number | null>> = {};
   for (const key of LOW_LIGHT_STRESS_KEYS) {
     const result = parseLowLightField(input[key]);
-    if (result === "invalid") return { values: {} as Record<LowLightStressKey, number | null>, error: _LOW_LIGHT_ERROR };
+    if (result === "invalid") return { values: {} as Record<LowLightStressKey, number | null>, error: l.t("threshold_error.low_light") };
     parsed[key] = result;
   }
   const values = parsed as Record<LowLightStressKey, number | null>;
   const eff = (k: LowLightStressKey) => values[k] ?? LOW_LIGHT_STRESS_BUILTIN_DEFAULTS[k];
   const target = eff("target_lux"), clear = eff("clear_lux");
   if (!(target < clear) || clear - target < _LOW_LIGHT_MIN_HYST) {
-    return { values, error: _LOW_LIGHT_ERROR };
+    return { values, error: l.t("threshold_error.low_light") };
   }
   return { values, error: null };
 }
@@ -477,7 +436,7 @@ export function lowLightInput(persisted: Partial<Record<LowLightStressKey, numbe
   }
   return out;
 }
-export function effectiveThresholds(plant: PlantRecord, role: ProblemBinaryRole, entities: HAEntity[], states: Record<string, HAState>): ThresholdReading[] {
+export function effectiveThresholds(plant: PlantRecord, role: ProblemBinaryRole, entities: HAEntity[], states: Record<string, HAState>, l: Localizer = ENGLISH): ThresholdReading[] {
   const uniqueId = `smart_plants:${plant.id}:${role}`;
   const entry = entities.find(e => e.unique_id === uniqueId && e.platform === "smart_plants");
   if (!entry) return [];
@@ -486,20 +445,21 @@ export function effectiveThresholds(plant: PlantRecord, role: ProblemBinaryRole,
   return THRESHOLD_SPECS[role].map(spec => {
     const raw = state.attributes[spec.key];
     const value = typeof raw === "number" && Number.isFinite(raw) ? raw : null;
-    return { key: spec.key, label: spec.label, unit: spec.unit, value };
+    return { key: spec.key, label: l.t(spec.label), unit: spec.unit, value };
   });
 }
-export function problemBinaries(plant: PlantRecord, entities: HAEntity[], states: Record<string, HAState>): ProblemBinaryReading[] {
+export function problemBinaries(plant: PlantRecord, entities: HAEntity[], states: Record<string, HAState>, l: Localizer = ENGLISH): ProblemBinaryReading[] {
   return PROBLEM_BINARY_ROLES.map(role => {
+    const label = problemLabel(role, l);
     const uniqueId = `smart_plants:${plant.id}:${role}`;
     const entry = entities.find(e => e.unique_id === uniqueId && e.platform === "smart_plants");
-    if (!entry) return { role, label: PROBLEM_BINARY_LABELS[role], status: "not_configured" as ProblemStatus, reason: null };
+    if (!entry) return { role, label, status: "not_configured" as ProblemStatus, reason: null };
     const state = states[entry.entity_id];
-    if (!state || state.state === "unavailable" || state.state === "unknown") return { role, label: PROBLEM_BINARY_LABELS[role], status: "unavailable" as ProblemStatus, reason: null };
+    if (!state || state.state === "unavailable" || state.state === "unknown") return { role, label, status: "unavailable" as ProblemStatus, reason: null };
     const status: ProblemStatus = state.state === "on" ? "on" : "off";
     const rawReason = state.attributes["reason"];
     const reason = typeof rawReason === "string" && rawReason.trim() ? rawReason : null;
-    return { role, label: PROBLEM_BINARY_LABELS[role], status, reason };
+    return { role, label, status, reason };
   });
 }
 export function emptyMoisture(): MoistureInput {
@@ -523,13 +483,13 @@ export function moistureRole(plant: PlantRecord): MoistureRoleConfig | null {
 export function moistureInput(m: MoistureRoleConfig): MoistureInput {
   return structuredClone({ sources: m.sources, primary_entity_id: m.primary_entity_id, aggregation: m.aggregation, stale_after_seconds: m.stale_after_seconds, threshold_overrides: m.threshold_overrides });
 }
-export function validateMoisture(m: MoistureInput, defaults: typeof builtin): string | null {
-  if (m.sources.length > 32 || new Set(m.sources.map(s => s.entity_id)).size !== m.sources.length || new Set(m.sources.map(s => s.registry_id ?? s.entity_id)).size !== m.sources.length || m.sources.some(s => !/^sensor\.[a-z0-9_]+$/.test(s.entity_id))) return "Choose at most 32 unique sensor entities.";
-  if (!["primary", "average", "min", "max"].includes(m.aggregation)) return "Choose a supported aggregation.";
-  if (m.primary_entity_id !== null && !m.sources.some(s => s.entity_id === m.primary_entity_id)) return "Primary must be one of the assigned sensors or None.";
-  if (!Number.isInteger(m.stale_after_seconds) || m.stale_after_seconds < 60 || m.stale_after_seconds > 604800) return "Staleness must be an integer from 60 to 604800 seconds.";
+export function validateMoisture(m: MoistureInput, defaults: typeof builtin, l: Localizer = ENGLISH): string | null {
+  if (m.sources.length > 32 || new Set(m.sources.map(s => s.entity_id)).size !== m.sources.length || new Set(m.sources.map(s => s.registry_id ?? s.entity_id)).size !== m.sources.length || m.sources.some(s => !/^sensor\.[a-z0-9_]+$/.test(s.entity_id))) return l.t("validation.sources_unique");
+  if (!["primary", "average", "min", "max"].includes(m.aggregation)) return l.t("validation.aggregation");
+  if (m.primary_entity_id !== null && !m.sources.some(s => s.entity_id === m.primary_entity_id)) return l.t("validation.primary");
+  if (!Number.isInteger(m.stale_after_seconds) || m.stale_after_seconds < 60 || m.stale_after_seconds > 604800) return l.t("validation.stale_after");
   const v = keys.map(k => m.threshold_overrides[k] ?? defaults[k]);
-  if (v.some(n => !Number.isInteger(n) || n < 1 || n > 99) || !(v[0] < v[1] && v[1] < v[2] && v[2] - v[0] >= 4)) return "Effective moisture thresholds must be integers: 1 ≤ min < target < max ≤ 99, with a span of at least 4%.";
+  if (v.some(n => !Number.isInteger(n) || n < 1 || n > 99) || !(v[0] < v[1] && v[1] < v[2] && v[2] - v[0] >= 4)) return l.t("validation.moisture_thresholds");
   return null;
 }
 export function manualSpecies(common: string, latin: string): PlantSpecies | null {
@@ -550,33 +510,38 @@ export function canonicalMoisture(m: MoistureInput, entities: HAEntity[]): Moist
     return entry ? { entity_id: entry.entity_id, registry_id: entry.id } : { ...s };
   }), primary_entity_id: primary ? resolveSource(primary, entities)?.entity_id ?? primary.entity_id : null };
 }
-export function sourceWarning(source: SensorSource, entities: HAEntity[], states: Record<string, HAState>): string {
+export function sourceWarning(source: SensorSource, entities: HAEntity[], states: Record<string, HAState>, l: Localizer = ENGLISH): string {
   const registered = resolveSource(source, entities);
-  if (source.registry_id && !registered) return "Missing registered source — replace it explicitly or review Repairs.";
+  if (source.registry_id && !registered) return l.t("source_warning.missing_registered");
   const state = states[registered?.entity_id ?? source.entity_id];
   const warnings = [];
-  if (!registered) warnings.push("Unregistered: renames cannot be followed reliably");
-  if (!state || ["unknown", "unavailable"].includes(state.state)) warnings.push("Currently unavailable");
-  if (state && (state.attributes.unit_of_measurement !== "%" || state.attributes.device_class !== "moisture")) warnings.push("Unexpected metadata: evaluation requires numeric 0–100 %");
-  if (state && !["unknown", "unavailable"].includes(state.state) && (!state.state.trim() || !Number.isFinite(Number(state.state)) || Number(state.state) < 0 || Number(state.state) > 100)) warnings.push("Invalid reading: evaluation requires a numeric percentage from 0 to 100");
-  return warnings.join(". ");
+  if (!registered) warnings.push(l.t("source_warning.unregistered"));
+  if (!state || ["unknown", "unavailable"].includes(state.state)) warnings.push(l.t("source_warning.unavailable"));
+  if (state && (state.attributes.unit_of_measurement !== "%" || state.attributes.device_class !== "moisture")) warnings.push(l.t("source_warning.moisture_metadata"));
+  if (state && !["unknown", "unavailable"].includes(state.state) && (!state.state.trim() || !Number.isFinite(Number(state.state)) || Number(state.state) < 0 || Number(state.state) > 100)) warnings.push(l.t("source_warning.moisture_reading"));
+  return warnings.join(l.t("source_warning.separator"));
 }
 // The seven Phase 7 roles that accept sources via the generic Sensors section.
 // deviceClass/acceptedUnits drive the picker filter and metadata warnings and
 // must match each role's evaluator so the UI warns before the backend rejects.
-export interface RoleSourceSpec { role: string; label: string; deviceClass: string; acceptedUnits: string[] }
+export type SourceRole = "temperature" | "humidity" | "illuminance" | "battery" | "conductivity" | "soil_temperature" | "co2";
+export interface RoleSourceSpec { role: SourceRole; deviceClass: string; acceptedUnits: string[] }
 export const ROLE_SOURCE_SPECS: readonly RoleSourceSpec[] = [
-  { role: "temperature", label: "Air temperature", deviceClass: "temperature", acceptedUnits: ["°C", "°F", "K"] },
-  { role: "humidity", label: "Air humidity", deviceClass: "humidity", acceptedUnits: ["%"] },
-  { role: "illuminance", label: "Illuminance", deviceClass: "illuminance", acceptedUnits: ["lx"] },
-  { role: "battery", label: "Battery", deviceClass: "battery", acceptedUnits: ["%"] },
+  { role: "temperature", deviceClass: "temperature", acceptedUnits: ["°C", "°F", "K"] },
+  { role: "humidity", deviceClass: "humidity", acceptedUnits: ["%"] },
+  { role: "illuminance", deviceClass: "illuminance", acceptedUnits: ["lx"] },
+  { role: "battery", deviceClass: "battery", acceptedUnits: ["%"] },
   // Conductivity source sensors report the micro sign (U+00B5), Greek mu
   // (U+03BC, the HA constant), or ASCII "uS/cm"; accept all three.
-  { role: "conductivity", label: "Conductivity", deviceClass: "conductivity", acceptedUnits: ["µS/cm", "μS/cm", "uS/cm"] },
-  { role: "soil_temperature", label: "Soil temperature", deviceClass: "temperature", acceptedUnits: ["°C", "°F", "K"] },
-  { role: "co2", label: "CO₂", deviceClass: "carbon_dioxide", acceptedUnits: ["ppm"] },
+  { role: "conductivity", deviceClass: "conductivity", acceptedUnits: ["µS/cm", "μS/cm", "uS/cm"] },
+  { role: "soil_temperature", deviceClass: "temperature", acceptedUnits: ["°C", "°F", "K"] },
+  { role: "co2", deviceClass: "carbon_dioxide", acceptedUnits: ["ppm"] },
 ] as const;
 export function roleSourceSpec(role: string): RoleSourceSpec | undefined { return ROLE_SOURCE_SPECS.find(s => s.role === role); }
+// Display name of a source role ("Air temperature") and the form used inside a
+// sentence ("air temperature" in English; German keeps noun capitalization).
+export function roleLabel(role: SourceRole, l: Localizer = ENGLISH): string { return l.t(`role.${role}`); }
+export function rolePhrase(role: SourceRole, l: Localizer = ENGLISH): string { return l.t(`role_phrase.${role}`); }
 export function emptyRoleSources(): RoleSourceInput {
   return { sources: [], primary_entity_id: null, aggregation: "primary", stale_after_seconds: 21600 };
 }
@@ -594,11 +559,11 @@ export function roleSourceConfig(plant: PlantRecord, role: string): RoleSourceCo
 export function roleSourceInput(c: RoleSourceConfig): RoleSourceInput {
   return structuredClone({ sources: c.sources, primary_entity_id: c.primary_entity_id, aggregation: c.aggregation, stale_after_seconds: c.stale_after_seconds });
 }
-export function validateRoleSources(c: RoleSourceInput): string | null {
-  if (c.sources.length > 32 || new Set(c.sources.map(s => s.entity_id)).size !== c.sources.length || new Set(c.sources.map(s => s.registry_id ?? s.entity_id)).size !== c.sources.length || c.sources.some(s => !/^sensor\.[a-z0-9_]+$/.test(s.entity_id))) return "Choose at most 32 unique sensor entities.";
-  if (!["primary", "average", "min", "max"].includes(c.aggregation)) return "Choose a supported aggregation.";
-  if (c.primary_entity_id !== null && !c.sources.some(s => s.entity_id === c.primary_entity_id)) return "Primary must be one of the assigned sensors or None.";
-  if (!Number.isInteger(c.stale_after_seconds) || c.stale_after_seconds < 60 || c.stale_after_seconds > 604800) return "Staleness must be an integer from 60 to 604800 seconds.";
+export function validateRoleSources(c: RoleSourceInput, l: Localizer = ENGLISH): string | null {
+  if (c.sources.length > 32 || new Set(c.sources.map(s => s.entity_id)).size !== c.sources.length || new Set(c.sources.map(s => s.registry_id ?? s.entity_id)).size !== c.sources.length || c.sources.some(s => !/^sensor\.[a-z0-9_]+$/.test(s.entity_id))) return l.t("validation.sources_unique");
+  if (!["primary", "average", "min", "max"].includes(c.aggregation)) return l.t("validation.aggregation");
+  if (c.primary_entity_id !== null && !c.sources.some(s => s.entity_id === c.primary_entity_id)) return l.t("validation.primary");
+  if (!Number.isInteger(c.stale_after_seconds) || c.stale_after_seconds < 60 || c.stale_after_seconds > 604800) return l.t("validation.stale_after");
   return null;
 }
 export function canonicalRoleSources(c: RoleSourceInput, entities: HAEntity[]): RoleSourceInput {
@@ -610,21 +575,21 @@ export function canonicalRoleSources(c: RoleSourceInput, entities: HAEntity[]): 
 }
 // Generic metadata warning parameterised by the role's expected device_class and
 // accepted units (the moisture equivalent is sourceWarning).
-export function roleSourceWarning(source: SensorSource, entities: HAEntity[], states: Record<string, HAState>, spec: RoleSourceSpec): string {
+export function roleSourceWarning(source: SensorSource, entities: HAEntity[], states: Record<string, HAState>, spec: RoleSourceSpec, l: Localizer = ENGLISH): string {
   const registered = resolveSource(source, entities);
-  if (source.registry_id && !registered) return "Missing registered source — replace it explicitly or review Repairs.";
+  if (source.registry_id && !registered) return l.t("source_warning.missing_registered");
   const state = states[registered?.entity_id ?? source.entity_id];
   const warnings = [];
-  if (!registered) warnings.push("Unregistered: renames cannot be followed reliably");
-  if (!state || ["unknown", "unavailable"].includes(state.state)) warnings.push("Currently unavailable");
+  if (!registered) warnings.push(l.t("source_warning.unregistered"));
+  if (!state || ["unknown", "unavailable"].includes(state.state)) warnings.push(l.t("source_warning.unavailable"));
   if (state) {
     const unit = state.attributes.unit_of_measurement;
     const cls = state.attributes.device_class;
-    if (typeof unit !== "string" || !spec.acceptedUnits.includes(unit) || cls !== spec.deviceClass) warnings.push(`Unexpected metadata: ${spec.label} evaluation requires device class ${spec.deviceClass} and unit ${spec.acceptedUnits.join(" / ")}`);
+    if (typeof unit !== "string" || !spec.acceptedUnits.includes(unit) || cls !== spec.deviceClass) warnings.push(l.t("source_warning.role_metadata", { role: roleLabel(spec.role, l), device_class: spec.deviceClass, units: spec.acceptedUnits.join(" / ") }));
   }
-  return warnings.join(". ");
+  return warnings.join(l.t("source_warning.separator"));
 }
 export function tags(raw: string): string[] { return [...new Set(raw.split(",").map(s => s.trim()).filter(Boolean))]; }
-export function validateTaxonomy(category: string, values: string[]): string | null {
-  return category.length > 60 || values.length > 32 || values.some(t => t.length > 60) ? "Use a category up to 60 characters and at most 32 unique tags up to 60 characters each." : null;
+export function validateTaxonomy(category: string, values: string[], l: Localizer = ENGLISH): string | null {
+  return category.length > 60 || values.length > 32 || values.some(t => t.length > 60) ? l.t("validation.taxonomy") : null;
 }

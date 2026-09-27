@@ -73,6 +73,8 @@ Every scenario runs in Chromium at **1440 × 1000 desktop** and **375 × 812 mob
 - Six provider error cases plus provider-disabled capability: manual creation
   remains available without remote dependency.
 - Full-rule axe audits, overflow checks and screenshots.
+- German rendering (`?lang=de`): inventory, detail tabs, sensors, care, diagnostics,
+  locale-formatted thresholds and validation messages, with axe audits.
 
 ## Accessibility and screenshot evidence
 

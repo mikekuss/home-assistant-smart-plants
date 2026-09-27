@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- The sidebar panel is now available in German. It follows the language in your Home Assistant
+  user profile and falls back to English for other languages. Numbers and dates in the panel
+  use your profile's number and time format.
+
+### Changed
+
+- Advanced diagnostics shows each problem indicator's reason as readable text (for example
+  "too hot") instead of its internal code (`hot_stress`).
+
 ### Fixed
 
 - In the Advanced diagnostics section, each problem indicator's status no longer carries an

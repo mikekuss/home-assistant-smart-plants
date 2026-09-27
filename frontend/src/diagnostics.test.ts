@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SmartPlantsPanel } from "./panel.js";
 import { PROBLEM_BINARY_ROLES, THRESHOLD_SPECS, effectiveThresholds, problemBinaries } from "./model.js";
-import type { HAEntity, HAState, PlantRecord } from "./types.js";
+import { createLocalizer } from "./localize.js";
+import type { HAEntity, HAState, HomeAssistantLike, PlantRecord } from "./types.js";
 import { click, harness, sample, settle } from "./test-helpers.js";
 
 const PLANT_ID = sample.id;
@@ -396,7 +397,7 @@ describe("Overall health section", () => {
   });
 });
 
-describe("Localization fallback and passthrough", () => {
+describe("Panel string catalog", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["x"], { type: "image/webp" }))));
   });
@@ -406,7 +407,7 @@ describe("Localization fallback and passthrough", () => {
     vi.unstubAllGlobals();
   });
 
-  async function mountWith(localize?: (key: string, ...args: unknown[]) => string): Promise<{ el: SmartPlantsPanel; seenKeys: string[] }> {
+  async function mountWith(localize?: (key: string, ...args: unknown[]) => string, hassLocale: Pick<HomeAssistantLike, "language" | "locale"> = {}): Promise<{ el: SmartPlantsPanel; seenKeys: string[] }> {
     const seenKeys: string[] = [];
     const wrapped = localize
       ? (key: string, ...args: unknown[]) => { seenKeys.push(key); return localize(key, ...args); }
@@ -420,12 +421,13 @@ describe("Localization fallback and passthrough", () => {
       return undefined;
     });
     if (wrapped) h.hass.localize = wrapped;
+    Object.assign(h.hass, hassLocale);
     const el = new SmartPlantsPanel();
     el.hass = h.hass;
     document.body.append(el);
     await settle(el);
     await click(el, "Aloe");
-    await click(el, "Diagnostics");
+    await click(el, createLocalizer(h.hass).t("detail.tab_diagnostics"));
     await settle(el); await settle(el);
     return { el, seenKeys };
   }
@@ -446,60 +448,60 @@ describe("Localization fallback and passthrough", () => {
     expect(diagnostics.textContent).toContain("problem detected");
   });
 
-  it("calls localize with the documented keys and renders returned strings verbatim", async () => {
-    const map: Record<string, string> = {
-      "component.smart_plants.panel.section.overall_health": "Gesamtzustand",
-      "component.smart_plants.panel.section.overall_health_available_summary": "{score} von 100",
-      "component.smart_plants.panel.section.overall_health_confidence": "Vertrauen",
-      "component.smart_plants.panel.section.overall_health_included_roles": "Beruecksichtigte Rollen",
-      "component.smart_plants.panel.section.overall_health_configured_unavailable": "Konfiguriert, aber nicht verfuegbar",
-      "component.smart_plants.panel.section.confidence_high": "jede konfigurierte Rolle ist derzeit verfuegbar.",
-      "component.smart_plants.panel.health_contributor.moisture": "Feuchte",
-      "component.smart_plants.panel.health_contributor.temperature": "Temperatur",
-      "component.smart_plants.panel.section.advanced_diagnostics": "Erweiterte Diagnose",
-      "component.smart_plants.panel.section.advanced_diagnostics_description": "Status der Indikatoren.",
-      "component.smart_plants.panel.section.advanced_diagnostics_one_active": "1 aktives Problem.",
-      "component.smart_plants.panel.section.advanced_diagnostics_status_problem": "Problem erkannt",
-    };
-    const localize = (key: string, ..._args: unknown[]) => map[key] ?? "";
-    const { el, seenKeys } = await mountWith(localize);
-    expect(seenKeys).toContain("component.smart_plants.panel.section.overall_health");
-    expect(seenKeys).toContain("component.smart_plants.panel.section.advanced_diagnostics");
-    expect(seenKeys).toContain("component.smart_plants.panel.section.confidence_high");
-    expect(seenKeys).toContain("component.smart_plants.panel.health_contributor.moisture");
+  it("renders the German catalog for a German Home Assistant language", async () => {
+    const { el } = await mountWith(undefined, { language: "de" });
     const overall = el.shadowRoot!.querySelector("#overall-health-heading")!.closest("section")!;
     const diagnostics = el.shadowRoot!.querySelector("#diagnostics-heading")!.closest("section")!;
     expect(el.shadowRoot!.querySelector("#overall-health-heading")?.textContent).toBe("Gesamtzustand");
     expect(overall.textContent).toContain("82 von 100");
-    expect(overall.textContent).toContain("Vertrauen");
-    expect(overall.textContent).toContain("Feuchte");
+    expect(overall.textContent).toContain("hoch — jede konfigurierte Rolle ist derzeit verfügbar.");
+    expect(overall.textContent).toContain("Bodenfeuchte");
     expect(overall.textContent).toContain("Temperatur");
-    expect(overall.textContent).toContain("jede konfigurierte Rolle ist derzeit verfuegbar.");
     expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Erweiterte Diagnose");
-    expect(diagnostics.textContent).toContain("Status der Indikatoren.");
     expect(diagnostics.textContent).toContain("1 aktives Problem.");
-    expect(diagnostics.textContent).toContain("Problem erkannt");
-  });
-
-  it("preserves DOM structure and aria attributes when localize is supplied", async () => {
-    const localize = (key: string, ..._args: unknown[]) =>
-      key === "component.smart_plants.panel.section.advanced_diagnostics_status_problem" ? "Problem erkannt" : "";
-    const { el } = await mountWith(localize);
-    const overall = el.shadowRoot!.querySelector("section[aria-labelledby=overall-health-heading]");
-    const diagnostics = el.shadowRoot!.querySelector("section[aria-labelledby=diagnostics-heading]");
-    expect(overall).not.toBeNull();
-    expect(diagnostics).not.toBeNull();
-    expect(diagnostics!.querySelector("dl.diagnostics")).not.toBeNull();
-    const dd = diagnostics!.querySelector("dd.status-on");
-    // The visible status text uses the (localized) "problem detected" phrase
+    expect(diagnostics.querySelector("dt")?.textContent).toBe("Temperaturstress");
+    const dd = diagnostics.querySelector("dd.status-on");
     expect(dd?.hasAttribute("aria-label")).toBe(false);
     expect(dd?.textContent?.trim().startsWith("Problem erkannt")).toBe(true);
-    expect(overall!.querySelector("dl.overall-health")).not.toBeNull();
-    expect(overall!.querySelector("p[role=status]")).not.toBeNull();
-    expect(diagnostics!.querySelector("p[role=status]")).not.toBeNull();
+    const tabs = el.shadowRoot!.querySelector("nav.detail-tabs");
+    expect(tabs?.getAttribute("aria-label")).toBe("Pflanzenbereiche");
+    expect([...tabs!.querySelectorAll("button")].map(b => b.textContent)).toEqual(["Übersicht", "Sensoren", "Pflegeverlauf", "Pflanzendetails", "Diagnose"]);
   });
 
-  it("falls back when localize returns an empty or whitespace string", async () => {
+  it.each([["en", "hot_stress", "too hot"], ["de", "hot_stress", "zu heiß"], ["de", "future_reason", "future_reason"]])("renders the %s text for reason code %s", async (language, reason, expected) => {
+    const entities = buildRegistry(["temperature_stress"]);
+    const states = buildStates({ temperature_stress: { state: "on", attributes: { reason } } });
+    const h = harness([sample], msg => {
+      if (msg.type === "config/entity_registry/list") return entities;
+      if (msg.type === "get_states") return Object.values(states);
+      return undefined;
+    });
+    h.hass.language = language;
+    const el = new SmartPlantsPanel();
+    el.hass = h.hass;
+    document.body.append(el);
+    await settle(el);
+    await click(el, "Aloe");
+    await click(el, createLocalizer(h.hass).t("detail.tab_diagnostics"));
+    expect(el.shadowRoot!.querySelector("dl.diagnostics dd.status-on")?.textContent).toContain(` — ${expected}`);
+  });
+
+  it("prefers hass.locale.language over hass.language", async () => {
+    const german = await mountWith(undefined, { language: "en", locale: { language: "de" } });
+    expect(german.el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Erweiterte Diagnose");
+    document.body.replaceChildren();
+    const fallback = await mountWith(undefined, { language: "de", locale: { language: "fr" } });
+    expect(fallback.el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Advanced diagnostics");
+  });
+
+  it("does not consult hass.localize for panel strings", async () => {
+    const { el, seenKeys } = await mountWith(() => "Replaced");
+    expect(seenKeys.filter(key => key.startsWith("component.smart_plants"))).toEqual([]);
+    expect(el.shadowRoot!.querySelector("#overall-health-heading")?.textContent).toBe("Overall health");
+    expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Advanced diagnostics");
+  });
+
+  it("renders English when localize returns an empty or whitespace string", async () => {
     const localize = (_key: string, ..._args: unknown[]) => "  ";
     const { el } = await mountWith(localize);
     expect(el.shadowRoot!.querySelector("#overall-health-heading")?.textContent).toBe("Overall health");
