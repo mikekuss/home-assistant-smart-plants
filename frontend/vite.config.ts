@@ -19,13 +19,16 @@ export default defineConfig({
       formats: ["es"],
       fileName: () => "smart-plants-panel.js",
     },
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        inlineDynamicImports: true,
+        codeSplitting: false,
+        // Keep the @license headers of bundled dependencies (lit) in the
+        // artifact; Vite strips legal comments by default when minifying.
+        comments: { legal: true },
       },
     },
     target: "es2020",
     sourcemap: false,
-    minify: "esbuild",
+    minify: "oxc",
   },
 });
