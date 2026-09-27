@@ -27,8 +27,10 @@ if [[ ! -d "$runtime" ]]; then
   echo "dev/ha-config/ does not exist. Run ha-up.sh --expose, onboard, ha-down.sh first." >&2
   exit 1
 fi
-if [[ -f "$runtime/.ha_run.lock" ]]; then
-  echo "dev/ha-config/.ha_run.lock present - HA is still running. Stop with ha-down.sh first." >&2
+# HA never deletes .ha_run.lock (it holds an flock on it), so the file's
+# presence says nothing; check the rig container instead.
+if [[ -n "$(docker ps -q --filter name=^smart-plants-ha$)" ]]; then
+  echo "The smart-plants-ha container is still running. Stop with ha-down.sh first." >&2
   exit 1
 fi
 
@@ -51,7 +53,6 @@ storage_keep=(
   core.uuid
   homeassistant.exposed_entities
   http
-  http.auth
   lovelace_dashboards
   lovelace.map
 )
@@ -77,6 +78,17 @@ p = pathlib.Path("dev/ha-config-seed/.storage/auth")
 if p.exists():
     data = json.loads(p.read_text())
     data["data"]["refresh_tokens"] = []
+    # The system content user is only reachable through its refresh token,
+    # which is stripped above. Drop the user as well (http.auth, which points
+    # at the token, is not seeded) so HA creates exactly one on first boot.
+    data["data"]["users"] = [
+        user
+        for user in data["data"]["users"]
+        if not (
+            user.get("system_generated")
+            and user.get("name") == "Home Assistant Content"
+        )
+    ]
     p.write_text(json.dumps(data, indent=4))
 PY
 

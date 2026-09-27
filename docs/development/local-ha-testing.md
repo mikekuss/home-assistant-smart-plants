@@ -1,6 +1,6 @@
 # Isolated Local Home Assistant Testing
 
-This repository includes a browsable Home Assistant 2026.7.0 development instance for manual integration testing. It is separate from the Linux pytest stack in `docker-compose.yml` and must never use live Home Assistant credentials or configuration.
+This repository includes a browsable Home Assistant 2026.8.0 development instance for manual integration testing. It is separate from the Linux pytest stack in `docker-compose.yml` and must never use live Home Assistant credentials or configuration.
 
 ## Security Boundary
 
@@ -79,7 +79,7 @@ git diff -- dev/ha-config-seed        # review tracked-file changes
 
 Bash: `ha-reset.sh`, `ha-up.sh --expose`, `ha-down.sh`, `ha-seed-from-runtime.sh`.
 
-The regen script curates which `.storage/` keys ship in the seed (identity, auth, integration, layout) and strips `.storage/auth.data.refresh_tokens` so no long-lived session token lands in git. If HA adds a new key that belongs in the seed, extend the `StorageKeep` / `storage_keep` list in both scripts.
+The regen script curates which `.storage/` keys ship in the seed (identity, auth, integration, layout) and strips `.storage/auth.data.refresh_tokens` so no long-lived session token lands in git. Because that also strips the token of Home Assistant's system "Home Assistant Content" user, the script drops that user too and does not seed `.storage/http.auth`; Home Assistant creates a fresh one on first boot. If HA adds a new key that belongs in the seed, extend the `StorageKeep` / `storage_keep` list in both scripts.
 
 Never broad-stage the seed. Stage only explicit reviewed paths; `.gitignore`
 deny-lists every non-allowlisted generated `.storage` key.
@@ -90,7 +90,7 @@ The committed `dev/ha-config-seed/configuration.yaml` defines synthetic moisture
 
 ## Version Policy
 
-The minimum-support rig uses the exact `homeassistant/home-assistant:2026.7.0` tag. A separate opt-in latest-supported smoke target may be added later; never replace the minimum target with a floating minor or `stable` tag. **When you bump this tag, also regenerate the seed** (see above).
+The minimum-support rig uses the exact `homeassistant/home-assistant:2026.8.0` tag. A separate opt-in latest-supported smoke target may be added later; never replace the minimum target with a floating minor or `stable` tag. **When you bump this tag, also regenerate the seed** (see above).
 
 ## Limitations
 

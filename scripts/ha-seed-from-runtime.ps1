@@ -25,8 +25,10 @@ $Runtime = Join-Path $RepoRoot "dev\ha-config"
 $Seed    = Join-Path $RepoRoot "dev\ha-config-seed"
 
 if (-not (Test-Path $Runtime)) { throw "dev/ha-config/ does not exist. Run ha-up.ps1 -Expose, onboard, ha-down.ps1 first." }
-if (Test-Path (Join-Path $Runtime ".ha_run.lock")) {
-    throw "dev/ha-config/.ha_run.lock present - HA is still running. Stop with ha-down.ps1 first."
+# HA never deletes .ha_run.lock (it holds a file lock on it), so the file's
+# presence says nothing; check the rig container instead.
+if (docker ps -q --filter "name=^smart-plants-ha$") {
+    throw "The smart-plants-ha container is still running. Stop with ha-down.ps1 first."
 }
 
 # .storage keys worth seeding (identity, auth, integration, layout).
@@ -42,7 +44,6 @@ $StorageKeep = @(
     "core.uuid",
     "homeassistant.exposed_entities",
     "http",
-    "http.auth",
     "lovelace_dashboards",
     "lovelace.map"
 )
@@ -73,6 +74,12 @@ $authFile = Join-Path $SeedStorage "auth"
 if (Test-Path $authFile) {
     $auth = Get-Content $authFile -Raw | ConvertFrom-Json
     $auth.data.refresh_tokens = @()
+    # The system content user is only reachable through its refresh token,
+    # which is stripped above. Drop the user as well (http.auth, which points
+    # at the token, is not seeded) so HA creates exactly one on first boot.
+    $auth.data.users = @($auth.data.users | Where-Object {
+        -not ($_.system_generated -and $_.name -eq "Home Assistant Content")
+    })
     $json = $auth | ConvertTo-Json -Depth 20
     [IO.File]::WriteAllText($authFile, $json, [Text.UTF8Encoding]::new($false))
 }
