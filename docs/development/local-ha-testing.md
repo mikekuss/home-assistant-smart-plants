@@ -71,6 +71,7 @@ Procedure:
 # Complete onboarding manually with admin / admin (any password works locally;
 # use admin/admin so the committed seed matches what the docs promise).
 # Add Smart Plants under Settings -> Devices & Services. Add any demo data.
+# Log out of every session so no refresh token is left (see Seed Guard below).
 ./scripts/ha-down.ps1                # stop so .storage/ flushes cleanly
 ./scripts/ha-seed-from-runtime.ps1   # copy curated files back into dev/ha-config-seed/
 git status --short dev/ha-config-seed # inspect every candidate file
@@ -79,7 +80,25 @@ git diff -- dev/ha-config-seed        # review tracked-file changes
 
 Bash: `ha-reset.sh`, `ha-up.sh --expose`, `ha-down.sh`, `ha-seed-from-runtime.sh`.
 
-The regen script curates which `.storage/` keys ship in the seed (identity, auth, integration, layout) and strips `.storage/auth.data.refresh_tokens` so no long-lived session token lands in git. Because that also strips the token of Home Assistant's system "Home Assistant Content" user, the script drops that user too and does not seed `.storage/http.auth`; Home Assistant creates a fresh one on first boot. If HA adds a new key that belongs in the seed, extend the `StorageKeep` / `storage_keep` list in both scripts.
+The regen script curates which `.storage/` keys ship in the seed (identity, auth, integration, layout) and refuses to write a seed whose `.storage/auth` still holds refresh tokens, so no long-lived session token lands in git. If HA adds a new key that belongs in the seed, extend the `StorageKeep` / `storage_keep` list in both scripts.
+
+### Seed Guard
+
+Both regen scripts copy the curated files into a temporary staging directory and run `scripts/seed_guard.py` on it. They need Python 3 (`python3` for bash; `py -3`, `python`, or `python3` for PowerShell). The scripts refuse to run while the `smart-plants-ha` container is running; the leftover `dev/ha-config/.ha_run.lock` is not a signal, because Home Assistant never deletes it. The committed seed is replaced only when the guard passes. Otherwise the script prints `Refusing to write the seed:` with one line per problem, leaves `dev/ha-config-seed/` untouched, and exits non-zero.
+
+Both scripts pass `--drop-content-user`. Before checking, this removes Home Assistant's system "Home Assistant Content" user and its `system` refresh token from the staged `auth`, and deletes the staged `http.auth` that links them. That token cannot be logged out, and Home Assistant creates a new content user on first boot. Apart from that the guard only reads the staged files; both scripts copy them byte for byte, so a seed that passes is UTF-8 without BOM. It compares them with the seed committed at `git HEAD` and refuses the seed when:
+
+- Any copied file starts with a UTF-8 byte order mark. Home Assistant cannot decode such a storage file and moves it aside on boot, which loses the pre-onboarded login.
+- `auth` contains any refresh token. Tokens are refused, not stripped. Every login creates one, so before `ha-down`, log out of the browser session (and delete any other sessions under Profile -> Security). The refusal names the user and token type of each remaining token so you can find the session that still holds it.
+- `http.auth` is present. It only links the content user's refresh token, so it is never seeded.
+- The owner's password hash in `auth_provider.homeassistant` differs from the committed seed. Onboard with `admin` / `admin` (or reset the owner password to it) before regenerating.
+- The `smart_plants` config entry has non-empty `data` or `options`.
+- A device in `core.device_registry` (including `deleted_devices`) has `connections` such as MAC addresses, has a serial number, or belongs to an integration that has no config entry in the committed seed. Both the `config_entries` list of Home Assistant 2026.7 and the single `config_entry_id` of 2026.8 and newer are read.
+- `core.area_registry` contains an area that the committed seed does not.
+
+Every other file is copied byte for byte; neither script re-encodes JSON itself. If a deliberate seed change trips the guard (for example a new demo area), add it to the committed seed by hand in a reviewed commit first so it becomes the baseline, or extend the guard with a test in `tests/test_seed_guard.py`.
+
+To check a staging directory by hand, run `python3 scripts/seed_guard.py <dir>`, where `<dir>` has the same layout as `dev/ha-config-seed/` (a `.storage/` folder and optionally `.HA_VERSION`). `--baseline-dir <seed dir>` compares against a directory instead of `git HEAD`. Without `--drop-content-user`, the guard never modifies the directory it checks.
 
 Never broad-stage the seed. Stage only explicit reviewed paths; `.gitignore`
 deny-lists every non-allowlisted generated `.storage` key.

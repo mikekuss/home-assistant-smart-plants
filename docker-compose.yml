@@ -26,6 +26,7 @@ services:
       - ./custom_components:/app/custom_components:ro
       - ./tests:/app/tests:ro
       - ./scripts:/app/scripts:ro
+      - ./dev/ha-config-seed:/app/dev/ha-config-seed:ro
       - ./pyproject.toml:/app/pyproject.toml:ro
       - ./requirements-dev.txt:/app/requirements-dev.txt:ro
       - ./hacs.json:/app/hacs.json:ro

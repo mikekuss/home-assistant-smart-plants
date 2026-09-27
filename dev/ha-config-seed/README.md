@@ -15,7 +15,7 @@ The bcrypt hash for `admin` lives in `.storage/auth_provider.homeassistant`. Thi
 
 - Never point this rig at real actuators, real OpenPlantBook tokens, HACS credentials, or any live Home Assistant data.
 - Never expose the container beyond `127.0.0.1`.
-- Do not commit refresh tokens or session cookies. The regen script strips `.storage/auth.data.refresh_tokens` before writing the seed.
+- Do not commit refresh tokens or session cookies. The regen script refuses to write the seed while `.storage/auth.data.refresh_tokens` holds a session token, so log out of every session before stopping the rig. It removes Home Assistant's system content user, whose token cannot be logged out, and never seeds `.storage/http.auth`.
 - Do not add new integrations whose config entries would embed API keys or personal identifiers into `.storage/core.config_entries` when regenerating the seed.
 
 ## Seed Contents
@@ -40,15 +40,17 @@ Procedure:
 ```powershell
 ./scripts/ha-reset.ps1               # wipe dev/ha-config/
 ./scripts/ha-up.ps1 -Expose          # boot bare rig against the new image / new code
-# Complete onboarding manually (any local password), add Smart Plants, add any demo data desired.
+# Complete onboarding as admin / admin, add Smart Plants, add any demo data desired.
+# Log out of every session so no refresh token is left.
 ./scripts/ha-down.ps1                # stop so .storage/ flushes cleanly
-./scripts/ha-seed-from-runtime.ps1   # copy curated files back into dev/ha-config-seed/
-# Reset admin/admin manually if you used a different onboarding password.
+./scripts/ha-seed-from-runtime.ps1   # check and copy curated files back into dev/ha-config-seed/
 git status --short dev/ha-config-seed # inspect every candidate file
 git diff -- dev/ha-config-seed        # review tracked-file changes
 ```
 
 Bash equivalents: `ha-reset.sh`, `ha-up.sh --expose`, `ha-down.sh`, `ha-seed-from-runtime.sh`.
+
+The regen script runs `scripts/seed_guard.py` on the copied files and leaves this directory untouched when it finds a problem: a UTF-8 byte order mark in any file, a refresh token, an owner password hash other than the committed `admin` one, non-empty `smart_plants` config entry `data` or `options`, devices with connections, serial numbers, or from new integrations, or new areas. See [local-ha-testing.md](../../docs/development/local-ha-testing.md#seed-guard) for details.
 
 If the regen script errors out because HA's `.storage/` grew a new keyfile that we should include (or should exclude for privacy), update the `StorageKeep` list in both `ha-seed-from-runtime.ps1` and `ha-seed-from-runtime.sh` and rerun.
 

@@ -1,46 +1,46 @@
 {
-    "version": 1,
-    "minor_version": 1,
-    "key": "auth",
-    "data": {
-        "users": [
-            {
-                "id": "aec817a5f9d04e04aeb18d5ba2caf64e",
-                "group_ids": [
-                    "system-admin"
-                ],
-                "is_owner": true,
-                "is_active": true,
-                "name": "Dev",
-                "system_generated": false,
-                "local_only": false
-            }
+  "version": 1,
+  "minor_version": 1,
+  "key": "auth",
+  "data": {
+    "users": [
+      {
+        "id": "aec817a5f9d04e04aeb18d5ba2caf64e",
+        "group_ids": [
+          "system-admin"
         ],
-        "groups": [
-            {
-                "id": "system-admin",
-                "name": "Administrators"
-            },
-            {
-                "id": "system-users",
-                "name": "Users"
-            },
-            {
-                "id": "system-read-only",
-                "name": "Read Only"
-            }
-        ],
-        "credentials": [
-            {
-                "id": "de94dfbb266b4c9a9d4846cb57a00bea",
-                "user_id": "aec817a5f9d04e04aeb18d5ba2caf64e",
-                "auth_provider_type": "homeassistant",
-                "auth_provider_id": null,
-                "data": {
-                    "username": "admin"
-                }
-            }
-        ],
-        "refresh_tokens": []
-    }
+        "is_owner": true,
+        "is_active": true,
+        "name": "Dev",
+        "system_generated": false,
+        "local_only": false
+      }
+    ],
+    "groups": [
+      {
+        "id": "system-admin",
+        "name": "Administrators"
+      },
+      {
+        "id": "system-users",
+        "name": "Users"
+      },
+      {
+        "id": "system-read-only",
+        "name": "Read Only"
+      }
+    ],
+    "credentials": [
+      {
+        "id": "de94dfbb266b4c9a9d4846cb57a00bea",
+        "user_id": "aec817a5f9d04e04aeb18d5ba2caf64e",
+        "auth_provider_type": "homeassistant",
+        "auth_provider_id": null,
+        "data": {
+          "username": "admin"
+        }
+      }
+    ],
+    "refresh_tokens": []
+  }
 }
