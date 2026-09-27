@@ -64,6 +64,5 @@ dev/ha-config-seed/.storage/*
 !dev/ha-config-seed/.storage/core.uuid
 !dev/ha-config-seed/.storage/homeassistant.exposed_entities
 !dev/ha-config-seed/.storage/http
-!dev/ha-config-seed/.storage/http.auth
 !dev/ha-config-seed/.storage/lovelace_dashboards
 !dev/ha-config-seed/.storage/lovelace.map

@@ -101,6 +101,15 @@ class SmartPlantsDeviceReconciler:
     def _identifier(self, plant_id: str) -> set[tuple[str, str]]:
         return {(DOMAIN, plant_id)}
 
+    def _find_device(
+        self, registry: dr.DeviceRegistry, plant_id: str
+    ) -> dr.DeviceEntry | None:
+        # Device identifiers are only unique within a config entry, so the
+        # lookup is scoped to the entry that owns the plant.
+        return registry.async_get_device_by_identifier(
+            (DOMAIN, plant_id), self._entry_id
+        )
+
     async def async_reconcile_present(
         self,
         plant: PlantRecord,
@@ -115,7 +124,7 @@ class SmartPlantsDeviceReconciler:
         touch ``area_id``: HA's registry value wins.
         """
         registry = self._registry()
-        existing = registry.async_get_device(identifiers=self._identifier(plant.id))
+        existing = self._find_device(registry, plant.id)
 
         if existing is None:
             registry.async_get_or_create(
@@ -128,15 +137,6 @@ class SmartPlantsDeviceReconciler:
                 suggested_area=requested_area_id,
             )
             return
-
-        # Rebind the device to the current config entry if a prior removal
-        # scrubbed the link (defensive; the registry keeps this stable in
-        # normal flows).
-        if self._entry_id not in existing.config_entries:
-            registry.async_update_device(
-                existing.id,
-                add_config_entry_id=self._entry_id,
-            )
 
         # We only ever change the canonical ``name`` we authored. The
         # user's ``name_by_user`` overrides the display everywhere, so
@@ -160,7 +160,7 @@ class SmartPlantsDeviceReconciler:
         later pass.
         """
         registry = self._registry()
-        existing = registry.async_get_device(identifiers=self._identifier(plant_id))
+        existing = self._find_device(registry, plant_id)
         if existing is None:
             return False
         if existing.area_id == area_id:
@@ -191,7 +191,7 @@ class SmartPlantsDeviceReconciler:
         a torn-down subscription.
         """
         registry = self._registry()
-        existing = registry.async_get_device(identifiers=self._identifier(plant_id))
+        existing = self._find_device(registry, plant_id)
         # ``include_disabled_entities=True`` matters: a user who
         # disabled the entity_registry entry still expects a plant
         # deletion to wipe it, not to strand the entry.
@@ -227,7 +227,7 @@ class SmartPlantsDeviceReconciler:
         registry = self._registry()
         entity_reg = er.async_get(self._hass)
         known_ids = {*known_plant_ids, plant_id}
-        existing = registry.async_get_device(identifiers=self._identifier(plant_id))
+        existing = self._find_device(registry, plant_id)
         return existing is None and not any(
             entry.platform == DOMAIN
             and _unique_id_belongs_to_plant(

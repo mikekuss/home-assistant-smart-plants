@@ -31,8 +31,10 @@ if [[ ! -d "$runtime" ]]; then
   echo "dev/ha-config/ does not exist. Run ha-up.sh --expose, onboard, ha-down.sh first." >&2
   exit 1
 fi
-if [[ -f "$runtime/.ha_run.lock" ]]; then
-  echo "dev/ha-config/.ha_run.lock present - HA is still running. Stop with ha-down.sh first." >&2
+# HA never deletes .ha_run.lock (it holds an flock on it), so the file's
+# presence says nothing; check the rig container instead.
+if [[ -n "$(docker ps -q --filter name=^smart-plants-ha$)" ]]; then
+  echo "The smart-plants-ha container is still running. Stop with ha-down.sh first." >&2
   exit 1
 fi
 
@@ -55,7 +57,6 @@ storage_keep=(
   core.uuid
   homeassistant.exposed_entities
   http
-  http.auth
   lovelace_dashboards
   lovelace.map
 )
@@ -79,7 +80,7 @@ fi
 # Refuses the seed on any BOM, refresh token, privacy or login problem. Files
 # are copied byte for byte, so a passing seed is UTF-8 without BOM. The
 # committed seed stays untouched when it fails.
-if ! python3 scripts/seed_guard.py "$staging"; then
+if ! python3 scripts/seed_guard.py --drop-content-user "$staging"; then
   echo "Seed NOT written; $seed is unchanged." >&2
   exit 1
 fi

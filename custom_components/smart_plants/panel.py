@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from homeassistant.components import frontend, panel_custom
-from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.http.server import StaticPathConfig
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import DOMAIN

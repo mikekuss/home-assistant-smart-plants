@@ -1,32 +1,905 @@
 {
   "version": 1,
-  "minor_version": 22,
+  "minor_version": 23,
   "key": "core.entity_registry",
   "data": {
     "entities": [
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":null,"config_subentry_id":null,"created_at":"2026-09-08T21:02:56.755908+00:00","device_class":null,"device_id":null,"disabled_by":null,"entity_category":null,"entity_id":"sensor.mock_fiddle_leaf_moisture","hidden_by":null,"icon":null,"id":"3dd31b67bba508dc4a9c8deb8655a154","has_entity_name":false,"labels":[],"modified_at":"2026-09-08T21:02:57.212447+00:00","name":null,"object_id_base":"Mock Fiddle Leaf Moisture","options":{"conversation":{"should_expose":false}},"original_device_class":"moisture","original_icon":null,"original_name":"Mock Fiddle Leaf Moisture","platform":"template","suggested_object_id":null,"supported_features":0,"translation_key":null,"unique_id":"mock_fiddle_moisture","previous_unique_id":null,"unit_of_measurement":"%"},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":null,"config_subentry_id":null,"created_at":"2026-09-08T21:02:56.756166+00:00","device_class":null,"device_id":null,"disabled_by":null,"entity_category":null,"entity_id":"sensor.mock_fiddle_leaf_temperature","hidden_by":null,"icon":null,"id":"d5f420bd104e7065b7ca1ae71e979723","has_entity_name":false,"labels":[],"modified_at":"2026-09-08T21:02:57.212503+00:00","name":null,"object_id_base":"Mock Fiddle Leaf Temperature","options":{"sensor":{"suggested_display_precision":1},"conversation":{"should_expose":true}},"original_device_class":"temperature","original_icon":null,"original_name":"Mock Fiddle Leaf Temperature","platform":"template","suggested_object_id":null,"supported_features":0,"translation_key":null,"unique_id":"mock_fiddle_temperature","previous_unique_id":null,"unit_of_measurement":"°C"},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":null,"config_subentry_id":null,"created_at":"2026-09-08T21:02:56.756349+00:00","device_class":null,"device_id":null,"disabled_by":null,"entity_category":null,"entity_id":"sensor.mock_fiddle_leaf_illuminance","hidden_by":null,"icon":null,"id":"9690327e7dfa5113e9393d7c44087605","has_entity_name":false,"labels":[],"modified_at":"2026-09-08T21:02:57.212523+00:00","name":null,"object_id_base":"Mock Fiddle Leaf Illuminance","options":{"conversation":{"should_expose":false}},"original_device_class":"illuminance","original_icon":null,"original_name":"Mock Fiddle Leaf Illuminance","platform":"template","suggested_object_id":null,"supported_features":0,"translation_key":null,"unique_id":"mock_fiddle_illuminance","previous_unique_id":null,"unit_of_measurement":"lx"},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":null,"config_subentry_id":null,"created_at":"2026-09-08T21:02:56.756428+00:00","device_class":null,"device_id":null,"disabled_by":null,"entity_category":null,"entity_id":"sensor.mock_monstera_moisture","hidden_by":null,"icon":null,"id":"5c828d8d6b7a9bcbeafa83b91cb8be5e","has_entity_name":false,"labels":[],"modified_at":"2026-09-08T21:02:57.212537+00:00","name":null,"object_id_base":"Mock Monstera Moisture","options":{"conversation":{"should_expose":false}},"original_device_class":"moisture","original_icon":null,"original_name":"Mock Monstera Moisture","platform":"template","suggested_object_id":null,"supported_features":0,"translation_key":null,"unique_id":"mock_monstera_moisture","previous_unique_id":null,"unit_of_measurement":"%"},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":null,"config_subentry_id":null,"created_at":"2026-09-08T21:02:56.756558+00:00","device_class":null,"device_id":null,"disabled_by":null,"entity_category":null,"entity_id":"sensor.mock_monstera_temperature","hidden_by":null,"icon":null,"id":"a888beb9d082061e722e1d2537f76728","has_entity_name":false,"labels":[],"modified_at":"2026-09-08T21:02:57.212550+00:00","name":null,"object_id_base":"Mock Monstera Temperature","options":{"sensor":{"suggested_display_precision":1},"conversation":{"should_expose":true}},"original_device_class":"temperature","original_icon":null,"original_name":"Mock Monstera Temperature","platform":"template","suggested_object_id":null,"supported_features":0,"translation_key":null,"unique_id":"mock_monstera_temperature","previous_unique_id":null,"unit_of_measurement":"°C"},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":"01M21D9H4EVX30FD8BVJ2K10E8","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.167381+00:00","device_class":null,"device_id":"64bf071c801afe20d37a4eb6bf8c6832","disabled_by":"integration","entity_category":"diagnostic","entity_id":"binary_sensor.sun_solar_rising","hidden_by":null,"icon":null,"id":"f443c9558a73fa586bcf0673de5cfe50","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.167429+00:00","name":null,"object_id_base":null,"options":{},"original_device_class":null,"original_icon":null,"original_name":"Solar rising","platform":"sun","suggested_object_id":"sun_solar_rising","supported_features":0,"translation_key":"solar_rising","unique_id":"01M21D9H4EVX30FD8BVJ2K10E8-solar_rising","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":"01M21D9H4EVX30FD8BVJ2K10E8","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.167674+00:00","device_class":null,"device_id":"64bf071c801afe20d37a4eb6bf8c6832","disabled_by":null,"entity_category":"diagnostic","entity_id":"sensor.sun_next_dawn","hidden_by":null,"icon":null,"id":"d5fcd18619e72c160e88d4d370e73416","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.212571+00:00","name":null,"object_id_base":null,"options":{"conversation":{"should_expose":false}},"original_device_class":"timestamp","original_icon":null,"original_name":"Next dawn","platform":"sun","suggested_object_id":"sun_next_dawn","supported_features":0,"translation_key":"next_dawn","unique_id":"01M21D9H4EVX30FD8BVJ2K10E8-next_dawn","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":"01M21D9H4EVX30FD8BVJ2K10E8","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.167885+00:00","device_class":null,"device_id":"64bf071c801afe20d37a4eb6bf8c6832","disabled_by":null,"entity_category":"diagnostic","entity_id":"sensor.sun_next_dusk","hidden_by":null,"icon":null,"id":"14d5bf59da4abad90aa4a755ad4c91ac","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.212590+00:00","name":null,"object_id_base":null,"options":{"conversation":{"should_expose":false}},"original_device_class":"timestamp","original_icon":null,"original_name":"Next dusk","platform":"sun","suggested_object_id":"sun_next_dusk","supported_features":0,"translation_key":"next_dusk","unique_id":"01M21D9H4EVX30FD8BVJ2K10E8-next_dusk","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":"01M21D9H4EVX30FD8BVJ2K10E8","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.167998+00:00","device_class":null,"device_id":"64bf071c801afe20d37a4eb6bf8c6832","disabled_by":null,"entity_category":"diagnostic","entity_id":"sensor.sun_next_midnight","hidden_by":null,"icon":null,"id":"3101de6988273b241879a8847ab0cfe7","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.212604+00:00","name":null,"object_id_base":null,"options":{"conversation":{"should_expose":false}},"original_device_class":"timestamp","original_icon":null,"original_name":"Next midnight","platform":"sun","suggested_object_id":"sun_next_midnight","supported_features":0,"translation_key":"next_midnight","unique_id":"01M21D9H4EVX30FD8BVJ2K10E8-next_midnight","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":"01M21D9H4EVX30FD8BVJ2K10E8","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.168179+00:00","device_class":null,"device_id":"64bf071c801afe20d37a4eb6bf8c6832","disabled_by":null,"entity_category":"diagnostic","entity_id":"sensor.sun_next_noon","hidden_by":null,"icon":null,"id":"66d8a0991e4bcdc94cacef6ac4fcd9cc","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.212619+00:00","name":null,"object_id_base":null,"options":{"conversation":{"should_expose":false}},"original_device_class":"timestamp","original_icon":null,"original_name":"Next noon","platform":"sun","suggested_object_id":"sun_next_noon","supported_features":0,"translation_key":"next_noon","unique_id":"01M21D9H4EVX30FD8BVJ2K10E8-next_noon","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":"01M21D9H4EVX30FD8BVJ2K10E8","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.168280+00:00","device_class":null,"device_id":"64bf071c801afe20d37a4eb6bf8c6832","disabled_by":null,"entity_category":"diagnostic","entity_id":"sensor.sun_next_rising","hidden_by":null,"icon":null,"id":"0ee286e2f29fa8e9242beefde6c844ba","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.212632+00:00","name":null,"object_id_base":null,"options":{"conversation":{"should_expose":false}},"original_device_class":"timestamp","original_icon":null,"original_name":"Next rising","platform":"sun","suggested_object_id":"sun_next_rising","supported_features":0,"translation_key":"next_rising","unique_id":"01M21D9H4EVX30FD8BVJ2K10E8-next_rising","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":"01M21D9H4EVX30FD8BVJ2K10E8","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.168360+00:00","device_class":null,"device_id":"64bf071c801afe20d37a4eb6bf8c6832","disabled_by":null,"entity_category":"diagnostic","entity_id":"sensor.sun_next_setting","hidden_by":null,"icon":null,"id":"d54ea5821446c9561068608cc3ab4133","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.212644+00:00","name":null,"object_id_base":null,"options":{"conversation":{"should_expose":false}},"original_device_class":"timestamp","original_icon":null,"original_name":"Next setting","platform":"sun","suggested_object_id":"sun_next_setting","supported_features":0,"translation_key":"next_setting","unique_id":"01M21D9H4EVX30FD8BVJ2K10E8-next_setting","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":{"state_class":"measurement"},"config_entry_id":"01M21D9H4EVX30FD8BVJ2K10E8","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.168433+00:00","device_class":null,"device_id":"64bf071c801afe20d37a4eb6bf8c6832","disabled_by":"integration","entity_category":"diagnostic","entity_id":"sensor.sun_solar_elevation","hidden_by":null,"icon":null,"id":"3ebb3a4dce2b9b43ca5761ea3b26a657","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.168447+00:00","name":null,"object_id_base":null,"options":{},"original_device_class":null,"original_icon":null,"original_name":"Solar elevation","platform":"sun","suggested_object_id":"sun_solar_elevation","supported_features":0,"translation_key":"solar_elevation","unique_id":"01M21D9H4EVX30FD8BVJ2K10E8-solar_elevation","previous_unique_id":null,"unit_of_measurement":"°"},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":{"state_class":"measurement"},"config_entry_id":"01M21D9H4EVX30FD8BVJ2K10E8","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.168480+00:00","device_class":null,"device_id":"64bf071c801afe20d37a4eb6bf8c6832","disabled_by":"integration","entity_category":"diagnostic","entity_id":"sensor.sun_solar_azimuth","hidden_by":null,"icon":null,"id":"b806f667166073acff5e18237f1eb7e5","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.168491+00:00","name":null,"object_id_base":null,"options":{},"original_device_class":null,"original_icon":null,"original_name":"Solar azimuth","platform":"sun","suggested_object_id":"sun_solar_azimuth","supported_features":0,"translation_key":"solar_azimuth","unique_id":"01M21D9H4EVX30FD8BVJ2K10E8-solar_azimuth","previous_unique_id":null,"unit_of_measurement":"°"},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":{"event_types":["completed","failed","in_progress"]},"config_entry_id":"01M21D9H5ZS2V41Q7E0NZCK2P5","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.236575+00:00","device_class":null,"device_id":"ba4b68b702855dde1508ff5d0813eafa","disabled_by":null,"entity_category":null,"entity_id":"event.backup_automatic_backup","hidden_by":null,"icon":null,"id":"d3b0a975ee0202907d580a35c3af3e7e","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.236765+00:00","name":null,"object_id_base":"Automatic backup","options":{"conversation":{"should_expose":false}},"original_device_class":null,"original_icon":null,"original_name":"Automatic backup","platform":"backup","suggested_object_id":null,"supported_features":0,"translation_key":"automatic_backup_event","unique_id":"automatic_backup_event","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":{"options":["idle","create_backup","blocked","receive_backup","restore_backup"]},"config_entry_id":"01M21D9H5ZS2V41Q7E0NZCK2P5","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.236984+00:00","device_class":null,"device_id":"ba4b68b702855dde1508ff5d0813eafa","disabled_by":null,"entity_category":null,"entity_id":"sensor.backup_backup_manager_state","hidden_by":null,"icon":null,"id":"f89b0b762080877a8a8bebaf06665c1a","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.237104+00:00","name":null,"object_id_base":"Backup Manager state","options":{"conversation":{"should_expose":false}},"original_device_class":"enum","original_icon":null,"original_name":"Backup Manager state","platform":"backup","suggested_object_id":null,"supported_features":0,"translation_key":"backup_manager_state","unique_id":"backup_manager_state","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":"01M21D9H5ZS2V41Q7E0NZCK2P5","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.237182+00:00","device_class":null,"device_id":"ba4b68b702855dde1508ff5d0813eafa","disabled_by":null,"entity_category":null,"entity_id":"sensor.backup_next_scheduled_automatic_backup","hidden_by":null,"icon":null,"id":"a17949eb4bfa4d3e13174246656a21f8","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.237251+00:00","name":null,"object_id_base":"Next scheduled automatic backup","options":{"conversation":{"should_expose":false}},"original_device_class":"timestamp","original_icon":null,"original_name":"Next scheduled automatic backup","platform":"backup","suggested_object_id":null,"supported_features":0,"translation_key":"next_scheduled_automatic_backup","unique_id":"next_scheduled_automatic_backup","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":"01M21D9H5ZS2V41Q7E0NZCK2P5","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.237391+00:00","device_class":null,"device_id":"ba4b68b702855dde1508ff5d0813eafa","disabled_by":null,"entity_category":null,"entity_id":"sensor.backup_last_successful_automatic_backup","hidden_by":null,"icon":null,"id":"6f71b8a00f0f08d09db4d2bec00df84b","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.237479+00:00","name":null,"object_id_base":"Last successful automatic backup","options":{"conversation":{"should_expose":false}},"original_device_class":"timestamp","original_icon":null,"original_name":"Last successful automatic backup","platform":"backup","suggested_object_id":null,"supported_features":0,"translation_key":"last_successful_automatic_backup","unique_id":"last_successful_automatic_backup","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":"01M21D9H5ZS2V41Q7E0NZCK2P5","config_subentry_id":null,"created_at":"2026-09-08T21:02:57.237551+00:00","device_class":null,"device_id":"ba4b68b702855dde1508ff5d0813eafa","disabled_by":null,"entity_category":null,"entity_id":"sensor.backup_last_attempted_automatic_backup","hidden_by":null,"icon":null,"id":"e4825494d527e5090aacdf36cd13e61d","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:02:57.237612+00:00","name":null,"object_id_base":"Last attempted automatic backup","options":{"conversation":{"should_expose":false}},"original_device_class":"timestamp","original_icon":null,"original_name":"Last attempted automatic backup","platform":"backup","suggested_object_id":null,"supported_features":0,"translation_key":"last_attempted_automatic_backup","unique_id":"last_attempted_automatic_backup","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":null,"config_subentry_id":null,"created_at":"2026-09-08T21:03:05.610948+00:00","device_class":null,"device_id":null,"disabled_by":null,"entity_category":null,"entity_id":"person.dev","hidden_by":null,"icon":null,"id":"205974234887943c03ce7dfb0e8caedf","has_entity_name":false,"labels":[],"modified_at":"2026-09-08T21:03:05.611271+00:00","name":null,"object_id_base":"Dev","options":{"conversation":{"should_expose":false}},"original_device_class":null,"original_icon":null,"original_name":"Dev","platform":"person","suggested_object_id":null,"supported_features":0,"translation_key":null,"unique_id":"dev","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":"01M21DA7KCRM0HJ6GR88T0V57A","config_subentry_id":null,"created_at":"2026-09-08T21:03:20.193502+00:00","device_class":null,"device_id":null,"disabled_by":null,"entity_category":null,"entity_id":"todo.shopping_list","hidden_by":null,"icon":null,"id":"0b39e73db31c6b47e43aa9023a434094","has_entity_name":true,"labels":[],"modified_at":"2026-09-08T21:03:20.193739+00:00","name":null,"object_id_base":"Shopping List","options":{"conversation":{"should_expose":true}},"original_device_class":null,"original_icon":null,"original_name":"Shopping List","platform":"shopping_list","suggested_object_id":null,"supported_features":15,"translation_key":"shopping_list","unique_id":"01M21DA7KCRM0HJ6GR88T0V57A","previous_unique_id":null,"unit_of_measurement":null},
-      {"aliases":[],"aliases_v2":[null],"area_id":null,"categories":{},"capabilities":null,"config_entry_id":"01M21DA7KYTM1CBW0WFGD9VD67","config_subentry_id":null,"created_at":"2026-09-08T21:03:20.271157+00:00","device_class":null,"device_id":"52274b210d50575d8f549da111e6c5fb","disabled_by":null,"entity_category":null,"entity_id":"tts.google_translate_en_com","hidden_by":null,"icon":null,"id":"a328216143b9d999596c9a3c324058cd","has_entity_name":false,"labels":[],"modified_at":"2026-09-08T21:03:20.271476+00:00","name":null,"object_id_base":"Google Translate en com","options":{"conversation":{"should_expose":false}},"original_device_class":null,"original_icon":null,"original_name":"Google Translate en com","platform":"google_translate","suggested_object_id":null,"supported_features":0,"translation_key":null,"unique_id":"01M21DA7KYTM1CBW0WFGD9VD67","previous_unique_id":null,"unit_of_measurement":null}
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": null,
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:56.755908+00:00",
+        "device_class": null,
+        "device_id": null,
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "sensor.mock_fiddle_leaf_moisture",
+        "hidden_by": null,
+        "icon": null,
+        "id": "3dd31b67bba508dc4a9c8deb8655a154",
+        "has_entity_name": false,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.212447+00:00",
+        "name": null,
+        "object_id_base": "Mock Fiddle Leaf Moisture",
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "moisture",
+        "original_icon": null,
+        "original_name": "Mock Fiddle Leaf Moisture",
+        "platform": "template",
+        "suggested_object_id": null,
+        "supported_features": 0,
+        "translation_key": null,
+        "unique_id": "mock_fiddle_moisture",
+        "previous_unique_id": null,
+        "unit_of_measurement": "%"
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": null,
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:56.756166+00:00",
+        "device_class": null,
+        "device_id": null,
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "sensor.mock_fiddle_leaf_temperature",
+        "hidden_by": null,
+        "icon": null,
+        "id": "d5f420bd104e7065b7ca1ae71e979723",
+        "has_entity_name": false,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.212503+00:00",
+        "name": null,
+        "object_id_base": "Mock Fiddle Leaf Temperature",
+        "options": {
+          "sensor": {
+            "suggested_display_precision": 1
+          },
+          "conversation": {
+            "should_expose": true
+          }
+        },
+        "original_device_class": "temperature",
+        "original_icon": null,
+        "original_name": "Mock Fiddle Leaf Temperature",
+        "platform": "template",
+        "suggested_object_id": null,
+        "supported_features": 0,
+        "translation_key": null,
+        "unique_id": "mock_fiddle_temperature",
+        "previous_unique_id": null,
+        "unit_of_measurement": "°C"
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": null,
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:56.756349+00:00",
+        "device_class": null,
+        "device_id": null,
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "sensor.mock_fiddle_leaf_illuminance",
+        "hidden_by": null,
+        "icon": null,
+        "id": "9690327e7dfa5113e9393d7c44087605",
+        "has_entity_name": false,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.212523+00:00",
+        "name": null,
+        "object_id_base": "Mock Fiddle Leaf Illuminance",
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "illuminance",
+        "original_icon": null,
+        "original_name": "Mock Fiddle Leaf Illuminance",
+        "platform": "template",
+        "suggested_object_id": null,
+        "supported_features": 0,
+        "translation_key": null,
+        "unique_id": "mock_fiddle_illuminance",
+        "previous_unique_id": null,
+        "unit_of_measurement": "lx"
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": null,
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:56.756428+00:00",
+        "device_class": null,
+        "device_id": null,
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "sensor.mock_monstera_moisture",
+        "hidden_by": null,
+        "icon": null,
+        "id": "5c828d8d6b7a9bcbeafa83b91cb8be5e",
+        "has_entity_name": false,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.212537+00:00",
+        "name": null,
+        "object_id_base": "Mock Monstera Moisture",
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "moisture",
+        "original_icon": null,
+        "original_name": "Mock Monstera Moisture",
+        "platform": "template",
+        "suggested_object_id": null,
+        "supported_features": 0,
+        "translation_key": null,
+        "unique_id": "mock_monstera_moisture",
+        "previous_unique_id": null,
+        "unit_of_measurement": "%"
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": null,
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:56.756558+00:00",
+        "device_class": null,
+        "device_id": null,
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "sensor.mock_monstera_temperature",
+        "hidden_by": null,
+        "icon": null,
+        "id": "a888beb9d082061e722e1d2537f76728",
+        "has_entity_name": false,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.212550+00:00",
+        "name": null,
+        "object_id_base": "Mock Monstera Temperature",
+        "options": {
+          "sensor": {
+            "suggested_display_precision": 1
+          },
+          "conversation": {
+            "should_expose": true
+          }
+        },
+        "original_device_class": "temperature",
+        "original_icon": null,
+        "original_name": "Mock Monstera Temperature",
+        "platform": "template",
+        "suggested_object_id": null,
+        "supported_features": 0,
+        "translation_key": null,
+        "unique_id": "mock_monstera_temperature",
+        "previous_unique_id": null,
+        "unit_of_measurement": "°C"
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": "01M21D9H4EVX30FD8BVJ2K10E8",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.167381+00:00",
+        "device_class": null,
+        "device_id": "64bf071c801afe20d37a4eb6bf8c6832",
+        "disabled_by": "integration",
+        "entity_category": "diagnostic",
+        "entity_id": "binary_sensor.sun_solar_rising",
+        "hidden_by": null,
+        "icon": null,
+        "id": "f443c9558a73fa586bcf0673de5cfe50",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.167429+00:00",
+        "name": null,
+        "object_id_base": null,
+        "options": {},
+        "original_device_class": null,
+        "original_icon": null,
+        "original_name": "Solar rising",
+        "platform": "sun",
+        "suggested_object_id": "sun_solar_rising",
+        "supported_features": 0,
+        "translation_key": "solar_rising",
+        "unique_id": "01M21D9H4EVX30FD8BVJ2K10E8-solar_rising",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": "01M21D9H4EVX30FD8BVJ2K10E8",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.167674+00:00",
+        "device_class": null,
+        "device_id": "64bf071c801afe20d37a4eb6bf8c6832",
+        "disabled_by": null,
+        "entity_category": "diagnostic",
+        "entity_id": "sensor.sun_next_dawn",
+        "hidden_by": null,
+        "icon": null,
+        "id": "d5fcd18619e72c160e88d4d370e73416",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.212571+00:00",
+        "name": null,
+        "object_id_base": null,
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "timestamp",
+        "original_icon": null,
+        "original_name": "Next dawn",
+        "platform": "sun",
+        "suggested_object_id": "sun_next_dawn",
+        "supported_features": 0,
+        "translation_key": "next_dawn",
+        "unique_id": "01M21D9H4EVX30FD8BVJ2K10E8-next_dawn",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": "01M21D9H4EVX30FD8BVJ2K10E8",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.167885+00:00",
+        "device_class": null,
+        "device_id": "64bf071c801afe20d37a4eb6bf8c6832",
+        "disabled_by": null,
+        "entity_category": "diagnostic",
+        "entity_id": "sensor.sun_next_dusk",
+        "hidden_by": null,
+        "icon": null,
+        "id": "14d5bf59da4abad90aa4a755ad4c91ac",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.212590+00:00",
+        "name": null,
+        "object_id_base": null,
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "timestamp",
+        "original_icon": null,
+        "original_name": "Next dusk",
+        "platform": "sun",
+        "suggested_object_id": "sun_next_dusk",
+        "supported_features": 0,
+        "translation_key": "next_dusk",
+        "unique_id": "01M21D9H4EVX30FD8BVJ2K10E8-next_dusk",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": "01M21D9H4EVX30FD8BVJ2K10E8",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.167998+00:00",
+        "device_class": null,
+        "device_id": "64bf071c801afe20d37a4eb6bf8c6832",
+        "disabled_by": null,
+        "entity_category": "diagnostic",
+        "entity_id": "sensor.sun_next_midnight",
+        "hidden_by": null,
+        "icon": null,
+        "id": "3101de6988273b241879a8847ab0cfe7",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.212604+00:00",
+        "name": null,
+        "object_id_base": null,
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "timestamp",
+        "original_icon": null,
+        "original_name": "Next midnight",
+        "platform": "sun",
+        "suggested_object_id": "sun_next_midnight",
+        "supported_features": 0,
+        "translation_key": "next_midnight",
+        "unique_id": "01M21D9H4EVX30FD8BVJ2K10E8-next_midnight",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": "01M21D9H4EVX30FD8BVJ2K10E8",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.168179+00:00",
+        "device_class": null,
+        "device_id": "64bf071c801afe20d37a4eb6bf8c6832",
+        "disabled_by": null,
+        "entity_category": "diagnostic",
+        "entity_id": "sensor.sun_next_noon",
+        "hidden_by": null,
+        "icon": null,
+        "id": "66d8a0991e4bcdc94cacef6ac4fcd9cc",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.212619+00:00",
+        "name": null,
+        "object_id_base": null,
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "timestamp",
+        "original_icon": null,
+        "original_name": "Next noon",
+        "platform": "sun",
+        "suggested_object_id": "sun_next_noon",
+        "supported_features": 0,
+        "translation_key": "next_noon",
+        "unique_id": "01M21D9H4EVX30FD8BVJ2K10E8-next_noon",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": "01M21D9H4EVX30FD8BVJ2K10E8",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.168280+00:00",
+        "device_class": null,
+        "device_id": "64bf071c801afe20d37a4eb6bf8c6832",
+        "disabled_by": null,
+        "entity_category": "diagnostic",
+        "entity_id": "sensor.sun_next_rising",
+        "hidden_by": null,
+        "icon": null,
+        "id": "0ee286e2f29fa8e9242beefde6c844ba",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.212632+00:00",
+        "name": null,
+        "object_id_base": null,
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "timestamp",
+        "original_icon": null,
+        "original_name": "Next rising",
+        "platform": "sun",
+        "suggested_object_id": "sun_next_rising",
+        "supported_features": 0,
+        "translation_key": "next_rising",
+        "unique_id": "01M21D9H4EVX30FD8BVJ2K10E8-next_rising",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": "01M21D9H4EVX30FD8BVJ2K10E8",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.168360+00:00",
+        "device_class": null,
+        "device_id": "64bf071c801afe20d37a4eb6bf8c6832",
+        "disabled_by": null,
+        "entity_category": "diagnostic",
+        "entity_id": "sensor.sun_next_setting",
+        "hidden_by": null,
+        "icon": null,
+        "id": "d54ea5821446c9561068608cc3ab4133",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.212644+00:00",
+        "name": null,
+        "object_id_base": null,
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "timestamp",
+        "original_icon": null,
+        "original_name": "Next setting",
+        "platform": "sun",
+        "suggested_object_id": "sun_next_setting",
+        "supported_features": 0,
+        "translation_key": "next_setting",
+        "unique_id": "01M21D9H4EVX30FD8BVJ2K10E8-next_setting",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": {
+          "state_class": "measurement"
+        },
+        "config_entry_id": "01M21D9H4EVX30FD8BVJ2K10E8",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.168433+00:00",
+        "device_class": null,
+        "device_id": "64bf071c801afe20d37a4eb6bf8c6832",
+        "disabled_by": "integration",
+        "entity_category": "diagnostic",
+        "entity_id": "sensor.sun_solar_elevation",
+        "hidden_by": null,
+        "icon": null,
+        "id": "3ebb3a4dce2b9b43ca5761ea3b26a657",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.168447+00:00",
+        "name": null,
+        "object_id_base": null,
+        "options": {},
+        "original_device_class": null,
+        "original_icon": null,
+        "original_name": "Solar elevation",
+        "platform": "sun",
+        "suggested_object_id": "sun_solar_elevation",
+        "supported_features": 0,
+        "translation_key": "solar_elevation",
+        "unique_id": "01M21D9H4EVX30FD8BVJ2K10E8-solar_elevation",
+        "previous_unique_id": null,
+        "unit_of_measurement": "°"
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": {
+          "state_class": "measurement"
+        },
+        "config_entry_id": "01M21D9H4EVX30FD8BVJ2K10E8",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.168480+00:00",
+        "device_class": null,
+        "device_id": "64bf071c801afe20d37a4eb6bf8c6832",
+        "disabled_by": "integration",
+        "entity_category": "diagnostic",
+        "entity_id": "sensor.sun_solar_azimuth",
+        "hidden_by": null,
+        "icon": null,
+        "id": "b806f667166073acff5e18237f1eb7e5",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.168491+00:00",
+        "name": null,
+        "object_id_base": null,
+        "options": {},
+        "original_device_class": null,
+        "original_icon": null,
+        "original_name": "Solar azimuth",
+        "platform": "sun",
+        "suggested_object_id": "sun_solar_azimuth",
+        "supported_features": 0,
+        "translation_key": "solar_azimuth",
+        "unique_id": "01M21D9H4EVX30FD8BVJ2K10E8-solar_azimuth",
+        "previous_unique_id": null,
+        "unit_of_measurement": "°"
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": {
+          "event_types": [
+            "completed",
+            "failed",
+            "in_progress"
+          ]
+        },
+        "config_entry_id": "01M21D9H5ZS2V41Q7E0NZCK2P5",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.236575+00:00",
+        "device_class": null,
+        "device_id": "ba4b68b702855dde1508ff5d0813eafa",
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "event.backup_automatic_backup",
+        "hidden_by": null,
+        "icon": null,
+        "id": "d3b0a975ee0202907d580a35c3af3e7e",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.236765+00:00",
+        "name": null,
+        "object_id_base": "Automatic backup",
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": null,
+        "original_icon": null,
+        "original_name": "Automatic backup",
+        "platform": "backup",
+        "suggested_object_id": null,
+        "supported_features": 0,
+        "translation_key": "automatic_backup_event",
+        "unique_id": "automatic_backup_event",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": {
+          "options": [
+            "idle",
+            "create_backup",
+            "blocked",
+            "receive_backup",
+            "restore_backup"
+          ]
+        },
+        "config_entry_id": "01M21D9H5ZS2V41Q7E0NZCK2P5",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.236984+00:00",
+        "device_class": null,
+        "device_id": "ba4b68b702855dde1508ff5d0813eafa",
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "sensor.backup_backup_manager_state",
+        "hidden_by": null,
+        "icon": null,
+        "id": "f89b0b762080877a8a8bebaf06665c1a",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.237104+00:00",
+        "name": null,
+        "object_id_base": "Backup Manager state",
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "enum",
+        "original_icon": null,
+        "original_name": "Backup Manager state",
+        "platform": "backup",
+        "suggested_object_id": null,
+        "supported_features": 0,
+        "translation_key": "backup_manager_state",
+        "unique_id": "backup_manager_state",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": "01M21D9H5ZS2V41Q7E0NZCK2P5",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.237182+00:00",
+        "device_class": null,
+        "device_id": "ba4b68b702855dde1508ff5d0813eafa",
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "sensor.backup_next_scheduled_automatic_backup",
+        "hidden_by": null,
+        "icon": null,
+        "id": "a17949eb4bfa4d3e13174246656a21f8",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.237251+00:00",
+        "name": null,
+        "object_id_base": "Next scheduled automatic backup",
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "timestamp",
+        "original_icon": null,
+        "original_name": "Next scheduled automatic backup",
+        "platform": "backup",
+        "suggested_object_id": null,
+        "supported_features": 0,
+        "translation_key": "next_scheduled_automatic_backup",
+        "unique_id": "next_scheduled_automatic_backup",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": "01M21D9H5ZS2V41Q7E0NZCK2P5",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.237391+00:00",
+        "device_class": null,
+        "device_id": "ba4b68b702855dde1508ff5d0813eafa",
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "sensor.backup_last_successful_automatic_backup",
+        "hidden_by": null,
+        "icon": null,
+        "id": "6f71b8a00f0f08d09db4d2bec00df84b",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.237479+00:00",
+        "name": null,
+        "object_id_base": "Last successful automatic backup",
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "timestamp",
+        "original_icon": null,
+        "original_name": "Last successful automatic backup",
+        "platform": "backup",
+        "suggested_object_id": null,
+        "supported_features": 0,
+        "translation_key": "last_successful_automatic_backup",
+        "unique_id": "last_successful_automatic_backup",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": "01M21D9H5ZS2V41Q7E0NZCK2P5",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:02:57.237551+00:00",
+        "device_class": null,
+        "device_id": "ba4b68b702855dde1508ff5d0813eafa",
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "sensor.backup_last_attempted_automatic_backup",
+        "hidden_by": null,
+        "icon": null,
+        "id": "e4825494d527e5090aacdf36cd13e61d",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:02:57.237612+00:00",
+        "name": null,
+        "object_id_base": "Last attempted automatic backup",
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": "timestamp",
+        "original_icon": null,
+        "original_name": "Last attempted automatic backup",
+        "platform": "backup",
+        "suggested_object_id": null,
+        "supported_features": 0,
+        "translation_key": "last_attempted_automatic_backup",
+        "unique_id": "last_attempted_automatic_backup",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": null,
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:03:05.610948+00:00",
+        "device_class": null,
+        "device_id": null,
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "person.dev",
+        "hidden_by": null,
+        "icon": null,
+        "id": "205974234887943c03ce7dfb0e8caedf",
+        "has_entity_name": false,
+        "labels": [],
+        "modified_at": "2026-09-08T21:03:05.611271+00:00",
+        "name": null,
+        "object_id_base": "Dev",
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": null,
+        "original_icon": null,
+        "original_name": "Dev",
+        "platform": "person",
+        "suggested_object_id": null,
+        "supported_features": 0,
+        "translation_key": null,
+        "unique_id": "dev",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": "01M21DA7KCRM0HJ6GR88T0V57A",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:03:20.193502+00:00",
+        "device_class": null,
+        "device_id": null,
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "todo.shopping_list",
+        "hidden_by": null,
+        "icon": null,
+        "id": "0b39e73db31c6b47e43aa9023a434094",
+        "has_entity_name": true,
+        "labels": [],
+        "modified_at": "2026-09-08T21:03:20.193739+00:00",
+        "name": null,
+        "object_id_base": "Shopping List",
+        "options": {
+          "conversation": {
+            "should_expose": true
+          }
+        },
+        "original_device_class": null,
+        "original_icon": null,
+        "original_name": "Shopping List",
+        "platform": "shopping_list",
+        "suggested_object_id": null,
+        "supported_features": 15,
+        "translation_key": "shopping_list",
+        "unique_id": "01M21DA7KCRM0HJ6GR88T0V57A",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      },
+      {
+        "aliases": [],
+        "aliases_v2": [
+          null
+        ],
+        "area_id": null,
+        "categories": {},
+        "capabilities": null,
+        "config_entry_id": "01M21DA7KYTM1CBW0WFGD9VD67",
+        "config_subentry_id": null,
+        "created_at": "2026-09-08T21:03:20.271157+00:00",
+        "device_class": null,
+        "device_id": "52274b210d50575d8f549da111e6c5fb",
+        "disabled_by": null,
+        "entity_category": null,
+        "entity_id": "tts.google_translate_en_com",
+        "hidden_by": null,
+        "icon": null,
+        "id": "a328216143b9d999596c9a3c324058cd",
+        "has_entity_name": false,
+        "labels": [],
+        "modified_at": "2026-09-08T21:03:20.271476+00:00",
+        "name": null,
+        "object_id_base": "Google Translate en com",
+        "options": {
+          "conversation": {
+            "should_expose": false
+          }
+        },
+        "original_device_class": null,
+        "original_icon": null,
+        "original_name": "Google Translate en com",
+        "platform": "google_translate",
+        "suggested_object_id": null,
+        "supported_features": 0,
+        "translation_key": null,
+        "unique_id": "01M21DA7KYTM1CBW0WFGD9VD67",
+        "previous_unique_id": null,
+        "unit_of_measurement": null
+      }
     ],
-    "deleted_entities": []
+    "deleted_entities": [],
+    "settings": {
+      "entity_id_parts": null
+    }
   }
 }

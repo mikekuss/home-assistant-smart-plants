@@ -27,6 +27,8 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from .helpers import plant_device
+
 ROLE = "test_moisture"
 
 
@@ -105,7 +107,7 @@ def _entity_registry_ids_for_plant(
     hass: HomeAssistant, plant_id: str
 ) -> tuple[str, ...]:
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(identifiers={(DOMAIN, plant_id)})
+    device = plant_device(device_registry, plant_id)
     if device is None:
         return ()
     entity_reg = er.async_get(hass)
@@ -119,9 +121,7 @@ def _entity_registry_ids_for_plant(
 
 def _device_exists(hass: HomeAssistant, plant_id: str) -> bool:
     device_registry = dr.async_get(hass)
-    return (
-        device_registry.async_get_device(identifiers={(DOMAIN, plant_id)}) is not None
-    )
+    return plant_device(device_registry, plant_id) is not None
 
 
 async def test_delete_removes_enabled_and_user_disabled_entities_then_device(
@@ -181,8 +181,8 @@ async def test_colon_legacy_plant_ids_never_cross_delete(
     await reconciler.async_reconcile_present(plant_a)
     await reconciler.async_reconcile_present(plant_ab)
     device_registry = dr.async_get(hass)
-    device_a = device_registry.async_get_device(identifiers={(DOMAIN, "a")})
-    device_ab = device_registry.async_get_device(identifiers={(DOMAIN, "a:b")})
+    device_a = plant_device(device_registry, "a")
+    device_ab = plant_device(device_registry, "a:b")
     assert device_a is not None
     assert device_ab is not None
     entity_registry = er.async_get(hass)
@@ -393,7 +393,7 @@ async def test_delete_removes_unknown_role_even_when_device_is_already_absent(
     await hass.async_block_till_done()
 
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    device = plant_device(device_registry, plant.id)
     assert device is not None
     entity_reg = er.async_get(hass)
     unknown = entity_reg.async_get_or_create(
@@ -410,7 +410,7 @@ async def test_delete_removes_unknown_role_even_when_device_is_already_absent(
     reloaded = await _reload(hass, entry.entry_id)
     assert entity_reg.async_get(unknown.entity_id) is not None
     manager = reloaded.runtime_data.manager
-    device = device_registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    device = plant_device(device_registry, plant.id)
     assert device is not None
     device_registry.async_remove_device(device.id)
 

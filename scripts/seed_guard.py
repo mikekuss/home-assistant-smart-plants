@@ -5,24 +5,32 @@ Privacy and integrity guard for regenerating ``dev/ha-config-seed/``.
 ``.storage`` files of the local Home Assistant rig into a staging directory and
 then run::
 
-    python scripts/seed_guard.py STAGING_DIR
+    python scripts/seed_guard.py --drop-content-user STAGING_DIR
 
 The guard only reads the staged files; they are copied byte for byte from the
 runtime, so a staged seed that passes is already UTF-8 without a byte order
-mark. It validates them against the currently committed seed (read from
-``git show HEAD:``), exits non-zero, and lists every problem when the staged
-seed:
+mark. The one exception is ``--drop-content-user``, which the scripts pass: it
+first removes Home Assistant's system "Home Assistant Content" user and its
+system refresh token from the staged ``auth`` and deletes the staged
+``http.auth`` that points at that token. The token cannot be logged out, and
+Home Assistant creates a new content user on first boot when none is linked.
+
+The guard validates the staged files against the currently committed seed
+(read from ``git show HEAD:``), exits non-zero, and lists every problem when
+the staged seed:
 
 - has any file that starts with a UTF-8 byte order mark (Home Assistant 2026.9
   and newer refuse to decode such a storage file and discard it);
 - has any refresh token in ``auth`` (they are refused, not stripped, so a
   session token from the runtime never passes through the guard);
+- contains ``http.auth``, which only links the content user's refresh token;
 - has an owner password hash that differs from the committed seed, so the
   documented ``admin`` / ``admin`` login would no longer work;
 - has a ``smart_plants`` config entry with non-empty ``data`` or ``options``;
 - has devices (active or deleted) with ``connections`` such as MAC addresses,
   with a serial number, or from an integration that the committed seed does
-  not already contain;
+  not already contain (both the ``config_entries`` list of Home Assistant
+  2026.7 and the single ``config_entry_id`` of 2026.8 and newer are read);
 - has areas that the committed seed does not already contain.
 
 The scripts only replace the committed seed when the guard passes.
@@ -49,6 +57,8 @@ AUTH_PROVIDER = "auth_provider.homeassistant"
 CONFIG_ENTRIES = "core.config_entries"
 DEVICE_REGISTRY = "core.device_registry"
 AREA_REGISTRY = "core.area_registry"
+HTTP_AUTH = "http.auth"
+CONTENT_USER_NAME = "Home Assistant Content"
 
 
 class SeedError(Exception):
@@ -147,6 +157,47 @@ def git_head_reader(repo_root: Path) -> Callable[[str], bytes | None]:
     return read
 
 
+def drop_content_user(seed_dir: Path) -> list[str]:
+    """
+    Remove the system content user and its system token from a staged seed.
+
+    Home Assistant links this user to the signing of content URLs through
+    ``http.auth``. Its refresh token cannot be logged out, so it would always
+    trip the refresh token check. Only users that are system generated and
+    carry the content user name are removed, together with their ``system``
+    tokens; any other token stays and is refused by the guard.
+    """
+    removed: list[str] = []
+    storage = seed_dir / ".storage"
+    auth_path = storage / AUTH
+    if auth_path.is_file():
+        document = _decode(AUTH, auth_path.read_bytes())
+        auth = document["data"]
+        dropped = {
+            user["id"]
+            for user in auth.get("users", [])
+            if user.get("system_generated") and user.get("name") == CONTENT_USER_NAME
+        }
+        if dropped:
+            auth["users"] = [u for u in auth["users"] if u["id"] not in dropped]
+            auth["refresh_tokens"] = [
+                token
+                for token in auth.get("refresh_tokens", [])
+                if not (
+                    token.get("user_id") in dropped
+                    and token.get("token_type") == "system"
+                )
+            ]
+            text = json.dumps(document, indent=2, ensure_ascii=False)
+            auth_path.write_bytes(text.encode("utf-8"))
+            removed.append(f"{AUTH}: removed {len(dropped)} system content user(s)")
+    http_auth_path = storage / HTTP_AUTH
+    if http_auth_path.is_file():
+        http_auth_path.unlink()
+        removed.append(f"{HTTP_AUTH}: removed")
+    return removed
+
+
 def files_with_bom(root: Path) -> list[str]:
     """Return every file below ``root`` that starts with a UTF-8 BOM."""
     return sorted(
@@ -173,7 +224,11 @@ def _check_devices(
             problems.append(f"{label} has connections (for example MAC addresses)")
         if device.get("serial_number"):
             problems.append(f"{label} has a serial number")
-        entry_ids = device.get("config_entries") or []
+        # Home Assistant 2026.8 stores one config_entry_id per device instead
+        # of a config_entries list.
+        entry_ids = device.get("config_entries") or (
+            [device["config_entry_id"]] if device.get("config_entry_id") else []
+        )
         if not entry_ids:
             problems.append(f"{label} has no config entry")
         for entry_id in entry_ids:
@@ -191,6 +246,11 @@ def check_seed(seed_dir: Path, baseline: Baseline) -> list[str]:
         f"{name}: starts with a UTF-8 byte order mark"
         for name in files_with_bom(seed_dir)
     ]
+    if (seed_dir / ".storage" / HTTP_AUTH).is_file():
+        problems.append(
+            f"{HTTP_AUTH}: links the content user's refresh token and must not be "
+            "seeded (run with --drop-content-user)"
+        )
     read = directory_reader(seed_dir / ".storage")
     checks: list[Callable[[], list[str]]] = [
         lambda: _check_auth(read, baseline),
@@ -256,6 +316,11 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         help="seed directory to compare against (default: the seed at git HEAD)",
     )
+    parser.add_argument(
+        "--drop-content-user",
+        action="store_true",
+        help="remove the system content user, its token and http.auth first",
+    )
     args = parser.parse_args(argv)
     staging: Path = args.staging
 
@@ -269,6 +334,10 @@ def main(argv: list[str] | None = None) -> int:
     except SeedError as err:
         print(f"Cannot read the committed seed: {err}", file=sys.stderr)
         return 2
+
+    if args.drop_content_user:
+        for change in drop_content_user(staging):
+            print(f"  {change}")
 
     problems = check_seed(staging, baseline)
     if problems:

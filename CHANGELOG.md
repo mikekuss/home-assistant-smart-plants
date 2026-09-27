@@ -6,8 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- Smart Plants now requires Home Assistant 2026.8.0 or newer.
+
 ### Fixed
 
+- Home Assistant 2026.9 and newer logged a deprecation warning about Smart Plants' device
+  lookups, which would stop working in Home Assistant 2027.8. Plant devices are now looked up
+  with the per-config-entry API.
 - The diagnostics download counted only soil moisture sources as assigned sources. It now counts
   sources for every sensor role and adds a per-role breakdown.
 

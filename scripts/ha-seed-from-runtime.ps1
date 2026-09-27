@@ -30,8 +30,10 @@ $Runtime = Join-Path $RepoRoot "dev\ha-config"
 $Seed    = Join-Path $RepoRoot "dev\ha-config-seed"
 
 if (-not (Test-Path $Runtime)) { throw "dev/ha-config/ does not exist. Run ha-up.ps1 -Expose, onboard, ha-down.ps1 first." }
-if (Test-Path (Join-Path $Runtime ".ha_run.lock")) {
-    throw "dev/ha-config/.ha_run.lock present - HA is still running. Stop with ha-down.ps1 first."
+# HA never deletes .ha_run.lock (it holds a file lock on it), so the file's
+# presence says nothing; check the rig container instead.
+if (docker ps -q --filter "name=^smart-plants-ha$") {
+    throw "The smart-plants-ha container is still running. Stop with ha-down.ps1 first."
 }
 
 # .storage keys worth seeding (identity, auth, integration, layout).
@@ -47,7 +49,6 @@ $StorageKeep = @(
     "core.uuid",
     "homeassistant.exposed_entities",
     "http",
-    "http.auth",
     "lovelace_dashboards",
     "lovelace.map"
 )
@@ -86,7 +87,7 @@ try {
     # problem. Copy-Item keeps every file byte for byte and nothing here
     # re-encodes JSON through PowerShell, so a passing seed is UTF-8 without BOM.
     $pyExe = $Python[0]
-    $pyArgs = @($Python | Select-Object -Skip 1) + @("scripts/seed_guard.py", $Staging)
+    $pyArgs = @($Python | Select-Object -Skip 1) + @("scripts/seed_guard.py", "--drop-content-user", $Staging)
     & $pyExe @pyArgs
     if ($LASTEXITCODE -ne 0) {
         [Console]::Error.WriteLine("Seed NOT written; " + $Seed + " is unchanged.")

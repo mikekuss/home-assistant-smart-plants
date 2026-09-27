@@ -5,7 +5,7 @@ back up its data.
 
 ## Requirements
 
-- Home Assistant **2026.7.0** or newer.
+- Home Assistant **2026.8.0** or newer.
 - An administrator account. The Smart Plants panel and its photo endpoints are admin-only.
 - Optional: an [OpenPlantBook](https://open.plantbook.io/) account with API client
   credentials if you want species search. See [OpenPlantBook](openplantbook.md).

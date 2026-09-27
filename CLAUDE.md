@@ -14,7 +14,7 @@ that manages plants as long-lived Home Assistant devices. Users create plants in
 panel, optionally pick an OpenPlantBook species, assign existing sensors to roles (soil moisture,
 temperature, humidity, illuminance, conductivity, soil temperature, CO2, battery), log care, and
 use the resulting entities in native automations. It detects plant health but never actuates
-devices. MIT license. Minimum Home Assistant: 2026.7.0.
+devices. MIT license. Minimum Home Assistant: 2026.8.0.
 
 ## This repository is public
 

@@ -58,7 +58,7 @@ If you add or upgrade a runtime (bundled) dependency, update
 
 ## Trying it in a real Home Assistant
 
-The repository ships an isolated, loopback-only Home Assistant 2026.7.0 rig with Smart Plants
+The repository ships an isolated, loopback-only Home Assistant 2026.8.0 rig with Smart Plants
 pre-installed and synthetic sensors:
 
 ```bash

@@ -247,6 +247,97 @@ def test_main_refuses_unsafe_seed(
     assert "Refusing to write the seed" in capsys.readouterr().err
 
 
+def _content_user(seed: Seed, kind: str = "system") -> None:
+    seed["auth"]["users"].append(
+        {
+            "id": "content-user",
+            "is_owner": False,
+            "name": "Home Assistant Content",
+            "system_generated": True,
+        }
+    )
+    seed["auth"]["refresh_tokens"].append(
+        {"id": "content-token", "user_id": "content-user", "token_type": kind}
+    )
+
+
+def test_single_config_entry_id_devices_are_checked(
+    tmp_path: Path, baseline: Any
+) -> None:
+    # Home Assistant 2026.8 stores one config_entry_id per device.
+    seed = _seed()
+    seed["core.config_entries"]["entries"].append(
+        {"entry_id": "hue-entry", "domain": "hue", "data": {}, "options": {}}
+    )
+    devices = seed["core.device_registry"]["devices"]
+    for entry_id in ("sun-entry", "hue-entry"):
+        device = _device(entry_id)
+        del device["config_entries"]
+        device["id"] = f"single-{entry_id}"
+        device["config_entry_id"] = entry_id
+        devices.append(device)
+    _write(tmp_path / "staging", seed)
+
+    problems = guard.check_seed(tmp_path / "staging", baseline)
+
+    assert len(problems) == 1
+    assert "single-hue-entry" in problems[0]
+    assert "new integration 'hue'" in problems[0]
+
+
+def test_http_auth_is_refused(tmp_path: Path, baseline: Any) -> None:
+    storage = _write(tmp_path / "staging", _seed())
+    (storage / "http.auth").write_text(
+        json.dumps({"data": {"content_user": "content-token"}}), encoding="utf-8"
+    )
+    problems = guard.check_seed(tmp_path / "staging", baseline)
+    assert len(problems) == 1
+    assert problems[0].startswith("http.auth:")
+
+
+def test_drop_content_user_removes_only_the_system_content_user(
+    tmp_path: Path, baseline: Any
+) -> None:
+    seed = _seed()
+    _content_user(seed)
+    storage = _write(tmp_path / "staging", seed)
+    (storage / "http.auth").write_text("{}", encoding="utf-8")
+
+    removed = guard.drop_content_user(tmp_path / "staging")
+
+    assert len(removed) == 2
+    assert not (storage / "http.auth").exists()
+    auth = json.loads((storage / "auth").read_bytes())["data"]
+    assert [user["id"] for user in auth["users"]] == ["system-user", "owner-user"]
+    assert auth["refresh_tokens"] == []
+    assert not (storage / "auth").read_bytes().startswith(guard.UTF8_BOM)
+    assert guard.check_seed(tmp_path / "staging", baseline) == []
+
+
+def test_drop_content_user_keeps_session_tokens(tmp_path: Path, baseline: Any) -> None:
+    seed = _seed()
+    _content_user(seed, kind="normal")
+    _add_refresh_token(seed)
+    _write(tmp_path / "staging", seed)
+
+    guard.drop_content_user(tmp_path / "staging")
+
+    problems = guard.check_seed(tmp_path / "staging", baseline)
+    assert len(problems) == 1
+    assert "2 refresh token(s)" in problems[0]
+
+
+def test_main_drops_content_user_when_asked(tmp_path: Path) -> None:
+    _write(tmp_path / "baseline", _seed())
+    seed = _seed()
+    _content_user(seed)
+    _write(tmp_path / "staging", seed)
+    args = [str(tmp_path / "staging"), "--baseline-dir", str(tmp_path / "baseline")]
+
+    assert guard.main(args) == 1
+    assert guard.main([*args, "--drop-content-user"]) == 0
+
+
 def test_committed_seed_passes_the_guard() -> None:
     seed_dir = GUARD_PATH.parent.parent / "dev" / "ha-config-seed"
     read = guard.directory_reader(seed_dir / ".storage")
