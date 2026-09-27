@@ -8,7 +8,7 @@
   "integration_type": "hub",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/mikekuss/home-assistant-smart-plants/issues",
-  "requirements": ["Pillow==12.2.0"],
+  "requirements": ["Pillow>=12.2.0"],
   "single_config_entry": true,
-  "version": "0.1.0"
+  "version": "0.1.1"
 }

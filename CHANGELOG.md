@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-27
+
+### Fixed
+
+- Smart Plants failed to load on Home Assistant 2026.8 and newer because it required an exact
+  Pillow version that conflicts with the one Home Assistant ships.
+
 ## [0.1.0] - 2026-09-27
 
 First public release.
@@ -25,5 +32,6 @@ First public release.
 - English and German translations for the integration's entities, setup, and repairs. The
   sidebar panel is English-only.
 
-[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.1.0...HEAD
+[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.1.1...HEAD
+[0.1.1]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.1.0...0.1.1
 [0.1.0]: https://github.com/mikekuss/home-assistant-smart-plants/releases/tag/0.1.0
