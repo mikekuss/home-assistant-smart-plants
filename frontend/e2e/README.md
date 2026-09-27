@@ -76,15 +76,15 @@ Every scenario runs in Chromium at **1440 × 1000 desktop** and **375 × 812 mob
 
 ## Accessibility and screenshot evidence
 
-`@axe-core/playwright` **4.10.2**, using **axe-core 4.10.3**, scans open shadow
+`@axe-core/playwright` **4.13.0**, using **axe-core 4.13.0**, scans open shadow
 roots in the actual bundled components. No rule exclusions, disabled rules,
 best-practice exclusions or violation suppressions are used. Violations and
 unresolved incomplete checks fail the gate. Axe's native top-layer dialog stack
 ambiguity is verified narrowly for `dialog > p`: actual text-line hit testing,
 opaque dialog surface, no background images, full visibility and WCAG luminance
 contrast of at least 4.5:1. Raw axe results remain unchanged and separate
-`contrast-verification-delete-dialog` evidence is attached. Both 4.10 and 4.13
-exhibited this ambiguity; the pinned 4.10 dependency was retained.
+`contrast-verification-delete-dialog` evidence is attached. Axe 4.10 and 4.13
+both report this ambiguity.
 
 Each viewport has 23 scans:
 

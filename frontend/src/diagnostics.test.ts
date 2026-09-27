@@ -180,13 +180,15 @@ describe("Advanced diagnostics section", () => {
     expect(section.querySelector('p[role="status"]')?.textContent?.trim()).toBe("No active problems.");
   });
 
-  it("marks active problem rows with an aria label announcing the state", async () => {
+  it("announces active problem rows through the term and its visible status text", async () => {
     const entities = buildRegistry(["temperature_stress"]);
     const states = buildStates({ temperature_stress: { state: "on" } });
     const el = await mountDetailWith(entities, states);
     const dd = el.shadowRoot!.querySelector("dl.diagnostics dd.status-on");
-    expect(dd?.getAttribute("aria-label")).toBe("Temperature stress: problem detected");
-    expect(dd?.textContent).toContain("problem detected");
+    expect(dd?.previousElementSibling?.tagName).toBe("DT");
+    expect(dd?.previousElementSibling?.textContent?.trim()).toBe("Temperature stress");
+    expect(dd?.hasAttribute("aria-label")).toBe(false);
+    expect(dd?.textContent?.trim().startsWith("problem detected")).toBe(true);
   });
 
   it("renders reason text verbatim next to the status when the backend supplies one", async () => {
@@ -489,8 +491,9 @@ describe("Localization fallback and passthrough", () => {
     expect(diagnostics).not.toBeNull();
     expect(diagnostics!.querySelector("dl.diagnostics")).not.toBeNull();
     const dd = diagnostics!.querySelector("dd.status-on");
-    // aria-label uses the (localized) "problem detected" phrase
-    expect(dd?.getAttribute("aria-label")).toBe("Temperature stress: Problem erkannt");
+    // The visible status text uses the (localized) "problem detected" phrase
+    expect(dd?.hasAttribute("aria-label")).toBe(false);
+    expect(dd?.textContent?.trim().startsWith("Problem erkannt")).toBe(true);
     expect(overall!.querySelector("dl.overall-health")).not.toBeNull();
     expect(overall!.querySelector("p[role=status]")).not.toBeNull();
     expect(diagnostics!.querySelector("p[role=status]")).not.toBeNull();
