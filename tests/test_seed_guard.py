@@ -139,15 +139,15 @@ def _add_area(seed: Seed) -> None:
 
 
 def test_unchanged_seed_passes(tmp_path: Path, baseline: Any) -> None:
-    storage = _write(tmp_path / "staging", _seed())
-    assert guard.check_seed(storage, baseline) == []
+    _write(tmp_path / "staging", _seed())
+    assert guard.check_seed(tmp_path / "staging", baseline) == []
 
 
 def test_smart_plants_devices_are_allowed(tmp_path: Path, baseline: Any) -> None:
     seed = _seed()
     seed["core.device_registry"]["devices"].append(_device("plants-entry"))
-    storage = _write(tmp_path / "staging", seed)
-    assert guard.check_seed(storage, baseline) == []
+    _write(tmp_path / "staging", seed)
+    assert guard.check_seed(tmp_path / "staging", baseline) == []
 
 
 @pytest.mark.parametrize(
@@ -172,8 +172,8 @@ def test_unsafe_seed_is_refused(
 ) -> None:
     seed = _seed()
     mutate(seed)
-    storage = _write(tmp_path / "staging", seed)
-    problems = guard.check_seed(storage, baseline)
+    _write(tmp_path / "staging", seed)
+    problems = guard.check_seed(tmp_path / "staging", baseline)
     assert len(problems) == 1
     assert expected in problems[0]
 
@@ -182,44 +182,53 @@ def test_bom_is_refused(tmp_path: Path, baseline: Any) -> None:
     storage = _write(tmp_path / "staging", _seed())
     path = storage / "core.area_registry"
     path.write_bytes(guard.UTF8_BOM + path.read_bytes())
-    problems = guard.check_seed(storage, baseline)
-    assert problems[0] == "core.area_registry: starts with a UTF-8 byte order mark"
+    problems = guard.check_seed(tmp_path / "staging", baseline)
+    expected = ".storage/core.area_registry: starts with a UTF-8 byte order mark"
+    assert problems[0] == expected
 
 
-def test_main_strips_tokens_and_writes_utf8_without_bom(tmp_path: Path) -> None:
+def test_main_refuses_refresh_tokens_without_rewriting(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     _write(tmp_path / "baseline", _seed())
     seed = _seed()
     _add_refresh_token(seed)
     storage = _write(tmp_path / "staging", seed)
-
-    exit_code = guard.main(
-        [str(tmp_path / "staging"), "--baseline-dir", str(tmp_path / "baseline")]
-    )
-
-    assert exit_code == 0
-    raw = (storage / "auth").read_bytes()
-    assert not raw.startswith(guard.UTF8_BOM)
-    assert b"\r\n" not in raw
-    assert json.loads(raw.decode("utf-8"))["data"]["refresh_tokens"] == []
-
-
-def test_main_refuses_bom_before_rewriting(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    _write(tmp_path / "baseline", _seed())
-    storage = _write(tmp_path / "staging", _seed())
-    auth = storage / "auth"
-    auth.write_bytes(guard.UTF8_BOM + auth.read_bytes())
+    before = (storage / "auth").read_bytes()
 
     exit_code = guard.main(
         [str(tmp_path / "staging"), "--baseline-dir", str(tmp_path / "baseline")]
     )
 
     assert exit_code == 1
-    assert auth.read_bytes().startswith(guard.UTF8_BOM)
-    assert ".storage/auth: starts with a UTF-8 byte order mark" in (
+    assert (storage / "auth").read_bytes() == before
+    assert "auth: contains 1 refresh token(s)" in capsys.readouterr().err
+
+
+def test_main_refuses_bom(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _write(tmp_path / "baseline", _seed())
+    _write(tmp_path / "staging", _seed())
+    (tmp_path / "staging" / ".HA_VERSION").write_bytes(guard.UTF8_BOM + b"2026.7.0")
+
+    exit_code = guard.main(
+        [str(tmp_path / "staging"), "--baseline-dir", str(tmp_path / "baseline")]
+    )
+
+    assert exit_code == 1
+    assert ".HA_VERSION: starts with a UTF-8 byte order mark" in (
         capsys.readouterr().err
     )
+
+
+def test_main_accepts_clean_seed(tmp_path: Path) -> None:
+    _write(tmp_path / "baseline", _seed())
+    _write(tmp_path / "staging", _seed())
+
+    exit_code = guard.main(
+        [str(tmp_path / "staging"), "--baseline-dir", str(tmp_path / "baseline")]
+    )
+
+    assert exit_code == 0
 
 
 def test_main_refuses_unsafe_seed(
@@ -242,5 +251,4 @@ def test_committed_seed_passes_the_guard() -> None:
     seed_dir = GUARD_PATH.parent.parent / "dev" / "ha-config-seed"
     read = guard.directory_reader(seed_dir / ".storage")
     baseline = guard.load_baseline(read)
-    assert guard.files_with_bom(seed_dir) == []
-    assert guard.check_seed(seed_dir / ".storage", baseline) == []
+    assert guard.check_seed(seed_dir, baseline) == []

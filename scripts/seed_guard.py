@@ -7,14 +7,16 @@ then run::
 
     python scripts/seed_guard.py STAGING_DIR
 
-The guard strips refresh tokens from the staged ``auth`` store, writes it back
-as UTF-8 without a byte order mark, and validates the staged files against the
-currently committed seed (read from ``git show HEAD:``). It exits non-zero and
-lists every problem when the staged seed:
+The guard only reads the staged files; they are copied byte for byte from the
+runtime, so a staged seed that passes is already UTF-8 without a byte order
+mark. It validates them against the currently committed seed (read from
+``git show HEAD:``), exits non-zero, and lists every problem when the staged
+seed:
 
 - has any file that starts with a UTF-8 byte order mark (Home Assistant 2026.9
   and newer refuse to decode such a storage file and discard it);
-- has any refresh token in ``auth``;
+- has any refresh token in ``auth`` (they are refused, not stripped, so a
+  session token from the runtime never passes through the guard);
 - has an owner password hash that differs from the committed seed, so the
   documented ``admin`` / ``admin`` login would no longer work;
 - has a ``smart_plants`` config entry with non-empty ``data`` or ``options``;
@@ -154,19 +156,6 @@ def files_with_bom(root: Path) -> list[str]:
     )
 
 
-def write_json(path: Path, document: Any) -> None:
-    """Write JSON as UTF-8 without BOM and with LF line endings."""
-    path.write_bytes((json.dumps(document, indent=4) + "\n").encode("utf-8"))
-
-
-def strip_refresh_tokens(storage_dir: Path) -> None:
-    """Remove every refresh token from the staged ``auth`` store."""
-    path = storage_dir / AUTH
-    document = _decode(AUTH, path.read_bytes() if path.is_file() else None)
-    document["data"]["refresh_tokens"] = []
-    write_json(path, document)
-
-
 def _check_devices(
     read: Callable[[str], bytes | None], baseline: Baseline
 ) -> list[str]:
@@ -196,13 +185,13 @@ def _check_devices(
     return problems
 
 
-def check_seed(storage_dir: Path, baseline: Baseline) -> list[str]:
-    """Return every reason the staged ``.storage`` must not become the seed."""
+def check_seed(seed_dir: Path, baseline: Baseline) -> list[str]:
+    """Return every reason the staged seed directory must not become the seed."""
     problems = [
         f"{name}: starts with a UTF-8 byte order mark"
-        for name in files_with_bom(storage_dir)
+        for name in files_with_bom(seed_dir)
     ]
-    read = directory_reader(storage_dir)
+    read = directory_reader(seed_dir / ".storage")
     checks: list[Callable[[], list[str]]] = [
         lambda: _check_auth(read, baseline),
         lambda: _check_smart_plants_entry(read),
@@ -219,9 +208,19 @@ def check_seed(storage_dir: Path, baseline: Baseline) -> list[str]:
 
 def _check_auth(read: Callable[[str], bytes | None], baseline: Baseline) -> list[str]:
     problems: list[str] = []
-    tokens = _data(AUTH, read).get("refresh_tokens")
+    auth = _data(AUTH, read)
+    names = {user.get("id"): user.get("name") for user in auth.get("users", [])}
+    tokens = auth.get("refresh_tokens") or []
     if tokens:
-        problems.append(f"{AUTH}: contains {len(tokens)} refresh token(s)")
+        owners = ", ".join(
+            f"{names.get(token.get('user_id'), 'unknown user')} "
+            f"({token.get('token_type', 'unknown type')})"
+            for token in tokens
+        )
+        problems.append(
+            f"{AUTH}: contains {len(tokens)} refresh token(s) for {owners}; "
+            "log out of every session before stopping the rig"
+        )
     if owner_password_hash(read) != baseline.owner_password_hash:
         problems.append(
             f"{AUTH_PROVIDER}: owner password hash differs from the committed seed "
@@ -259,7 +258,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     staging: Path = args.staging
-    storage_dir = staging / ".storage"
 
     try:
         read_baseline = (
@@ -272,20 +270,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Cannot read the committed seed: {err}", file=sys.stderr)
         return 2
 
-    # A BOM is refused on the files exactly as copied from the runtime, before
-    # anything is rewritten, so the guard never silently repairs one.
-    problems = [
-        f"{name}: starts with a UTF-8 byte order mark"
-        for name in files_with_bom(staging)
-    ]
-    if not problems:
-        try:
-            strip_refresh_tokens(storage_dir)
-        except (SeedError, KeyError, TypeError) as err:
-            problems.append(f"{AUTH}: cannot strip refresh tokens ({err!r})")
-        else:
-            problems = check_seed(storage_dir, baseline)
-
+    problems = check_seed(staging, baseline)
     if problems:
         print("Refusing to write the seed:", file=sys.stderr)
         for problem in problems:

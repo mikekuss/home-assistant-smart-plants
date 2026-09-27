@@ -82,10 +82,9 @@ try {
     $verSrc = Join-Path $Runtime ".HA_VERSION"
     if (Test-Path $verSrc) { Copy-Item $verSrc (Join-Path $Staging ".HA_VERSION") }
 
-    # The guard strips long-lived refresh tokens from auth, rewrites it as
-    # UTF-8 without BOM, and refuses the seed on any privacy or login problem.
-    # Copy-Item keeps every other file byte for byte, so nothing here re-encodes
-    # JSON through PowerShell.
+    # The guard refuses the seed on any BOM, refresh token, privacy or login
+    # problem. Copy-Item keeps every file byte for byte and nothing here
+    # re-encodes JSON through PowerShell, so a passing seed is UTF-8 without BOM.
     $pyExe = $Python[0]
     $pyArgs = @($Python | Select-Object -Skip 1) + @("scripts/seed_guard.py", $Staging)
     & $pyExe @pyArgs

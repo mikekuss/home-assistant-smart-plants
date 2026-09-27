@@ -37,7 +37,7 @@ if [[ -f "$runtime/.ha_run.lock" ]]; then
 fi
 
 # Requires python3 (present in requirements-dev.txt) for the seed guard, which
-# strips refresh tokens and validates the staged files.
+# validates the staged files.
 if ! command -v python3 >/dev/null 2>&1; then
   echo "python3 required to run scripts/seed_guard.py." >&2
   exit 1
@@ -76,9 +76,9 @@ if [[ -f "$runtime/.HA_VERSION" ]]; then
   cp "$runtime/.HA_VERSION" "$staging/.HA_VERSION"
 fi
 
-# Strips refresh tokens, rewrites auth as UTF-8 without BOM, and refuses the
-# seed on any privacy or login problem. The committed seed stays untouched
-# when it fails.
+# Refuses the seed on any BOM, refresh token, privacy or login problem. Files
+# are copied byte for byte, so a passing seed is UTF-8 without BOM. The
+# committed seed stays untouched when it fails.
 if ! python3 scripts/seed_guard.py "$staging"; then
   echo "Seed NOT written; $seed is unchanged." >&2
   exit 1
