@@ -5,6 +5,10 @@ on:
   push:
     branches:
       - main
+  schedule:
+    # Weekly, so the latest-Home-Assistant job notices new releases even when
+    # the repository is quiet.
+    - cron: "17 4 * * 1"
 
 permissions:
   contents: read
@@ -14,8 +18,8 @@ jobs:
     name: Layout validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14"
       - name: Validate package layout
@@ -25,8 +29,8 @@ jobs:
     name: Ruff, Mypy, Pytest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14"
           cache: pip
@@ -41,19 +45,76 @@ jobs:
       - name: Pytest
         run: pytest
 
+  pytest-latest-ha:
+    name: Pytest (latest Home Assistant)
+    # Runs the test suite against the newest released Home Assistant so that
+    # incompatibilities (for example an integration requirement that conflicts
+    # with a package core has moved on from) show up before users hit them.
+    # requirements-dev.txt stays pinned to the minimum supported version.
+    # Informational for now: failures are reported but do not block PRs.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Resolve latest Home Assistant test versions
+        id: versions
+        shell: python3 {0}
+        run: |
+          import json
+          import os
+          import re
+          import urllib.request
+
+          def pypi(path):
+              with urllib.request.urlopen(f"https://pypi.org/pypi/{path}/json") as resp:
+                  return json.load(resp)["info"]
+
+          phcc = pypi("pytest-homeassistant-custom-component")
+          ha_version = next(
+              req.split("==", 1)[1].strip()
+              for req in phcc["requires_dist"]
+              if re.match(r"homeassistant\s*==", req)
+          )
+          requires_python = pypi(f"homeassistant/{ha_version}")["requires_python"]
+          major, minor = re.search(r">=\s*(\d+)\.(\d+)", requires_python).groups()
+          print(f"pytest-homeassistant-custom-component {phcc['version']}")
+          print(f"homeassistant {ha_version} (Python {requires_python})")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"phcc={phcc['version']}\n")
+              out.write(f"homeassistant={ha_version}\n")
+              out.write(f"python={major}.{minor}\n")
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ steps.versions.outputs.python }}
+      - name: Install latest Home Assistant test environment
+        env:
+          PHCC_VERSION: ${{ steps.versions.outputs.phcc }}
+          HA_VERSION: ${{ steps.versions.outputs.homeassistant }}
+        run: |
+          python -m pip install \
+            "pytest-homeassistant-custom-component==${PHCC_VERSION}" \
+            "homeassistant==${HA_VERSION}"
+          # The integration depends on the frontend component; install the
+          # frontend package version that this Home Assistant release pins.
+          frontend_reqs=$(python -c 'import json, pathlib, homeassistant.components.frontend as f; print(" ".join(json.loads((pathlib.Path(f.__file__).parent / "manifest.json").read_text())["requirements"]))')
+          python -m pip install ${frontend_reqs}
+          python -m pip list | grep -iE '^(homeassistant|home-assistant-frontend|pytest-homeassistant-custom-component|pillow) '
+      - name: Pytest
+        run: pytest -q
+
   hassfest:
     name: Hassfest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: home-assistant/actions/hassfest@master
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: home-assistant/actions/hassfest@58bff37c8947f690ace498be413a9b78d6f30f93 # master
 
   hacs:
     name: HACS
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: hacs/action@main
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main
         with:
           category: integration
 
@@ -64,8 +125,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
           cache: npm
