@@ -1244,6 +1244,35 @@ describe("Threshold editor localization", () => {
     expect(alert).toBeNull();
   });
 
+  it("renders German threshold editor copy for a German Home Assistant language", async () => {
+    const entities = [stressEntity("temperature_stress")];
+    const states = { [`binary_sensor.smart_plants_${PLANT_ID}_temperature_stress`]: stressState("temperature_stress", "off") };
+    const h = harness([withTemperatureRole()], msg => {
+      if (msg.type === "config/entity_registry/list") return entities;
+      if (msg.type === "get_states") return Object.values(states);
+      return undefined;
+    });
+    h.hass.language = "de";
+    const el = new SmartPlantsPanel();
+    el.hass = h.hass;
+    document.body.append(el);
+    await settle(el);
+    await click(el, "Aloe");
+    await click(el, "Diagnose");
+    const toggle = el.shadowRoot!.querySelector("button.threshold-toggle") as HTMLButtonElement;
+    expect(toggle.textContent?.trim()).toBe("Schwellenwerte bearbeiten");
+    toggle.click(); await settle(el);
+    const editor = el.shadowRoot!.querySelector("#temperature_stress-editor")!;
+    expect(editor.getAttribute("aria-label")).toBe("Schwellenwerte für Temperaturstress");
+    expect(editor.textContent).toContain("Kälte-Auslöser (°C)");
+    const input = editor.querySelector("input") as HTMLInputElement;
+    input.value = "10.5"; input.dispatchEvent(new Event("input", { bubbles: true })); await settle(el);
+    expect(editor.textContent).toContain("Standard 10 °C · wirksam 10,5 °C");
+    input.value = "30"; input.dispatchEvent(new Event("input", { bubbles: true })); await settle(el);
+    await click(el, "Schwellenwerte speichern");
+    expect(el.shadowRoot!.querySelector("#temperature_stress-editor p.error")?.textContent).toContain("Die wirksamen Schwellenwerte müssen");
+  });
+
   it("uses English copy when the Home Assistant language has no panel catalog", async () => {
     const entities = [stressEntity("temperature_stress")];
     const states = { [`binary_sensor.smart_plants_${PLANT_ID}_temperature_stress`]: stressState("temperature_stress", "off") };

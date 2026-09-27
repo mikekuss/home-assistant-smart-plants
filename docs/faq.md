@@ -83,8 +83,13 @@ can be shown on any dashboard.
 
 ## Which languages are supported?
 
-Setup, options, entity names, and repair messages are available in English and German. The
-sidebar panel is currently in English.
+Setup, options, entity names, repair messages, and the sidebar panel are available in English
+and German.
+
+The panel follows the language set in your Home Assistant user profile. Any other language
+shows the panel in English. Numbers and dates in the panel use your profile's number and time
+format settings, for example `10,5 °C` in German. Care-history times are shown as recorded,
+with the UTC offset they were entered with.
 
 ## Can I edit plants from YAML or with actions?
 

@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SmartPlantsPanel } from "./panel.js";
 import { PROBLEM_BINARY_ROLES, THRESHOLD_SPECS, effectiveThresholds, problemBinaries } from "./model.js";
-import type { HAEntity, HAState, PlantRecord } from "./types.js";
+import { createLocalizer } from "./localize.js";
+import type { HAEntity, HAState, HomeAssistantLike, PlantRecord } from "./types.js";
 import { click, harness, sample, settle } from "./test-helpers.js";
 
 const PLANT_ID = sample.id;
@@ -406,7 +407,7 @@ describe("Panel string catalog", () => {
     vi.unstubAllGlobals();
   });
 
-  async function mountWith(localize?: (key: string, ...args: unknown[]) => string): Promise<{ el: SmartPlantsPanel; seenKeys: string[] }> {
+  async function mountWith(localize?: (key: string, ...args: unknown[]) => string, hassLocale: Pick<HomeAssistantLike, "language" | "locale"> = {}): Promise<{ el: SmartPlantsPanel; seenKeys: string[] }> {
     const seenKeys: string[] = [];
     const wrapped = localize
       ? (key: string, ...args: unknown[]) => { seenKeys.push(key); return localize(key, ...args); }
@@ -420,12 +421,13 @@ describe("Panel string catalog", () => {
       return undefined;
     });
     if (wrapped) h.hass.localize = wrapped;
+    Object.assign(h.hass, hassLocale);
     const el = new SmartPlantsPanel();
     el.hass = h.hass;
     document.body.append(el);
     await settle(el);
     await click(el, "Aloe");
-    await click(el, "Diagnostics");
+    await click(el, createLocalizer(h.hass).t("detail.tab_diagnostics"));
     await settle(el); await settle(el);
     return { el, seenKeys };
   }
@@ -444,6 +446,52 @@ describe("Panel string catalog", () => {
     expect(diagnostics.textContent).toContain("Status of the problem indicators");
     expect(diagnostics.textContent).toContain("1 active problem.");
     expect(diagnostics.textContent).toContain("problem detected");
+  });
+
+  it("renders the German catalog for a German Home Assistant language", async () => {
+    const { el } = await mountWith(undefined, { language: "de" });
+    const overall = el.shadowRoot!.querySelector("#overall-health-heading")!.closest("section")!;
+    const diagnostics = el.shadowRoot!.querySelector("#diagnostics-heading")!.closest("section")!;
+    expect(el.shadowRoot!.querySelector("#overall-health-heading")?.textContent).toBe("Gesamtzustand");
+    expect(overall.textContent).toContain("82 von 100");
+    expect(overall.textContent).toContain("hoch — jede konfigurierte Rolle ist derzeit verfügbar.");
+    expect(overall.textContent).toContain("Bodenfeuchte");
+    expect(overall.textContent).toContain("Temperatur");
+    expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Erweiterte Diagnose");
+    expect(diagnostics.textContent).toContain("1 aktives Problem.");
+    expect(diagnostics.querySelector("dt")?.textContent).toBe("Temperaturstress");
+    const dd = diagnostics.querySelector("dd.status-on");
+    expect(dd?.hasAttribute("aria-label")).toBe(false);
+    expect(dd?.textContent?.trim().startsWith("Problem erkannt")).toBe(true);
+    const tabs = el.shadowRoot!.querySelector("nav.detail-tabs");
+    expect(tabs?.getAttribute("aria-label")).toBe("Pflanzenbereiche");
+    expect([...tabs!.querySelectorAll("button")].map(b => b.textContent)).toEqual(["Übersicht", "Sensoren", "Pflegeverlauf", "Pflanzendetails", "Diagnose"]);
+  });
+
+  it.each([["en", "hot_stress", "too hot"], ["de", "hot_stress", "zu heiß"], ["de", "future_reason", "future_reason"]])("renders the %s text for reason code %s", async (language, reason, expected) => {
+    const entities = buildRegistry(["temperature_stress"]);
+    const states = buildStates({ temperature_stress: { state: "on", attributes: { reason } } });
+    const h = harness([sample], msg => {
+      if (msg.type === "config/entity_registry/list") return entities;
+      if (msg.type === "get_states") return Object.values(states);
+      return undefined;
+    });
+    h.hass.language = language;
+    const el = new SmartPlantsPanel();
+    el.hass = h.hass;
+    document.body.append(el);
+    await settle(el);
+    await click(el, "Aloe");
+    await click(el, createLocalizer(h.hass).t("detail.tab_diagnostics"));
+    expect(el.shadowRoot!.querySelector("dl.diagnostics dd.status-on")?.textContent).toContain(` — ${expected}`);
+  });
+
+  it("prefers hass.locale.language over hass.language", async () => {
+    const german = await mountWith(undefined, { language: "en", locale: { language: "de" } });
+    expect(german.el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Erweiterte Diagnose");
+    document.body.replaceChildren();
+    const fallback = await mountWith(undefined, { language: "de", locale: { language: "fr" } });
+    expect(fallback.el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Advanced diagnostics");
   });
 
   it("does not consult hass.localize for panel strings", async () => {
