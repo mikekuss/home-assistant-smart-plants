@@ -5,7 +5,7 @@ homeassistant==2026.8.0
 # `homeassistant/components/frontend/manifest.json` for the pinned
 # `homeassistant` above.
 home-assistant-frontend==20260729.5
-mypy==1.18.1
+mypy==1.20.2
 pytest==9.0.3
 pytest-asyncio==1.4.0
 pytest-homeassistant-custom-component==0.13.354
