@@ -24,6 +24,10 @@ updates:
       - dependency-name: pytest-asyncio
       # New ruff releases add lint rules; upgrade manually together with fixes.
       - dependency-name: ruff
+      # Major upgrades of the remaining dev tools (for example mypy) need
+      # coordinated fixes and are done manually.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       python-dev-tools:
         patterns: ["*"]
