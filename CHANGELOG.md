@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- The diagnostics download counted only soil moisture sources as assigned sources. It now counts
+  sources for every sensor role and adds a per-role breakdown.
+
 ## [0.1.1] - 2026-09-27
 
 ### Fixed

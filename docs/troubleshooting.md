@@ -12,7 +12,8 @@ The file is designed to be safe to share. It contains:
 - whether "Preserve inventory when the integration is removed" is on,
 - OpenPlantBook connection status, such as whether a token and cached results exist,
 - inventory counts: number of plants, active vs. disabled plants, species sources, assigned
-  moisture sources, photos, and internal pending operations.
+  sensor sources (in total and per role, for example moisture, temperature, or battery),
+  photos, and internal pending operations.
 
 It does **not** contain plant names, entity IDs, care history, or photos. Still, have a look
 at the file before attaching it publicly.
