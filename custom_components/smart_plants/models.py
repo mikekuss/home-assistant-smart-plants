@@ -322,7 +322,7 @@ def _require_no_extra_keys(
 ) -> None:
     extra = set(payload.keys()) - allowed
     if extra:
-        offender = sorted(extra)[0]
+        offender = min(extra)
         raise ValueError(f"{context} payload contains unsupported key {offender!r}")
 
 
@@ -2509,7 +2509,7 @@ class PlantRecord:
     tags: tuple[str, ...] = ()
     category: str | None = None
     image: PlantImage | None = None
-    moisture: MoistureConfig = field(default_factory=lambda: MoistureConfig())
+    moisture: MoistureConfig = field(default_factory=MoistureConfig)
     extra_roles: Mapping[str, Any] = field(default_factory=dict)
     care_events: tuple[CareEvent, ...] = ()
 

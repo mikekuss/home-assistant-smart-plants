@@ -266,7 +266,7 @@ class MissingSourceRepairFlow(RepairsFlow):
                     expected_revision=updated.revision,
                     primary_entity_id=replacement,
                 )
-        except (ValueError, RuntimeError, LookupError):
+        except ValueError, RuntimeError, LookupError:
             return self.async_show_form(
                 step_id="source",
                 data_schema=vol.Schema(
