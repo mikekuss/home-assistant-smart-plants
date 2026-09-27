@@ -22,7 +22,7 @@ integration itself is not `pip install`ed — it is loaded via
 `PYTHONPATH=/app` from the mounted working tree, so edits on the host
 are picked up on the next run with no rebuild.
 
-The image uses Python 3.14. The pinned `homeassistant==2026.7.0` (and
+The image uses Python 3.14. The pinned `homeassistant==2026.8.0` (and
 `pyproject.toml`) declare `requires-python = ">=3.14.2"`, so pip
 refuses to install HA on 3.13. `pytest-homeassistant-custom-component`
 emits a Python 3.14 preview warning during collection; this is

@@ -3,11 +3,11 @@
 # available on Windows, so the suite cannot run natively on the host.
 #
 # NOTE on the Python version:
-#   The pinned `homeassistant==2026.7.0` (via requirements-dev.txt and
+#   The pinned `homeassistant==2026.8.0` (via requirements-dev.txt and
 #   pyproject.toml) declares `requires-python = ">=3.14.2"`. Any pip
 #   install on 3.13 is rejected with
 #     "Ignored the following versions that require a different python
-#      version: 2026.7.0 Requires-Python >=3.14.2".
+#      version: 2026.8.0 Requires-Python >=3.14.2".
 #   So this image runs on 3.14 even though
 #   pytest-homeassistant-custom-component emits a Python 3.14 preview
 #   warning. That warning is expected — it is not a test failure.

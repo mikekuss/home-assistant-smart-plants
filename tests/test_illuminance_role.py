@@ -117,7 +117,10 @@ async def test_illuminance_entity_metadata_and_state(hass: HomeAssistant) -> Non
 async def test_low_light_entity_metadata_and_daytime_state(
     hass: HomeAssistant,
 ) -> None:
-    now = datetime(2026, 1, 1, 12, tzinfo=UTC)
+    # The fake clock must lie in the real future: source staleness deadlines
+    # are scheduled on the real event loop, so a deadline derived from a past
+    # date fires immediately and would mark the sensor stale mid-test.
+    now = datetime(2100, 1, 1, 12, tzinfo=UTC)
     clock = [now]
     with (
         patch(

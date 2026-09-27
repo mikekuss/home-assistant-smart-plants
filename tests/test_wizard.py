@@ -32,6 +32,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
+from .helpers import plant_device
 from .test_provider import SyntheticProvider
 from .test_websocket_api import _setup
 
@@ -684,9 +685,7 @@ async def test_full_ws_create_area_entities_and_restart_replay(
     assert response["success"], response
     plant = response["result"]["plant"]
     await hass.async_block_till_done()
-    device = dr.async_get(hass).async_get_device(
-        identifiers={("smart_plants", plant["id"])}
-    )
+    device = plant_device(dr.async_get(hass), plant["id"])
     assert device is not None
     assert device.area_id == area.id
     entities = er.async_entries_for_device(er.async_get(hass), device.id)
@@ -756,9 +755,7 @@ async def test_interrupted_create_recovery_uses_original_full_intent(
     plant = await _create(service, draft, name="Ignored", area_id=None)
     assert plant.name == "Aloe"
     assert plant.moisture.moisture_target == 40
-    device = dr.async_get(hass).async_get_device(
-        identifiers={("smart_plants", plant.id)}
-    )
+    device = plant_device(dr.async_get(hass), plant.id)
     assert device is not None
     assert device.area_id == area.id
     assert not manager.snapshot.pending_operations

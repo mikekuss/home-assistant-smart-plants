@@ -31,6 +31,8 @@ from homeassistant.helpers import (
 from homeassistant.helpers.entity_platform import async_get_platforms
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from .helpers import plant_device
+
 ROLE = "test_moisture"
 
 
@@ -191,13 +193,13 @@ async def test_device_identity_survives_rename(
     await hass.async_block_till_done()
 
     device_registry = dr.async_get(hass)
-    device_before = device_registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    device_before = plant_device(device_registry, plant.id)
     assert device_before is not None
 
     await manager.async_update_plant(plant.id, expected_revision=1, name="Aloe Vera")
     await hass.async_block_till_done()
 
-    device_after = device_registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    device_after = plant_device(device_registry, plant.id)
     assert device_after is not None
     assert device_after.id == device_before.id
     assert device_after.name == "Aloe Vera"

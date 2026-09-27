@@ -4,7 +4,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/mikekuss/home-assistant-smart-plants)](https://github.com/mikekuss/home-assistant-smart-plants/releases)
 [![CI](https://github.com/mikekuss/home-assistant-smart-plants/actions/workflows/ci.yml/badge.svg)](https://github.com/mikekuss/home-assistant-smart-plants/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.7%2B-blue)
+![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.8%2B-blue)
 
 Manage your plants as first-class Home Assistant objects. Create plants from a guided panel,
 pick a species, link the sensors you already have, log care, and use each plant's health in
@@ -40,7 +40,7 @@ native Home Assistant automations — no YAML or template sensors required.
 
 ## Requirements
 
-- Home Assistant **2026.7.0** or newer.
+- Home Assistant **2026.8.0** or newer.
 - Optional: an OpenPlantBook account with API client credentials.
 
 ## Installation

@@ -25,6 +25,8 @@ from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from .helpers import plant_device
+
 
 def _plant(
     plant_id: str = "plt-1",
@@ -64,11 +66,7 @@ async def test_reconciler_creates_a_single_device_for_a_plant(
     await reconciler.async_reconcile_present(_plant())
 
     registry = dr.async_get(hass)
-    matches = [
-        device
-        for device in registry.devices.values()
-        if (DOMAIN, "plt-1") in device.identifiers
-    ]
+    matches = registry.async_get_devices(identifiers={(DOMAIN, "plt-1")})
     assert len(matches) == 1
     device = matches[0]
     assert device.name == "Aloe"
@@ -86,11 +84,11 @@ async def test_rename_keeps_device_id_stable_and_updates_name(
 
     await reconciler.async_reconcile_present(_plant(name="Aloe"))
     registry = dr.async_get(hass)
-    device_before = registry.async_get_device(identifiers={(DOMAIN, "plt-1")})
+    device_before = plant_device(registry, "plt-1")
     assert device_before is not None
 
     await reconciler.async_reconcile_present(_plant(name="Aloe Vera", revision=2))
-    device_after = registry.async_get_device(identifiers={(DOMAIN, "plt-1")})
+    device_after = plant_device(registry, "plt-1")
     assert device_after is not None
     assert device_after.id == device_before.id
     assert device_after.name == "Aloe Vera"
@@ -103,12 +101,12 @@ async def test_rename_preserves_user_name_by_user(hass: HomeAssistant) -> None:
 
     await reconciler.async_reconcile_present(_plant(name="Aloe"))
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, "plt-1")})
+    device = plant_device(registry, "plt-1")
     assert device is not None
     registry.async_update_device(device.id, name_by_user="My Aloe")
 
     await reconciler.async_reconcile_present(_plant(name="Aloe Vera", revision=2))
-    device = registry.async_get_device(identifiers={(DOMAIN, "plt-1")})
+    device = plant_device(registry, "plt-1")
     assert device is not None
     # Our authored `name` still updates, but the user's display override wins.
     assert device.name == "Aloe Vera"
@@ -124,7 +122,7 @@ async def test_area_is_seeded_on_create_only(hass: HomeAssistant) -> None:
 
     await reconciler.async_reconcile_present(_plant(), requested_area_id=area.id)
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, "plt-1")})
+    device = plant_device(registry, "plt-1")
     assert device is not None
     assert device.area_id == area.id
 
@@ -137,7 +135,7 @@ async def test_area_is_seeded_on_create_only(hass: HomeAssistant) -> None:
     await reconciler.async_reconcile_present(
         _plant(name="Renamed", revision=2), requested_area_id=area.id
     )
-    device = registry.async_get_device(identifiers={(DOMAIN, "plt-1")})
+    device = plant_device(registry, "plt-1")
     assert device is not None
     assert device.area_id == other.id
 
@@ -149,12 +147,12 @@ async def test_user_disabled_registry_state_preserved(hass: HomeAssistant) -> No
 
     await reconciler.async_reconcile_present(_plant())
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, "plt-1")})
+    device = plant_device(registry, "plt-1")
     assert device is not None
     registry.async_update_device(device.id, disabled_by=dr.DeviceEntryDisabler.USER)
 
     await reconciler.async_reconcile_present(_plant(name="Renamed", revision=2))
-    device = registry.async_get_device(identifiers={(DOMAIN, "plt-1")})
+    device = plant_device(registry, "plt-1")
     assert device is not None
     assert device.disabled_by is dr.DeviceEntryDisabler.USER
 
@@ -168,7 +166,7 @@ async def test_reconcile_absent_removes_device(hass: HomeAssistant) -> None:
     await reconciler.async_reconcile_absent("plt-1")
 
     registry = dr.async_get(hass)
-    assert registry.async_get_device(identifiers={(DOMAIN, "plt-1")}) is None
+    assert plant_device(registry, "plt-1") is None
     # Idempotent: removing an already-absent device is a no-op.
     await reconciler.async_reconcile_absent("plt-1")
 
@@ -185,7 +183,7 @@ async def test_manager_create_plant_creates_device_and_clears_pending_op(
     plant = await manager.async_create_plant(name="Aloe")
 
     registry = dr.async_get(hass)
-    assert registry.async_get_device(identifiers={(DOMAIN, plant.id)}) is not None
+    assert plant_device(registry, plant.id) is not None
     # The pending create_plant op is cleared once reconciliation succeeds.
     assert manager.snapshot.pending_operations == ()
 
@@ -200,7 +198,7 @@ async def test_manager_delete_plant_removes_device_and_clears_tombstone(
     await manager.async_delete_plant(plant.id, expected_revision=plant.revision)
 
     registry = dr.async_get(hass)
-    assert registry.async_get_device(identifiers={(DOMAIN, plant.id)}) is None
+    assert plant_device(registry, plant.id) is None
     assert manager.snapshot.tombstones == ()
 
 
@@ -216,7 +214,7 @@ async def test_manager_update_plant_renames_device_after_next_reconcile(
     )
 
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, updated.id)})
+    device = plant_device(registry, updated.id)
     assert device is not None
     assert device.name == "Aloe Vera"
 
@@ -269,7 +267,7 @@ async def test_replay_creates_missing_device_for_leftover_pending_op(
     manager: SmartPlantsManager = entry.runtime_data.manager
 
     registry = dr.async_get(hass)
-    assert registry.async_get_device(identifiers={(DOMAIN, "plt-orphan")}) is not None
+    assert plant_device(registry, "plt-orphan") is not None
     assert manager.snapshot.pending_operations == ()
 
 
@@ -310,7 +308,7 @@ async def test_replay_creates_missing_device_without_pending_op(
     manager: SmartPlantsManager = entry.runtime_data.manager
 
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, "plt-live")})
+    device = plant_device(registry, "plt-live")
     assert device is not None
     assert device.name == "Ficus"
     assert manager.snapshot.pending_operations == ()
@@ -327,7 +325,7 @@ async def test_replay_full_scan_preserves_native_area_and_name_by_user(
     plant = await manager.async_create_plant(name="Aloe", area_id=seed.id)
 
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    device = plant_device(registry, plant.id)
     assert device is not None
     other = ar.async_get(hass).async_create("Living Room")
     registry.async_update_device(
@@ -341,7 +339,7 @@ async def test_replay_full_scan_preserves_native_area_and_name_by_user(
     # pass must not stomp any of the native edits.
     await manager.async_replay_pending()
 
-    device = registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    device = plant_device(registry, plant.id)
     assert device is not None
     assert device.name_by_user == "My Aloe"
     assert device.area_id == other.id
@@ -473,7 +471,7 @@ async def test_set_area_writes_device_area_and_bumps_revision(
 
     assert updated.revision == plant.revision + 1
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    device = plant_device(registry, plant.id)
     assert device is not None
     assert device.area_id == area.id
     assert manager.snapshot.pending_operations == ()
@@ -486,7 +484,7 @@ async def test_set_area_clears_device_area(hass: HomeAssistant) -> None:
     plant = await manager.async_create_plant(name="Aloe", area_id=area.id)
 
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    device = plant_device(registry, plant.id)
     assert device is not None
     assert device.area_id == area.id
 
@@ -494,7 +492,7 @@ async def test_set_area_clears_device_area(hass: HomeAssistant) -> None:
         plant.id, expected_revision=plant.revision, area_id=None
     )
     assert cleared.revision == plant.revision + 1
-    device = registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    device = plant_device(registry, plant.id)
     assert device is not None
     assert device.area_id is None
 
@@ -534,7 +532,7 @@ async def test_set_area_recreates_missing_device_before_clearing_intent(
     manager: SmartPlantsManager = entry.runtime_data.manager
     plant = await manager.async_create_plant(name="Aloe")
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    device = plant_device(registry, plant.id)
     assert device is not None
     registry.async_remove_device(device.id)
     area = ar.async_get(hass).async_create("Kitchen")
@@ -543,7 +541,7 @@ async def test_set_area_recreates_missing_device_before_clearing_intent(
         plant.id, expected_revision=plant.revision, area_id=area.id
     )
 
-    recreated = registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    recreated = plant_device(registry, plant.id)
     assert recreated is not None
     assert recreated.area_id == area.id
     assert updated.revision == plant.revision + 1
@@ -561,7 +559,7 @@ async def test_routine_update_preserves_native_area_edit(
     # User moves the device to a different area natively.
     other = ar.async_get(hass).async_create("Living Room")
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    device = plant_device(registry, plant.id)
     assert device is not None
     registry.async_update_device(device.id, area_id=other.id)
 
@@ -569,7 +567,7 @@ async def test_routine_update_preserves_native_area_edit(
     await manager.async_update_plant(
         plant.id, expected_revision=plant.revision, name="Aloe Vera"
     )
-    device = registry.async_get_device(identifiers={(DOMAIN, plant.id)})
+    device = plant_device(registry, plant.id)
     assert device is not None
     assert device.area_id == other.id
 
@@ -629,7 +627,7 @@ async def test_replay_completes_stalled_update_area_op(
     await hass.async_block_till_done()
     manager: SmartPlantsManager = entry.runtime_data.manager
 
-    device = registry.async_get_device(identifiers={(DOMAIN, "plt-1")})
+    device = plant_device(registry, "plt-1")
     assert device is not None
     assert device.area_id == target_area.id
     assert manager.snapshot.pending_operations == ()
@@ -640,8 +638,10 @@ async def test_reconciler_apply_area_reports_missing_device() -> None:
         def __init__(self) -> None:
             self.updates: list[tuple[str, str | None]] = []
 
-        def async_get_device(self, identifiers: set[tuple[str, str]]) -> None:
-            del identifiers
+        def async_get_device_by_identifier(
+            self, identifier: tuple[str, str], config_entry_id: str
+        ) -> None:
+            del identifier, config_entry_id
 
         def async_update_device(
             self, device_id: str, **kwargs: Any

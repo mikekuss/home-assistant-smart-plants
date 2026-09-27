@@ -3,7 +3,7 @@ from __future__ import annotations
 DOMAIN = "smart_plants"
 NAME = "Smart Plants"
 
-MIN_HA_VERSION = "2026.7.0"
+MIN_HA_VERSION = "2026.8.0"
 
 SINGLETON_UNIQUE_ID = "global"
 
