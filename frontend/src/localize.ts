@@ -3,15 +3,16 @@
 // Home Assistant frontend language. English is the source catalog: its keys
 // define MessageKey, every other catalog must provide exactly those keys, and
 // any language without a catalog falls back to English.
+import { de } from "./translations/de.js";
 import { en } from "./translations/en.js";
 
 export type MessageKey = keyof typeof en;
 export type Catalog = Record<MessageKey, string>;
 export type MessageArgs = Record<string, string | number>;
 
-export const LANGUAGES = ["en"] as const;
+export const LANGUAGES = ["en", "de"] as const;
 export type Language = typeof LANGUAGES[number];
-const CATALOGS: Record<Language, Partial<Catalog>> = { en };
+const CATALOGS: Record<Language, Partial<Catalog>> = { en, de };
 
 // Subset of the Home Assistant frontend `hass.locale` object the panel reads.
 export interface HALocale {

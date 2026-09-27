@@ -1039,8 +1039,552 @@ async function et(e, t, n) {
 	return c.plant;
 }
 //#endregion
-//#region src/translations/en.ts
+//#region src/translations/de.ts
 var tt = {
+	"format.percent": "{value} %",
+	"format.recorded_date_time": "{datetime} (UTC{offset})",
+	"common.cancel": "Abbrechen",
+	"common.none": "Keine",
+	"common.not_specified": "Nicht angegeben",
+	"common.not_supplied": "Nicht angegeben",
+	"common.no_species_selected": "Keine Art ausgewählt",
+	"common.continue_manually": "Manuell fortfahren",
+	"panel.admin_required": "Smart Plants erfordert ein Administratorkonto.",
+	"panel.menu": "Menü",
+	"panel.back_to_overview": "Zurück zur Übersicht",
+	"panel.add_plant": "Pflanze hinzufügen",
+	"panel.registry_unavailable": "Registrierungs- oder Zustandsdaten nicht verfügbar: {error}. Stelle die Verbindung wieder her, bevor du registrierte Sensoren oder Bereiche zuweist.",
+	"panel.open_created": "Erstellte Pflanze öffnen",
+	"panel.busy": "Speichern oder Vorschau wird geladen …",
+	"api_error.unknown": "Anfrage fehlgeschlagen. Aktualisiere die Seite und versuche es erneut, sobald eine Verbindung besteht.",
+	"api_error.integration_not_loaded": "Smart Plants ist nicht geladen. Öffne Einstellungen → Geräte & Dienste und aktualisiere die Seite, nachdem die Integration geladen wurde.",
+	"api_error.unauthorized": "Smart Plants erfordert ein Administratorkonto.",
+	"api_error.not_found": "Pflanze oder Art nicht gefunden. Sie wurde möglicherweise in einer anderen Sitzung entfernt.",
+	"api_error.revision_conflict": "Diese Pflanze wurde an anderer Stelle geändert. Prüfe die aktualisierten Felder und wende deine Änderungen ausdrücklich erneut an.",
+	"api_error.provider_disabled": "Der Anbieter ist nicht verfügbar. Fahre manuell fort; übernommene lokale Artdaten bleiben verfügbar.",
+	"api_error.provider_authentication": "Die Anmeldung beim Anbieter ist fehlgeschlagen. Prüfe die erneute Anmeldung der Integration in den Einstellungen oder fahre manuell fort.",
+	"api_error.provider_rate_limit": "Das Anfragelimit des Anbieters ist erreicht. Versuche es später erneut oder fahre manuell fort.",
+	"api_error.provider_timeout": "Zeitüberschreitung beim Anbieter. Versuche es später erneut oder fahre manuell fort.",
+	"api_error.provider_outage": "Der Anbieter ist derzeit nicht erreichbar. Versuche es später erneut oder fahre manuell fort.",
+	"api_error.provider_malformed_response": "Der Anbieter hat eine ungültige Antwort geliefert. Fahre manuell fort oder versuche es später erneut.",
+	"api_error.version_mismatch": "Panel- und API-Version passen nicht zusammen. Starte Home Assistant nach dem Update neu und lade das Frontend vollständig neu.",
+	"api_error.invalid_response": "Die Antwort ist nicht kompatibel. Aktualisiere die Seite, bevor du bearbeitest oder es erneut versuchst; Wiederholungen beim Erstellen behalten die ursprüngliche Anfrage bei.",
+	"api_error.invalid_format": "Der Server hat die Eingabe abgelehnt. Prüfe die Felder und Quellenzuordnungen. Bilder müssen gültige JPEG-, PNG- oder WebP-Dateien mit höchstens 5 MiB und 2048 × 2048 Pixeln sein; abgelaufene Artvorschauen müssen erneut geprüft werden.",
+	"error.disconnected": "Verbindung getrennt. Lokale Änderungen und Wiederholungen beim Erstellen bleiben erhalten. Stelle die Verbindung vor dem Speichern wieder her.",
+	"error.registry_updates": "Registrierungsaktualisierungen nicht verfügbar; stelle die Verbindung wieder her, um native Änderungen erneut zu laden.",
+	"error.area_reconnect": "Stelle die Verbindung wieder her, um die aktuellen Home-Assistant-Bereiche zu laden, und wähle dann einen Bereich oder „Kein Bereich“.",
+	"error.identity": "Gib einen gültigen Namen und ein gültiges ISO-Datum bzw. eine gültige Uhrzeit für die Anschaffung ein.",
+	"error.moisture_reconnect": "Stelle die Verbindung wieder her, um aktuelle Registrierungsdaten zu laden, bevor du Feuchtequellen speicherst.",
+	"error.sources_reconnect": "Stelle die Verbindung wieder her, um aktuelle Registrierungsdaten zu laden, bevor du Quellen speicherst.",
+	"notice.deleted_elsewhere": "Diese Pflanze wurde in einer anderen Sitzung gelöscht.",
+	"notice.area_changed_retained": "Der Home-Assistant-Bereich wurde von {from} zu {to} geändert. Deine Bereichsauswahl bleibt erhalten; prüfe sie vor dem Speichern.",
+	"notice.area_changed_synced": "Der Home-Assistant-Bereich wurde von {from} zu {to} geändert. Die Bereichsauswahl zeigt jetzt den nativen Bereich.",
+	"notice.related_failed": "Zugehörige Automatisierungen konnten nicht geladen werden. Öffne die native Geräteseite, um sie einzusehen.",
+	"notice.saved": "Gespeichert.",
+	"conflict.heading": "Änderungen aus einer anderen Sitzung prüfen",
+	"conflict.revision": "Revision {before} → {after}. Das Speichern ist angehalten. Lokale Änderungen bleiben erhalten.",
+	"conflict.roles_changed": "Sensorkonfiguration oder Schwellenwert-Standards bzw. -Überschreibungen wurden geändert.",
+	"conflict.source_overlap": "Beide Sitzungen haben diese Quellenfelder geändert: {fields}. Prüfe die aktualisierte Rollenübersicht und deinen Entwurf, bevor du es erneut versuchst; Speichern ersetzt die aktualisierten Werte dieser Felder.",
+	"conflict.retain": "Änderungen geprüft; meine Änderungen zum erneuten Anwenden behalten",
+	"conflict.discard": "Meine Änderungen verwerfen und aktualisierte Werte verwenden",
+	"conflict.reviewed": "Änderungen geprüft. Deine bearbeiteten Felder bleiben erhalten; prüfe sie und wende sie mit der jeweiligen Speichern-Schaltfläche ausdrücklich erneut an.",
+	"conflict.reviewed_overlap": "Beide Sitzungen haben {fields} im Quellen-Editor geändert. Speichern ersetzt die aktualisierten Werte dieser Felder.",
+	"conflict.reviewed_species": "Artvorschauen müssen erneut angefordert und geprüft werden.",
+	"conflict_field.name": "Name",
+	"conflict_field.acquired_at": "Angeschafft",
+	"conflict_field.placement": "Standort",
+	"conflict_field.category": "Kategorie",
+	"conflict_field.tags": "Tags",
+	"conflict_field.species": "Art",
+	"conflict_field.image": "Foto",
+	"conflict_field.lifecycle_state": "Lebenszyklus",
+	"conflict_field.roles": "Rollen",
+	"conflict_field.care_events": "Pflegeeinträge",
+	"source_field.sources": "Quellen",
+	"source_field.primary_entity_id": "primäre Quelle",
+	"source_field.aggregation": "Aggregation",
+	"source_field.stale_after_seconds": "Veraltet nach",
+	"status.healthy": "gesund",
+	"status.needs_water": "braucht Wasser",
+	"status.too_wet": "zu nass",
+	"status.stale": "veraltet",
+	"status.unavailable": "nicht verfügbar",
+	"status.disabled": "deaktiviert",
+	"status.problems": "Probleme",
+	"lifecycle.active": "aktiv",
+	"lifecycle.disabled": "deaktiviert",
+	"list.loading": "Pflanzen werden geladen …",
+	"list.summary_label": "Pflanzenübersicht",
+	"list.total": "Pflanzen gesamt",
+	"list.needs_water": "Braucht Wasser",
+	"list.problems": "Probleme",
+	"list.empty_heading": "Ein Zuhause für jede Pflanze",
+	"list.empty_body": "Lege ein dauerhaftes Pflanzenprofil an, verbinde austauschbare Feuchtesensoren und nutze die Entitäten in nativen Home-Assistant-Automatisierungen. Art und Sensoren sind optional.",
+	"list.add_first": "Erste Pflanze hinzufügen",
+	"list.no_matches": "Keine Pflanzen entsprechen diesen Filtern.",
+	"list.count_one": "{count} Pflanze",
+	"list.count_other": "{count} Pflanzen",
+	"list.count_filtered": "{shown} von {total} Pflanzen",
+	"list.missing_source_suffix": " · Quelle fehlt",
+	"list.no_placement": "Kein Standort",
+	"list.manual_plant": "Manuelle Pflanze",
+	"list.uncategorized": "Ohne Kategorie",
+	"metric.soil_moisture": "Bodenfeuchte",
+	"metric.moisture_health": "Gesundheitswert",
+	"filter.heading": "Pflanzen filtern",
+	"filter.active_suffix": " · {count} aktiv",
+	"filter.search": "Pflanzen suchen",
+	"filter.clear": "Filter zurücksetzen",
+	"filter.none": "keine Angabe",
+	"filter.status": "Status",
+	"filter.lifecycle": "Lebenszyklus",
+	"filter.area": "Bereich",
+	"filter.placement": "Standort",
+	"filter.species": "Art",
+	"filter.category": "Kategorie",
+	"filter.sensor": "Sensorzustand",
+	"filter.tag": "Tags",
+	"filter.all_status": "Alle Status",
+	"filter.all_lifecycle": "Alle Lebenszyklen",
+	"filter.all_area": "Alle Bereiche",
+	"filter.all_placement": "Alle Standorte",
+	"filter.all_species": "Alle Arten",
+	"filter.all_category": "Alle Kategorien",
+	"filter.all_sensor": "Alle Sensorzustände",
+	"filter.all_tag": "Alle Tags",
+	"filter.sensor_missing": "fehlt",
+	"filter.sensor_stale": "veraltet",
+	"filter.sensor_unavailable": "nicht verfügbar",
+	"filter.sensor_missing_or_stale": "fehlt oder veraltet",
+	"detail.not_found": "Pflanze nicht gefunden – sie wurde möglicherweise in einer anderen Sitzung gelöscht.",
+	"detail.open_device": "Home-Assistant-Gerät öffnen",
+	"detail.sections_label": "Pflanzenbereiche",
+	"detail.tab_overview": "Übersicht",
+	"detail.tab_details": "Pflanzendetails",
+	"detail.tab_diagnostics": "Diagnose",
+	"detail.identity_heading": "Identität und Standort",
+	"detail.name": "Name",
+	"detail.acquired": "Angeschafft (ISO-Datum/-Uhrzeit, optional)",
+	"detail.save_identity": "Identität speichern",
+	"detail.area_current": "Aktuell: {area}. Der Bereich gehört zur nativen Geräteregistrierung.",
+	"detail.area_review": "Der native Bereich hat sich geändert. Prüfe den aktuellen und den ausgewählten Bereich, bevor du erneut speicherst.",
+	"detail.area_reviewed": "Ich habe die Änderung des nativen Bereichs geprüft",
+	"detail.area_use_current": "Aktuellen nativen Bereich verwenden",
+	"detail.save_area": "Bereich speichern",
+	"overview.eyebrow": "PFLANZENÜBERSICHT",
+	"overview.details_button": "Pflanzendetails und Foto",
+	"overview.current_reading": "Aktueller Messwert",
+	"overview.no_current_reading": "Kein aktueller Messwert",
+	"overview.based_on_moisture": "Basierend auf Feuchtemesswerten",
+	"overview.moisture_sensors": "Feuchtesensoren",
+	"overview.aggregation": "Aggregation: {aggregation}",
+	"overview.not_configured": "nicht konfiguriert",
+	"overview.assigned_sensors": "Zugewiesene Sensoren",
+	"overview.primary": "Primär",
+	"overview.no_sensors": "Keine Sensoren zugewiesen. Du kannst das Pflanzenprofil trotzdem nutzen und Pflege erfassen.",
+	"overview.manage_sensors": "Sensoren verwalten",
+	"overview.recent_care": "Letzte Pflege",
+	"overview.no_care": "Noch keine Pflegeeinträge erfasst.",
+	"overview.open_care": "Pflegeverlauf öffnen",
+	"overview.overall_confidence": "Zuverlässigkeit des Gesamtzustands: {label}",
+	"area.label": "Home-Assistant-Bereich",
+	"area.none": "Kein Bereich",
+	"area.missing_option": "{area} (Bereich fehlt – wähle vor dem Speichern einen aktuellen Bereich)",
+	"editor.current_value": "{value} (aktueller Wert)",
+	"placement.label": "Standort",
+	"placement.indoor": "drinnen",
+	"placement.outdoor": "draußen",
+	"placement.balcony": "Balkon",
+	"placement.greenhouse": "Gewächshaus",
+	"placement.covered_outdoor": "draußen überdacht",
+	"placement.dormant_storage": "Winterquartier",
+	"exposure.label": "Sonneneinstrahlung",
+	"exposure.full_sun": "volle Sonne",
+	"exposure.partial_sun": "Halbschatten",
+	"exposure.shade": "Schatten",
+	"rain_exposure.label": "Regen",
+	"rain_exposure.none": "kein Regen",
+	"rain_exposure.partial": "teilweise",
+	"rain_exposure.full": "voll",
+	"container.label": "Gefäß",
+	"container.in_container": "Im Topf",
+	"container.in_ground": "Im Boden",
+	"taxonomy.heading": "Einordnung",
+	"taxonomy.category": "Kategorie",
+	"taxonomy.tags": "Tags (durch Kommas getrennt)",
+	"taxonomy.hint": "Die Einordnung in Smart Plants ist unabhängig von Home-Assistant-Labels.",
+	"taxonomy.save": "Einordnung speichern",
+	"species.heading": "Art",
+	"species.none": "Keine Art zugewiesen.",
+	"species.preview_refresh": "Vorschau der Artaktualisierung",
+	"species.provider": "Artanbieter",
+	"species.manual": "Manuelle Art",
+	"species.common_name": "Deutscher Name",
+	"species.scientific_name": "Wissenschaftlicher Name",
+	"species.manual_hint": "Speichern ersetzt die Art durch deine eigenen Angaben. Lass beide Namen leer, um die Art zu entfernen.",
+	"species.save_manual": "Manuelle Art speichern",
+	"species.search": "Art suchen",
+	"species.no_matches": "Keine passende Art gefunden. Versuche eine andere Suche oder gib die Art manuell ein.",
+	"snapshot.species": "Art",
+	"snapshot.provider": "Anbieter",
+	"snapshot.reference": "Referenz",
+	"snapshot.attribution": "Quellenangabe",
+	"snapshot.fetched": "Abgerufen",
+	"snapshot.locale": "Sprache",
+	"snapshot.status": "Status",
+	"snapshot.status_manual": "manuell",
+	"snapshot.status_provider": "Anbieter",
+	"snapshot.confidence": "Zuverlässigkeit",
+	"snapshot.category": "Kategorie",
+	"snapshot.imported_defaults": "Importierte Feuchte-Standardwerte",
+	"snapshot.default_not_supplied": "Nicht angegeben (integrierter Standardwert gilt)",
+	"snapshot.field_attribution": "Quellenangabe je Feld",
+	"snapshot.proposed_changes": "Vorgeschlagene Änderungen",
+	"snapshot.preview_read_only": "Die Vorschau ist schreibgeschützt. Lokale Überschreibungen bleiben erhalten. Es werden keine externen Bilder geladen.",
+	"lifecycle.heading": "Lebenszyklus",
+	"lifecycle.description": "Deaktivieren beendet die Auswertung der Pflanze und macht ihre Entitäten nicht verfügbar. Eigene Automatisierungen bleiben davon unberührt.",
+	"lifecycle.disable": "Deaktivieren",
+	"lifecycle.reenable": "Wieder aktivieren",
+	"lifecycle.delete": "Pflanze löschen",
+	"dialog.delete_title": "{name} löschen?",
+	"dialog.delete_body": "Dadurch werden die Pflanze, ihr Gerät, ihre Entitäten und das lokale Foto dauerhaft entfernt. Dies kann nicht rückgängig gemacht werden.",
+	"dialog.delete_confirm": "Pflanze dauerhaft löschen",
+	"dialog.species_title": "Artänderungen prüfen",
+	"dialog.preview_invalid": "Die Vorschau ist nicht mehr gültig. Schließe den Dialog und fordere eine neue Vorschau an.",
+	"dialog.species_confirm": "Geprüfte Art übernehmen und anwenden",
+	"photo.heading": "Pflanzenfoto",
+	"photo.loading": "Foto wird geladen …",
+	"photo.load_failed": "Foto konnte nicht geladen werden: {error}",
+	"photo.retry": "Foto erneut laden",
+	"photo.alt": "Foto von {name}",
+	"photo.decode_failed": "Das gespeicherte Foto konnte nicht dekodiert werden. Versuche es erneut oder ersetze es durch ein gültiges Bild.",
+	"photo.none": "Noch kein Foto.",
+	"photo.stored": "Lokal gespeichert: {type} · {width} × {height} Pixel",
+	"photo.replace": "Foto ersetzen",
+	"photo.upload": "Foto hochladen",
+	"photo.hint": "JPEG, PNG oder WebP · max. 5 MiB · max. 2048 × 2048. Bilder werden authentifiziert und lokal gespeichert.",
+	"photo.remove": "Foto entfernen",
+	"image_error.type_or_size": "Wähle ein nicht leeres JPEG-, PNG- oder WebP-Bild mit höchstens 5 MiB.",
+	"image_error.unreadable": "Dieses Bild konnte nicht gelesen werden. Wähle die Datei erneut aus.",
+	"image_error.signature": "Der Bildinhalt passt nicht zum Dateityp JPEG, PNG oder WebP. Wähle ein anderes Bild.",
+	"image_error.decode": "Diese Datei konnte nicht als Bild dekodiert werden. Wähle ein anderes JPEG-, PNG- oder WebP-Bild.",
+	"image_error.dimensions": "Das Bild darf höchstens 2048 × 2048 Pixel groß sein.",
+	"created.notice": "{name} wurde erstellt.",
+	"created.uploading": "Das ausgewählte Foto wird hochgeladen …",
+	"created.photo_skipped": "Die Pflanze wurde nach dem Erstellen geändert. Das ursprüngliche Foto aus dem Assistenten wurde nicht hochgeladen. Prüfe das aktuelle Foto in den Pflanzendetails und lade bei Bedarf ausdrücklich ein Foto hoch.",
+	"created.photo_uploaded": "Das ausgewählte Foto wurde hochgeladen.",
+	"created.photo_failed": "Das ausgewählte Foto wurde nicht hochgeladen. Öffne die erstellte Pflanze, um es erneut hochzuladen.",
+	"created.photo_interrupted": "Das Hochladen des Fotos wurde unterbrochen. Öffne die erstellte Pflanze und prüfe ihr Foto, bevor du es erneut versuchst.",
+	"moisture.heading": "Feuchtekonfiguration",
+	"moisture.effective_summary": "Wirksame Schwellenwerte: {thresholds}",
+	"moisture.advanced_overrides": "Erweiterte Schwellenwert-Überschreibungen",
+	"moisture.advanced_hint": "Leere Werte übernehmen den oben angezeigten wirksamen Standardwert.",
+	"moisture.save": "Vollständige Feuchtekonfiguration speichern",
+	"moisture.incompatible": "Die Daten der Feuchterolle fehlen oder sind nicht kompatibel. Aktualisiere die Seite oder führe ein Update durch, bevor du bearbeitest; Standardwerte werden nicht geraten.",
+	"moisture.sources_intro": "Weise bis zu 32 Quellen zu. Die primäre Quelle wird nie automatisch ersetzt. Nicht verfügbare Sensoren können zugewiesen werden.",
+	"moisture.add_sensor": "Feuchtesensor hinzufügen",
+	"moisture.overrides_intro": "Leere Überschreibungen übernehmen ausdrücklich die Standardwerte. Speichern wendet die vollständige Konfiguration in einem Schritt an.",
+	"moisture.override_label": "Überschreibung {key} (%)",
+	"moisture.default_effective": "Standard {default} · wirksam {effective}",
+	"moisture.inherit_key": "{key} übernehmen",
+	"moisture_threshold.min": "Minimum",
+	"moisture_threshold.target": "Zielwert",
+	"moisture_threshold.max": "Maximum",
+	"sources.show_all": "Alle Sensoren anzeigen (ohne Metadatenfilter)",
+	"sources.choose": "Sensor auswählen",
+	"sources.candidate": "{name} · {entity_id} · Einheit: {unit} · Klasse: {device_class} · {state}",
+	"sources.not_supplied_lower": "nicht angegeben",
+	"sources.unavailable_lower": "nicht verfügbar",
+	"sources.unavailable": "Nicht verfügbar",
+	"sources.assign_unavailable": "Nicht verfügbaren oder nicht registrierten Sensor zuweisen",
+	"sources.press_enter": "Drücke die Eingabetaste, um eine Entitäts-ID hinzuzufügen.",
+	"sources.primary_suffix": " · Primär",
+	"sources.metadata": "Geräteklasse: {device_class} · Einheit: {unit} · {registration}",
+	"sources.registered": "Registriert",
+	"sources.not_registered": "Nicht registriert",
+	"sources.native_settings": "Native Sensoreinstellungen",
+	"sources.remove": "{entity_id} entfernen",
+	"sources.open_repairs": "Home-Assistant-Reparaturen öffnen",
+	"sources.primary": "Primärer Sensor",
+	"sources.primary_none": "Keiner (primäre Aggregation nicht verfügbar)",
+	"sources.aggregation": "Aggregation",
+	"sources.stale_after": "Veraltet nach (Sekunden, 60–604.800)",
+	"sources.role_intro": "Weise bis zu 32 Quellen für {role} zu. Die primäre Quelle wird nie automatisch ersetzt. Nicht verfügbare Sensoren können zugewiesen werden.",
+	"sources.add_role_sensor": "Sensor für {role} hinzufügen",
+	"aggregation.primary": "primär",
+	"aggregation.average": "Durchschnitt",
+	"aggregation.min": "Minimum",
+	"aggregation.max": "Maximum",
+	"source_warning.missing_registered": "Registrierte Quelle fehlt – ersetze sie ausdrücklich oder prüfe die Reparaturen.",
+	"source_warning.unregistered": "Nicht registriert: Umbenennungen können nicht zuverlässig verfolgt werden",
+	"source_warning.unavailable": "Derzeit nicht verfügbar",
+	"source_warning.moisture_metadata": "Unerwartete Metadaten: Die Auswertung erfordert einen Zahlenwert von 0–100 %",
+	"source_warning.moisture_reading": "Ungültiger Messwert: Die Auswertung erfordert einen Prozentwert von 0 bis 100",
+	"source_warning.role_metadata": "Unerwartete Metadaten: Die Auswertung für {role} erfordert die Geräteklasse {device_class} und die Einheit {units}",
+	"source_warning.separator": ". ",
+	"validation.sources_unique": "Wähle höchstens 32 unterschiedliche Sensorentitäten.",
+	"validation.aggregation": "Wähle eine unterstützte Aggregation.",
+	"validation.primary": "Die primäre Quelle muss einer der zugewiesenen Sensoren oder „Keiner“ sein.",
+	"validation.stale_after": "„Veraltet nach“ muss eine ganze Zahl von 60 bis 604.800 Sekunden sein.",
+	"validation.moisture_thresholds": "Wirksame Feuchte-Schwellenwerte müssen ganze Zahlen sein: 1 ≤ Minimum < Zielwert < Maximum ≤ 99, mit einer Spanne von mindestens 4 %.",
+	"validation.taxonomy": "Verwende eine Kategorie mit höchstens 60 Zeichen und höchstens 32 unterschiedliche Tags mit jeweils höchstens 60 Zeichen.",
+	"sensors.heading": "Sensoren",
+	"sensors.intro": "Weise jeder Rolle Home-Assistant-Sensoren zu. Der berechnete Sensor und der Problemsensor einer Rolle erscheinen, sobald sie mindestens einmal eine Quelle hatte. Die Entitätsauswahl ist nach Geräteklasse und Einheit gefiltert; weitere Sensoren sind unter „Alle Sensoren anzeigen“ verfügbar.",
+	"sensors.switch_prompt": "Du hast ungespeicherte Änderungen im Quellen-Editor für {role}. Editor wechseln und Änderungen verwerfen?",
+	"sensors.edit": "Quellen bearbeiten",
+	"sensors.refused": "Die Quelldaten für {role} fehlen oder sind nicht kompatibel. Aktualisiere die Seite oder führe ein Update durch, bevor du bearbeitest; Standardwerte werden nicht geraten.",
+	"sensors.save": "Quellen für {role} speichern",
+	"sensors.saved": "Quellen für {role} gespeichert.",
+	"sensors.summary_unavailable": "Rollendaten nicht verfügbar",
+	"sensors.summary_empty": "keine Quellen – diese Rolle hat noch keine berechnete Entität",
+	"sensors.source_count_one": "{count} Quelle",
+	"sensors.source_count_other": "{count} Quellen",
+	"sensors.summary_primary": " · primär {entity_id}",
+	"role.temperature": "Lufttemperatur",
+	"role.humidity": "Luftfeuchte",
+	"role.illuminance": "Beleuchtungsstärke",
+	"role.battery": "Batterie",
+	"role.conductivity": "Leitfähigkeit",
+	"role.soil_temperature": "Bodentemperatur",
+	"role.co2": "CO₂",
+	"role_phrase.temperature": "Lufttemperatur",
+	"role_phrase.humidity": "Luftfeuchte",
+	"role_phrase.illuminance": "Beleuchtungsstärke",
+	"role_phrase.battery": "Batterie",
+	"role_phrase.conductivity": "Leitfähigkeit",
+	"role_phrase.soil_temperature": "Bodentemperatur",
+	"role_phrase.co2": "CO₂",
+	"care.heading": "Pflegeverlauf",
+	"care.watering_count_one": "{count} Gießvorgang.",
+	"care.watering_count_other": "{count} Gießvorgänge.",
+	"care.last_watered": "Zuletzt gegossen: {date}.",
+	"care.never_watered": "Zuletzt gegossen: noch nie.",
+	"care.events_label": "Pflegeeinträge der Pflanze",
+	"care.empty": "Noch keine Pflege erfasst.",
+	"care.loading": "Pflegeverlauf wird geladen, oder aktualisiere die Seite, um es erneut zu versuchen.",
+	"care.edit_kind": "{kind} bearbeiten",
+	"care.delete_kind": "{kind} löschen",
+	"care.record": "Pflege erfassen",
+	"care.type": "Pflegeart",
+	"care.when": "Wann (deine Ortszeit)",
+	"care.note_optional": "Notiz (optional)",
+	"care.unit": "Einheit",
+	"care.no_amount": "Keine gemessene Menge",
+	"care.save_changes": "Pflegeänderungen speichern",
+	"care.cancel_editing": "Bearbeitung abbrechen",
+	"care.no_irrigation": "Pflegeeinträge steuern keine Bewässerung und ändern keine Feuchtewarnungen.",
+	"care.confirm_delete": "Diesen Eintrag „{kind}“ löschen? Dies kann nicht rückgängig gemacht werden.",
+	"care.error_refresh_save": "Aktualisiere den Pflegeverlauf vor dem Speichern. Dein Entwurf bleibt erhalten.",
+	"care.error_refresh_delete": "Aktualisiere den Pflegeverlauf vor dem Löschen.",
+	"care.error_date": "Wähle ein gültiges lokales Datum mit Uhrzeit, das nicht in der Zukunft liegt.",
+	"care.error_note_length": "Notizen dürfen höchstens 500 Zeichen lang sein.",
+	"care.error_amount": "Gib eine positive Menge bis 100.000 mit Einheit ein.",
+	"care.error_note_text": "Gib eine Notiz mit 1 bis 1000 Zeichen ein.",
+	"care.error_details_length": "Pflegedetails dürfen höchstens 120 Zeichen lang sein.",
+	"care_kind.watering": "Gießen",
+	"care_kind.fertilizing": "Düngen",
+	"care_kind.pruning": "Rückschnitt",
+	"care_kind.repotting": "Umtopfen",
+	"care_kind.note": "Notiz",
+	"care_kind_phrase.watering": "Gießen",
+	"care_kind_phrase.fertilizing": "Düngen",
+	"care_kind_phrase.pruning": "Rückschnitt",
+	"care_kind_phrase.repotting": "Umtopfen",
+	"care_kind_phrase.note": "Notiz",
+	"care_field.product": "Produkt",
+	"care_field.amount": "Menge",
+	"care_field.unit": "Einheit (g oder mL)",
+	"care_field.part": "Pflanzenteil",
+	"care_field.container": "Gefäß",
+	"care_field.medium": "Substrat",
+	"care_field.text": "Notiztext",
+	"care_field.note": "Notiz",
+	"automations.heading": "Native Automatisierungen",
+	"automations.description": "Verwende die Entität „Braucht Wasser“ der Pflanze für Benachrichtigungen oder Erinnerungen in Home Assistant. Dynamische oder Template-Verweise erscheinen möglicherweise nicht in den zugehörigen Ergebnissen.",
+	"automations.open_editor": "Automatisierungseditor öffnen",
+	"section.overall_health": "Gesamtzustand",
+	"section.overall_health_unavailable": "Der Gesamtzustand ist nicht verfügbar.",
+	"section.overall_health_unavailable_detail": "Der Gesamtzustand ist nicht verfügbar – keine konfigurierte Rolle liefert derzeit einen gültigen Wert.",
+	"section.overall_health_available_summary": "{score} von 100",
+	"section.overall_health_confidence": "Zuverlässigkeit",
+	"section.overall_health_included_roles": "Berücksichtigte Rollen",
+	"section.overall_health_none_contributing": "Derzeit trägt keine Rolle zum Gesamtwert bei.",
+	"section.overall_health_configured_unavailable": "Konfiguriert, aber nicht verfügbar",
+	"section.overall_health_all_included": "Keine – jede konfigurierte Rolle ist derzeit berücksichtigt.",
+	"section.confidence_label_high": "hoch",
+	"section.confidence_label_medium": "mittel",
+	"section.confidence_label_low": "niedrig",
+	"section.confidence_label_unknown": "unbekannt",
+	"section.confidence_high": "jede konfigurierte Rolle ist derzeit verfügbar.",
+	"section.confidence_medium": "mindestens die Hälfte der konfigurierten Rollen ist derzeit verfügbar.",
+	"section.confidence_low": "weniger als die Hälfte der konfigurierten Rollen ist derzeit verfügbar.",
+	"section.confidence_unknown": "für diese Pflanze sind noch keine Rollen konfiguriert.",
+	"section.confidence_other": "keine weiteren Details verfügbar.",
+	"section.health_contributor.moisture": "Bodenfeuchte",
+	"section.health_contributor.temperature": "Temperatur",
+	"section.health_contributor.humidity": "Luftfeuchte",
+	"section.health_contributor.illuminance": "Beleuchtungsstärke",
+	"section.health_contributor.battery": "Batterie",
+	"section.health_contributor.conductivity": "Leitfähigkeit",
+	"section.health_contributor.soil_temperature": "Bodentemperatur",
+	"section.health_contributor.co2": "CO2",
+	"section.advanced_diagnostics": "Erweiterte Diagnose",
+	"section.advanced_diagnostics_description": "Status der Problemanzeigen dieser Pflanze. Schwellenwerte lassen sich für jede Rolle bearbeiten: Temperatur, Luftfeuchte, Leitfähigkeit, CO2, Bodentemperaturstress, Batterie niedrig und zu wenig Licht.",
+	"section.advanced_diagnostics_zero_active": "Keine aktiven Probleme.",
+	"section.advanced_diagnostics_one_active": "{count} aktives Problem.",
+	"section.advanced_diagnostics_many_active": "{count} aktive Probleme.",
+	"section.advanced_diagnostics_status_problem": "Problem erkannt",
+	"section.advanced_diagnostics_status_ok": "kein Problem",
+	"section.advanced_diagnostics_status_unavailable": "nicht verfügbar",
+	"section.advanced_diagnostics_status_not_configured": "nicht konfiguriert",
+	"section.advanced_diagnostics_switch_prompt": "Ungespeicherte Änderungen im Editor für {current}. Verwerfen und zum Editor für {pending} wechseln?",
+	"section.advanced_diagnostics_switch_discard": "Verwerfen und wechseln",
+	"section.advanced_diagnostics_switch_keep": "Weiter bearbeiten",
+	"section.advanced_diagnostics_cancel_edit": "Abbrechen",
+	"section.advanced_diagnostics_edit_thresholds": "Schwellenwerte bearbeiten",
+	"section.effective_thresholds_label": "Wirksame Schwellenwerte für {label}",
+	"problem.temperature_stress": "Temperaturstress",
+	"problem.humidity_stress": "Luftfeuchtestress",
+	"problem.soil_temperature_stress": "Bodentemperaturstress",
+	"problem.co2_stress": "CO2-Stress",
+	"problem.low_light": "Zu wenig Licht",
+	"problem.low_battery": "Batterie niedrig",
+	"problem.conductivity_stress": "Leitfähigkeitsstress",
+	"problem_phrase.temperature_stress": "Temperaturstress",
+	"problem_phrase.humidity_stress": "Luftfeuchtestress",
+	"problem_phrase.soil_temperature_stress": "Bodentemperaturstress",
+	"problem_phrase.co2_stress": "CO2-Stress",
+	"problem_phrase.low_light": "zu wenig Licht",
+	"problem_phrase.low_battery": "Batterie niedrig",
+	"problem_phrase.conductivity_stress": "Leitfähigkeitsstress",
+	"threshold_label.cold_threshold": "Kälte-Auslöser",
+	"threshold_label.cold_clear": "Kälte-Aufhebung",
+	"threshold_label.hot_clear": "Hitze-Aufhebung",
+	"threshold_label.hot_threshold": "Hitze-Auslöser",
+	"threshold_label.dry_threshold": "Trocken-Auslöser",
+	"threshold_label.dry_clear": "Trocken-Aufhebung",
+	"threshold_label.damp_clear": "Feucht-Aufhebung",
+	"threshold_label.damp_threshold": "Feucht-Auslöser",
+	"threshold_label.high_threshold": "Hoch-Auslöser",
+	"threshold_label.high_clear": "Hoch-Aufhebung",
+	"threshold_label.low_threshold": "Niedrig-Auslöser",
+	"threshold_label.low_clear": "Niedrig-Aufhebung",
+	"threshold_label.target": "Zielwert",
+	"threshold_label.clear": "Aufhebung",
+	"threshold_field.cold_trigger": "Kälte-Auslöser ({unit})",
+	"threshold_field.cold_clear": "Kälte-Aufhebung ({unit})",
+	"threshold_field.hot_clear": "Hitze-Aufhebung ({unit})",
+	"threshold_field.hot_trigger": "Hitze-Auslöser ({unit})",
+	"threshold_field.dry_trigger": "Trocken-Auslöser ({unit})",
+	"threshold_field.dry_clear": "Trocken-Aufhebung ({unit})",
+	"threshold_field.damp_clear": "Feucht-Aufhebung ({unit})",
+	"threshold_field.damp_trigger": "Feucht-Auslöser ({unit})",
+	"threshold_field.low_trigger": "Niedrig-Auslöser ({unit})",
+	"threshold_field.low_clear": "Niedrig-Aufhebung ({unit})",
+	"threshold_field.high_clear": "Hoch-Aufhebung ({unit})",
+	"threshold_field.high_trigger": "Hoch-Auslöser ({unit})",
+	"threshold_field.target": "Zielwert ({unit})",
+	"threshold_field.clear": "Aufhebung ({unit})",
+	"threshold.default_effective": "Standard {default} {unit} · wirksam {effective} {unit}",
+	"threshold.inherit": "Übernehmen",
+	"threshold.inherit_all": "Alle integrierten Standardwerte übernehmen",
+	"threshold.save": "Schwellenwerte speichern",
+	"threshold.group_label": "Schwellenwerte für {label}",
+	"threshold_intro.temperature_stress": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Kälte-Auslöser < Kälte-Aufhebung < Hitze-Aufhebung < Hitze-Auslöser erfüllen, mit mindestens 0,5 °C Hysterese je Seite und einem stabilen Bereich von 1,0 °C.",
+	"threshold_intro.humidity_stress": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Trocken-Auslöser < Trocken-Aufhebung < Feucht-Aufhebung < Feucht-Auslöser erfüllen, mit mindestens 1,0 % Hysterese je Seite und einem stabilen Bereich von 5,0 %.",
+	"threshold_intro.conductivity_stress": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Niedrig-Auslöser < Niedrig-Aufhebung < Hoch-Aufhebung < Hoch-Auslöser erfüllen, mit mindestens 10,0 µS/cm Hysterese je Seite und einem stabilen Bereich von 50,0 µS/cm.",
+	"threshold_intro.co2_stress": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Aufhebung < Auslöser erfüllen, mit mindestens 100 ppm Hysterese; beide Werte sind ganze Zahlen von 0 bis 10.000 ppm.",
+	"threshold_intro.soil_temperature_stress": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Kälte-Auslöser < Kälte-Aufhebung < Hitze-Aufhebung < Hitze-Auslöser erfüllen, mit mindestens 0,5 °C Hysterese je Seite und einem stabilen Bereich von 1,0 °C, alles innerhalb von −20,0 bis 60,0 °C.",
+	"threshold_intro.low_battery": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Auslöser < Aufhebung erfüllen, mit mindestens 1 % Hysterese; beide Werte sind ganze Zahlen von 0 bis 100 %.",
+	"threshold_intro.low_light": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Zielwert < Aufhebung erfüllen, mit mindestens 10,0 lx Hysterese; beide Werte liegen zwischen 0,0 und 200.000,0 lx.",
+	"threshold_saved.temperature_stress": "Schwellenwerte für Temperaturstress gespeichert.",
+	"threshold_saved.humidity_stress": "Schwellenwerte für Luftfeuchtestress gespeichert.",
+	"threshold_saved.conductivity_stress": "Schwellenwerte für Leitfähigkeitsstress gespeichert.",
+	"threshold_saved.co2_stress": "Schwellenwerte für CO2-Stress gespeichert.",
+	"threshold_saved.soil_temperature_stress": "Schwellenwerte für Bodentemperaturstress gespeichert.",
+	"threshold_saved.low_battery": "Schwellenwerte für „Batterie niedrig“ gespeichert.",
+	"threshold_saved.low_light": "Schwellenwerte für „Zu wenig Licht“ gespeichert.",
+	"threshold_error.temperature_stress": "Die wirksamen Schwellenwerte müssen Kälte-Auslöser < Kälte-Aufhebung < Hitze-Aufhebung < Hitze-Auslöser erfüllen, mit ≥ 0,5 °C Hysterese und einem stabilen Bereich von ≥ 1,0 °C, alles innerhalb von −40,0 bis 80,0 °C.",
+	"threshold_error.humidity_stress": "Die wirksamen Schwellenwerte müssen Trocken-Auslöser < Trocken-Aufhebung < Feucht-Aufhebung < Feucht-Auslöser erfüllen, mit ≥ 1,0 % Hysterese und einem stabilen Bereich von ≥ 5,0 %, alles innerhalb von 0,0 bis 100,0 %.",
+	"threshold_error.conductivity_stress": "Die wirksamen Schwellenwerte müssen Niedrig-Auslöser < Niedrig-Aufhebung < Hoch-Aufhebung < Hoch-Auslöser erfüllen, mit ≥ 10,0 µS/cm Hysterese und einem stabilen Bereich von ≥ 50,0 µS/cm, alles innerhalb von 0,0 bis 10.000,0 µS/cm.",
+	"threshold_error.co2_stress": "Die wirksamen Schwellenwerte müssen Aufhebung < Auslöser mit ≥ 100 ppm Hysterese erfüllen; beide Werte sind ganze Zahlen von 0 bis 10.000 ppm.",
+	"threshold_error.soil_temperature_stress": "Die wirksamen Schwellenwerte müssen Kälte-Auslöser < Kälte-Aufhebung < Hitze-Aufhebung < Hitze-Auslöser erfüllen, mit ≥ 0,5 °C Hysterese und einem stabilen Bereich von ≥ 1,0 °C, alles innerhalb von −20,0 bis 60,0 °C.",
+	"threshold_error.low_battery": "Die wirksamen Schwellenwerte müssen Auslöser < Aufhebung mit ≥ 1 % Hysterese erfüllen; beide Werte sind ganze Zahlen von 0 bis 100 %.",
+	"threshold_error.low_light": "Die wirksamen Schwellenwerte müssen Zielwert < Aufhebung mit ≥ 10,0 lx Hysterese erfüllen; beide Werte liegen zwischen 0,0 und 200.000,0 lx.",
+	"wizard.step_basic": "Grunddaten",
+	"wizard.step_species": "Art und Pflege",
+	"wizard.step_review_species": "Art prüfen",
+	"wizard.step_sensors": "Feuchtesensoren",
+	"wizard.step_thresholds": "Feuchte-Schwellenwerte",
+	"wizard.step_taxonomy": "Kategorie und Tags",
+	"wizard.step_review": "Prüfen und erstellen",
+	"wizard.progress": "Fortschritt beim Erstellen",
+	"wizard.saved_after_confirmation": "Deine Pflanze wird erst nach der abschließenden Bestätigung gespeichert. Du kannst zurückgehen, ohne deine Auswahl zu verlieren.",
+	"wizard.retry_draft": "Entwurf erneut starten",
+	"wizard.plant_name": "Pflanzenname",
+	"wizard.acquired_date": "Anschaffungsdatum",
+	"wizard.photo": "Optionales lokales Foto",
+	"wizard.photo_hint": "JPEG, PNG oder WebP; höchstens 5 MiB und 2048 × 2048. Wird erst nach dem Erstellen hochgeladen.",
+	"wizard.photo_selected": "Ausgewählt: {name} ({bytes} Byte)",
+	"wizard.photo_remove": "Ausgewähltes Foto entfernen",
+	"wizard.species_source": "Quelle der Artdaten",
+	"wizard.manual_title": "Details selbst eingeben",
+	"wizard.manual_description": "Gib einen Artnamen ein oder fahre ohne fort. Funktioniert offline.",
+	"wizard.openplantbook_title": "OpenPlantBook durchsuchen",
+	"wizard.openplantbook_description": "Finde eine Art, prüfe die importierten Informationen und wähle dann aus, was übernommen wird.",
+	"wizard.openplantbook_unavailable_title": "OpenPlantBook ist nicht verbunden",
+	"wizard.openplantbook_unavailable_help": "Smart Plants verbindet sich direkt mit OpenPlantBook. Erstelle ein OpenPlantBook-Konto und API-Client-Zugangsdaten und trage sie in Home Assistant unter Einstellungen → Geräte & Dienste → Smart Plants → Konfigurieren ein. Die separate Home-Assistant-OpenPlantBook-Integration muss nicht installiert werden.",
+	"wizard.openplantbook_credentials_link": "OpenPlantBook-API-Zugangsdaten abrufen",
+	"wizard.species_details": "Artdetails",
+	"wizard.optional": "Optional",
+	"wizard.builtin_defaults": "Die Feuchte-Standardwerte stammen von Smart Plants: {min} Minimum, {target} Zielwert, {max} Maximum. Du kannst sie später prüfen oder anpassen.",
+	"wizard.search_label": "OpenPlantBook durchsuchen (mindestens 3 Zeichen)",
+	"wizard.search_button": "Pflanzen suchen",
+	"wizard.no_matches": "Keine Treffer. Versuche eine andere Suche oder wechsle zur manuellen Eingabe.",
+	"wizard.manual_instead": "Stattdessen Details manuell eingeben",
+	"wizard.accept_species": "Ich habe diese Artinformationen geprüft und übernehme sie",
+	"wizard.imported_defaults_hint": "Importierte Feuchte-Standardwerte werden mit ihrer Quelle angezeigt. Fehlende Werte verwenden die Standardwerte von Smart Plants.",
+	"wizard.effective_range": "Aktueller wirksamer Bereich:",
+	"wizard.range_value": "{min}–{max}",
+	"wizard.target_separator": ", Zielwert ",
+	"wizard.inherited_openplantbook": "Übernommene Werte verwenden geprüfte OpenPlantBook-Daten, soweit vorhanden, sonst die Standardwerte von Smart Plants.",
+	"wizard.inherited_builtin": "Übernommene Werte verwenden die integrierten Standardwerte von Smart Plants.",
+	"wizard.overrides_hint": "Lass einen Wert leer, um seinen aktuellen Standardwert zu übernehmen.",
+	"wizard.taxonomy_hint": "Tags und Kategorie gehören zu Smart Plants und sind unabhängig von Home-Assistant-Labels.",
+	"wizard.review_area": "Bereich",
+	"wizard.review_missing_area": "{area} (Bereich fehlt)",
+	"wizard.review_exposure": "Sonne / Regen",
+	"wizard.review_acquired": "Angeschafft",
+	"wizard.review_taxonomy": "Kategorie / Tags",
+	"wizard.review_sources": "Quellen",
+	"wizard.review_primary_aggregation": "Primär / Aggregation",
+	"wizard.review_staleness": "Veraltet nach",
+	"wizard.review_seconds": "{seconds} Sekunden",
+	"wizard.review_thresholds": "Wirksame Schwellenwerte",
+	"wizard.review_threshold": "{key}: {value} ({source})",
+	"wizard.inherited": "übernommen",
+	"wizard.override": "überschrieben",
+	"wizard.review_photo": "Foto",
+	"wizard.review_photo_info": "{format} · {width} × {height} Pixel · {bytes} Byte",
+	"wizard.confirm_hint": "Die Bestätigung erstellt ein Pflanzengerät mit seinen Feuchte-Entitäten. Benachrichtigungen kannst du anschließend in Home Assistant einrichten.",
+	"wizard.final_request_retained": "Die abschließende Anfrage bleibt unverändert erhalten. Wiederhole sie, um ein unsicheres Ergebnis sicher aufzulösen, auch nach einer neuen Verbindung. Starte keinen neuen Entwurf, bevor das Ergebnis geklärt ist.",
+	"wizard.rejected": "Der Server hat die Anfrage als ungültig oder abgelaufen abgelehnt. Du kannst sie mit einem neuen Entwurf korrigieren; Artdaten müssen erneut angezeigt und übernommen werden.",
+	"wizard.start_fresh": "Neuen Entwurf starten und Eingaben behalten",
+	"wizard.previous": "Vorheriger Schritt",
+	"wizard.next": "Nächster Schritt",
+	"wizard.retry_create": "Dieselbe Erstellungsanfrage wiederholen",
+	"wizard.create": "Bestätigen und Pflanze erstellen",
+	"wizard.working": "Wird bearbeitet …",
+	"wizard.error_code": "{code}: Anfrage fehlgeschlagen. Prüfe die Eingaben oder versuche es erneut, sobald eine Verbindung besteht. Die Art kann manuell eingegeben werden; abgelaufene Vorschauen müssen erneut geprüft werden.",
+	"wizard.error_generic": "Anfrage fehlgeschlagen. Versuche es erneut, sobald eine Verbindung besteht.",
+	"wizard.error_name": "Gib einen Pflanzennamen ein.",
+	"wizard.error_name_length": "Gib einen Pflanzennamen ein (1–200 Zeichen).",
+	"wizard.error_acquired": "Gib ein gültiges Anschaffungsdatum ein.",
+	"wizard.error_area": "Der ausgewählte Home-Assistant-Bereich existiert nicht mehr. Wähle einen aktuellen Bereich oder „Kein Bereich“.",
+	"wizard.error_accept_preview": "Prüfe die ausgewählte Artvorschau und übernimm sie ausdrücklich, oder fahre manuell fort.",
+	"wizard.error_choose_species": "Wähle ein Suchergebnis oder fahre manuell fort.",
+	"wizard.error_accept": "Übernimm die Vorschau ausdrücklich oder fahre manuell fort."
+}, nt = {
 	"format.percent": "{value}%",
 	"format.recorded_date_time": "{datetime} (UTC{offset})",
 	"common.cancel": "Cancel",
@@ -1584,15 +2128,18 @@ var tt = {
 	"wizard.error_accept_preview": "Review and explicitly accept the selected species preview, or continue manually.",
 	"wizard.error_choose_species": "Choose a species result or continue manually.",
 	"wizard.error_accept": "Explicitly accept the preview or continue manually."
-}, nt = ["en"], rt = { en: tt };
+}, rt = ["en", "de"], it = {
+	en: nt,
+	de: tt
+};
 function B(e) {
-	return Object.hasOwn(tt, e);
-}
-function it(e) {
-	let t = (e?.locale?.language || e?.language || "en").toLowerCase().split(/[-_]/)[0] ?? "en";
-	return nt.includes(t) ? t : "en";
+	return Object.hasOwn(nt, e);
 }
 function at(e) {
+	let t = (e?.locale?.language || e?.language || "en").toLowerCase().split(/[-_]/)[0] ?? "en";
+	return rt.includes(t) ? t : "en";
+}
+function ot(e) {
 	if (!e) return;
 	let t = e.replaceAll("_", "-");
 	try {
@@ -1601,7 +2148,7 @@ function at(e) {
 		return;
 	}
 }
-function ot(e, t) {
+function st(e, t) {
 	switch (e?.number_format) {
 		case "system": return {
 			locales: void 0,
@@ -1637,42 +2184,42 @@ function ot(e, t) {
 		};
 	}
 }
-function st(e) {
+function ct(e) {
 	if (e?.time_format === "12") return !0;
 	if (e?.time_format === "24") return !1;
 }
-function ct(e, t, n) {
+function lt(e, t, n) {
 	return t ? e.replace(/\{(\w+)\}/g, (e, r) => {
 		if (!Object.hasOwn(t, r)) return e;
 		let i = t[r];
 		return typeof i == "number" ? n(i) : i;
 	}) : e;
 }
-var lt = /* @__PURE__ */ new Map();
-function ut(e, t = rt) {
-	let n = it(e), r = e?.locale, i = t === rt ? JSON.stringify([
+var ut = /* @__PURE__ */ new Map();
+function dt(e, t = it) {
+	let n = at(e), r = e?.locale, i = t === it ? JSON.stringify([
 		n,
 		e?.language,
 		r?.language,
 		r?.number_format,
 		r?.time_format,
 		r?.date_format
-	]) : null, a = i ? lt.get(i) : void 0;
+	]) : null, a = i ? ut.get(i) : void 0;
 	if (a) return a;
-	let o = at(r?.language || e?.language) ?? n, { locales: s, grouping: c } = ot(r, o), l = c ? "min2" : !1, u = r?.date_format === "system" ? void 0 : [o], d = /* @__PURE__ */ new Map(), f = (e, t = {}) => {
+	let o = ot(r?.language || e?.language) ?? n, { locales: s, grouping: c } = st(r, o), l = c ? "min2" : !1, u = r?.date_format === "system" ? void 0 : [o], d = /* @__PURE__ */ new Map(), f = (e, t = {}) => {
 		let n = JSON.stringify(t), r = d.get(n);
 		return r || (r = new Intl.NumberFormat(s, {
 			maximumFractionDigits: 2,
 			useGrouping: l,
 			...t
 		}), d.set(n, r)), r.format(e);
-	}, ee = t[n], p = (e, n) => ct(ee[e] ?? t.en[e] ?? e, n, (e) => f(e)), te = new Intl.PluralRules(n), m = new Intl.DateTimeFormat(u, {
+	}, ee = t[n], p = (e, n) => lt(ee[e] ?? t.en[e] ?? e, n, (e) => f(e)), te = new Intl.PluralRules(n), m = new Intl.DateTimeFormat(u, {
 		dateStyle: "medium",
 		timeZone: "UTC"
 	}), h = {
 		hour: "numeric",
 		minute: "2-digit"
-	}, ne = st(r);
+	}, ne = ct(r);
 	ne !== void 0 && (h.hour12 = ne);
 	let re = new Intl.DateTimeFormat(u, {
 		...h,
@@ -1712,9 +2259,9 @@ function ut(e, t = rt) {
 			return Number.isFinite(t) ? g.format(t) : e;
 		}
 	};
-	return i && lt.set(i, _), _;
+	return i && ut.set(i, _), _;
 }
-var V = ut(), H = [
+var V = dt(), H = [
 	"min",
 	"target",
 	"max"
@@ -1722,14 +2269,14 @@ var V = ut(), H = [
 	min: 15,
 	target: 35,
 	max: 55
-}, dt = [
+}, ft = [
 	"indoor",
 	"outdoor",
 	"balcony",
 	"greenhouse",
 	"covered_outdoor",
 	"dormant_storage"
-], ft = [
+], pt = [
 	"temperature_stress",
 	"humidity_stress",
 	"soil_temperature_stress",
@@ -1738,22 +2285,22 @@ var V = ut(), H = [
 	"low_battery",
 	"conductivity_stress"
 ];
-function pt(e, t = V) {
+function mt(e, t = V) {
 	let n = `section.health_contributor.${e}`;
 	return B(n) ? t.t(n) : e.replaceAll("_", " ");
 }
-function mt(e, t = V) {
+function ht(e, t = V) {
 	let n = `section.confidence_${e}`;
 	return t.t(B(n) ? n : "section.confidence_other");
 }
-function ht(e, t = V) {
+function gt(e, t = V) {
 	let n = `section.confidence_label_${e}`;
 	return B(n) ? t.t(n) : e;
 }
-function gt(e, t = V) {
+function _t(e, t = V) {
 	return t.t(`problem.${e}`);
 }
-var _t = {
+var vt = {
 	temperature_stress: [
 		{
 			key: "cold_threshold_celsius",
@@ -1869,40 +2416,40 @@ var _t = {
 			unit: "µS/cm"
 		}
 	]
-}, vt = {
+}, yt = {
 	cold_threshold_celsius: 10,
 	cold_clear_celsius: 12,
 	hot_clear_celsius: 32,
 	hot_threshold_celsius: 35
-}, yt = [
+}, bt = [
 	"cold_threshold_celsius",
 	"cold_clear_celsius",
 	"hot_clear_celsius",
 	"hot_threshold_celsius"
-], bt = -40, xt = 80, St = .5, Ct = 1;
-function wt(e) {
+], xt = -40, St = 80, Ct = .5, wt = 1;
+function Tt(e) {
 	return e >= 0 ? Math.floor(e * 10 + .5) / 10 : -(Math.floor(-e * 10 + .5) / 10);
 }
-function Tt(e) {
+function Et(e) {
 	let t = e.trim();
 	if (t === "") return null;
 	let n = Number(t);
 	if (!Number.isFinite(n)) return "invalid";
-	let r = wt(n);
-	return r < bt || r > xt ? "invalid" : r;
+	let r = Tt(n);
+	return r < xt || r > St ? "invalid" : r;
 }
-function Et(e, t = V) {
+function Dt(e, t = V) {
 	let n = {};
-	for (let r of yt) {
-		let i = Tt(e[r]);
+	for (let r of bt) {
+		let i = Et(e[r]);
 		if (i === "invalid") return {
 			values: {},
 			error: t.t("threshold_error.temperature_stress")
 		};
 		n[r] = i;
 	}
-	let r = n, i = (e) => r[e] ?? vt[e], a = i("cold_threshold_celsius"), o = i("cold_clear_celsius"), s = i("hot_clear_celsius"), c = i("hot_threshold_celsius");
-	return !(a < o && o < s && s < c) || o - a < St || c - s < St || s - o < Ct ? {
+	let r = n, i = (e) => r[e] ?? yt[e], a = i("cold_threshold_celsius"), o = i("cold_clear_celsius"), s = i("hot_clear_celsius"), c = i("hot_threshold_celsius");
+	return !(a < o && o < s && s < c) || o - a < Ct || c - s < Ct || s - o < wt ? {
 		values: r,
 		error: t.t("threshold_error.temperature_stress")
 	} : {
@@ -1910,7 +2457,7 @@ function Et(e, t = V) {
 		error: null
 	};
 }
-function Dt(e) {
+function Ot(e) {
 	let t = {
 		cold_threshold_celsius: "",
 		cold_clear_celsius: "",
@@ -1918,43 +2465,43 @@ function Dt(e) {
 		hot_threshold_celsius: ""
 	};
 	if (!e) return t;
-	for (let n of yt) {
+	for (let n of bt) {
 		let r = e[n];
 		t[n] = r == null ? "" : String(r);
 	}
 	return t;
 }
-var Ot = {
+var kt = {
 	dry_threshold_percent: 25,
 	dry_clear_percent: 30,
 	damp_clear_percent: 80,
 	damp_threshold_percent: 85
-}, kt = [
+}, At = [
 	"dry_threshold_percent",
 	"dry_clear_percent",
 	"damp_clear_percent",
 	"damp_threshold_percent"
-], At = 0, jt = 100, Mt = 1, Nt = 5;
-function Pt(e) {
+], jt = 0, Mt = 100, Nt = 1, Pt = 5;
+function Ft(e) {
 	let t = e.trim();
 	if (t === "") return null;
 	let n = Number(t);
 	if (!Number.isFinite(n)) return "invalid";
-	let r = wt(n);
-	return r < At || r > jt ? "invalid" : r;
+	let r = Tt(n);
+	return r < jt || r > Mt ? "invalid" : r;
 }
-function Ft(e, t = V) {
+function It(e, t = V) {
 	let n = {};
-	for (let r of kt) {
-		let i = Pt(e[r]);
+	for (let r of At) {
+		let i = Ft(e[r]);
 		if (i === "invalid") return {
 			values: {},
 			error: t.t("threshold_error.humidity_stress")
 		};
 		n[r] = i;
 	}
-	let r = n, i = (e) => r[e] ?? Ot[e], a = i("dry_threshold_percent"), o = i("dry_clear_percent"), s = i("damp_clear_percent"), c = i("damp_threshold_percent");
-	return !(a < o && o < s && s < c) || o - a < Mt || c - s < Mt || s - o < Nt ? {
+	let r = n, i = (e) => r[e] ?? kt[e], a = i("dry_threshold_percent"), o = i("dry_clear_percent"), s = i("damp_clear_percent"), c = i("damp_threshold_percent");
+	return !(a < o && o < s && s < c) || o - a < Nt || c - s < Nt || s - o < Pt ? {
 		values: r,
 		error: t.t("threshold_error.humidity_stress")
 	} : {
@@ -1962,7 +2509,7 @@ function Ft(e, t = V) {
 		error: null
 	};
 }
-function It(e) {
+function Lt(e) {
 	let t = {
 		dry_threshold_percent: "",
 		dry_clear_percent: "",
@@ -1970,43 +2517,43 @@ function It(e) {
 		damp_threshold_percent: ""
 	};
 	if (!e) return t;
-	for (let n of kt) {
+	for (let n of At) {
 		let r = e[n];
 		t[n] = r == null ? "" : String(r);
 	}
 	return t;
 }
-var Lt = {
+var Rt = {
 	low_threshold_micro_siemens_per_cm: 350,
 	low_clear_micro_siemens_per_cm: 500,
 	high_clear_micro_siemens_per_cm: 1800,
 	high_threshold_micro_siemens_per_cm: 2e3
-}, Rt = [
+}, zt = [
 	"low_threshold_micro_siemens_per_cm",
 	"low_clear_micro_siemens_per_cm",
 	"high_clear_micro_siemens_per_cm",
 	"high_threshold_micro_siemens_per_cm"
-], zt = 0, Bt = 1e4, Vt = 10, Ht = 50;
-function Ut(e) {
+], Bt = 0, Vt = 1e4, Ht = 10, Ut = 50;
+function Wt(e) {
 	let t = e.trim();
 	if (t === "") return null;
 	let n = Number(t);
 	if (!Number.isFinite(n)) return "invalid";
-	let r = wt(n);
-	return r < zt || r > Bt ? "invalid" : r;
+	let r = Tt(n);
+	return r < Bt || r > Vt ? "invalid" : r;
 }
-function Wt(e, t = V) {
+function Gt(e, t = V) {
 	let n = {};
-	for (let r of Rt) {
-		let i = Ut(e[r]);
+	for (let r of zt) {
+		let i = Wt(e[r]);
 		if (i === "invalid") return {
 			values: {},
 			error: t.t("threshold_error.conductivity_stress")
 		};
 		n[r] = i;
 	}
-	let r = n, i = (e) => r[e] ?? Lt[e], a = i("low_threshold_micro_siemens_per_cm"), o = i("low_clear_micro_siemens_per_cm"), s = i("high_clear_micro_siemens_per_cm"), c = i("high_threshold_micro_siemens_per_cm");
-	return !(a < o && o < s && s < c) || o - a < Vt || c - s < Vt || s - o < Ht ? {
+	let r = n, i = (e) => r[e] ?? Rt[e], a = i("low_threshold_micro_siemens_per_cm"), o = i("low_clear_micro_siemens_per_cm"), s = i("high_clear_micro_siemens_per_cm"), c = i("high_threshold_micro_siemens_per_cm");
+	return !(a < o && o < s && s < c) || o - a < Ht || c - s < Ht || s - o < Ut ? {
 		values: r,
 		error: t.t("threshold_error.conductivity_stress")
 	} : {
@@ -2014,7 +2561,7 @@ function Wt(e, t = V) {
 		error: null
 	};
 }
-function Gt(e) {
+function Kt(e) {
 	let t = {
 		low_threshold_micro_siemens_per_cm: "",
 		low_clear_micro_siemens_per_cm: "",
@@ -2022,39 +2569,39 @@ function Gt(e) {
 		high_threshold_micro_siemens_per_cm: ""
 	};
 	if (!e) return t;
-	for (let n of Rt) {
+	for (let n of zt) {
 		let r = e[n];
 		t[n] = r == null ? "" : String(r);
 	}
 	return t;
 }
-var Kt = {
+var qt = {
 	threshold_ppm: 5e3,
 	clear_ppm: 4e3
-}, qt = ["threshold_ppm", "clear_ppm"], Jt = 0, Yt = 1e4, Xt = 100;
-function Zt(e) {
+}, Jt = ["threshold_ppm", "clear_ppm"], Yt = 0, Xt = 1e4, Zt = 100;
+function Qt(e) {
 	return e >= 0 ? Math.floor(e + .5) : -Math.floor(-e + .5);
 }
-function Qt(e) {
+function $t(e) {
 	let t = e.trim();
 	if (t === "") return null;
 	let n = Number(t);
 	if (!Number.isFinite(n)) return "invalid";
-	let r = Zt(n);
-	return r < Jt || r > Yt ? "invalid" : r;
+	let r = Qt(n);
+	return r < Yt || r > Xt ? "invalid" : r;
 }
-function $t(e, t = V) {
+function en(e, t = V) {
 	let n = {};
-	for (let r of qt) {
-		let i = Qt(e[r]);
+	for (let r of Jt) {
+		let i = $t(e[r]);
 		if (i === "invalid") return {
 			values: {},
 			error: t.t("threshold_error.co2_stress")
 		};
 		n[r] = i;
 	}
-	let r = n, i = (e) => r[e] ?? Kt[e], a = i("clear_ppm"), o = i("threshold_ppm");
-	return !(a < o) || o - a < Xt ? {
+	let r = n, i = (e) => r[e] ?? qt[e], a = i("clear_ppm"), o = i("threshold_ppm");
+	return !(a < o) || o - a < Zt ? {
 		values: r,
 		error: t.t("threshold_error.co2_stress")
 	} : {
@@ -2062,49 +2609,49 @@ function $t(e, t = V) {
 		error: null
 	};
 }
-function en(e) {
+function tn(e) {
 	let t = {
 		threshold_ppm: "",
 		clear_ppm: ""
 	};
 	if (!e) return t;
-	for (let n of qt) {
+	for (let n of Jt) {
 		let r = e[n];
 		t[n] = r == null ? "" : String(r);
 	}
 	return t;
 }
-var tn = {
+var nn = {
 	cold_threshold_celsius: 10,
 	cold_clear_celsius: 12,
 	hot_clear_celsius: 32,
 	hot_threshold_celsius: 35
-}, nn = [
+}, rn = [
 	"cold_threshold_celsius",
 	"cold_clear_celsius",
 	"hot_clear_celsius",
 	"hot_threshold_celsius"
-], rn = -20, an = 60, on = .5, sn = 1;
-function cn(e) {
+], an = -20, on = 60, sn = .5, cn = 1;
+function ln(e) {
 	let t = e.trim();
 	if (t === "") return null;
 	let n = Number(t);
 	if (!Number.isFinite(n)) return "invalid";
-	let r = wt(n);
-	return r < rn || r > an ? "invalid" : r;
+	let r = Tt(n);
+	return r < an || r > on ? "invalid" : r;
 }
-function ln(e, t = V) {
+function un(e, t = V) {
 	let n = {};
-	for (let r of nn) {
-		let i = cn(e[r]);
+	for (let r of rn) {
+		let i = ln(e[r]);
 		if (i === "invalid") return {
 			values: {},
 			error: t.t("threshold_error.soil_temperature_stress")
 		};
 		n[r] = i;
 	}
-	let r = n, i = (e) => r[e] ?? tn[e], a = i("cold_threshold_celsius"), o = i("cold_clear_celsius"), s = i("hot_clear_celsius"), c = i("hot_threshold_celsius");
-	return !(a < o && o < s && s < c) || o - a < on || c - s < on || s - o < sn ? {
+	let r = n, i = (e) => r[e] ?? nn[e], a = i("cold_threshold_celsius"), o = i("cold_clear_celsius"), s = i("hot_clear_celsius"), c = i("hot_threshold_celsius");
+	return !(a < o && o < s && s < c) || o - a < sn || c - s < sn || s - o < cn ? {
 		values: r,
 		error: t.t("threshold_error.soil_temperature_stress")
 	} : {
@@ -2112,7 +2659,7 @@ function ln(e, t = V) {
 		error: null
 	};
 }
-function un(e) {
+function dn(e) {
 	let t = {
 		cold_threshold_celsius: "",
 		cold_clear_celsius: "",
@@ -2120,36 +2667,36 @@ function un(e) {
 		hot_threshold_celsius: ""
 	};
 	if (!e) return t;
-	for (let n of nn) {
+	for (let n of rn) {
 		let r = e[n];
 		t[n] = r == null ? "" : String(r);
 	}
 	return t;
 }
-var dn = {
+var fn = {
 	threshold_percent: 20,
 	clear_percent: 25
-}, fn = ["threshold_percent", "clear_percent"], pn = 0, mn = 100, hn = 1;
-function gn(e) {
+}, pn = ["threshold_percent", "clear_percent"], mn = 0, hn = 100, gn = 1;
+function _n(e) {
 	let t = e.trim();
 	if (t === "") return null;
 	let n = Number(t);
 	if (!Number.isFinite(n)) return "invalid";
-	let r = Zt(n);
-	return r < pn || r > mn ? "invalid" : r;
+	let r = Qt(n);
+	return r < mn || r > hn ? "invalid" : r;
 }
-function _n(e, t = V) {
+function vn(e, t = V) {
 	let n = {};
-	for (let r of fn) {
-		let i = gn(e[r]);
+	for (let r of pn) {
+		let i = _n(e[r]);
 		if (i === "invalid") return {
 			values: {},
 			error: t.t("threshold_error.low_battery")
 		};
 		n[r] = i;
 	}
-	let r = n, i = (e) => r[e] ?? dn[e], a = i("threshold_percent"), o = i("clear_percent");
-	return !(a < o) || o - a < hn ? {
+	let r = n, i = (e) => r[e] ?? fn[e], a = i("threshold_percent"), o = i("clear_percent");
+	return !(a < o) || o - a < gn ? {
 		values: r,
 		error: t.t("threshold_error.low_battery")
 	} : {
@@ -2157,42 +2704,42 @@ function _n(e, t = V) {
 		error: null
 	};
 }
-function vn(e) {
+function yn(e) {
 	let t = {
 		threshold_percent: "",
 		clear_percent: ""
 	};
 	if (!e) return t;
-	for (let n of fn) {
+	for (let n of pn) {
 		let r = e[n];
 		t[n] = r == null ? "" : String(r);
 	}
 	return t;
 }
-var yn = {
+var bn = {
 	target_lux: 500,
 	clear_lux: 700
-}, bn = ["target_lux", "clear_lux"], xn = 0, Sn = 2e5, Cn = 10;
-function wn(e) {
+}, xn = ["target_lux", "clear_lux"], Sn = 0, Cn = 2e5, wn = 10;
+function Tn(e) {
 	let t = e.trim();
 	if (t === "") return null;
 	let n = Number(t);
 	if (!Number.isFinite(n)) return "invalid";
-	let r = wt(n);
-	return r < xn || r > Sn ? "invalid" : r;
+	let r = Tt(n);
+	return r < Sn || r > Cn ? "invalid" : r;
 }
-function Tn(e, t = V) {
+function En(e, t = V) {
 	let n = {};
-	for (let r of bn) {
-		let i = wn(e[r]);
+	for (let r of xn) {
+		let i = Tn(e[r]);
 		if (i === "invalid") return {
 			values: {},
 			error: t.t("threshold_error.low_light")
 		};
 		n[r] = i;
 	}
-	let r = n, i = (e) => r[e] ?? yn[e], a = i("target_lux"), o = i("clear_lux");
-	return !(a < o) || o - a < Cn ? {
+	let r = n, i = (e) => r[e] ?? bn[e], a = i("target_lux"), o = i("clear_lux");
+	return !(a < o) || o - a < wn ? {
 		values: r,
 		error: t.t("threshold_error.low_light")
 	} : {
@@ -2200,23 +2747,23 @@ function Tn(e, t = V) {
 		error: null
 	};
 }
-function En(e) {
+function Dn(e) {
 	let t = {
 		target_lux: "",
 		clear_lux: ""
 	};
 	if (!e) return t;
-	for (let n of bn) {
+	for (let n of xn) {
 		let r = e[n];
 		t[n] = r == null ? "" : String(r);
 	}
 	return t;
 }
-function Dn(e, t, n, r, i = V) {
+function On(e, t, n, r, i = V) {
 	let a = `smart_plants:${e.id}:${t}`, o = n.find((e) => e.unique_id === a && e.platform === "smart_plants");
 	if (!o) return [];
 	let s = r[o.entity_id];
-	return s ? _t[t].map((e) => {
+	return s ? vt[t].map((e) => {
 		let t = s.attributes[e.key], n = typeof t == "number" && Number.isFinite(t) ? t : null;
 		return {
 			key: e.key,
@@ -2226,9 +2773,9 @@ function Dn(e, t, n, r, i = V) {
 		};
 	}) : [];
 }
-function On(e, t, n, r = V) {
-	return ft.map((i) => {
-		let a = gt(i, r), o = `smart_plants:${e.id}:${i}`, s = t.find((e) => e.unique_id === o && e.platform === "smart_plants");
+function kn(e, t, n, r = V) {
+	return pt.map((i) => {
+		let a = _t(i, r), o = `smart_plants:${e.id}:${i}`, s = t.find((e) => e.unique_id === o && e.platform === "smart_plants");
 		if (!s) return {
 			role: i,
 			label: a,
@@ -2251,7 +2798,7 @@ function On(e, t, n, r = V) {
 		};
 	});
 }
-function kn() {
+function An() {
 	return {
 		sources: [],
 		primary_entity_id: null,
@@ -2271,12 +2818,12 @@ function W(e) {
 		"average",
 		"min",
 		"max"
-	].includes(t.aggregation) || !Number.isInteger(t.stale_after_seconds) || t.stale_after_seconds < 60 || t.stale_after_seconds > 604800 || !(t.primary_entity_id === null || t.sources.some((e) => e.entity_id === t.primary_entity_id)) || !H.every((e) => t.threshold_defaults?.[e] && Number.isInteger(t.threshold_defaults[e].value) && t.threshold_defaults[e].value >= 1 && t.threshold_defaults[e].value <= 99 && ["builtin", "provider"].includes(t.threshold_defaults[e].source) && (t.threshold_defaults[e].provider === null || typeof t.threshold_defaults[e].provider == "string") && (t.threshold_defaults[e].provider_ref === null || typeof t.threshold_defaults[e].provider_ref == "string") && (t.threshold_overrides?.[e] === null || Number.isInteger(t.threshold_overrides?.[e]))) || jn(t, Object.fromEntries(H.map((e) => [e, t.threshold_defaults[e].value]))) || H.some((e) => {
+	].includes(t.aggregation) || !Number.isInteger(t.stale_after_seconds) || t.stale_after_seconds < 60 || t.stale_after_seconds > 604800 || !(t.primary_entity_id === null || t.sources.some((e) => e.entity_id === t.primary_entity_id)) || !H.every((e) => t.threshold_defaults?.[e] && Number.isInteger(t.threshold_defaults[e].value) && t.threshold_defaults[e].value >= 1 && t.threshold_defaults[e].value <= 99 && ["builtin", "provider"].includes(t.threshold_defaults[e].source) && (t.threshold_defaults[e].provider === null || typeof t.threshold_defaults[e].provider == "string") && (t.threshold_defaults[e].provider_ref === null || typeof t.threshold_defaults[e].provider_ref == "string") && (t.threshold_overrides?.[e] === null || Number.isInteger(t.threshold_overrides?.[e]))) || Mn(t, Object.fromEntries(H.map((e) => [e, t.threshold_defaults[e].value]))) || H.some((e) => {
 		let n = t.threshold_defaults[e];
 		return n.source === "builtin" ? n.provider !== null || n.provider_ref !== null : !n.provider || !n.provider_ref;
 	}) ? null : t;
 }
-function An(e) {
+function jn(e) {
 	return structuredClone({
 		sources: e.sources,
 		primary_entity_id: e.primary_entity_id,
@@ -2285,7 +2832,7 @@ function An(e) {
 		threshold_overrides: e.threshold_overrides
 	});
 }
-function jn(e, t, n = V) {
+function Mn(e, t, n = V) {
 	if (e.sources.length > 32 || new Set(e.sources.map((e) => e.entity_id)).size !== e.sources.length || new Set(e.sources.map((e) => e.registry_id ?? e.entity_id)).size !== e.sources.length || e.sources.some((e) => !/^sensor\.[a-z0-9_]+$/.test(e.entity_id))) return n.t("validation.sources_unique");
 	if (![
 		"primary",
@@ -2298,7 +2845,7 @@ function jn(e, t, n = V) {
 	let r = H.map((n) => e.threshold_overrides[n] ?? t[n]);
 	return r.some((e) => !Number.isInteger(e) || e < 1 || e > 99) || !(r[0] < r[1] && r[1] < r[2] && r[2] - r[0] >= 4) ? n.t("validation.moisture_thresholds") : null;
 }
-function Mn(e, t) {
+function Nn(e, t) {
 	return !e.trim() && !t.trim() ? null : {
 		provider: "manual",
 		snapshot: {
@@ -2328,7 +2875,7 @@ function G(e, t) {
 function K(e, t) {
 	return e.registry_id ? t.find((t) => t.id === e.registry_id) : t.find((t) => t.entity_id === e.entity_id);
 }
-function Nn(e, t) {
+function Pn(e, t) {
 	let n = e.sources.find((t) => t.entity_id === e.primary_entity_id);
 	return {
 		...structuredClone(e),
@@ -2342,13 +2889,13 @@ function Nn(e, t) {
 		primary_entity_id: n ? K(n, t)?.entity_id ?? n.entity_id : null
 	};
 }
-function Pn(e, t, n, r = V) {
+function Fn(e, t, n, r = V) {
 	let i = K(e, t);
 	if (e.registry_id && !i) return r.t("source_warning.missing_registered");
 	let a = n[i?.entity_id ?? e.entity_id], o = [];
 	return i || o.push(r.t("source_warning.unregistered")), (!a || ["unknown", "unavailable"].includes(a.state)) && o.push(r.t("source_warning.unavailable")), a && (a.attributes.unit_of_measurement !== "%" || a.attributes.device_class !== "moisture") && o.push(r.t("source_warning.moisture_metadata")), a && !["unknown", "unavailable"].includes(a.state) && (!a.state.trim() || !Number.isFinite(Number(a.state)) || Number(a.state) < 0 || Number(a.state) > 100) && o.push(r.t("source_warning.moisture_reading")), o.join(r.t("source_warning.separator"));
 }
-var Fn = [
+var In = [
 	{
 		role: "temperature",
 		deviceClass: "temperature",
@@ -2397,13 +2944,13 @@ var Fn = [
 		acceptedUnits: ["ppm"]
 	}
 ];
-function In(e) {
-	return Fn.find((t) => t.role === e);
-}
-function Ln(e, t = V) {
-	return t.t(`role.${e}`);
+function Ln(e) {
+	return In.find((t) => t.role === e);
 }
 function Rn(e, t = V) {
+	return t.t(`role.${e}`);
+}
+function zn(e, t = V) {
 	return t.t(`role_phrase.${e}`);
 }
 function q(e, t) {
@@ -2420,7 +2967,7 @@ function q(e, t) {
 		stale_after_seconds: n.stale_after_seconds
 	};
 }
-function zn(e) {
+function Bn(e) {
 	return structuredClone({
 		sources: e.sources,
 		primary_entity_id: e.primary_entity_id,
@@ -2428,7 +2975,7 @@ function zn(e) {
 		stale_after_seconds: e.stale_after_seconds
 	});
 }
-function Bn(e, t = V) {
+function Vn(e, t = V) {
 	return e.sources.length > 32 || new Set(e.sources.map((e) => e.entity_id)).size !== e.sources.length || new Set(e.sources.map((e) => e.registry_id ?? e.entity_id)).size !== e.sources.length || e.sources.some((e) => !/^sensor\.[a-z0-9_]+$/.test(e.entity_id)) ? t.t("validation.sources_unique") : [
 		"primary",
 		"average",
@@ -2436,7 +2983,7 @@ function Bn(e, t = V) {
 		"max"
 	].includes(e.aggregation) ? e.primary_entity_id !== null && !e.sources.some((t) => t.entity_id === e.primary_entity_id) ? t.t("validation.primary") : !Number.isInteger(e.stale_after_seconds) || e.stale_after_seconds < 60 || e.stale_after_seconds > 604800 ? t.t("validation.stale_after") : null : t.t("validation.aggregation");
 }
-function Vn(e, t) {
+function Hn(e, t) {
 	let n = e.sources.find((t) => t.entity_id === e.primary_entity_id);
 	return {
 		...structuredClone(e),
@@ -2450,14 +2997,14 @@ function Vn(e, t) {
 		primary_entity_id: n ? K(n, t)?.entity_id ?? n.entity_id : null
 	};
 }
-function Hn(e, t, n, r, i = V) {
+function Un(e, t, n, r, i = V) {
 	let a = K(e, t);
 	if (e.registry_id && !a) return i.t("source_warning.missing_registered");
 	let o = n[a?.entity_id ?? e.entity_id], s = [];
 	if (a || s.push(i.t("source_warning.unregistered")), (!o || ["unknown", "unavailable"].includes(o.state)) && s.push(i.t("source_warning.unavailable")), o) {
 		let e = o.attributes.unit_of_measurement, t = o.attributes.device_class;
 		(typeof e != "string" || !r.acceptedUnits.includes(e) || t !== r.deviceClass) && s.push(i.t("source_warning.role_metadata", {
-			role: Ln(r.role, i),
+			role: Rn(r.role, i),
 			device_class: r.deviceClass,
 			units: r.acceptedUnits.join(" / ")
 		}));
@@ -2467,41 +3014,41 @@ function Hn(e, t, n, r, i = V) {
 function J(e) {
 	return [...new Set(e.split(",").map((e) => e.trim()).filter(Boolean))];
 }
-function Un(e, t, n = V) {
+function Wn(e, t, n = V) {
 	return e.length > 60 || t.length > 32 || t.some((e) => e.length > 60) ? n.t("validation.taxonomy") : null;
 }
 //#endregion
 //#region src/editors.ts
-var Wn = (e) => e.target.value;
+var Gn = (e) => e.target.value;
 function Y(e, t, n, r = "text", i = 200) {
-	return S`<label>${e}<input type=${r} maxlength=${i} .value=${t} @input=${(e) => n(Wn(e))}></label>`;
+	return S`<label>${e}<input type=${r} maxlength=${i} .value=${t} @input=${(e) => n(Gn(e))}></label>`;
 }
 function X(e, t, n, r, i) {
-	return S`<label>${t}<select .value=${n} @change=${(e) => i(Wn(e))}>${(n && !r.some((e) => e.value === n) ? [...r, {
+	return S`<label>${t}<select .value=${n} @change=${(e) => i(Gn(e))}>${(n && !r.some((e) => e.value === n) ? [...r, {
 		value: n,
 		label: e.t("editor.current_value", { value: n })
 	}] : r).map((e) => S`<option value=${e.value} ?selected=${e.value === n}>${e.label}</option>`)}</select></label>`;
 }
-function Gn(e, t) {
+function Kn(e, t) {
 	let n = `placement.${t}`;
 	return B(n) ? e.t(n) : t.replaceAll("_", " ");
 }
-function Kn(e, t) {
+function qn(e, t) {
 	let n = `exposure.${t}`;
 	return B(n) ? e.t(n) : t;
 }
-function qn(e, t) {
+function Jn(e, t) {
 	let n = `rain_exposure.${t}`;
 	return B(n) ? e.t(n) : t;
 }
-function Jn(e, t) {
+function Yn(e, t) {
 	let n = `aggregation.${t}`;
 	return B(n) ? e.t(n) : t;
 }
-function Yn(e, t) {
+function Xn(e, t) {
 	return e.t(`moisture_threshold.${t}`);
 }
-function Xn(e, t, n, r) {
+function Zn(e, t, n, r) {
 	return X(e, e.t("area.label"), t, [
 		{
 			value: "",
@@ -2517,7 +3064,7 @@ function Xn(e, t, n, r) {
 		}))
 	], r);
 }
-function Zn(e, t, n) {
+function Qn(e, t, n) {
 	let r = (e) => n({
 		mode: "indoor",
 		exposure: null,
@@ -2529,9 +3076,9 @@ function Zn(e, t, n) {
 	return S`${X(e, e.t("placement.label"), t?.mode ?? "", [{
 		value: "",
 		label: i
-	}, ...dt.map((t) => ({
+	}, ...ft.map((t) => ({
 		value: t,
-		label: Gn(e, t)
+		label: Kn(e, t)
 	}))], (e) => e ? r({ mode: e }) : n(null))}
     ${t ? S`${X(e, e.t("exposure.label"), t.exposure ?? "", [
 		"",
@@ -2540,7 +3087,7 @@ function Zn(e, t, n) {
 		"shade"
 	].map((t) => ({
 		value: t,
-		label: t ? Kn(e, t) : i
+		label: t ? qn(e, t) : i
 	})), (e) => r({ exposure: e || null }))}
     ${X(e, e.t("rain_exposure.label"), t.rain_exposure ?? "", [
 		"",
@@ -2549,7 +3096,7 @@ function Zn(e, t, n) {
 		"full"
 	].map((t) => ({
 		value: t,
-		label: t ? qn(e, t) : i
+		label: t ? Jn(e, t) : i
 	})), (e) => r({ rain_exposure: e || null }))}
     ${X(e, e.t("container.label"), t.container === null ? "" : String(t.container), [
 		{
@@ -2566,7 +3113,7 @@ function Zn(e, t, n) {
 		}
 	], (e) => r({ container: e === "" ? null : e === "true" }))}` : w}`;
 }
-function Qn(e, t, n) {
+function $n(e, t, n) {
 	let r = n[t], i = e.t("sources.not_supplied_lower");
 	return e.t("sources.candidate", {
 		name: typeof r?.attributes.friendly_name == "string" ? r.attributes.friendly_name : t,
@@ -2576,7 +3123,7 @@ function Qn(e, t, n) {
 		state: r?.state ?? e.t("sources.unavailable_lower")
 	});
 }
-function $n(e, t, n, r, i, a, o, s, c, l, u, d) {
+function er(e, t, n, r, i, a, o, s, c, l, u, d) {
 	let f = e.t("common.not_supplied");
 	return S`
     <p>${s}</p>
@@ -2586,7 +3133,7 @@ function $n(e, t, n, r, i, a, o, s, c, l, u, d) {
 		label: e.t("sources.choose")
 	}, ...u.map((t) => ({
 		value: t,
-		label: Qn(e, t, r)
+		label: $n(e, t, r)
 	}))], (e) => {
 		e && !t.sources.some((t) => t.entity_id === e) && o({ sources: [...t.sources, {
 			entity_id: e,
@@ -2629,17 +3176,17 @@ function $n(e, t, n, r, i, a, o, s, c, l, u, d) {
 		"max"
 	].map((t) => ({
 		value: t,
-		label: Jn(e, t)
+		label: Yn(e, t)
 	})), (e) => o({ aggregation: e }))}
     ${Y(e.t("sources.stale_after"), String(t.stale_after_seconds), (e) => o({ stale_after_seconds: Number(e) }), "number")}`;
 }
-function er(e, t, n, r, i, a, o, s, c = "all") {
+function tr(e, t, n, r, i, a, o, s, c = "all") {
 	let l = (e) => s({
 		...t,
 		...e
 	}), u = [.../* @__PURE__ */ new Set([...r.map((e) => e.entity_id), ...Object.keys(i)])].filter((e) => e.startsWith("sensor.") && (a || i[e]?.attributes.device_class === "moisture")).sort();
-	return S`${c === "thresholds" ? w : $n(e, t, r, i, a, o, l, e.t("moisture.sources_intro"), e.t("moisture.add_sensor"), "sensor.soil_moisture", u, (t) => Pn(t, r, i, e))}
-    ${c === "sources" ? w : S`<p>${e.t("moisture.overrides_intro")}</p><div class="grid">${H.map((r) => S`<div>${Y(e.t("moisture.override_label", { key: Yn(e, r) }), t.threshold_overrides[r] === null ? "" : String(t.threshold_overrides[r]), (e) => l({ threshold_overrides: {
+	return S`${c === "thresholds" ? w : er(e, t, r, i, a, o, l, e.t("moisture.sources_intro"), e.t("moisture.add_sensor"), "sensor.soil_moisture", u, (t) => Fn(t, r, i, e))}
+    ${c === "sources" ? w : S`<p>${e.t("moisture.overrides_intro")}</p><div class="grid">${H.map((r) => S`<div>${Y(e.t("moisture.override_label", { key: Xn(e, r) }), t.threshold_overrides[r] === null ? "" : String(t.threshold_overrides[r]), (e) => l({ threshold_overrides: {
 		...t.threshold_overrides,
 		[r]: e.trim() === "" ? null : Number(e)
 	} }), "number")}<small>${e.t("moisture.default_effective", {
@@ -2648,16 +3195,16 @@ function er(e, t, n, r, i, a, o, s, c = "all") {
 	})}</small><button type="button" @click=${() => l({ threshold_overrides: {
 		...t.threshold_overrides,
 		[r]: null
-	} })}>${e.t("moisture.inherit_key", { key: Yn(e, r) })}</button></div>`)}</div>`}`;
+	} })}>${e.t("moisture.inherit_key", { key: Xn(e, r) })}</button></div>`)}</div>`}`;
 }
-function tr(e, t, n, r, i, a, o, s) {
+function nr(e, t, n, r, i, a, o, s) {
 	let c = (e) => s({
 		...n,
 		...e
-	}), l = [.../* @__PURE__ */ new Set([...r.map((e) => e.entity_id), ...Object.keys(i)])].filter((e) => e.startsWith("sensor.") && (a || i[e]?.attributes.device_class === t.deviceClass && typeof i[e]?.attributes.unit_of_measurement == "string" && t.acceptedUnits.includes(i[e]?.attributes.unit_of_measurement))).sort(), u = Rn(t.role, e);
-	return $n(e, n, r, i, a, o, c, e.t("sources.role_intro", { role: u }), e.t("sources.add_role_sensor", { role: u }), `sensor.${t.role}`, l, (n) => Hn(n, r, i, t, e));
+	}), l = [.../* @__PURE__ */ new Set([...r.map((e) => e.entity_id), ...Object.keys(i)])].filter((e) => e.startsWith("sensor.") && (a || i[e]?.attributes.device_class === t.deviceClass && typeof i[e]?.attributes.unit_of_measurement == "string" && t.acceptedUnits.includes(i[e]?.attributes.unit_of_measurement))).sort(), u = zn(t.role, e);
+	return er(e, n, r, i, a, o, c, e.t("sources.role_intro", { role: u }), e.t("sources.add_role_sensor", { role: u }), `sensor.${t.role}`, l, (n) => Un(n, r, i, t, e));
 }
-function nr(e, t, n) {
+function rr(e, t, n) {
 	let r = e.t("common.not_supplied"), i = [
 		[e.t("snapshot.provider"), t.provider],
 		[e.t("snapshot.reference"), t.provider_ref],
@@ -2670,7 +3217,7 @@ function nr(e, t, n) {
 	];
 	return S`<article><h3>${t.common_name ?? t.latin_name ?? e.t("snapshot.species")}</h3><p><i>${t.latin_name}</i></p>
     <dl>${i.map(([e, t]) => S`<dt>${e}</dt><dd>${t}</dd>`)}</dl>
-    <h4>${e.t("snapshot.imported_defaults")}</h4>${H.map((n) => S`<p>${Yn(e, n)}: ${t.threshold_defaults.moisture?.[n] === void 0 ? e.t("snapshot.default_not_supplied") : e.number(t.threshold_defaults.moisture[n])}</p>`)}
+    <h4>${e.t("snapshot.imported_defaults")}</h4>${H.map((n) => S`<p>${Xn(e, n)}: ${t.threshold_defaults.moisture?.[n] === void 0 ? e.t("snapshot.default_not_supplied") : e.number(t.threshold_defaults.moisture[n])}</p>`)}
     ${Object.entries(t.care_text).map(([e, t]) => S`<h4>${e}</h4><p class="prose">${t}</p>`)}
     <details><summary>${e.t("snapshot.field_attribution")}</summary>${Object.entries(t.field_sources).map(([e, t]) => S`<p>${e}: ${t}</p>`)}</details>
     ${n ? S`<h4>${e.t("snapshot.proposed_changes")}</h4>${Object.entries(n.diff).map(([e, t]) => S`<p>${e}: ${JSON.stringify(t.before)} → ${JSON.stringify(t.after)}</p>`)}<p>${e.t("snapshot.preview_read_only")}</p>` : w}</article>`;
@@ -2685,7 +3232,7 @@ function Z(e, t, n, r) {
 }
 //#endregion
 //#region src/image.ts
-async function rr(e, t = V) {
+async function ir(e, t = V) {
 	if (![
 		"image/jpeg",
 		"image/png",
@@ -2728,7 +3275,7 @@ async function rr(e, t = V) {
 }
 //#endregion
 //#region src/styles.ts
-var ir = o`
+var ar = o`
   :host{display:block;color:var(--primary-text-color,#212121);font-family:var(--paper-font-body1_-_font-family,system-ui,sans-serif);line-height:1.5;overflow-wrap:anywhere}
   *{box-sizing:border-box} main{width:100%;max-width:none;margin:0;padding:0} .panel-content{width:100%;max-width:1280px;margin:0 auto;padding:16px 24px 24px} header,.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap} header{justify-content:space-between;margin-bottom:24px}
   .page-title{font-size:inherit;font-weight:inherit;margin:inherit;line-height:inherit}
@@ -2743,9 +3290,9 @@ var ir = o`
   .detail-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:4px 2px 8px}.detail-heading h2{font-size:1.5rem;margin:0}.detail-heading p{margin:4px 0;color:var(--secondary-text-color,#666)}.detail-heading a{color:var(--primary-text-color,#212121);text-decoration:underline;text-underline-offset:3px}
   .inventory-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px;padding:0;border:0;background:transparent}.inventory-summary article{display:grid;gap:4px;margin:0;padding:16px 20px;background:var(--card-background-color,#fff)}.inventory-summary article span{color:var(--secondary-text-color,#666);font-size:.9rem}.inventory-summary article strong{font-size:1.6rem;line-height:1.2}.filter-disclosure{margin-bottom:16px}.filter-disclosure>summary{cursor:pointer;font-weight:600;list-style:none;padding:4px 0}.filter-disclosure>summary::-webkit-details-marker{display:none}.filter-disclosure>summary:before{content:"▸";display:inline-block;width:1.4em;color:var(--secondary-text-color,#666)}.filter-disclosure[open]>summary:before{content:"▾"}.filter-disclosure>section{margin:12px 0 0}.plant-count{font-weight:600;color:var(--secondary-text-color,#666)}.plant-card{display:grid;gap:16px;padding:18px}.plant-card-heading{display:flex;align-items:center;gap:14px}.plant-avatar{display:grid;place-items:center;flex:0 0 52px;width:52px;height:52px;border-radius:16px;background:var(--secondary-background-color,#f5f5f5);color:var(--primary-color,#007bad);font-size:1.45rem;font-weight:700}.plant-card-heading>div{display:grid;gap:2px}.plant-card .name{padding:0;border:0;background:transparent;font-size:1.1rem;font-weight:650}.plant-status{text-transform:capitalize;color:var(--secondary-text-color,#666);font-size:.9rem}.plant-card-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}.plant-card-metrics>div{display:grid;gap:2px;padding:12px;border-radius:10px;background:var(--secondary-background-color,#f5f5f5)}.plant-card-metrics>div>strong{font-size:1.3rem}.plant-card-metrics>div>strong small{display:inline;font-size:.8rem;font-weight:400}.plant-meta{line-height:1.6}
   @media(max-width:600px){.panel-content{padding:16px 16px 16px}.inventory-summary{gap:8px}.inventory-summary article{padding:12px 10px}.inventory-summary article span{font-size:.78rem}.inventory-summary article strong{font-size:1.35rem}.plant-card{padding:14px}section,article{padding:16px}.actions button{flex:1 1 auto}header{align-items:flex-start}dl{grid-template-columns:1fr}dd{margin-bottom:8px}.stepper li span:last-child{display:none}.stepper li[aria-current=step] span:last-child{display:inline}.choice-card{min-height:0}.overview-heading{align-items:flex-start;flex-direction:column;padding:18px}.overview-metrics{grid-template-columns:1fr;padding:14px}.detail-tabs button{font-size:.9rem;padding:8px}}
-`, ar, Q = class extends D {
+`, or, Q = class extends D {
 	constructor(...e) {
-		super(...e), this.areas = [], this.entities = [], this.states = {}, this.blocked = !1, this.navigationContext = 0, this.step = 0, this.busy = !1, this.error = "", this.name = "", this.acquired = "", this.area = "", this.placement = null, this.category = "", this.tagText = "", this.common = "", this.latin = "", this.provider = "manual", this.query = "", this.results = [], this.searched = !1, this.preview = null, this.accepted = !1, this.moisture = kn(), this.all = !1, this.draft = null, this.finalRequest = null, this.photo = null, this.photoInfo = null, this.rejected = !1, this.generation = 0, this.lifecycle = 0, this.steps = [
+		super(...e), this.areas = [], this.entities = [], this.states = {}, this.blocked = !1, this.navigationContext = 0, this.step = 0, this.busy = !1, this.error = "", this.name = "", this.acquired = "", this.area = "", this.placement = null, this.category = "", this.tagText = "", this.common = "", this.latin = "", this.provider = "manual", this.query = "", this.results = [], this.searched = !1, this.preview = null, this.accepted = !1, this.moisture = An(), this.all = !1, this.draft = null, this.finalRequest = null, this.photo = null, this.photoInfo = null, this.rejected = !1, this.generation = 0, this.lifecycle = 0, this.steps = [
 			"wizard.step_basic",
 			"wizard.step_species",
 			"wizard.step_review_species",
@@ -2756,7 +3303,7 @@ var ir = o`
 		];
 	}
 	get l() {
-		return ut(this.hass);
+		return dt(this.hass);
 	}
 	get visibleSteps() {
 		return this.steps.flatMap((e, t) => t === 2 && this.provider === "manual" ? [] : [{
@@ -2843,7 +3390,7 @@ var ir = o`
 		}
 	}
 	validate() {
-		return !this.name.trim() || this.name.trim().length > 200 ? this.l.t("wizard.error_name_length") : this.acquired && !Number.isFinite(Date.parse(this.acquired)) ? this.l.t("wizard.error_acquired") : this.area && !this.areas.some((e) => e.area_id === this.area) ? this.l.t("wizard.error_area") : this.provider !== "manual" && (!this.preview || !this.accepted) ? this.l.t("wizard.error_accept_preview") : jn(this.moisture, this.defaults, this.l) ?? Un(this.category, J(this.tagText), this.l);
+		return !this.name.trim() || this.name.trim().length > 200 ? this.l.t("wizard.error_name_length") : this.acquired && !Number.isFinite(Date.parse(this.acquired)) ? this.l.t("wizard.error_acquired") : this.area && !this.areas.some((e) => e.area_id === this.area) ? this.l.t("wizard.error_area") : this.provider !== "manual" && (!this.preview || !this.accepted) ? this.l.t("wizard.error_accept_preview") : Mn(this.moisture, this.defaults, this.l) ?? Wn(this.category, J(this.tagText), this.l);
 	}
 	async next() {
 		if (this.busy || this.blocked || !this.draft || this.step >= 6) return;
@@ -2851,7 +3398,7 @@ var ir = o`
 		if (this.error = "", this.step === 0 && !this.name.trim() && (this.error = this.l.t("wizard.error_name")), this.step === 0 && this.photo && !this.error) {
 			this.busy = !0;
 			try {
-				let t = await rr(this.photo, this.l);
+				let t = await ir(this.photo, this.l);
 				e === this.lifecycle && (this.photoInfo = t);
 			} catch (t) {
 				e === this.lifecycle && (this.error = t.message);
@@ -2860,14 +3407,14 @@ var ir = o`
 			}
 			if (e !== this.lifecycle || !this.isConnected) return;
 		}
-		this.step === 1 && this.provider !== "manual" && !this.preview && (this.error = this.l.t("wizard.error_choose_species")), this.step === 2 && this.provider !== "manual" && !this.accepted && (this.error = this.l.t("wizard.error_accept")), this.step === 3 && (this.error = jn({
+		this.step === 1 && this.provider !== "manual" && !this.preview && (this.error = this.l.t("wizard.error_choose_species")), this.step === 2 && this.provider !== "manual" && !this.accepted && (this.error = this.l.t("wizard.error_accept")), this.step === 3 && (this.error = Mn({
 			...this.moisture,
 			threshold_overrides: {
 				min: null,
 				target: null,
 				max: null
 			}
-		}, U, this.l) ?? ""), this.step === 4 && (this.error = jn(this.moisture, this.defaults, this.l) ?? ""), this.step === 5 && (this.error = Un(this.category, J(this.tagText), this.l) ?? ""), this.error || (this.step = this.step === 1 && this.provider === "manual" ? 3 : this.step + 1, await this.focusStep());
+		}, U, this.l) ?? ""), this.step === 4 && (this.error = Mn(this.moisture, this.defaults, this.l) ?? ""), this.step === 5 && (this.error = Wn(this.category, J(this.tagText), this.l) ?? ""), this.error || (this.step = this.step === 1 && this.provider === "manual" ? 3 : this.step + 1, await this.focusStep());
 	}
 	async focusStep() {
 		await this.updateComplete, this.shadowRoot?.querySelector("h2")?.focus();
@@ -2887,12 +3434,12 @@ var ir = o`
 				placement: this.placement,
 				category: this.category.trim() || null,
 				tags: J(this.tagText),
-				moisture: Nn(this.moisture, this.entities),
+				moisture: Pn(this.moisture, this.entities),
 				...this.accepted && this.preview ? { accepted_preview: {
 					preview_token: this.preview.preview_token,
 					provider: this.preview.provider,
 					operation: "select"
-				} } : { species: Mn(this.common, this.latin) }
+				} } : { species: Nn(this.common, this.latin) }
 			});
 		}
 		this.busy = !0, this.error = "";
@@ -2922,7 +3469,7 @@ var ir = o`
       ${this.error ? S`<p class="error" role="alert">${this.error}</p>${(this.step === 1 || this.step === 2) && !this.finalRequest ? S`<button type="button" @click=${() => this.manual()}>${e.t("common.continue_manually")}</button>` : w}` : w}
       ${!this.draft && !this.busy ? S`<button @click=${() => void this.start()}>${e.t("wizard.retry_draft")}</button>` : w}
       <fieldset ?disabled=${this.busy || this.blocked || !!this.finalRequest}>
-      ${this.step === 0 ? S`${Y(e.t("wizard.plant_name"), this.name, (e) => this.name = e)}${Y(e.t("wizard.acquired_date"), this.acquired, (e) => this.acquired = e, "date")}${Xn(e, this.area, this.areas, (e) => this.area = e)}${Zn(e, this.placement, (e) => this.placement = e)}<label>${e.t("wizard.photo")}<input type="file" accept="image/jpeg,image/png,image/webp" @change=${(e) => {
+      ${this.step === 0 ? S`${Y(e.t("wizard.plant_name"), this.name, (e) => this.name = e)}${Y(e.t("wizard.acquired_date"), this.acquired, (e) => this.acquired = e, "date")}${Zn(e, this.area, this.areas, (e) => this.area = e)}${Qn(e, this.placement, (e) => this.placement = e)}<label>${e.t("wizard.photo")}<input type="file" accept="image/jpeg,image/png,image/webp" @change=${(e) => {
 			this.photo = e.target.files?.[0] ?? null, this.photoInfo = null;
 		}}></label><small>${e.t("wizard.photo_hint")}</small>${this.photo ? S`<p>${e.t("wizard.photo_selected", {
 			name: this.photo.name,
@@ -2947,30 +3494,30 @@ var ir = o`
         ${Y(e.t("wizard.search_label"), this.query, (e) => {
 			this.query = e, this.generation++, this.results = [], this.preview = null, this.accepted = !1;
 		})}<button type="button" class="primary" @click=${() => void this.search()} ?disabled=${this.busy || this.query.trim().length < 3}>${e.t("wizard.search_button")}</button>${this.searched && !this.results.length ? S`<p>${e.t("wizard.no_matches")}</p>` : w}<ul class="result-list">${this.results.map((e) => S`<li><button type="button" @click=${() => void this.choose(e)}>${e.common_name ?? e.latin_name} · ${e.latin_name}</button><small>${e.attribution}</small></li>`)}</ul><button type="button" @click=${() => this.manual()}>${e.t("wizard.manual_instead")}</button>`}` : w}
-      ${this.step === 2 && this.preview ? S`${nr(e, this.preview.snapshot, this.preview)}<label class="check"><input type="checkbox" .checked=${this.accepted} @change=${(e) => this.accepted = e.target.checked}>${e.t("wizard.accept_species")}</label><p>${e.t("wizard.imported_defaults_hint")}</p><button type="button" @click=${() => this.manual()}>${e.t("wizard.manual_instead")}</button>` : w}
-       ${this.step === 3 ? er(e, this.moisture, this.defaults, this.entities, this.states, this.all, (e) => this.all = e, (e) => this.moisture = e, "sources") : w}
+      ${this.step === 2 && this.preview ? S`${rr(e, this.preview.snapshot, this.preview)}<label class="check"><input type="checkbox" .checked=${this.accepted} @change=${(e) => this.accepted = e.target.checked}>${e.t("wizard.accept_species")}</label><p>${e.t("wizard.imported_defaults_hint")}</p><button type="button" @click=${() => this.manual()}>${e.t("wizard.manual_instead")}</button>` : w}
+       ${this.step === 3 ? tr(e, this.moisture, this.defaults, this.entities, this.states, this.all, (e) => this.all = e, (e) => this.moisture = e, "sources") : w}
        ${this.step === 4 ? S`<p class="default-summary">${e.t("wizard.effective_range")} <strong>${e.t("wizard.range_value", {
 			min: e.percent(r("min")),
 			max: e.percent(r("max"))
-		})}</strong>${e.t("wizard.target_separator")}<strong>${e.percent(r("target"))}</strong>.</p><p>${this.accepted ? e.t("wizard.inherited_openplantbook") : e.t("wizard.inherited_builtin")}</p><details class="advanced-disclosure"><summary>${e.t("moisture.advanced_overrides")}</summary><p>${e.t("wizard.overrides_hint")}</p>${er(e, this.moisture, this.defaults, this.entities, this.states, this.all, (e) => this.all = e, (e) => this.moisture = e, "thresholds")}</details>` : w}
+		})}</strong>${e.t("wizard.target_separator")}<strong>${e.percent(r("target"))}</strong>.</p><p>${this.accepted ? e.t("wizard.inherited_openplantbook") : e.t("wizard.inherited_builtin")}</p><details class="advanced-disclosure"><summary>${e.t("moisture.advanced_overrides")}</summary><p>${e.t("wizard.overrides_hint")}</p>${tr(e, this.moisture, this.defaults, this.entities, this.states, this.all, (e) => this.all = e, (e) => this.moisture = e, "thresholds")}</details>` : w}
       ${this.step === 5 ? S`${Y(e.t("taxonomy.category"), this.category, (e) => this.category = e, "text", 60)}${Y(e.t("taxonomy.tags"), this.tagText, (e) => this.tagText = e, "text", 2e3)}<p>${e.t("wizard.taxonomy_hint")}</p>` : w}
       ${this.step === 6 ? S`<h3>${this.name}</h3><dl>
         <dt>${e.t("wizard.review_area")}</dt><dd>${this.areas.find((e) => e.area_id === this.area)?.name ?? (this.area ? e.t("wizard.review_missing_area", { area: this.area }) : e.t("area.none"))}</dd>
-        <dt>${e.t("placement.label")}</dt><dd>${this.placement?.mode ? Gn(e, this.placement.mode) : t}</dd>
-        <dt>${e.t("wizard.review_exposure")}</dt><dd>${this.placement?.exposure ? Kn(e, this.placement.exposure) : t} / ${this.placement?.rain_exposure ? qn(e, this.placement.rain_exposure) : t}</dd>
+        <dt>${e.t("placement.label")}</dt><dd>${this.placement?.mode ? Kn(e, this.placement.mode) : t}</dd>
+        <dt>${e.t("wizard.review_exposure")}</dt><dd>${this.placement?.exposure ? qn(e, this.placement.exposure) : t} / ${this.placement?.rain_exposure ? Jn(e, this.placement.rain_exposure) : t}</dd>
         <dt>${e.t("container.label")}</dt><dd>${this.placement?.container === null || !this.placement ? t : this.placement.container ? e.t("container.in_container") : e.t("container.in_ground")}</dd>
         <dt>${e.t("wizard.review_acquired")}</dt><dd>${this.acquired ? e.date(this.acquired) : t}</dd>
         <dt>${e.t("species.heading")}</dt><dd>${this.accepted && this.preview ? [this.preview.snapshot.common_name, this.preview.snapshot.latin_name].filter(Boolean).join(" · ") : [this.common, this.latin].filter(Boolean).join(" · ") || e.t("common.no_species_selected")}</dd>
         <dt>${e.t("wizard.review_taxonomy")}</dt><dd>${this.category} / ${J(this.tagText).join(", ")}</dd>
         <dt>${e.t("wizard.review_sources")}</dt><dd>${this.moisture.sources.map((e) => e.entity_id).join(", ") || n}</dd>
-        <dt>${e.t("wizard.review_primary_aggregation")}</dt><dd>${this.moisture.primary_entity_id ?? n} / ${Jn(e, this.moisture.aggregation)}</dd>
+        <dt>${e.t("wizard.review_primary_aggregation")}</dt><dd>${this.moisture.primary_entity_id ?? n} / ${Yn(e, this.moisture.aggregation)}</dd>
         <dt>${e.t("wizard.review_staleness")}</dt><dd>${e.t("wizard.review_seconds", { seconds: this.moisture.stale_after_seconds })}</dd>
         <dt>${e.t("wizard.review_thresholds")}</dt><dd>${[
 			"min",
 			"target",
 			"max"
 		].map((t) => e.t("wizard.review_threshold", {
-			key: Yn(e, t),
+			key: Xn(e, t),
 			value: e.percent(r(t)),
 			source: this.moisture.threshold_overrides[t] === null ? e.t("wizard.inherited") : e.t("wizard.override")
 		})).join(" · ")}</dd>
@@ -2993,15 +3540,15 @@ var ir = o`
       <p role="status">${this.busy ? e.t("wizard.working") : ""}</p></section>`;
 	}
 };
-ar = Q, ar.styles = ir, Z([O({ attribute: !1 })], Q.prototype, "hass", void 0), Z([O({ attribute: !1 })], Q.prototype, "capabilities", void 0), Z([O({ attribute: !1 })], Q.prototype, "areas", void 0), Z([O({ attribute: !1 })], Q.prototype, "entities", void 0), Z([O({ attribute: !1 })], Q.prototype, "states", void 0), Z([O({ type: Boolean })], Q.prototype, "blocked", void 0), Z([O({ type: Number })], Q.prototype, "navigationContext", void 0), Z([k()], Q.prototype, "step", void 0), Z([k()], Q.prototype, "busy", void 0), Z([k()], Q.prototype, "error", void 0), Z([k()], Q.prototype, "name", void 0), Z([k()], Q.prototype, "acquired", void 0), Z([k()], Q.prototype, "area", void 0), Z([k()], Q.prototype, "placement", void 0), Z([k()], Q.prototype, "category", void 0), Z([k()], Q.prototype, "tagText", void 0), Z([k()], Q.prototype, "common", void 0), Z([k()], Q.prototype, "latin", void 0), Z([k()], Q.prototype, "provider", void 0), Z([k()], Q.prototype, "query", void 0), Z([k()], Q.prototype, "results", void 0), Z([k()], Q.prototype, "searched", void 0), Z([k()], Q.prototype, "preview", void 0), Z([k()], Q.prototype, "accepted", void 0), Z([k()], Q.prototype, "moisture", void 0), Z([k()], Q.prototype, "all", void 0), Z([k()], Q.prototype, "draft", void 0), Z([k()], Q.prototype, "finalRequest", void 0), Z([k()], Q.prototype, "photo", void 0), Z([k()], Q.prototype, "photoInfo", void 0), Z([k()], Q.prototype, "rejected", void 0), customElements.get("smart-plants-wizard") || customElements.define("smart-plants-wizard", Q);
+or = Q, or.styles = ar, Z([O({ attribute: !1 })], Q.prototype, "hass", void 0), Z([O({ attribute: !1 })], Q.prototype, "capabilities", void 0), Z([O({ attribute: !1 })], Q.prototype, "areas", void 0), Z([O({ attribute: !1 })], Q.prototype, "entities", void 0), Z([O({ attribute: !1 })], Q.prototype, "states", void 0), Z([O({ type: Boolean })], Q.prototype, "blocked", void 0), Z([O({ type: Number })], Q.prototype, "navigationContext", void 0), Z([k()], Q.prototype, "step", void 0), Z([k()], Q.prototype, "busy", void 0), Z([k()], Q.prototype, "error", void 0), Z([k()], Q.prototype, "name", void 0), Z([k()], Q.prototype, "acquired", void 0), Z([k()], Q.prototype, "area", void 0), Z([k()], Q.prototype, "placement", void 0), Z([k()], Q.prototype, "category", void 0), Z([k()], Q.prototype, "tagText", void 0), Z([k()], Q.prototype, "common", void 0), Z([k()], Q.prototype, "latin", void 0), Z([k()], Q.prototype, "provider", void 0), Z([k()], Q.prototype, "query", void 0), Z([k()], Q.prototype, "results", void 0), Z([k()], Q.prototype, "searched", void 0), Z([k()], Q.prototype, "preview", void 0), Z([k()], Q.prototype, "accepted", void 0), Z([k()], Q.prototype, "moisture", void 0), Z([k()], Q.prototype, "all", void 0), Z([k()], Q.prototype, "draft", void 0), Z([k()], Q.prototype, "finalRequest", void 0), Z([k()], Q.prototype, "photo", void 0), Z([k()], Q.prototype, "photoInfo", void 0), Z([k()], Q.prototype, "rejected", void 0), customElements.get("smart-plants-wizard") || customElements.define("smart-plants-wizard", Q);
 //#endregion
 //#region src/panel.ts
-var or, sr = Object.fromEntries([
+var sr, cr = Object.fromEntries([
 	{
 		problemRole: "temperature_stress",
 		configRole: "temperature",
-		keys: yt,
-		defaults: vt,
+		keys: bt,
+		defaults: yt,
 		unit: "°C",
 		min: "-40",
 		max: "80",
@@ -3012,14 +3559,14 @@ var or, sr = Object.fromEntries([
 			hot_clear_celsius: "threshold_field.hot_clear",
 			hot_threshold_celsius: "threshold_field.hot_trigger"
 		},
-		validate: (e, t) => Et(e, t),
-		seed: (e) => Dt(e)
+		validate: (e, t) => Dt(e, t),
+		seed: (e) => Ot(e)
 	},
 	{
 		problemRole: "humidity_stress",
 		configRole: "humidity",
-		keys: kt,
-		defaults: Ot,
+		keys: At,
+		defaults: kt,
 		unit: "%",
 		min: "0",
 		max: "100",
@@ -3030,14 +3577,14 @@ var or, sr = Object.fromEntries([
 			damp_clear_percent: "threshold_field.damp_clear",
 			damp_threshold_percent: "threshold_field.damp_trigger"
 		},
-		validate: (e, t) => Ft(e, t),
-		seed: (e) => It(e)
+		validate: (e, t) => It(e, t),
+		seed: (e) => Lt(e)
 	},
 	{
 		problemRole: "conductivity_stress",
 		configRole: "conductivity",
-		keys: Rt,
-		defaults: Lt,
+		keys: zt,
+		defaults: Rt,
 		unit: "µS/cm",
 		min: "0",
 		max: "10000",
@@ -3048,14 +3595,14 @@ var or, sr = Object.fromEntries([
 			high_clear_micro_siemens_per_cm: "threshold_field.high_clear",
 			high_threshold_micro_siemens_per_cm: "threshold_field.high_trigger"
 		},
-		validate: (e, t) => Wt(e, t),
-		seed: (e) => Gt(e)
+		validate: (e, t) => Gt(e, t),
+		seed: (e) => Kt(e)
 	},
 	{
 		problemRole: "co2_stress",
 		configRole: "co2",
-		keys: qt,
-		defaults: Kt,
+		keys: Jt,
+		defaults: qt,
 		unit: "ppm",
 		min: "0",
 		max: "10000",
@@ -3064,14 +3611,14 @@ var or, sr = Object.fromEntries([
 			threshold_ppm: "threshold_field.high_trigger",
 			clear_ppm: "threshold_field.high_clear"
 		},
-		validate: (e, t) => $t(e, t),
-		seed: (e) => en(e)
+		validate: (e, t) => en(e, t),
+		seed: (e) => tn(e)
 	},
 	{
 		problemRole: "soil_temperature_stress",
 		configRole: "soil_temperature",
-		keys: nn,
-		defaults: tn,
+		keys: rn,
+		defaults: nn,
 		unit: "°C",
 		min: "-20",
 		max: "60",
@@ -3082,14 +3629,14 @@ var or, sr = Object.fromEntries([
 			hot_clear_celsius: "threshold_field.hot_clear",
 			hot_threshold_celsius: "threshold_field.hot_trigger"
 		},
-		validate: (e, t) => ln(e, t),
-		seed: (e) => un(e)
+		validate: (e, t) => un(e, t),
+		seed: (e) => dn(e)
 	},
 	{
 		problemRole: "low_battery",
 		configRole: "battery",
-		keys: fn,
-		defaults: dn,
+		keys: pn,
+		defaults: fn,
 		unit: "%",
 		min: "0",
 		max: "100",
@@ -3098,14 +3645,14 @@ var or, sr = Object.fromEntries([
 			threshold_percent: "threshold_field.low_trigger",
 			clear_percent: "threshold_field.low_clear"
 		},
-		validate: (e, t) => _n(e, t),
-		seed: (e) => vn(e)
+		validate: (e, t) => vn(e, t),
+		seed: (e) => yn(e)
 	},
 	{
 		problemRole: "low_light",
 		configRole: "illuminance",
-		keys: bn,
-		defaults: yn,
+		keys: xn,
+		defaults: bn,
 		unit: "lx",
 		min: "0",
 		max: "200000",
@@ -3114,10 +3661,10 @@ var or, sr = Object.fromEntries([
 			target_lux: "threshold_field.target",
 			clear_lux: "threshold_field.clear"
 		},
-		validate: (e, t) => Tn(e, t),
-		seed: (e) => En(e)
+		validate: (e, t) => En(e, t),
+		seed: (e) => Dn(e)
 	}
-].map((e) => [e.problemRole, e])), cr = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", lr = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", $ = class extends D {
+].map((e) => [e.problemRole, e])), lr = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", ur = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", $ = class extends D {
 	constructor(...e) {
 		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._filters = {}, this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._wizardStarted = !1, this._creationNotice = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._request = 0, this._careRequest = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ready = () => {
 			this._refresh();
@@ -3126,7 +3673,7 @@ var or, sr = Object.fromEntries([
 		};
 	}
 	get _l() {
-		return ut(this.hass);
+		return dt(this.hass);
 	}
 	willUpdate(e) {
 		e.has("hass") && (this.hass?.states && (this._states = Object.fromEntries(Object.entries(this.hass.states).filter(([e, t]) => qe(t) && t.entity_id === e))), this._syncImage());
@@ -3282,7 +3829,7 @@ var or, sr = Object.fromEntries([
 			area: this._baseArea,
 			common: e.species?.snapshot.common_name ?? "",
 			latin: e.species?.snapshot.latin_name ?? "",
-			moisture: t ? An(t) : null
+			moisture: t ? jn(t) : null
 		}, this._conflict = null, this._areaReview = !1, this._preview = null, this._results = [], this._provider = "manual", this._related = [], this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceSaved = {}, this._pendingSourceSwitch = null, this._allSourceSensors = !1, this._sourceUnavailable = null;
 		let n = G(e, this._devices), r = this._context;
 		n && this.hass && z.related(this.hass, n.id).then((t) => {
@@ -3531,7 +4078,7 @@ var or, sr = Object.fromEntries([
 		], (e) => this._statusLabel(e))}
       ${this._filter("lifecycle", ["active", "disabled"], (t) => o[t] ? e.t(o[t]) : t)}
       ${this._filter("area", ["none", ...this._areas.map((e) => e.area_id)])}
-      ${this._filter("placement", this._plants.map((e) => e.placement?.mode ?? "none"), (t) => t === "none" ? e.t("list.no_placement") : Gn(e, t))}
+      ${this._filter("placement", this._plants.map((e) => e.placement?.mode ?? "none"), (t) => t === "none" ? e.t("list.no_placement") : Kn(e, t))}
       ${this._filter("species", this._plants.map((e) => e.species?.snapshot.latin_name ?? e.species?.snapshot.common_name ?? "none"))}
       ${this._filter("category", this._plants.map((e) => e.category ?? "none"))}
       ${this._filter("sensor", [
@@ -3547,7 +4094,7 @@ var or, sr = Object.fromEntries([
 		})}</p><ul class="plants">${t.map((t) => S`<li class="plant plant-card"><div class="plant-card-heading"><span class="plant-avatar" aria-hidden="true">${(t.name.trim()[0] ?? "?").toLocaleUpperCase()}</span><div><button class="name" @click=${() => this._show({
 			kind: "detail",
 			plantId: t.id
-		})}>${t.name}</button><span class="plant-status">${this._statusLabel(this._status(t))}${this._missing(t) ? e.t("list.missing_source_suffix") : ""}</span></div></div><div class="plant-card-metrics"><div><small>${e.t("metric.soil_moisture")}</small><strong>${s(this._evaluations[t.id]?.computed_percent, (t) => e.number(t))}<small>%</small></strong></div><div><small>${e.t("metric.moisture_health")}</small><strong>${s(this._evaluations[t.id]?.health_score, (t) => e.number(t))}<small>/100</small></strong></div></div><small class="plant-meta">${this._areaName(G(t, this._devices)?.area_id ?? "")} · ${t.placement?.mode ? Gn(e, t.placement.mode) : e.t("list.no_placement")}<br>${t.species?.snapshot.common_name ?? t.species?.snapshot.latin_name ?? e.t("list.manual_plant")} · ${t.category ?? e.t("list.uncategorized")}${t.tags.length ? S`<br>${t.tags.join(" · ")}` : w}</small></li>`)}</ul>` : S`<p role="status">${e.t("list.no_matches")}</p>` : S`<section class="empty"><h2>${e.t("list.empty_heading")}</h2><p>${e.t("list.empty_body")}</p><button class="primary" ?disabled=${this._blocked} @click=${() => this._show({ kind: "create" })}>${e.t("list.add_first")}</button></section>`}`;
+		})}>${t.name}</button><span class="plant-status">${this._statusLabel(this._status(t))}${this._missing(t) ? e.t("list.missing_source_suffix") : ""}</span></div></div><div class="plant-card-metrics"><div><small>${e.t("metric.soil_moisture")}</small><strong>${s(this._evaluations[t.id]?.computed_percent, (t) => e.number(t))}<small>%</small></strong></div><div><small>${e.t("metric.moisture_health")}</small><strong>${s(this._evaluations[t.id]?.health_score, (t) => e.number(t))}<small>/100</small></strong></div></div><small class="plant-meta">${this._areaName(G(t, this._devices)?.area_id ?? "")} · ${t.placement?.mode ? Kn(e, t.placement.mode) : e.t("list.no_placement")}<br>${t.species?.snapshot.common_name ?? t.species?.snapshot.latin_name ?? e.t("list.manual_plant")} · ${t.category ?? e.t("list.uncategorized")}${t.tags.length ? S`<br>${t.tags.join(" · ")}` : w}</small></li>`)}</ul>` : S`<p role="status">${e.t("list.no_matches")}</p>` : S`<section class="empty"><h2>${e.t("list.empty_heading")}</h2><p>${e.t("list.empty_body")}</p><button class="primary" ?disabled=${this._blocked} @click=${() => this._show({ kind: "create" })}>${e.t("list.add_first")}</button></section>`}`;
 	}
 	async _save(e) {
 		let t = this._base, n = this._edits;
@@ -3572,7 +4119,7 @@ var or, sr = Object.fromEntries([
 			});
 		}
 		if (e === "taxonomy") {
-			let e = Un(n.category, J(n.tagText), this._l);
+			let e = Wn(n.category, J(n.tagText), this._l);
 			if (e) {
 				this._error = e;
 				return;
@@ -3582,19 +4129,19 @@ var or, sr = Object.fromEntries([
 				tags: J(n.tagText)
 			});
 		}
-		if (e === "species" && (i.species = Mn(n.common, n.latin)), e === "moisture") {
+		if (e === "species" && (i.species = Nn(n.common, n.latin)), e === "moisture") {
 			if (!n.moisture) return;
 			if (this._registryError) {
 				this._error = this._l.t("error.moisture_reconnect");
 				return;
 			}
-			let e = jn(n.moisture, this._defaults(t), this._l);
+			let e = Mn(n.moisture, this._defaults(t), this._l);
 			if (e) {
 				this._error = e;
 				return;
 			}
 		}
-		await this._mutate(async () => e === "area" ? await z.setArea(r, t.id, t.revision, n.area || null) : e === "moisture" && n.moisture ? z.configureMoisture(r, t.id, t.revision, Nn(n.moisture, this._entities)) : z.update(r, i), !1, e);
+		await this._mutate(async () => e === "area" ? await z.setArea(r, t.id, t.revision, n.area || null) : e === "moisture" && n.moisture ? z.configureMoisture(r, t.id, t.revision, Pn(n.moisture, this._entities)) : z.update(r, i), !1, e);
 	}
 	async _mutate(e, t = !1, n) {
 		if (this._formBusy || this._blocked || this._conflict) return;
@@ -3658,7 +4205,7 @@ var or, sr = Object.fromEntries([
 		r.name !== e.name && (d.name = r.name), r.acquired !== (e.acquired_at ?? "") && (d.acquired = r.acquired), JSON.stringify(r.placement) !== JSON.stringify(e.placement) && (d.placement = r.placement), r.category !== (e.category ?? "") && (d.category = r.category), JSON.stringify(J(r.tagText)) !== JSON.stringify(e.tags) && (d.tagText = r.tagText), r.area !== this._baseArea && (d.area = r.area), r.common !== (e.species?.snapshot.common_name ?? "") && (d.common = r.common), r.latin !== (e.species?.snapshot.latin_name ?? "") && (d.latin = r.latin);
 		let f = W(e), ee = W(t);
 		if (r.moisture && f && ee) {
-			let e = An(ee);
+			let e = jn(ee);
 			for (let t of [
 				"sources",
 				"primary_entity_id",
@@ -3683,7 +4230,7 @@ var or, sr = Object.fromEntries([
 		if (this._beginEdit(t), this._edit(d), this._areaReview = i, a && o && s) {
 			let e = q(t, a);
 			if (e) {
-				let t = zn(e), n = structuredClone(t);
+				let t = Bn(e), n = structuredClone(t);
 				for (let e of [
 					"sources",
 					"primary_entity_id",
@@ -3694,7 +4241,7 @@ var or, sr = Object.fromEntries([
 			}
 		}
 		if (c && l && u) {
-			let e = sr[c];
+			let e = cr[c];
 			if (e) {
 				let n = e.seed(this._persistedRoleOverrides(e, t)), r = { ...n };
 				for (let t of e.keys) l[t] !== u[t] && (r[t] = l[t]);
@@ -3751,7 +4298,7 @@ var or, sr = Object.fromEntries([
 			let t = [...e.currentTarget.querySelectorAll("button:not([disabled]),a[href],input:not([disabled]),summary")], n = t[0], r = t.at(-1);
 			e.shiftKey && (this.shadowRoot?.activeElement === n || this.shadowRoot?.activeElement?.matches("#dialog-title")) ? (e.preventDefault(), r?.focus()) : !e.shiftKey && this.shadowRoot?.activeElement === r && (e.preventDefault(), n?.focus());
 		}}><h2 id="dialog-title" tabindex="-1">${this._dialog === "delete" ? n.t("dialog.delete_title", { name: e.name }) : n.t("dialog.species_title")}</h2>
-      ${this._dialog === "delete" ? S`<p>${n.t("dialog.delete_body")}</p>` : t ? nr(n, t.snapshot, t) : S`<p>${n.t("dialog.preview_invalid")}</p>`}
+      ${this._dialog === "delete" ? S`<p>${n.t("dialog.delete_body")}</p>` : t ? rr(n, t.snapshot, t) : S`<p>${n.t("dialog.preview_invalid")}</p>`}
       <div class="actions"><button @click=${() => this._closeDialog()}>${n.t("common.cancel")}</button><button class="primary" ?disabled=${this._formBusy || this._blocked || !!this._conflict || this._dialog === "species" && !t} @click=${() => {
 			let n = this._dialog;
 			if (this._closeDialog(), !this.hass) return;
@@ -3764,7 +4311,7 @@ var or, sr = Object.fromEntries([
 		let n = this._context;
 		this._formBusy = !0;
 		try {
-			await rr(t, this._l);
+			await ir(t, this._l);
 		} catch (e) {
 			n === this._context && (this._error = e.message);
 			return;
@@ -3807,18 +4354,18 @@ var or, sr = Object.fromEntries([
       ${t ? S`
         <p role="status" aria-live="polite">${t.available && t.health_score !== null ? n.t("section.overall_health_available_summary", { score: t.health_score }) : n.t("section.overall_health_unavailable_detail")}</p>
         <dl class="overall-health">
-          <dt>${n.t("section.overall_health_confidence")}</dt><dd>${ht(t.confidence_label, n)} — ${mt(t.confidence_label, n)}</dd>
-          <dt>${n.t("section.overall_health_included_roles")}</dt><dd>${t.contributors.length ? S`<ul class="contributors">${t.contributors.map((e) => S`<li>${pt(e, n)}</li>`)}</ul>` : n.t("section.overall_health_none_contributing")}</dd>
+          <dt>${n.t("section.overall_health_confidence")}</dt><dd>${gt(t.confidence_label, n)} — ${ht(t.confidence_label, n)}</dd>
+          <dt>${n.t("section.overall_health_included_roles")}</dt><dd>${t.contributors.length ? S`<ul class="contributors">${t.contributors.map((e) => S`<li>${mt(e, n)}</li>`)}</ul>` : n.t("section.overall_health_none_contributing")}</dd>
           <dt>${n.t("section.overall_health_configured_unavailable")}</dt><dd>${(() => {
 			let e = t.configured.filter((e) => !t.contributors.includes(e));
-			return e.length ? S`<ul class="configured-unavailable">${e.map((e) => S`<li>${pt(e, n)}</li>`)}</ul>` : n.t("section.overall_health_all_included");
+			return e.length ? S`<ul class="configured-unavailable">${e.map((e) => S`<li>${mt(e, n)}</li>`)}</ul>` : n.t("section.overall_health_all_included");
 		})()}</dd>
         </dl>
       ` : S`<p role="status">${this._healthError ? `${r} ${this._healthError}` : r}</p>`}
     </section>`;
 	}
 	_renderDiagnostics(e) {
-		let t = this._l, n = On(e, this._entities, this._states, t), r = n.filter((e) => e.status === "on").length, i = (e) => e === "on" ? t.t("section.advanced_diagnostics_status_problem") : e === "off" ? t.t("section.advanced_diagnostics_status_ok") : e === "unavailable" ? t.t("section.advanced_diagnostics_status_unavailable") : t.t("section.advanced_diagnostics_status_not_configured"), a = this._pendingThresholdSwitch, o = this._thresholdRole ? sr[this._thresholdRole] : null, s = o ? t.t(`problem_phrase.${o.problemRole}`) : "", c = a ? t.t(`problem_phrase.${a.spec.problemRole}`) : "", l = r === 0 ? t.t("section.advanced_diagnostics_zero_active") : t.tn(r, "section.advanced_diagnostics_one_active", "section.advanced_diagnostics_many_active");
+		let t = this._l, n = kn(e, this._entities, this._states, t), r = n.filter((e) => e.status === "on").length, i = (e) => e === "on" ? t.t("section.advanced_diagnostics_status_problem") : e === "off" ? t.t("section.advanced_diagnostics_status_ok") : e === "unavailable" ? t.t("section.advanced_diagnostics_status_unavailable") : t.t("section.advanced_diagnostics_status_not_configured"), a = this._pendingThresholdSwitch, o = this._thresholdRole ? cr[this._thresholdRole] : null, s = o ? t.t(`problem_phrase.${o.problemRole}`) : "", c = a ? t.t(`problem_phrase.${a.spec.problemRole}`) : "", l = r === 0 ? t.t("section.advanced_diagnostics_zero_active") : t.tn(r, "section.advanced_diagnostics_one_active", "section.advanced_diagnostics_many_active");
 		return S`<section aria-labelledby="diagnostics-heading"><h2 id="diagnostics-heading">${t.t("section.advanced_diagnostics")}</h2>
       <p role="status" aria-live="polite">${l}</p>
       <p>${t.t("section.advanced_diagnostics_description")}</p>
@@ -3832,7 +4379,7 @@ var or, sr = Object.fromEntries([
 		}}>${t.t("section.advanced_diagnostics_switch_keep")}</button>
       </p>` : w}
       <dl class="diagnostics">${n.map((n) => {
-			let r = n.status === "not_configured" ? [] : Dn(e, n.role, this._entities, this._states, t), a = sr[n.role], o = !!a && n.status !== "not_configured", s = o && this._thresholdRole === n.role && this._thresholdEdits !== null, c = a ? this._thresholdSaved[n.role] : "";
+			let r = n.status === "not_configured" ? [] : On(e, n.role, this._entities, this._states, t), a = cr[n.role], o = !!a && n.status !== "not_configured", s = o && this._thresholdRole === n.role && this._thresholdEdits !== null, c = a ? this._thresholdSaved[n.role] : "";
 			return S`<dt>${n.label}</dt><dd class=${"status-" + n.status}>${i(n.status)}${n.reason ? S` — ${n.reason}` : w}${r.length ? S`<ul class="thresholds" aria-label=${t.t("section.effective_thresholds_label", { label: n.label })}>${r.map((e) => S`<li><span class="threshold-label">${e.label}</span>: <span class="threshold-value">${e.value === null ? "—" : `${t.number(e.value)} ${e.unit}`}</span></li>`)}</ul>` : w}${o && a ? S`<button class="threshold-toggle" type="button" aria-expanded=${s ? "true" : "false"} aria-controls=${`${n.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(a, e)}>${s ? t.t("section.advanced_diagnostics_cancel_edit") : t.t("section.advanced_diagnostics_edit_thresholds")}</button>${s ? this._renderThresholdEditor(a, e) : w}${c && !s ? S`<p class="notice" role="status">${c}</p>` : w}` : w}</dd>`;
 		})}</dl></section>`;
 	}
@@ -3926,7 +4473,7 @@ var or, sr = Object.fromEntries([
 	}
 	_sourceSummary(e, t) {
 		let n = q(e, t), r = this._l;
-		return n ? n.sources.length ? `${r.tn(n.sources.length, "sensors.source_count_one", "sensors.source_count_other")} · ${Jn(r, n.aggregation)}${n.primary_entity_id ? r.t("sensors.summary_primary", { entity_id: n.primary_entity_id }) : ""}` : r.t("sensors.summary_empty") : r.t("sensors.summary_unavailable");
+		return n ? n.sources.length ? `${r.tn(n.sources.length, "sensors.source_count_one", "sensors.source_count_other")} · ${Yn(r, n.aggregation)}${n.primary_entity_id ? r.t("sensors.summary_primary", { entity_id: n.primary_entity_id }) : ""}` : r.t("sensors.summary_empty") : r.t("sensors.summary_unavailable");
 	}
 	_toggleSourceEdit(e, t) {
 		if (this._sourceRole === e && this._sourceEdits !== null) {
@@ -3952,7 +4499,7 @@ var or, sr = Object.fromEntries([
 			}, this._pendingSourceSwitch = null;
 			return;
 		}
-		let r = zn(n);
+		let r = Bn(n);
 		this._sourceRole = e, this._sourceEdits = r, this._sourceBaseline = structuredClone(r), this._sourceError = "", this._pendingSourceSwitch = null, this._allSourceSensors = !1, this._sourceUnavailable = null, this._sourceSaved = {
 			...this._sourceSaved,
 			[e]: ""
@@ -3976,33 +4523,33 @@ var or, sr = Object.fromEntries([
 		});
 	}
 	_renderSensors(e) {
-		let t = this._l, n = this._pendingSourceSwitch, r = In(this._sourceRole ?? "");
+		let t = this._l, n = this._pendingSourceSwitch, r = Ln(this._sourceRole ?? "");
 		return S`<section aria-labelledby="sensors-heading"><h2 id="sensors-heading">${t.t("sensors.heading")}</h2>
       <p>${t.t("sensors.intro")}</p>
-      ${n ? S`<div class="notice" role="alert"><p>${t.t("sensors.switch_prompt", { role: r ? Rn(r.role, t) : this._sourceRole ?? "" })}</p>
+      ${n ? S`<div class="notice" role="alert"><p>${t.t("sensors.switch_prompt", { role: r ? zn(r.role, t) : this._sourceRole ?? "" })}</p>
         <button type="button" class="primary" @click=${() => this._confirmSourceSwitch()}>${t.t("section.advanced_diagnostics_switch_discard")}</button>
         <button type="button" @click=${() => {
 			this._pendingSourceSwitch = null;
 		}}>${t.t("section.advanced_diagnostics_switch_keep")}</button></div>` : w}
-      <dl class="sensors">${Fn.map((n) => {
+      <dl class="sensors">${In.map((n) => {
 			let r = this._sourceRole === n.role && this._sourceEdits !== null, i = this._sourceSaved[n.role];
-			return S`<dt>${Ln(n.role, t)}</dt><dd>${this._sourceSummary(e, n.role)}
+			return S`<dt>${Rn(n.role, t)}</dt><dd>${this._sourceSummary(e, n.role)}
           <button class="source-toggle" type="button" aria-expanded=${r ? "true" : "false"} aria-controls=${`${n.role}-sources-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleSourceEdit(n.role, e)}>${r ? t.t("common.cancel") : t.t("sensors.edit")}</button>
           ${r ? this._renderSourceEditor(n.role, e) : w}
-          ${!r && this._sourceRefused(e, n.role) ? S`<p id=${`${n.role}-sources-unavailable`} class="error" role="alert">${t.t("sensors.refused", { role: Ln(n.role, t) })}</p>` : w}
+          ${!r && this._sourceRefused(e, n.role) ? S`<p id=${`${n.role}-sources-unavailable`} class="error" role="alert">${t.t("sensors.refused", { role: Rn(n.role, t) })}</p>` : w}
           ${i && !r ? S`<p class="notice" role="status">${i}</p>` : w}</dd>`;
 		})}</dl></section>`;
 	}
 	_renderSourceEditor(e, t) {
-		let n = In(e), r = this._sourceEdits, i = this._l;
+		let n = Ln(e), r = this._sourceEdits, i = this._l;
 		return !n || !r ? w : S`<div id=${`${e}-sources-editor`} class="editor"><fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>
-      ${tr(i, n, r, this._entities, this._states, this._allSourceSensors, (e) => this._allSourceSensors = e, (e) => this._editSource(e))}
+      ${nr(i, n, r, this._entities, this._states, this._allSourceSensors, (e) => this._allSourceSensors = e, (e) => this._editSource(e))}
       ${this._sourceError ? S`<p class="error" role="alert">${this._sourceError}</p>` : w}
       <div class="actions">
         <button type="button" @click=${() => {
 			this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._pendingSourceSwitch = null;
 		}}>${i.t("common.cancel")}</button>
-        <button type="button" class="primary" @click=${() => void this._saveRoleSources(e, t)}>${i.t("sensors.save", { role: Rn(e, i) })}</button>
+        <button type="button" class="primary" @click=${() => void this._saveRoleSources(e, t)}>${i.t("sensors.save", { role: zn(e, i) })}</button>
       </div></fieldset></div>`;
 	}
 	async _saveRoleSources(e, t) {
@@ -4011,34 +4558,34 @@ var or, sr = Object.fromEntries([
 			this._sourceError = this._l.t("error.sources_reconnect");
 			return;
 		}
-		let n = Bn(this._sourceEdits, this._l);
+		let n = Vn(this._sourceEdits, this._l);
 		if (n) {
 			this._sourceError = n;
 			return;
 		}
 		this._sourceError = "";
-		let r = this.hass, i = Vn(this._sourceEdits, this._entities), a = q(t, e);
+		let r = this.hass, i = Hn(this._sourceEdits, this._entities), a = q(t, e);
 		await this._mutate(async () => {
 			let n = t.revision, o = t;
 			return (!a || JSON.stringify(a.sources) !== JSON.stringify(i.sources)) && (o = await z.setRoleSources(r, t.id, n, e, i.sources), n = o.revision), (!a || a.primary_entity_id !== i.primary_entity_id) && (o = await z.setRolePrimary(r, t.id, n, e, i.primary_entity_id), n = o.revision), (!a || a.aggregation !== i.aggregation) && (o = await z.setRoleAggregation(r, t.id, n, e, i.aggregation), n = o.revision), (!a || a.stale_after_seconds !== i.stale_after_seconds) && (o = await z.setRoleStaleAfter(r, t.id, n, e, i.stale_after_seconds), n = o.revision), o;
 		}), this._error || (this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._pendingSourceSwitch = null, this._sourceSaved = {
 			...this._sourceSaved,
-			[e]: this._l.t("sensors.saved", { role: Ln(e, this._l) })
+			[e]: this._l.t("sensors.saved", { role: Rn(e, this._l) })
 		});
 	}
 	_renderPlantOverview(e, t) {
-		let n = this._l, r = W(e), i = r?.sources.map((e) => K(e, this._entities)?.entity_id ?? e.entity_id) ?? [], a = Fn.flatMap((t) => {
+		let n = this._l, r = W(e), i = r?.sources.map((e) => K(e, this._entities)?.entity_id ?? e.entity_id) ?? [], a = In.flatMap((t) => {
 			let r = q(e, t.role);
 			return r?.sources.length ? [{
-				label: Ln(t.role, n),
+				label: Rn(t.role, n),
 				count: r.sources.length
 			}] : [];
 		}), o = this._careHistory?.events.slice(0, 3) ?? [], s = t?.computed_percent, c = t?.health_score, l = this._health?.[e.id]?.confidence_label;
 		return S`<section class="plant-overview-card"><div class="overview-heading">${this._imageUrl ? S`<img class="overview-avatar" src=${this._imageUrl} alt=${n.t("photo.alt", { name: e.name })}>` : S`<div class="overview-avatar placeholder" aria-hidden="true">${e.name.slice(0, 1).toLocaleUpperCase()}</div>`}<div><p class="eyebrow">${n.t("overview.eyebrow")}</p><p>${e.species?.snapshot.common_name ?? e.species?.snapshot.latin_name ?? n.t("common.no_species_selected")}</p>${e.category ? S`<span class="muted">${e.category}</span>` : w}<button type="button" @click=${() => this._detailSection = "details"}>${n.t("overview.details_button")}</button></div></div>
-      <div class="overview-metrics"><article><span>${n.t("metric.soil_moisture")}</span><strong>${s == null ? "—" : n.percent(s)}</strong><small>${t?.computed_available ? n.t("overview.current_reading") : n.t("overview.no_current_reading")}</small></article><article><span>${n.t("metric.moisture_health")}</span><strong>${c == null ? "—" : `${n.number(c)}/100`}</strong><small>${n.t("overview.based_on_moisture")}</small></article><article><span>${n.t("overview.moisture_sensors")}</span><strong>${n.number(i.length)}</strong><small>${n.t("overview.aggregation", { aggregation: r ? Jn(n, r.aggregation) : n.t("overview.not_configured") })}</small></article></div>
+      <div class="overview-metrics"><article><span>${n.t("metric.soil_moisture")}</span><strong>${s == null ? "—" : n.percent(s)}</strong><small>${t?.computed_available ? n.t("overview.current_reading") : n.t("overview.no_current_reading")}</small></article><article><span>${n.t("metric.moisture_health")}</span><strong>${c == null ? "—" : `${n.number(c)}/100`}</strong><small>${n.t("overview.based_on_moisture")}</small></article><article><span>${n.t("overview.moisture_sensors")}</span><strong>${n.number(i.length)}</strong><small>${n.t("overview.aggregation", { aggregation: r ? Yn(n, r.aggregation) : n.t("overview.not_configured") })}</small></article></div>
        <section class="overview-sensors"><h2>${n.t("overview.assigned_sensors")}</h2>${i.length || a.length ? S`<ul>${i.map((e) => S`<li>${n.t("metric.soil_moisture")} · ${e}${e === r?.primary_entity_id ? S` <span class="muted">${n.t("overview.primary")}</span>` : w}</li>`)}${a.map((e) => S`<li>${e.label} · ${n.tn(e.count, "sensors.source_count_one", "sensors.source_count_other")}</li>`)}</ul>` : S`<p>${n.t("overview.no_sensors")}</p>`}<button type="button" @click=${() => this._detailSection = "sensors"}>${n.t("overview.manage_sensors")}</button></section>
        <section class="overview-care"><h2>${n.t("overview.recent_care")}</h2>${o.length ? S`<ul>${o.map((e) => S`<li><strong>${n.t(`care_kind.${e.kind}`)}</strong> · ${n.date(e.local_date)}</li>`)}</ul>` : S`<p>${n.t("overview.no_care")}</p>`}<button type="button" @click=${() => this._detailSection = "care"}>${n.t("overview.open_care")}</button></section>
-      ${l === void 0 ? w : S`<p class="muted">${n.t("overview.overall_confidence", { label: ht(l, n) })}</p>`}
+      ${l === void 0 ? w : S`<p class="muted">${n.t("overview.overall_confidence", { label: gt(l, n) })}</p>`}
     </section>`;
 	}
 	_renderDetail(e) {
@@ -4058,12 +4605,12 @@ var or, sr = Object.fromEntries([
 			["diagnostics", "detail.tab_diagnostics"]
 		].map(([e, n]) => S`<button type="button" aria-current=${this._detailSection === e ? "page" : w} @click=${() => this._detailSection = e}>${t.t(n)}</button>`)}</nav>
         ${this._detailSection === "overview" ? this._renderPlantOverview(n, i) : w}
-       ${this._detailSection === "details" ? S`<section><h2>${t.t("detail.identity_heading")}</h2>${this._renderImage(n)}<fieldset ?disabled=${s}>${Y(t.t("detail.name"), r.name, (e) => this._edit({ name: e }))}${Y(t.t("detail.acquired"), r.acquired, (e) => this._edit({ acquired: e }))}${Zn(t, r.placement, (e) => this._edit({ placement: e }))}${this._saveButton("identity", t.t("detail.save_identity"))}</fieldset></section>
+       ${this._detailSection === "details" ? S`<section><h2>${t.t("detail.identity_heading")}</h2>${this._renderImage(n)}<fieldset ?disabled=${s}>${Y(t.t("detail.name"), r.name, (e) => this._edit({ name: e }))}${Y(t.t("detail.acquired"), r.acquired, (e) => this._edit({ acquired: e }))}${Qn(t, r.placement, (e) => this._edit({ placement: e }))}${this._saveButton("identity", t.t("detail.save_identity"))}</fieldset></section>
        <section><h2>${t.t("area.label")}</h2><p>${t.t("detail.area_current", { area: this._areaName(o?.area_id ?? "") })}</p>${this._areaReview ? S`<p class="notice">${t.t("detail.area_review")}</p><button @click=${() => this._areaReview = !1}>${t.t("detail.area_reviewed")}</button><button @click=${() => {
 			this._edit({ area: this._baseArea }), this._areaReview = !1;
-		}}>${t.t("detail.area_use_current")}</button>` : w}<fieldset ?disabled=${s || !!this._registryError || this._areaReview}>${Xn(t, r.area, this._areas, (e) => this._edit({ area: e }))}${this._saveButton("area", t.t("detail.save_area"))}</fieldset></section>
+		}}>${t.t("detail.area_use_current")}</button>` : w}<fieldset ?disabled=${s || !!this._registryError || this._areaReview}>${Zn(t, r.area, this._areas, (e) => this._edit({ area: e }))}${this._saveButton("area", t.t("detail.save_area"))}</fieldset></section>
        <section><h2>${t.t("taxonomy.heading")}</h2><fieldset ?disabled=${s}>${Y(t.t("taxonomy.category"), r.category, (e) => this._edit({ category: e }), "text", 60)}${Y(t.t("taxonomy.tags"), r.tagText, (e) => this._edit({ tagText: e }), "text", 2e3)}<p>${t.t("taxonomy.hint")}</p>${this._saveButton("taxonomy", t.t("taxonomy.save"))}</fieldset></section>
-       <section><h2>${t.t("species.heading")}</h2>${n.species ? nr(t, n.species.snapshot) : S`<p>${t.t("species.none")}</p>`}<fieldset ?disabled=${s}>
+       <section><h2>${t.t("species.heading")}</h2>${n.species ? rr(t, n.species.snapshot) : S`<p>${t.t("species.none")}</p>`}<fieldset ?disabled=${s}>
       ${n.species?.snapshot.provider_ref ? S`<button @click=${() => void this._previewSpecies()}>${t.t("species.preview_refresh")}</button>` : w}
       ${X(t, t.t("species.provider"), this._provider, [{
 			value: "manual",
@@ -4087,7 +4634,7 @@ var or, sr = Object.fromEntries([
 				this._mutate(() => n.lifecycle_state === "active" ? z.disable(e, n.id, n.revision) : z.reenable(e, n.id, n.revision));
 			}
 		}}>${n.lifecycle_state === "active" ? t.t("lifecycle.disable") : t.t("lifecycle.reenable")}</button><button @click=${() => this._openDialog("delete")}>${t.t("lifecycle.delete")}</button></div></fieldset></section>` : w}
-       ${this._detailSection === "sensors" ? S`<section><h2>${t.t("moisture.heading")}</h2>${a && r.moisture ? S`<p class="default-summary">${t.t("moisture.effective_summary", { thresholds: H.map((e) => `${Yn(t, e)} ${t.percent(a.threshold_overrides[e] ?? this._defaults(n)[e])}`).join(" · ") })}</p><fieldset ?disabled=${s}>${er(t, r.moisture, this._defaults(n), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "sources")}<details class="advanced-disclosure"><summary>${t.t("moisture.advanced_overrides")}</summary><p>${t.t("moisture.advanced_hint")}</p>${er(t, r.moisture, this._defaults(n), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "thresholds")}</details>${this._saveButton("moisture", t.t("moisture.save"))}</fieldset>` : S`<p class="error" role="alert">${t.t("moisture.incompatible")}</p>`}</section>${this._renderSensors(n)}` : w}
+       ${this._detailSection === "sensors" ? S`<section><h2>${t.t("moisture.heading")}</h2>${a && r.moisture ? S`<p class="default-summary">${t.t("moisture.effective_summary", { thresholds: H.map((e) => `${Xn(t, e)} ${t.percent(a.threshold_overrides[e] ?? this._defaults(n)[e])}`).join(" · ") })}</p><fieldset ?disabled=${s}>${tr(t, r.moisture, this._defaults(n), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "sources")}<details class="advanced-disclosure"><summary>${t.t("moisture.advanced_overrides")}</summary><p>${t.t("moisture.advanced_hint")}</p>${tr(t, r.moisture, this._defaults(n), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "thresholds")}</details>${this._saveButton("moisture", t.t("moisture.save"))}</fieldset>` : S`<p class="error" role="alert">${t.t("moisture.incompatible")}</p>`}</section>${this._renderSensors(n)}` : w}
        ${this._detailSection === "care" ? this._renderCare(n) : w}
        ${this._detailSection === "diagnostics" ? S`<section><h2>${t.t("automations.heading")}</h2><p>${t.t("automations.description")}</p><a href="/config/automation/dashboard">${t.t("automations.open_editor")}</a><ul>${this._related.map((e) => S`<li>${e}</li>`)}</ul></section>${this._renderOverallHealth(n)}${this._renderDiagnostics(n)}` : w}
        ${this._renderDialog()}`;
@@ -4105,7 +4652,7 @@ var or, sr = Object.fromEntries([
 		let d = this._context;
 		if (this._refresh(!1), o && i) {
 			try {
-				if (await rr(n, c), !this.isConnected || this.hass?.connection !== i.connection || this._blocked) return;
+				if (await ir(n, c), !this.isConnected || this.hass?.connection !== i.connection || this._blocked) return;
 				let e = await z.uploadImage(i, t.id, t.revision, n);
 				if (!this.isConnected || this.hass?.connection !== i.connection) return;
 				d === this._context && this._base?.id === t.id && this._base.revision === t.revision && !this._formBusy && !this._conflict && this._rebaseEdits(this._base, e), this._createdPlantId === t.id && (this._creationNotice = `${l} ${c.t("created.photo_uploaded")}`);
@@ -4125,9 +4672,9 @@ var or, sr = Object.fromEntries([
 		return S`<main><ha-top-app-bar-fixed class="panel-appbar" .narrow=${this.narrow}>
        <h1 slot="title" class="page-title" tabindex="-1">Smart Plants</h1>
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
-         <ha-icon-button slot="trigger" .label=${t} .path=${cr}></ha-icon-button>
+         <ha-icon-button slot="trigger" .label=${t} .path=${lr}></ha-icon-button>
          ${this._view.kind === "list" ? w : S`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${e.t("panel.back_to_overview")}</ha-dropdown-item>`}
-         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${lr}></ha-svg-icon></ha-dropdown-item>
+         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${ur}></ha-svg-icon></ha-dropdown-item>
        </ha-dropdown>
        <div class="panel-content">${this._error ? S`<p class="error" role="alert">${this._error}</p>` : w}${this._notice ? S`<p class="notice" role="status">${this._notice}</p>` : w}${this._registryError ? S`<p class="notice" role="alert">${e.t("panel.registry_unavailable", { error: this._registryError })}</p>` : w}
       ${this._creationNotice ? S`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && (this._view.kind !== "detail" || this._view.plantId !== this._createdPlantId) ? S`<button ?disabled=${this._formBusy} @click=${() => {
@@ -4143,7 +4690,7 @@ var or, sr = Object.fromEntries([
         <p role="status" aria-live="polite">${this._formBusy ? e.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
 	}
 };
-or = $, or.styles = ir, Z([O({ attribute: !1 })], $.prototype, "hass", void 0), Z([O({ attribute: !1 })], $.prototype, "panel", void 0), Z([O({
+sr = $, sr.styles = ar, Z([O({ attribute: !1 })], $.prototype, "hass", void 0), Z([O({ attribute: !1 })], $.prototype, "panel", void 0), Z([O({
 	type: Boolean,
 	reflect: !0
 })], $.prototype, "narrow", void 0), Z([k()], $.prototype, "_plants", void 0), Z([k()], $.prototype, "_loading", void 0), Z([k()], $.prototype, "_error", void 0), Z([k()], $.prototype, "_notice", void 0), Z([k()], $.prototype, "_view", void 0), Z([k()], $.prototype, "_detailSection", void 0), Z([k()], $.prototype, "_formBusy", void 0), Z([k()], $.prototype, "_capabilities", void 0), Z([k()], $.prototype, "_blocked", void 0), Z([k()], $.prototype, "_areas", void 0), Z([k()], $.prototype, "_entities", void 0), Z([k()], $.prototype, "_devices", void 0), Z([k()], $.prototype, "_states", void 0), Z([k()], $.prototype, "_evaluations", void 0), Z([k()], $.prototype, "_health", void 0), Z([k()], $.prototype, "_healthError", void 0), Z([k()], $.prototype, "_careHistory", void 0), Z([k()], $.prototype, "_careError", void 0), Z([k()], $.prototype, "_careDate", void 0), Z([k()], $.prototype, "_careNote", void 0), Z([k()], $.prototype, "_careKind", void 0), Z([k()], $.prototype, "_careFields", void 0), Z([k()], $.prototype, "_careEditingId", void 0), Z([k()], $.prototype, "_registryError", void 0), Z([k()], $.prototype, "_areaReview", void 0), Z([k()], $.prototype, "_filters", void 0), Z([k()], $.prototype, "_edits", void 0), Z([k()], $.prototype, "_conflict", void 0), Z([k()], $.prototype, "_allSensors", void 0), Z([k()], $.prototype, "_preview", void 0), Z([k()], $.prototype, "_provider", void 0), Z([k()], $.prototype, "_query", void 0), Z([k()], $.prototype, "_results", void 0), Z([k()], $.prototype, "_related", void 0), Z([k()], $.prototype, "_imageUrl", void 0), Z([k()], $.prototype, "_imageLoading", void 0), Z([k()], $.prototype, "_imageError", void 0), Z([k()], $.prototype, "_dialog", void 0), Z([k()], $.prototype, "_wizardStarted", void 0), Z([k()], $.prototype, "_creationNotice", void 0), Z([k()], $.prototype, "_createdPlantId", void 0), Z([k()], $.prototype, "_thresholdRole", void 0), Z([k()], $.prototype, "_thresholdEdits", void 0), Z([k()], $.prototype, "_thresholdBaseline", void 0), Z([k()], $.prototype, "_thresholdError", void 0), Z([k()], $.prototype, "_thresholdSaved", void 0), Z([k()], $.prototype, "_pendingThresholdSwitch", void 0), Z([k()], $.prototype, "_sourceRole", void 0), Z([k()], $.prototype, "_sourceEdits", void 0), Z([k()], $.prototype, "_sourceBaseline", void 0), Z([k()], $.prototype, "_sourceError", void 0), Z([k()], $.prototype, "_sourceUnavailable", void 0), Z([k()], $.prototype, "_sourceSaved", void 0), Z([k()], $.prototype, "_pendingSourceSwitch", void 0), Z([k()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);
