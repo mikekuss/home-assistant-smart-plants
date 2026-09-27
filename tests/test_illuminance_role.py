@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
 
 import pytest
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
@@ -9,6 +8,7 @@ from custom_components.smart_plants.illuminance_evaluator import LIGHT_LUX
 from custom_components.smart_plants.manager import SmartPlantsManager
 from custom_components.smart_plants.models import IlluminanceConfig
 from custom_components.smart_plants.repairs import _issue_id
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.const import PERCENTAGE, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -115,85 +115,72 @@ async def test_illuminance_entity_metadata_and_state(hass: HomeAssistant) -> Non
 
 
 async def test_low_light_entity_metadata_and_daytime_state(
-    hass: HomeAssistant,
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:
-    # The fake clock must lie in the real future: source staleness deadlines
-    # are scheduled on the real event loop, so a deadline derived from a past
-    # date fires immediately and would mark the sensor stale mid-test.
-    now = datetime(2100, 1, 1, 12, tzinfo=UTC)
-    clock = [now]
-    with (
-        patch(
-            "custom_components.smart_plants.illuminance_controller.dt_util.utcnow",
-            side_effect=lambda: clock[0],
-        ),
-        patch(
-            "custom_components.smart_plants.source_tracker.dt_util.utcnow",
-            side_effect=lambda: clock[0],
-        ),
-        patch(
-            "custom_components.smart_plants.illuminance_controller.dt_util.as_local",
-            side_effect=lambda value: value,
-        ),
-    ):
-        entry = await _setup_entry(hass)
-        manager = entry.runtime_data.manager
-        plant = await manager.async_create_plant(name="Aloe")
-        await hass.async_block_till_done()
-        controller = manager.get_role_controller(plant.id, "illuminance")
-        assert not controller._light_samples
+    # Freeze the clock instead of patching dt_util.utcnow: Home Assistant
+    # schedules timers from time.time(), so a patched utcnow would put the
+    # source's stale deadline in the past and let it fire before the asserts.
+    await hass.config.async_set_time_zone("UTC")
+    now = datetime(2026, 1, 1, 12, tzinfo=UTC)
+    freezer.move_to(now)
+    entry = await _setup_entry(hass)
+    manager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    await hass.async_block_till_done()
+    controller = manager.get_role_controller(plant.id, "illuminance")
+    assert not controller._light_samples
 
-        registry = er.async_get(hass)
-        # Entity-lifecycle contract: no problem binary until the role has a source.
-        assert (
-            registry.async_get_entity_id(
-                "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:low_light"
-            )
-            is None
-        )
-
-        hass.states.async_set(
-            "sensor.plant_lux",
-            "100",
-            {"unit_of_measurement": LIGHT_LUX},
-            timestamp=now.timestamp(),
-        )
-        assigned = await manager.async_set_role_sources(
-            plant.id,
-            role="illuminance",
-            expected_revision=plant.revision,
-            sources=[{"entity_id": "sensor.plant_lux"}],
-        )
-        await manager.async_set_role_primary(
-            plant.id,
-            role="illuminance",
-            expected_revision=assigned.revision,
-            primary_entity_id="sensor.plant_lux",
-        )
-        await hass.async_block_till_done()
-        assert len(controller._light_samples) == 1
-        # A second source observation, one minute later, supplies the second
-        # daytime sample. Configuration recomputation is not another sample.
-        clock[0] = now + timedelta(minutes=1)
-        hass.states.async_set(
-            "sensor.plant_lux",
-            "120",
-            {"unit_of_measurement": LIGHT_LUX},
-            timestamp=clock[0].timestamp(),
-        )
-        await hass.async_block_till_done()
-        assert len(controller._light_samples) == 2
-        entity_id = registry.async_get_entity_id(
+    registry = er.async_get(hass)
+    # Entity-lifecycle contract: no problem binary until the role has a source.
+    assert (
+        registry.async_get_entity_id(
             "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:low_light"
         )
-        assert entity_id is not None
-        entity = manager.get_entity("binary_sensor", plant.id, "low_light")
-        assert entity.device_class == "problem"
-        state = hass.states.get(entity_id)
-        assert state is not None
-        assert state.state == "on"
-        assert state.attributes["confidence"] == "low"
-        assert state.attributes["target_lux"] == 500.0
+        is None
+    )
+
+    hass.states.async_set(
+        "sensor.plant_lux",
+        "100",
+        {"unit_of_measurement": LIGHT_LUX},
+        timestamp=now.timestamp(),
+    )
+    assigned = await manager.async_set_role_sources(
+        plant.id,
+        role="illuminance",
+        expected_revision=plant.revision,
+        sources=[{"entity_id": "sensor.plant_lux"}],
+    )
+    await manager.async_set_role_primary(
+        plant.id,
+        role="illuminance",
+        expected_revision=assigned.revision,
+        primary_entity_id="sensor.plant_lux",
+    )
+    await hass.async_block_till_done()
+    assert len(controller._light_samples) == 1
+    # A second source observation, one minute later, supplies the second
+    # daytime sample. Configuration recomputation is not another sample.
+    freezer.move_to(now + timedelta(minutes=1))
+    hass.states.async_set(
+        "sensor.plant_lux",
+        "120",
+        {"unit_of_measurement": LIGHT_LUX},
+        timestamp=(now + timedelta(minutes=1)).timestamp(),
+    )
+    await hass.async_block_till_done()
+    assert len(controller._light_samples) == 2
+    entity_id = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:low_light"
+    )
+    assert entity_id is not None
+    entity = manager.get_entity("binary_sensor", plant.id, "low_light")
+    assert entity.device_class == "problem"
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.state == "on"
+    assert state.attributes["confidence"] == "low"
+    assert state.attributes["target_lux"] == 500.0
 
 
 async def test_low_light_does_not_change_moisture_health(
