@@ -19,6 +19,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Creating a plant in an area whose ID differs from its name (for example "Living Room" or
+  "Küche") created a duplicate area named after the ID and put the plant there. The plant is now
+  assigned to the selected area. Duplicate areas created by earlier versions are not removed
+  automatically; delete them under Settings > Areas.
 - In the Advanced diagnostics section, each problem indicator's status no longer carries an
   `aria-label`, which ARIA does not allow on definition-list values and which screen readers
   announced inconsistently. Screen readers now read the indicator name followed by its visible

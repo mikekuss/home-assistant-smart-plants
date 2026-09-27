@@ -140,6 +140,42 @@ async def test_area_is_seeded_on_create_only(hass: HomeAssistant) -> None:
     assert device.area_id == other.id
 
 
+@pytest.mark.parametrize("area_name", ["Living Room", "Küche"])
+async def test_area_id_differing_from_its_name_is_applied(
+    hass: HomeAssistant, area_name: str
+) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
+    entry.add_to_hass(hass)
+    reconciler = SmartPlantsDeviceReconciler(hass, entry.entry_id)
+    areas = ar.async_get(hass)
+    area = areas.async_create(area_name)
+    assert area.id != area.name
+    area_count = len(areas.areas)
+
+    await reconciler.async_reconcile_present(_plant(), requested_area_id=area.id)
+
+    device = plant_device(dr.async_get(hass), "plt-1")
+    assert device is not None
+    assert device.area_id == area.id
+    # The area ID must not be treated as a name for a new area.
+    assert len(areas.areas) == area_count
+
+
+async def test_unknown_requested_area_is_ignored(hass: HomeAssistant) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
+    entry.add_to_hass(hass)
+    reconciler = SmartPlantsDeviceReconciler(hass, entry.entry_id)
+    areas = ar.async_get(hass)
+    area_count = len(areas.areas)
+
+    await reconciler.async_reconcile_present(_plant(), requested_area_id="missing_area")
+
+    device = plant_device(dr.async_get(hass), "plt-1")
+    assert device is not None
+    assert device.area_id is None
+    assert len(areas.areas) == area_count
+
+
 async def test_user_disabled_registry_state_preserved(hass: HomeAssistant) -> None:
     entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
     entry.add_to_hass(hass)

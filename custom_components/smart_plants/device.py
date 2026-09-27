@@ -32,6 +32,7 @@ import time
 from collections.abc import Iterable, Mapping
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
@@ -127,15 +128,24 @@ class SmartPlantsDeviceReconciler:
         existing = self._find_device(registry, plant.id)
 
         if existing is None:
-            registry.async_get_or_create(
+            device = registry.async_get_or_create(
                 config_entry_id=self._entry_id,
                 identifiers=self._identifier(plant.id),
                 manufacturer=_MANUFACTURER,
                 model=_MODEL_MANUAL,
                 name=plant.name,
                 entry_type=dr.DeviceEntryType.SERVICE,
-                suggested_area=requested_area_id,
             )
+            # ``suggested_area`` takes an area *name* and creates a new area
+            # when none matches, so an area ID such as "living_room" would
+            # spawn a duplicate area. Assign the ID directly, and only if the
+            # area still exists.
+            if (
+                requested_area_id
+                and ar.async_get(self._hass).async_get_area(requested_area_id)
+                is not None
+            ):
+                registry.async_update_device(device.id, area_id=requested_area_id)
             return
 
         # We only ever change the canonical ``name`` we authored. The
