@@ -1244,16 +1244,15 @@ describe("Threshold editor localization", () => {
     expect(alert).toBeNull();
   });
 
-  it("renders the localized Edit thresholds label when a localize returns a string", async () => {
+  it("uses English copy when the Home Assistant language has no panel catalog", async () => {
     const entities = [stressEntity("temperature_stress")];
     const states = { [`binary_sensor.smart_plants_${PLANT_ID}_temperature_stress`]: stressState("temperature_stress", "off") };
-    const localize = (key: string) => key === "component.smart_plants.panel.section.advanced_diagnostics_edit_thresholds" ? "Schwellen bearbeiten" : "";
     const h = harness([withTemperatureRole()], msg => {
       if (msg.type === "config/entity_registry/list") return entities;
       if (msg.type === "get_states") return Object.values(states);
       return undefined;
     });
-    h.hass.localize = localize;
+    h.hass.language = "xx";
     const el = new SmartPlantsPanel();
     el.hass = h.hass;
     document.body.append(el);
@@ -1261,6 +1260,6 @@ describe("Threshold editor localization", () => {
     await click(el, "Aloe");
     await click(el, "Diagnostics");
     const toggle = el.shadowRoot!.querySelector("button.threshold-toggle") as HTMLButtonElement;
-    expect(toggle.textContent?.trim()).toBe("Schwellen bearbeiten");
+    expect(toggle.textContent?.trim()).toBe("Edit thresholds");
   });
 });

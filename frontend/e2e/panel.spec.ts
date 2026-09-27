@@ -42,7 +42,7 @@ test("manual watering history is accessible and survives a refresh", async ({ pa
   await page.getByLabel("Note (optional)").fill("Watered by hand");
   await button(page, "Record care").click();
   await expect(page.getByText("Watered by hand")).toBeVisible();
-  await expect(page.getByText("1 watering events.", { exact: false })).toBeVisible();
+  await expect(page.getByText("1 watering event.", { exact: false })).toBeVisible();
   await button(page, "Overview").click();
   await expect(page.locator(".overview-metrics")).toHaveText(moistureHealth!);
   await button(page, "Care history").click();

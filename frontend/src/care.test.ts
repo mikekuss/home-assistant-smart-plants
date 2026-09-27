@@ -50,7 +50,7 @@ describe("manual watering", () => {
     await settle(panel); await click(panel, "Record care"); await settle(panel);
     expect(h.calls.filter(c => c.type === "smart_plants/care/add" )).toHaveLength(1);
     expect(panel.shadowRoot?.textContent).toContain("Watered by hand");
-    expect(panel.shadowRoot?.textContent).toContain("1 watering events");
+    expect(panel.shadowRoot?.textContent).toContain("1 watering event.");
     await click(panel, "Overview");
     expect(panel.shadowRoot?.querySelector(".overview-metrics")?.textContent).toBe(healthBefore);
     await click(panel, "Care history");

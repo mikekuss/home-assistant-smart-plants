@@ -396,7 +396,7 @@ describe("Overall health section", () => {
   });
 });
 
-describe("Localization fallback and passthrough", () => {
+describe("Panel string catalog", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["x"], { type: "image/webp" }))));
   });
@@ -446,60 +446,14 @@ describe("Localization fallback and passthrough", () => {
     expect(diagnostics.textContent).toContain("problem detected");
   });
 
-  it("calls localize with the documented keys and renders returned strings verbatim", async () => {
-    const map: Record<string, string> = {
-      "component.smart_plants.panel.section.overall_health": "Gesamtzustand",
-      "component.smart_plants.panel.section.overall_health_available_summary": "{score} von 100",
-      "component.smart_plants.panel.section.overall_health_confidence": "Vertrauen",
-      "component.smart_plants.panel.section.overall_health_included_roles": "Beruecksichtigte Rollen",
-      "component.smart_plants.panel.section.overall_health_configured_unavailable": "Konfiguriert, aber nicht verfuegbar",
-      "component.smart_plants.panel.section.confidence_high": "jede konfigurierte Rolle ist derzeit verfuegbar.",
-      "component.smart_plants.panel.health_contributor.moisture": "Feuchte",
-      "component.smart_plants.panel.health_contributor.temperature": "Temperatur",
-      "component.smart_plants.panel.section.advanced_diagnostics": "Erweiterte Diagnose",
-      "component.smart_plants.panel.section.advanced_diagnostics_description": "Status der Indikatoren.",
-      "component.smart_plants.panel.section.advanced_diagnostics_one_active": "1 aktives Problem.",
-      "component.smart_plants.panel.section.advanced_diagnostics_status_problem": "Problem erkannt",
-    };
-    const localize = (key: string, ..._args: unknown[]) => map[key] ?? "";
-    const { el, seenKeys } = await mountWith(localize);
-    expect(seenKeys).toContain("component.smart_plants.panel.section.overall_health");
-    expect(seenKeys).toContain("component.smart_plants.panel.section.advanced_diagnostics");
-    expect(seenKeys).toContain("component.smart_plants.panel.section.confidence_high");
-    expect(seenKeys).toContain("component.smart_plants.panel.health_contributor.moisture");
-    const overall = el.shadowRoot!.querySelector("#overall-health-heading")!.closest("section")!;
-    const diagnostics = el.shadowRoot!.querySelector("#diagnostics-heading")!.closest("section")!;
-    expect(el.shadowRoot!.querySelector("#overall-health-heading")?.textContent).toBe("Gesamtzustand");
-    expect(overall.textContent).toContain("82 von 100");
-    expect(overall.textContent).toContain("Vertrauen");
-    expect(overall.textContent).toContain("Feuchte");
-    expect(overall.textContent).toContain("Temperatur");
-    expect(overall.textContent).toContain("jede konfigurierte Rolle ist derzeit verfuegbar.");
-    expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Erweiterte Diagnose");
-    expect(diagnostics.textContent).toContain("Status der Indikatoren.");
-    expect(diagnostics.textContent).toContain("1 aktives Problem.");
-    expect(diagnostics.textContent).toContain("Problem erkannt");
+  it("does not consult hass.localize for panel strings", async () => {
+    const { el, seenKeys } = await mountWith(() => "Replaced");
+    expect(seenKeys.filter(key => key.startsWith("component.smart_plants"))).toEqual([]);
+    expect(el.shadowRoot!.querySelector("#overall-health-heading")?.textContent).toBe("Overall health");
+    expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Advanced diagnostics");
   });
 
-  it("preserves DOM structure and aria attributes when localize is supplied", async () => {
-    const localize = (key: string, ..._args: unknown[]) =>
-      key === "component.smart_plants.panel.section.advanced_diagnostics_status_problem" ? "Problem erkannt" : "";
-    const { el } = await mountWith(localize);
-    const overall = el.shadowRoot!.querySelector("section[aria-labelledby=overall-health-heading]");
-    const diagnostics = el.shadowRoot!.querySelector("section[aria-labelledby=diagnostics-heading]");
-    expect(overall).not.toBeNull();
-    expect(diagnostics).not.toBeNull();
-    expect(diagnostics!.querySelector("dl.diagnostics")).not.toBeNull();
-    const dd = diagnostics!.querySelector("dd.status-on");
-    // The visible status text uses the (localized) "problem detected" phrase
-    expect(dd?.hasAttribute("aria-label")).toBe(false);
-    expect(dd?.textContent?.trim().startsWith("Problem erkannt")).toBe(true);
-    expect(overall!.querySelector("dl.overall-health")).not.toBeNull();
-    expect(overall!.querySelector("p[role=status]")).not.toBeNull();
-    expect(diagnostics!.querySelector("p[role=status]")).not.toBeNull();
-  });
-
-  it("falls back when localize returns an empty or whitespace string", async () => {
+  it("renders English when localize returns an empty or whitespace string", async () => {
     const localize = (_key: string, ..._args: unknown[]) => "  ";
     const { el } = await mountWith(localize);
     expect(el.shadowRoot!.querySelector("#overall-health-heading")?.textContent).toBe("Overall health");

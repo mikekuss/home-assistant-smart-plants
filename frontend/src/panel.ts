@@ -3,9 +3,11 @@ import { property, state } from "lit/decorators.js";
 import type { PropertyValues } from "lit";
 import { api, ApiError } from "./api.js";
 import type { UpdatePlantInput } from "./api.js";
-import { areaEditor, moistureEditor, placementEditor, roleSourcesEditor, selectField, snapshotView, textField } from "./editors.js";
-import { CO2_STRESS_BUILTIN_DEFAULTS, CO2_STRESS_KEYS, CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, CONDUCTIVITY_STRESS_KEYS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_KEYS, LOW_BATTERY_STRESS_BUILTIN_DEFAULTS, LOW_BATTERY_STRESS_KEYS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_KEYS, SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, SOIL_TEMPERATURE_STRESS_KEYS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_KEYS, builtin, canonicalMoisture, co2StressInput, conductivityStressInput, confidenceGloss, contributorLabel, effectiveThresholds, humidityStressInput, keys, lowBatteryInput, lowLightInput, manualSpecies, moistureInput, moistureRole, plantDevice, problemBinaries, resolveSource, roleSourceConfig, roleSourceInput, roleSourceSpec, ROLE_SOURCE_SPECS, canonicalRoleSources, validateRoleSources, soilTemperatureStressInput, tags, temperatureStressInput, translator, validateCo2StressOverrides, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowBatteryOverrides, validateLowLightOverrides, validateMoisture, validateSoilTemperatureStressOverrides, validateTaxonomy, validateTemperatureStressOverrides } from "./model.js";
-import type { ProblemBinaryRole } from "./model.js";
+import { aggregationLabel, areaEditor, moistureEditor, placementEditor, placementLabel, roleSourcesEditor, selectField, snapshotView, textField, thresholdKeyLabel } from "./editors.js";
+import { createLocalizer, isMessageKey } from "./localize.js";
+import type { Localizer, MessageKey } from "./localize.js";
+import { CO2_STRESS_BUILTIN_DEFAULTS, CO2_STRESS_KEYS, CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, CONDUCTIVITY_STRESS_KEYS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_KEYS, LOW_BATTERY_STRESS_BUILTIN_DEFAULTS, LOW_BATTERY_STRESS_KEYS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_KEYS, SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, SOIL_TEMPERATURE_STRESS_KEYS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_KEYS, builtin, canonicalMoisture, co2StressInput, conductivityStressInput, confidenceGloss, confidenceLabel, contributorLabel, effectiveThresholds, humidityStressInput, keys, lowBatteryInput, lowLightInput, manualSpecies, moistureInput, moistureRole, plantDevice, problemBinaries, resolveSource, roleLabel, rolePhrase, roleSourceConfig, roleSourceInput, roleSourceSpec, ROLE_SOURCE_SPECS, canonicalRoleSources, validateRoleSources, soilTemperatureStressInput, tags, temperatureStressInput, validateCo2StressOverrides, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowBatteryOverrides, validateLowLightOverrides, validateMoisture, validateSoilTemperatureStressOverrides, validateTaxonomy, validateTemperatureStressOverrides } from "./model.js";
+import type { ProblemBinaryRole, SourceRole } from "./model.js";
 
 // Per-role editable-threshold configuration. Adding a role here + wiring
 // _persistedOverrides + validator + seeder registers a reviewed editor.
@@ -18,10 +20,8 @@ interface ThresholdEditorSpec {
   readonly min: string;
   readonly max: string;
   readonly step: string;
-  readonly labels: Record<string, string>;   // per-key label
-  readonly successNotice: string;
-  readonly formIntro: string;
-  readonly validate: (input: Record<string, string>) => { values: Record<string, number | null>; error: string | null };
+  readonly labels: Record<string, MessageKey>;   // per-key label, `{unit}` placeholder
+  readonly validate: (input: Record<string, string>, l: Localizer) => { values: Record<string, number | null>; error: string | null };
   readonly seed: (persisted: Partial<Record<string, number | null>> | null | undefined) => Record<string, string>;
 }
 const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
@@ -32,10 +32,8 @@ const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
     defaults: TEMPERATURE_STRESS_BUILTIN_DEFAULTS,
     unit: "°C",
     min: "-40", max: "80", step: "0.1",
-    labels: { cold_threshold_celsius: "Cold trigger (°C)", cold_clear_celsius: "Cold clear (°C)", hot_clear_celsius: "Hot clear (°C)", hot_threshold_celsius: "Hot trigger (°C)" },
-    successNotice: "Temperature stress thresholds saved.",
-    formIntro: "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy cold trigger < cold clear < hot clear < hot trigger, with at least 0.5 °C hysteresis per side and a 1.0 °C stable band.",
-    validate: input => validateTemperatureStressOverrides(input as never),
+    labels: { cold_threshold_celsius: "threshold_field.cold_trigger", cold_clear_celsius: "threshold_field.cold_clear", hot_clear_celsius: "threshold_field.hot_clear", hot_threshold_celsius: "threshold_field.hot_trigger" },
+    validate: (input, l) => validateTemperatureStressOverrides(input as never, l),
     seed: persisted => temperatureStressInput(persisted as never),
   },
   {
@@ -45,10 +43,8 @@ const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
     defaults: HUMIDITY_STRESS_BUILTIN_DEFAULTS,
     unit: "%",
     min: "0", max: "100", step: "0.1",
-    labels: { dry_threshold_percent: "Dry trigger (%)", dry_clear_percent: "Dry clear (%)", damp_clear_percent: "Damp clear (%)", damp_threshold_percent: "Damp trigger (%)" },
-    successNotice: "Humidity stress thresholds saved.",
-    formIntro: "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy dry trigger < dry clear < damp clear < damp trigger, with at least 1.0 % hysteresis per side and a 5.0 % stable band.",
-    validate: input => validateHumidityStressOverrides(input as never),
+    labels: { dry_threshold_percent: "threshold_field.dry_trigger", dry_clear_percent: "threshold_field.dry_clear", damp_clear_percent: "threshold_field.damp_clear", damp_threshold_percent: "threshold_field.damp_trigger" },
+    validate: (input, l) => validateHumidityStressOverrides(input as never, l),
     seed: persisted => humidityStressInput(persisted as never),
   },
   {
@@ -58,10 +54,8 @@ const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
     defaults: CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS,
     unit: "µS/cm",
     min: "0", max: "10000", step: "0.1",
-    labels: { low_threshold_micro_siemens_per_cm: "Low trigger (µS/cm)", low_clear_micro_siemens_per_cm: "Low clear (µS/cm)", high_clear_micro_siemens_per_cm: "High clear (µS/cm)", high_threshold_micro_siemens_per_cm: "High trigger (µS/cm)" },
-    successNotice: "Conductivity stress thresholds saved.",
-    formIntro: "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy low trigger < low clear < high clear < high trigger, with at least 10.0 µS/cm hysteresis per side and a 50.0 µS/cm stable band.",
-    validate: input => validateConductivityStressOverrides(input as never),
+    labels: { low_threshold_micro_siemens_per_cm: "threshold_field.low_trigger", low_clear_micro_siemens_per_cm: "threshold_field.low_clear", high_clear_micro_siemens_per_cm: "threshold_field.high_clear", high_threshold_micro_siemens_per_cm: "threshold_field.high_trigger" },
+    validate: (input, l) => validateConductivityStressOverrides(input as never, l),
     seed: persisted => conductivityStressInput(persisted as never),
   },
   {
@@ -71,10 +65,8 @@ const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
     defaults: CO2_STRESS_BUILTIN_DEFAULTS,
     unit: "ppm",
     min: "0", max: "10000", step: "1",
-    labels: { threshold_ppm: "High trigger (ppm)", clear_ppm: "High clear (ppm)" },
-    successNotice: "CO2 stress thresholds saved.",
-    formIntro: "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy clear_ppm < threshold_ppm with at least 100 ppm hysteresis; both are integers within 0…10000 ppm.",
-    validate: input => validateCo2StressOverrides(input as never),
+    labels: { threshold_ppm: "threshold_field.high_trigger", clear_ppm: "threshold_field.high_clear" },
+    validate: (input, l) => validateCo2StressOverrides(input as never, l),
     seed: persisted => co2StressInput(persisted as never),
   },
   {
@@ -84,10 +76,8 @@ const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
     defaults: SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS,
     unit: "°C",
     min: "-20", max: "60", step: "0.1",
-    labels: { cold_threshold_celsius: "Cold trigger (°C)", cold_clear_celsius: "Cold clear (°C)", hot_clear_celsius: "Hot clear (°C)", hot_threshold_celsius: "Hot trigger (°C)" },
-    successNotice: "Soil temperature stress thresholds saved.",
-    formIntro: "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy cold trigger < cold clear < hot clear < hot trigger, with at least 0.5 °C hysteresis per side and a 1.0 °C stable band, all within −20.0…60.0 °C.",
-    validate: input => validateSoilTemperatureStressOverrides(input as never),
+    labels: { cold_threshold_celsius: "threshold_field.cold_trigger", cold_clear_celsius: "threshold_field.cold_clear", hot_clear_celsius: "threshold_field.hot_clear", hot_threshold_celsius: "threshold_field.hot_trigger" },
+    validate: (input, l) => validateSoilTemperatureStressOverrides(input as never, l),
     seed: persisted => soilTemperatureStressInput(persisted as never),
   },
   {
@@ -97,10 +87,8 @@ const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
     defaults: LOW_BATTERY_STRESS_BUILTIN_DEFAULTS,
     unit: "%",
     min: "0", max: "100", step: "1",
-    labels: { threshold_percent: "Low trigger (%)", clear_percent: "Low clear (%)" },
-    successNotice: "Low battery thresholds saved.",
-    formIntro: "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy threshold_percent < clear_percent with at least 1 % hysteresis; both are integers within 0…100 %.",
-    validate: input => validateLowBatteryOverrides(input as never),
+    labels: { threshold_percent: "threshold_field.low_trigger", clear_percent: "threshold_field.low_clear" },
+    validate: (input, l) => validateLowBatteryOverrides(input as never, l),
     seed: persisted => lowBatteryInput(persisted as never),
   },
   {
@@ -110,10 +98,8 @@ const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
     defaults: LOW_LIGHT_STRESS_BUILTIN_DEFAULTS,
     unit: "lx",
     min: "0", max: "200000", step: "0.1",
-    labels: { target_lux: "Target (lx)", clear_lux: "Clear (lx)" },
-    successNotice: "Low light thresholds saved.",
-    formIntro: "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy target_lux < clear_lux with at least 10.0 lx hysteresis; both are within 0.0…200000.0 lx.",
-    validate: input => validateLowLightOverrides(input as never),
+    labels: { target_lux: "threshold_field.target", clear_lux: "threshold_field.clear" },
+    validate: (input, l) => validateLowLightOverrides(input as never, l),
     seed: persisted => lowLightInput(persisted as never),
   },
 ];
@@ -207,8 +193,9 @@ export class SmartPlantsPanel extends LitElement {
   private _subscriptionGeneration = 0;
   private _focusReturn: HTMLElement | null = null;
   private _timer: ReturnType<typeof setInterval> | undefined;
+  private get _l(): Localizer { return createLocalizer(this.hass); }
   private readonly _ready = () => { void this._refresh(); };
-  private readonly _disconnected = () => { this._context++; this._formBusy = false; this._blocked = true; this._request++; this._providerRequest++; this._preview = null; this._clearImage(); this._error = "Disconnected. Local edits and creation retries are retained. Reconnect before saving."; };
+  private readonly _disconnected = () => { this._context++; this._formBusy = false; this._blocked = true; this._request++; this._providerRequest++; this._preview = null; this._clearImage(); this._error = this._l.t("error.disconnected"); };
 
   protected willUpdate(changed: PropertyValues): void {
     if (changed.has("hass")) {
@@ -241,7 +228,7 @@ export class SmartPlantsPanel extends LitElement {
     connection.addEventListener?.("ready", this._ready); connection.addEventListener?.("disconnected", this._disconnected);
     void api.subscribeRegistry(this.hass, this._ready).then(unsubscribe => {
       if (this._connection !== connection || generation !== this._subscriptionGeneration || !this.isConnected) unsubscribe(); else this._unsubscribe = unsubscribe;
-    }).catch(() => { this._registryError = "Registry updates unavailable; reconnect to retry native changes."; });
+    }).catch(() => { this._registryError = this._l.t("error.registry_updates"); });
   }
   private _unbind(): void {
     this._context++; this._formBusy = false;
@@ -287,7 +274,7 @@ export class SmartPlantsPanel extends LitElement {
       if (this._base) {
         const latest = plants.find(p => p.id === this._base?.id);
         if (latest && latest.revision !== this._base.revision) this._setConflict(this._base, latest);
-        if (!latest) { this._context++; this._formBusy = false; this._closeDialog(); this._base = null; this._conflict = null; this._edits = null; this._notice = "This plant was deleted in another session."; void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("h1")?.focus()); }
+        if (!latest) { this._context++; this._formBusy = false; this._closeDialog(); this._base = null; this._conflict = null; this._edits = null; this._notice = this._l.t("notice.deleted_elsewhere"); void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("h1")?.focus()); }
       }
       this._syncImage();
       try {
@@ -298,7 +285,7 @@ export class SmartPlantsPanel extends LitElement {
           const area = plantDevice(this._base, devices)?.area_id ?? "";
           if (area !== this._baseArea) {
             const dirty = this._edits.area !== this._baseArea;
-            this._notice = `Home Assistant area changed from ${this._areaName(this._baseArea)} to ${this._areaName(area)}.${dirty ? " Your area selection is retained; review it before saving." : " The area selector now reflects the native area."}`;
+            this._notice = this._l.t(dirty ? "notice.area_changed_retained" : "notice.area_changed_synced", { from: this._areaName(this._baseArea), to: this._areaName(area) });
             if (!dirty) this._edit({ area });
             this._areaReview = dirty; this._baseArea = area;
           }
@@ -327,29 +314,14 @@ export class SmartPlantsPanel extends LitElement {
     finally { if (request === this._request) this._loading = false; }
   }
   private _friendly(e: unknown): string {
-    if (!(e instanceof ApiError)) return "Request failed. Refresh and retry when connected.";
-    const messages: Record<string, string> = {
-      integration_not_loaded: "Smart Plants is not loaded. Open Settings → Devices & Services, then refresh after loading the integration.",
-      unauthorized: "Smart Plants requires an administrator account.",
-      not_found: "Plant or species not found. It may have been removed in another session.",
-      revision_conflict: "This plant changed elsewhere. Review the refreshed field changes and explicitly reapply your edits.",
-      provider_disabled: "Provider is unavailable. Continue manually; accepted local species data remains available.",
-      provider_authentication: "Provider authentication failed. Review the integration's reauthentication in Settings, or continue manually.",
-      provider_rate_limit: "Provider rate limit reached. Retry later or continue manually.",
-      provider_timeout: "Provider timed out. Retry later or continue manually.",
-      provider_outage: "Provider is currently unavailable. Retry later or continue manually.",
-      provider_malformed_response: "Provider returned an invalid response. Continue manually or retry later.",
-      version_mismatch: "Panel/API version mismatch. Restart Home Assistant and fully reload the frontend after upgrading.",
-      invalid_response: "The response is incompatible. Refresh before editing or retrying; creation retries retain the original request.",
-      invalid_format: "The server rejected the input. Review fields and source identities. Images must be valid JPEG, PNG or WebP up to 5 MiB and 2048 × 2048 pixels; expired species previews require a new review.",
-    };
-    return messages[e.code] ?? "Request failed. Refresh and retry when connected.";
+    const key = e instanceof ApiError ? `api_error.${e.code}` : "";
+    return this._l.t(isMessageKey(key) ? key : "api_error.unknown");
   }
   private _plantById(id: string): PlantRecord | undefined { return this._plants.find(p => p.id === id); }
-  private _areaName(id: string): string { return this._areas.find(a => a.area_id === id)?.name ?? (id || "No area"); }
+  private _areaName(id: string): string { return this._areas.find(a => a.area_id === id)?.name ?? (id || this._l.t("area.none")); }
   private _setConflict(before: PlantRecord, after: PlantRecord): void {
-    const fields: (keyof PlantRecord)[] = ["name", "acquired_at", "placement", "category", "tags", "species", "image", "lifecycle_state", "roles", "care_events"];
-    const changes = fields.filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k])).map(k => k === "roles" ? "Sensor configuration or threshold defaults/overrides changed." : `${k}: ${JSON.stringify(before[k])} → ${JSON.stringify(after[k])}`);
+    const fields = ["name", "acquired_at", "placement", "category", "tags", "species", "image", "lifecycle_state", "roles", "care_events"] as const;
+    const changes = fields.filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k])).map(k => k === "roles" ? this._l.t("conflict.roles_changed") : `${this._l.t(`conflict_field.${k}`)}: ${JSON.stringify(before[k])} → ${JSON.stringify(after[k])}`);
     this._conflict = { before, after, changes }; this._preview = null; this._providerRequest++;
   }
   private _beginEdit(plant: PlantRecord): void {
@@ -359,7 +331,7 @@ export class SmartPlantsPanel extends LitElement {
     this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._sourceSaved = {}; this._pendingSourceSwitch = null; this._allSourceSensors = false; this._sourceUnavailable = null;
     const device = plantDevice(plant, this._devices);
     const context = this._context;
-    if (device && this.hass) void api.related(this.hass, device.id).then(ids => { if (context === this._context && this._base?.id === plant.id) this._related = ids; }).catch(() => { if (context === this._context && this._base?.id === plant.id) this._notice = "Related automations could not be loaded. Open the native device page to inspect them."; });
+    if (device && this.hass) void api.related(this.hass, device.id).then(ids => { if (context === this._context && this._base?.id === plant.id) this._related = ids; }).catch(() => { if (context === this._context && this._base?.id === plant.id) this._notice = this._l.t("notice.related_failed"); });
   }
   private _show(view: View): void {
     this._context++; this._closeDialog(); this._formBusy = false;
@@ -420,24 +392,24 @@ export class SmartPlantsPanel extends LitElement {
   private async _saveCare(plant: PlantRecord): Promise<void> {
     const history = this._careHistory;
     if (!this.hass || !history || history.revision !== plant.revision || this._formBusy || this._blocked || this._conflict) {
-      this._careError = "Refresh care history before saving. Your draft is retained."; return;
+      this._careError = this._l.t("care.error_refresh_save"); return;
     }
     const date = new Date(this._careDate);
     if (!this._careDate || Number.isNaN(date.getTime()) || date.getTime() > Date.now() ||
         new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16) !== this._careDate) {
-      this._careError = "Choose a valid local date and time that is not in the future."; return;
+      this._careError = this._l.t("care.error_date"); return;
     }
     const fields = this._careFields;
     const payload = this._carePayload();
     const note = typeof payload.note === "string" ? payload.note : null;
     if ((this._careKind === "watering" || this._careKind === "fertilizing" || this._careKind === "pruning" || this._careKind === "repotting") && note && note.length > 500) {
-      this._careError = "Notes must be at most 500 characters."; return;
+      this._careError = this._l.t("care.error_note_length"); return;
     }
     if (this._careKind === "fertilizing" && payload.amount !== null && (!Number.isFinite(payload.amount) || Number(payload.amount) <= 0 || Number(payload.amount) > 100000 || !payload.unit)) {
-      this._careError = "Enter a positive amount up to 100000 with a unit."; return;
+      this._careError = this._l.t("care.error_amount"); return;
     }
-    if (this._careKind === "note" && (!String(payload.text).trim() || String(payload.text).length > 1000)) { this._careError = "Enter a note of 1 to 1000 characters."; return; }
-    if (Object.values(fields).some(value => value.length > 120)) { this._careError = "Care details must be at most 120 characters."; return; }
+    if (this._careKind === "note" && (!String(payload.text).trim() || String(payload.text).length > 1000)) { this._careError = this._l.t("care.error_note_text"); return; }
+    if (Object.values(fields).some(value => value.length > 120)) { this._careError = this._l.t("care.error_details_length"); return; }
     const offset = -date.getTimezoneOffset();
     const suffix = `${offset < 0 ? "-" : "+"}${String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0")}:${String(Math.abs(offset) % 60).padStart(2, "0")}`;
     const occurredAt = `${this._careDate}:00${suffix}`; const hass = this.hass; this._careError = "";
@@ -450,34 +422,36 @@ export class SmartPlantsPanel extends LitElement {
     if (!this._error) { this._careEditingId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; }
   }
   private async _deleteCare(plant: PlantRecord, event: CareEvent): Promise<void> {
-    if (!this.hass || !this._careHistory || this._careHistory.revision !== plant.revision) { this._careError = "Refresh care history before deleting."; return; }
-    if (!window.confirm(`Delete this ${event.kind} record? This cannot be undone.`)) return;
+    if (!this.hass || !this._careHistory || this._careHistory.revision !== plant.revision) { this._careError = this._l.t("care.error_refresh_delete"); return; }
+    if (!window.confirm(this._l.t("care.confirm_delete", { kind: this._l.t(`care_kind_phrase.${event.kind}`) }))) return;
     const hass = this.hass;
     await this._mutate(async () => (await api.deleteCareEvent(hass, plant.id, plant.revision, event.id)).plant);
   }
   private _renderCare(plant: PlantRecord) {
+    const l = this._l;
     const history = this._careHistory;
     const details: Record<string, string[]> = { fertilizing: ["product", "amount", "unit"], pruning: ["part"], repotting: ["container", "medium"], note: ["text"] };
-    const labels: Record<string, string> = { product: "Product", amount: "Amount", unit: "Unit (g or mL)", part: "Plant part", container: "Container", medium: "Growing medium", text: "Note text" };
-    const kindLabel = (kind: CareEvent["kind"]) => ({ watering: "Watering", fertilizing: "Fertilizing", pruning: "Pruning", repotting: "Repotting", note: "Note" })[kind];
-    const dateValue = (event: CareEvent) => `${event.local_date} · ${event.occurred_at} (recorded offset)`;
-    return html`<section aria-labelledby="care-heading"><h2 id="care-heading">Care history</h2>
+    const fieldLabel = (key: string) => { const k = `care_field.${key}`; return isMessageKey(k) ? l.t(k) : key; };
+    const kindLabel = (kind: CareEvent["kind"]) => l.t(`care_kind.${kind}`);
+    const kindPhrase = (kind: CareEvent["kind"]) => l.t(`care_kind_phrase.${kind}`);
+    const fieldValue = (key: string, value: unknown) => typeof value === "number" && key === "amount" ? l.number(value) : String(value);
+    return html`<section aria-labelledby="care-heading"><h2 id="care-heading">${l.t("care.heading")}</h2>
       ${this._careError ? html`<p class="error" role="alert">${this._careError}</p>` : nothing}
-      ${history ? html`<p role="status">${history.summary.watering_count} watering events. Last watered: ${history.summary.last_watered_local_date ?? "never"}.</p>
-        ${history.events.length ? html`<ul aria-label="Plant care events">${history.events.map(event => html`<li><strong>${kindLabel(event.kind)}</strong> <time datetime=${event.occurred_at}>${dateValue(event)}</time>
-          ${Object.entries(event.payload).filter(([, value]) => value !== null).map(([key, value]) => html`<p>${labels[key] ?? key}: ${value}</p>`)}
-          <button type="button" ?disabled=${this._formBusy || !!this._conflict} @click=${() => this._editCare(event)}>Edit ${kindLabel(event.kind).toLowerCase()}</button>
-          <button type="button" ?disabled=${this._formBusy || !!this._conflict} @click=${() => void this._deleteCare(plant, event)}>Delete ${kindLabel(event.kind).toLowerCase()}</button></li>`)}</ul>` : html`<p>No care recorded yet.</p>`}` : html`<p>Loading care history or refresh to retry.</p>`}
+      ${history ? html`<p role="status">${l.tn(history.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${history.summary.last_watered_local_date ? l.t("care.last_watered", { date: l.date(history.summary.last_watered_local_date) }) : l.t("care.never_watered")}</p>
+        ${history.events.length ? html`<ul aria-label=${l.t("care.events_label")}>${history.events.map(event => html`<li><strong>${kindLabel(event.kind)}</strong> <time datetime=${event.occurred_at}>${l.recordedDateTime(event.occurred_at)}</time>
+          ${Object.entries(event.payload).filter(([, value]) => value !== null).map(([key, value]) => html`<p>${fieldLabel(key)}: ${fieldValue(key, value)}</p>`)}
+          <button type="button" ?disabled=${this._formBusy || !!this._conflict} @click=${() => this._editCare(event)}>${l.t("care.edit_kind", { kind: kindPhrase(event.kind) })}</button>
+          <button type="button" ?disabled=${this._formBusy || !!this._conflict} @click=${() => void this._deleteCare(plant, event)}>${l.t("care.delete_kind", { kind: kindPhrase(event.kind) })}</button></li>`)}</ul>` : html`<p>${l.t("care.empty")}</p>`}` : html`<p>${l.t("care.loading")}</p>`}
       <fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict || !history || history.revision !== plant.revision}>
-        <legend>${this._careEditingId ? `Edit ${kindLabel(this._careKind).toLowerCase()}` : "Record care"}</legend>
-        <label>Care type<select aria-label="Care type" .value=${this._careKind} @change=${(e: Event) => { this._careKind = (e.target as HTMLSelectElement).value as CareEvent["kind"]; this._careFields = {}; }}>${(["watering", "fertilizing", "pruning", "repotting", "note"] as const).map(kind => html`<option value=${kind}>${kindLabel(kind)}</option>`)}</select></label>
-        <label>When (your local time)<input type="datetime-local" .value=${this._careDate} @input=${(e: Event) => this._careDate = (e.target as HTMLInputElement).value}></label>
-        ${(details[this._careKind] ?? []).map(key => html`<label>${labels[key]}<input aria-label=${labels[key]} type=${key === "amount" ? "number" : "text"} maxlength=${key === "text" ? 1000 : 120} .value=${this._careFields[key] ?? ""} @input=${(e: Event) => this._careFields = { ...this._careFields, [key]: (e.target as HTMLInputElement).value }}></label>`)}
-        ${this._careKind !== "note" ? html`<label>Note (optional)<input type="text" maxlength="500" .value=${this._careNote} @input=${(e: Event) => this._careNote = (e.target as HTMLInputElement).value}></label>` : nothing}
-        ${this._careKind === "fertilizing" ? html`<label>Unit<select aria-label="Unit" .value=${this._careFields.unit ?? ""} @change=${(e: Event) => this._careFields = { ...this._careFields, unit: (e.target as HTMLSelectElement).value }}><option value="">No measured amount</option><option value="g">g</option><option value="mL">mL</option></select></label>` : nothing}
-        <button type="button" class="primary" @click=${() => void this._saveCare(plant)}>${this._careEditingId ? "Save care changes" : "Record care"}</button>
-        ${this._careEditingId ? html`<button type="button" @click=${() => { this._careEditingId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; }}>Cancel editing</button>` : nothing}
-      </fieldset><p>Care records do not operate irrigation or change moisture alerts.</p></section>`;
+        <legend>${this._careEditingId ? l.t("care.edit_kind", { kind: kindPhrase(this._careKind) }) : l.t("care.record")}</legend>
+        <label>${l.t("care.type")}<select aria-label=${l.t("care.type")} .value=${this._careKind} @change=${(e: Event) => { this._careKind = (e.target as HTMLSelectElement).value as CareEvent["kind"]; this._careFields = {}; }}>${(["watering", "fertilizing", "pruning", "repotting", "note"] as const).map(kind => html`<option value=${kind}>${kindLabel(kind)}</option>`)}</select></label>
+        <label>${l.t("care.when")}<input type="datetime-local" .value=${this._careDate} @input=${(e: Event) => this._careDate = (e.target as HTMLInputElement).value}></label>
+        ${(details[this._careKind] ?? []).map(key => html`<label>${fieldLabel(key)}<input aria-label=${fieldLabel(key)} type=${key === "amount" ? "number" : "text"} maxlength=${key === "text" ? 1000 : 120} .value=${this._careFields[key] ?? ""} @input=${(e: Event) => this._careFields = { ...this._careFields, [key]: (e.target as HTMLInputElement).value }}></label>`)}
+        ${this._careKind !== "note" ? html`<label>${l.t("care.note_optional")}<input type="text" maxlength="500" .value=${this._careNote} @input=${(e: Event) => this._careNote = (e.target as HTMLInputElement).value}></label>` : nothing}
+        ${this._careKind === "fertilizing" ? html`<label>${l.t("care.unit")}<select aria-label=${l.t("care.unit")} .value=${this._careFields.unit ?? ""} @change=${(e: Event) => this._careFields = { ...this._careFields, unit: (e.target as HTMLSelectElement).value }}><option value="">${l.t("care.no_amount")}</option><option value="g">g</option><option value="mL">mL</option></select></label>` : nothing}
+        <button type="button" class="primary" @click=${() => void this._saveCare(plant)}>${this._careEditingId ? l.t("care.save_changes") : l.t("care.record")}</button>
+        ${this._careEditingId ? html`<button type="button" @click=${() => { this._careEditingId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; }}>${l.t("care.cancel_editing")}</button>` : nothing}
+      </fieldset><p>${l.t("care.no_irrigation")}</p></section>`;
   }
   private _edit(part: Partial<Edits>): void { if (this._edits) this._edits = { ...this._edits, ...part }; }
   private _status(p: PlantRecord): string {
@@ -488,6 +462,11 @@ export class SmartPlantsPanel extends LitElement {
     if (e.too_wet) return "too wet";
     if (e.sensor_stale) return "stale";
     return "healthy";
+  }
+  // `_status` values double as filter option values; this maps them for display.
+  private _statusLabel(status: string): string {
+    const keys: Record<string, MessageKey> = { healthy: "status.healthy", "needs water": "status.needs_water", "too wet": "status.too_wet", stale: "status.stale", unavailable: "status.unavailable", disabled: "status.disabled", problems: "status.problems" };
+    return keys[status] ? this._l.t(keys[status]) : status;
   }
   private _missing(p: PlantRecord): boolean { return !!moistureRole(p)?.sources.some(s => s.registry_id && !resolveSource(s, this._entities)); }
   private _matches(p: PlantRecord): boolean {
@@ -502,46 +481,53 @@ export class SmartPlantsPanel extends LitElement {
       (!f.category || (p.category ?? "none") === f.category) && (!f.tag || p.tags.includes(f.tag)) &&
       (!f.sensor || (f.sensor === "missing" ? this._missing(p) : f.sensor === "stale" ? !!e?.sensor_stale : f.sensor === "unavailable" ? !e?.computed_available : this._missing(p) || !!e?.sensor_stale));
   }
-  private _filter(label: string, key: string, options: string[]) {
-    return selectField(label, this._filters[key] ?? "", [{ value: "", label: `All ${label.toLowerCase()}` }, ...[...new Set(options)].sort().map(v => ({ value: v, label: key === "area" ? this._areaName(v === "none" ? "" : v) : v }))], v => this._filters = { ...this._filters, [key]: v });
+  private _filter(key: "status" | "lifecycle" | "area" | "placement" | "species" | "category" | "sensor" | "tag", options: string[], display: (v: string) => string = v => v === "none" ? this._l.t("filter.none") : v) {
+    const l = this._l;
+    const optionLabel = key === "area" ? (v: string) => this._areaName(v === "none" ? "" : v) : display;
+    return selectField(l, l.t(`filter.${key}`), this._filters[key] ?? "", [{ value: "", label: l.t(`filter.all_${key}`) }, ...[...new Set(options)].sort().map(v => ({ value: v, label: optionLabel(v) }))], v => this._filters = { ...this._filters, [key]: v });
   }
   private _renderList() {
-    if (this._loading) return html`<p role="status">Loading plants…</p>`;
+    const l = this._l;
+    if (this._loading) return html`<p role="status">${l.t("list.loading")}</p>`;
     const plants = this._plants.filter(p => this._matches(p));
     const needsWater = this._plants.filter(p => this._status(p) === "needs water").length;
     const problems = this._plants.filter(p => p.lifecycle_state !== "disabled" && (this._missing(p) || ["too wet", "stale", "unavailable"].includes(this._status(p)))).length;
-    return html`<section class="inventory-summary" aria-label="Plant summary"><article><span>Total plants</span><strong>${this._plants.length}</strong></article><article><span>Needs water</span><strong>${needsWater}</strong></article><article><span>Problems</span><strong>${problems}</strong></article></section>
-      <details class="filter-disclosure"><summary role="button">Filter plants${Object.values(this._filters).filter(Boolean).length ? ` · ${Object.values(this._filters).filter(Boolean).length} active` : ""}</summary><section><div class="grid">${textField("Search plants", this._filters.search ?? "", v => this._filters = { ...this._filters, search: v })}
-      ${this._filter("Status", "status", ["healthy", "needs water", "too wet", "stale", "unavailable", "disabled", "problems"])}
-      ${this._filter("Lifecycle", "lifecycle", ["active", "disabled"])}
-      ${this._filter("Area", "area", ["none", ...this._areas.map(a => a.area_id)])}
-      ${this._filter("Placement", "placement", this._plants.map(p => p.placement?.mode ?? "none"))}
-      ${this._filter("Species", "species", this._plants.map(p => p.species?.snapshot.latin_name ?? p.species?.snapshot.common_name ?? "none"))}
-      ${this._filter("Category", "category", this._plants.map(p => p.category ?? "none"))}
-      ${this._filter("Sensor condition", "sensor", ["missing", "stale", "unavailable", "missing or stale"])}
-      ${this._filter("Tags", "tag", this._plants.flatMap(p => p.tags))}</div><button @click=${() => this._filters = {}}>Clear filters</button></section></details>
-      ${!this._plants.length ? html`<section class="empty"><h2>A home for every plant</h2><p>Create a lasting plant profile, connect replaceable moisture sensors, and use its entities in native Home Assistant automations. Species and sensors are optional.</p><button class="primary" ?disabled=${this._blocked} @click=${() => this._show({ kind: "create" })}>Add your first plant</button></section>` : !plants.length ? html`<p role="status">No plants match these filters.</p>` : html`<p class="plant-count" role="status">${plants.length === this._plants.length ? `${plants.length} plants` : `${plants.length} of ${this._plants.length} plants`}</p><ul class="plants">${plants.map(p => html`<li class="plant plant-card"><div class="plant-card-heading"><span class="plant-avatar" aria-hidden="true">${(p.name.trim()[0] ?? "?").toLocaleUpperCase()}</span><div><button class="name" @click=${() => this._show({ kind: "detail", plantId: p.id })}>${p.name}</button><span class="plant-status">${this._status(p)}${this._missing(p) ? " · missing source" : ""}</span></div></div><div class="plant-card-metrics"><div><small>Soil moisture</small><strong>${this._evaluations[p.id]?.computed_percent ?? "—"}<small>%</small></strong></div><div><small>Moisture health</small><strong>${this._evaluations[p.id]?.health_score ?? "—"}<small>/100</small></strong></div></div><small class="plant-meta">${this._areaName(plantDevice(p, this._devices)?.area_id ?? "")} · ${p.placement?.mode ?? "No placement"}<br>${p.species?.snapshot.common_name ?? p.species?.snapshot.latin_name ?? "Manual plant"} · ${p.category ?? "Uncategorized"}${p.tags.length ? html`<br>${p.tags.join(" · ")}` : nothing}</small></li>`)}</ul>`}`;
+    const activeFilters = Object.values(this._filters).filter(Boolean).length;
+    const sensorLabels: Record<string, MessageKey> = { missing: "filter.sensor_missing", stale: "filter.sensor_stale", unavailable: "filter.sensor_unavailable", "missing or stale": "filter.sensor_missing_or_stale" };
+    const lifecycleLabels: Record<string, MessageKey> = { active: "lifecycle.active", disabled: "lifecycle.disabled" };
+    const metric = (value: number | null | undefined, format: (v: number) => string) => value === null || value === undefined ? "—" : format(value);
+    return html`<section class="inventory-summary" aria-label=${l.t("list.summary_label")}><article><span>${l.t("list.total")}</span><strong>${l.number(this._plants.length)}</strong></article><article><span>${l.t("list.needs_water")}</span><strong>${l.number(needsWater)}</strong></article><article><span>${l.t("list.problems")}</span><strong>${l.number(problems)}</strong></article></section>
+      <details class="filter-disclosure"><summary role="button">${l.t("filter.heading")}${activeFilters ? l.t("filter.active_suffix", { count: activeFilters }) : ""}</summary><section><div class="grid">${textField(l.t("filter.search"), this._filters.search ?? "", v => this._filters = { ...this._filters, search: v })}
+      ${this._filter("status", ["healthy", "needs water", "too wet", "stale", "unavailable", "disabled", "problems"], v => this._statusLabel(v))}
+      ${this._filter("lifecycle", ["active", "disabled"], v => lifecycleLabels[v] ? l.t(lifecycleLabels[v]) : v)}
+      ${this._filter("area", ["none", ...this._areas.map(a => a.area_id)])}
+      ${this._filter("placement", this._plants.map(p => p.placement?.mode ?? "none"), v => v === "none" ? l.t("list.no_placement") : placementLabel(l, v))}
+      ${this._filter("species", this._plants.map(p => p.species?.snapshot.latin_name ?? p.species?.snapshot.common_name ?? "none"))}
+      ${this._filter("category", this._plants.map(p => p.category ?? "none"))}
+      ${this._filter("sensor", ["missing", "stale", "unavailable", "missing or stale"], v => sensorLabels[v] ? l.t(sensorLabels[v]) : v)}
+      ${this._filter("tag", this._plants.flatMap(p => p.tags))}</div><button @click=${() => this._filters = {}}>${l.t("filter.clear")}</button></section></details>
+      ${!this._plants.length ? html`<section class="empty"><h2>${l.t("list.empty_heading")}</h2><p>${l.t("list.empty_body")}</p><button class="primary" ?disabled=${this._blocked} @click=${() => this._show({ kind: "create" })}>${l.t("list.add_first")}</button></section>` : !plants.length ? html`<p role="status">${l.t("list.no_matches")}</p>` : html`<p class="plant-count" role="status">${plants.length === this._plants.length ? l.tn(plants.length, "list.count_one", "list.count_other") : l.t("list.count_filtered", { shown: plants.length, total: this._plants.length })}</p><ul class="plants">${plants.map(p => html`<li class="plant plant-card"><div class="plant-card-heading"><span class="plant-avatar" aria-hidden="true">${(p.name.trim()[0] ?? "?").toLocaleUpperCase()}</span><div><button class="name" @click=${() => this._show({ kind: "detail", plantId: p.id })}>${p.name}</button><span class="plant-status">${this._statusLabel(this._status(p))}${this._missing(p) ? l.t("list.missing_source_suffix") : ""}</span></div></div><div class="plant-card-metrics"><div><small>${l.t("metric.soil_moisture")}</small><strong>${metric(this._evaluations[p.id]?.computed_percent, v => l.number(v))}<small>%</small></strong></div><div><small>${l.t("metric.moisture_health")}</small><strong>${metric(this._evaluations[p.id]?.health_score, v => l.number(v))}<small>/100</small></strong></div></div><small class="plant-meta">${this._areaName(plantDevice(p, this._devices)?.area_id ?? "")} · ${p.placement?.mode ? placementLabel(l, p.placement.mode) : l.t("list.no_placement")}<br>${p.species?.snapshot.common_name ?? p.species?.snapshot.latin_name ?? l.t("list.manual_plant")} · ${p.category ?? l.t("list.uncategorized")}${p.tags.length ? html`<br>${p.tags.join(" · ")}` : nothing}</small></li>`)}</ul>`}`;
   }
   private async _save(kind: SaveKind): Promise<void> {
     const base = this._base; const edit = this._edits;
     if (!this.hass || !base || !edit || this._formBusy || this._blocked || this._conflict) return;
     if (kind === "area" && this._areaReview) return;
-     if (kind === "area" && (this._registryError || (edit.area && !this._areas.some(a => a.area_id === edit.area)))) { this._error = "Reconnect to load current Home Assistant areas, then choose an area or No area."; return; }
+     if (kind === "area" && (this._registryError || (edit.area && !this._areas.some(a => a.area_id === edit.area)))) { this._error = this._l.t("error.area_reconnect"); return; }
     const hass = this.hass;
     const input: UpdatePlantInput = { plant_id: base.id, expected_revision: base.revision };
     if (kind === "identity") {
-      if (!edit.name.trim() || edit.name.trim().length > 200 || (edit.acquired && !Number.isFinite(Date.parse(edit.acquired)))) { this._error = "Enter a valid name and acquired ISO date/time."; return; }
+      if (!edit.name.trim() || edit.name.trim().length > 200 || (edit.acquired && !Number.isFinite(Date.parse(edit.acquired)))) { this._error = this._l.t("error.identity"); return; }
       Object.assign(input, { name: edit.name.trim(), acquired_at: edit.acquired ? new Date(edit.acquired).toISOString() : null, placement: edit.placement });
     }
     if (kind === "taxonomy") {
-      const error = validateTaxonomy(edit.category, tags(edit.tagText)); if (error) { this._error = error; return; }
+      const error = validateTaxonomy(edit.category, tags(edit.tagText), this._l); if (error) { this._error = error; return; }
       Object.assign(input, { category: edit.category.trim() || null, tags: tags(edit.tagText) });
     }
     if (kind === "species") input.species = manualSpecies(edit.common, edit.latin);
     if (kind === "moisture") {
       if (!edit.moisture) return;
-       if (this._registryError) { this._error = "Reconnect to load current registry data before saving moisture sources."; return; }
-      const error = validateMoisture(edit.moisture, this._defaults(base)); if (error) { this._error = error; return; }
+       if (this._registryError) { this._error = this._l.t("error.moisture_reconnect"); return; }
+      const error = validateMoisture(edit.moisture, this._defaults(base), this._l); if (error) { this._error = error; return; }
     }
     await this._mutate(async () => {
       if (kind === "area") {
@@ -565,7 +551,7 @@ export class SmartPlantsPanel extends LitElement {
         this._plants = this._plants.map(p => p.id === plant.id ? plant : p);
         if (before && this._base?.id === plant.id) this._rebaseEdits(before, plant, saved);
         if (saved === "area" && selectedArea !== undefined) { this._baseArea = selectedArea; this._edit({ area: selectedArea }); this._areaReview = false; }
-        this._syncImage(); this._notice = "Saved.";
+        this._syncImage(); this._notice = this._l.t("notice.saved");
       }
       if (deleted) { this._show({ kind: "list" }); }
       await this._refresh(false);
@@ -583,9 +569,13 @@ export class SmartPlantsPanel extends LitElement {
     if (!this._conflict || !this._edits) return;
     const overlaps = this._sourceConflictFields(this._conflict.after);
     this._rebaseEdits(this._conflict.before, this._conflict.after);
-    this._notice = `Changes reviewed. Your edited fields are retained; inspect them and use each Save button to explicitly reapply.${overlaps.length ? ` Both sessions changed ${overlaps.join(", ")} in the sources editor. Saving will replace the refreshed values for those fields.` : ""} Species previews must be requested and reviewed again.`;
+    const l = this._l;
+    this._notice = [l.t("conflict.reviewed"), ...(overlaps.length ? [l.t("conflict.reviewed_overlap", { fields: this._sourceFieldList(overlaps) })] : []), l.t("conflict.reviewed_species")].join(" ");
   }
-  private _sourceConflictFields(after: PlantRecord): string[] {
+  private _sourceFieldList(fields: readonly ("sources" | "primary_entity_id" | "aggregation" | "stale_after_seconds")[]): string {
+    return fields.map(field => this._l.t(`source_field.${field}`)).join(", ");
+  }
+  private _sourceConflictFields(after: PlantRecord): ("sources" | "primary_entity_id" | "aggregation" | "stale_after_seconds")[] {
     if (!this._sourceRole || !this._sourceEdits || !this._sourceBaseline) return [];
     const current = roleSourceConfig(after, this._sourceRole);
     if (!current) return [];
@@ -649,7 +639,7 @@ export class SmartPlantsPanel extends LitElement {
     if (!this.hass || this._formBusy || this._blocked || this._query.trim().length < 3) return;
     const context = this._context;
     const request = ++this._providerRequest; this._formBusy = true; this._error = ""; this._preview = null;
-    try { const results = await api.searchSpecies(this.hass, this._provider, this._query.trim(), this.hass.language ?? "en"); if (request === this._providerRequest) { this._results = results; if (!results.length) this._notice = "No species matches. Try another search or manual entry."; } }
+    try { const results = await api.searchSpecies(this.hass, this._provider, this._query.trim(), this.hass.language ?? "en"); if (request === this._providerRequest) { this._results = results; if (!results.length) this._notice = this._l.t("species.no_matches"); } }
     catch (e) { if (request === this._providerRequest) this._error = this._friendly(e); }
     finally { if (context === this._context) this._formBusy = false; }
   }
@@ -677,28 +667,28 @@ export class SmartPlantsPanel extends LitElement {
   }
   private _renderDialog() {
     if (!this._dialog || !this._base) return nothing;
-    const base = this._base; const preview = this._preview;
+    const base = this._base; const preview = this._preview; const l = this._l;
     return html`<dialog aria-labelledby="dialog-title" @cancel=${(e: Event) => { e.preventDefault(); this._closeDialog(); }} @keydown=${(e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
       const nodes = [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>("button:not([disabled]),a[href],input:not([disabled]),summary")];
       const first = nodes[0]; const last = nodes.at(-1);
       if (e.shiftKey && (this.shadowRoot?.activeElement === first || this.shadowRoot?.activeElement?.matches("#dialog-title"))) { e.preventDefault(); last?.focus(); }
       else if (!e.shiftKey && this.shadowRoot?.activeElement === last) { e.preventDefault(); first?.focus(); }
-    }}><h2 id="dialog-title" tabindex="-1">${this._dialog === "delete" ? `Delete ${base.name}?` : "Review species changes"}</h2>
-      ${this._dialog === "delete" ? html`<p>This permanently removes the plant, its device, entities, and local photo. This cannot be undone.</p>` : preview ? snapshotView(preview.snapshot, preview) : html`<p>The preview is no longer valid. Close and request a new preview.</p>`}
-      <div class="actions"><button @click=${() => this._closeDialog()}>Cancel</button><button class="primary" ?disabled=${this._formBusy || this._blocked || !!this._conflict || (this._dialog === "species" && !preview)} @click=${() => {
+    }}><h2 id="dialog-title" tabindex="-1">${this._dialog === "delete" ? l.t("dialog.delete_title", { name: base.name }) : l.t("dialog.species_title")}</h2>
+      ${this._dialog === "delete" ? html`<p>${l.t("dialog.delete_body")}</p>` : preview ? snapshotView(l, preview.snapshot, preview) : html`<p>${l.t("dialog.preview_invalid")}</p>`}
+      <div class="actions"><button @click=${() => this._closeDialog()}>${l.t("common.cancel")}</button><button class="primary" ?disabled=${this._formBusy || this._blocked || !!this._conflict || (this._dialog === "species" && !preview)} @click=${() => {
         const kind = this._dialog; this._closeDialog();
         if (!this.hass) return;
         const hass = this.hass;
         if (kind === "delete") void this._mutate(() => api.delete(hass, base.id, base.revision), true);
         else if (preview) void this._mutate(() => api.applySpecies(hass, base.id, base.revision, preview.preview_token, preview.provider, preview.operation), false, "species");
-      }}>${this._dialog === "delete" ? "Permanently delete plant" : "Accept and apply reviewed species"}</button></div></dialog>`;
+      }}>${this._dialog === "delete" ? l.t("dialog.delete_confirm") : l.t("dialog.species_confirm")}</button></div></dialog>`;
   }
   private async _uploadImage(plant: PlantRecord, file: File): Promise<void> {
     if (!this.hass || this._formBusy || this._blocked) return;
     const context = this._context;
     this._formBusy = true;
-    try { await validateImage(file); }
+    try { await validateImage(file, this._l); }
     catch (e) { if (context === this._context) this._error = (e as Error).message; return; }
     finally { if (context === this._context) this._formBusy = false; }
     if (context !== this._context || !this.isConnected || this._view.kind !== "detail" || this._view.plantId !== plant.id || this._base?.revision !== plant.revision) return;
@@ -707,42 +697,29 @@ export class SmartPlantsPanel extends LitElement {
     await this._mutate(() => api.uploadImage(hass, plant.id, plant.revision, file));
   }
   private _renderImage(plant: PlantRecord) {
-    return html`<section><h2>Plant photo</h2>${plant.image ? this._imageLoading ? html`<p role="status">Loading photo…</p>` : this._imageError ? html`<p class="error" role="alert">Photo could not be loaded: ${this._imageError}</p><button @click=${() => { this._clearImage(); this._syncImage(); }}>Retry photo</button>` : this._imageUrl ? html`<img class="preview" alt="Photo of ${plant.name}" src=${this._imageUrl} @error=${() => { this._imageError = "The stored photo could not be decoded. Retry or replace it with a valid image."; }}>` : nothing : html`<p>No photo yet.</p>`}
-      ${plant.image ? html`<p>Stored locally: ${plant.image.content_type} · ${plant.image.width} × ${plant.image.height} pixels</p>` : nothing}
-      <label>${plant.image ? "Replace photo" : "Upload photo"}<input type="file" accept="image/jpeg,image/png,image/webp" ?disabled=${this._formBusy || this._blocked || !!this._conflict} @change=${(e: Event) => { const input = e.target as HTMLInputElement; const file = input.files?.[0]; input.value = ""; if (file) void this._uploadImage(plant, file); }}></label><small>JPEG, PNG or WebP · max 5 MiB · max 2048 × 2048. Images are authenticated and stored locally.</small>
-      ${plant.image ? html`<button ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => { if (this.hass) { const hass = this.hass; void this._mutate(() => api.deleteImage(hass, plant.id, plant.revision)); } }}>Remove photo</button>` : nothing}</section>`;
+    const l = this._l;
+    return html`<section><h2>${l.t("photo.heading")}</h2>${plant.image ? this._imageLoading ? html`<p role="status">${l.t("photo.loading")}</p>` : this._imageError ? html`<p class="error" role="alert">${l.t("photo.load_failed", { error: this._imageError })}</p><button @click=${() => { this._clearImage(); this._syncImage(); }}>${l.t("photo.retry")}</button>` : this._imageUrl ? html`<img class="preview" alt=${l.t("photo.alt", { name: plant.name })} src=${this._imageUrl} @error=${() => { this._imageError = l.t("photo.decode_failed"); }}>` : nothing : html`<p>${l.t("photo.none")}</p>`}
+      ${plant.image ? html`<p>${l.t("photo.stored", { type: plant.image.content_type, width: plant.image.width, height: plant.image.height })}</p>` : nothing}
+      <label>${plant.image ? l.t("photo.replace") : l.t("photo.upload")}<input type="file" accept="image/jpeg,image/png,image/webp" ?disabled=${this._formBusy || this._blocked || !!this._conflict} @change=${(e: Event) => { const input = e.target as HTMLInputElement; const file = input.files?.[0]; input.value = ""; if (file) void this._uploadImage(plant, file); }}></label><small>${l.t("photo.hint")}</small>
+      ${plant.image ? html`<button ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => { if (this.hass) { const hass = this.hass; void this._mutate(() => api.deleteImage(hass, plant.id, plant.revision)); } }}>${l.t("photo.remove")}</button>` : nothing}</section>`;
   }
   private _saveButton(kind: SaveKind, label: string) { return html`<button class="primary" @click=${() => void this._save(kind)}>${label}</button>`; }
-  // Small localize shim: reads `hass.localize` when the frontend supplies it
-  // and falls back to the exact inline English otherwise. Fallbacks are
-  // bit-identical to the previously inline copy so behaviour is unchanged
-  // when localize is not provided.
-  private _t(key: string, fallback: string, args?: Record<string, string | number>): string {
-    return translator(this.hass?.localize)(`component.smart_plants.${key}`, fallback, args);
-  }
   private _renderOverallHealth(plant: PlantRecord) {
     // Read-only surfacing of the accepted multi-role health composite.
     // Reads only the sibling `smart_plants/plants/health` reply cached in
     // `_health`; issues no new WebSocket command or mutation of any kind.
     const health = this._health[plant.id];
-    const localize = this.hass?.localize;
-    const heading = this._t("panel.section.overall_health", "Overall health");
-    const unavailable = this._t("panel.section.overall_health_unavailable", "Overall health is unavailable.");
-    const unavailableDetail = this._t("panel.section.overall_health_unavailable_detail", "Overall health is unavailable — no configured role is currently reporting a valid value.");
-    const confidenceLabel = this._t("panel.section.overall_health_confidence", "Confidence");
-    const includedLabel = this._t("panel.section.overall_health_included_roles", "Included roles");
-    const noneContributing = this._t("panel.section.overall_health_none_contributing", "No roles are currently contributing to the composite.");
-    const configuredUnavailableLabel = this._t("panel.section.overall_health_configured_unavailable", "Configured but unavailable");
-    const allIncluded = this._t("panel.section.overall_health_all_included", "None — every configured role is currently included.");
-    return html`<section aria-labelledby="overall-health-heading"><h2 id="overall-health-heading">${heading}</h2>
+    const l = this._l;
+    const unavailable = l.t("section.overall_health_unavailable");
+    return html`<section aria-labelledby="overall-health-heading"><h2 id="overall-health-heading">${l.t("section.overall_health")}</h2>
       ${!health ? html`<p role="status">${this._healthError ? `${unavailable} ${this._healthError}` : unavailable}</p>` : html`
-        <p role="status" aria-live="polite">${health.available && health.health_score !== null ? this._t("panel.section.overall_health_available_summary", "{score} out of 100", { score: health.health_score }) : unavailableDetail}</p>
+        <p role="status" aria-live="polite">${health.available && health.health_score !== null ? l.t("section.overall_health_available_summary", { score: health.health_score }) : l.t("section.overall_health_unavailable_detail")}</p>
         <dl class="overall-health">
-          <dt>${confidenceLabel}</dt><dd>${health.confidence_label} — ${confidenceGloss(health.confidence_label, localize)}</dd>
-          <dt>${includedLabel}</dt><dd>${health.contributors.length ? html`<ul class="contributors">${health.contributors.map(r => html`<li>${contributorLabel(r, localize)}</li>`)}</ul>` : noneContributing}</dd>
-          <dt>${configuredUnavailableLabel}</dt><dd>${(() => {
+          <dt>${l.t("section.overall_health_confidence")}</dt><dd>${confidenceLabel(health.confidence_label, l)} — ${confidenceGloss(health.confidence_label, l)}</dd>
+          <dt>${l.t("section.overall_health_included_roles")}</dt><dd>${health.contributors.length ? html`<ul class="contributors">${health.contributors.map(r => html`<li>${contributorLabel(r, l)}</li>`)}</ul>` : l.t("section.overall_health_none_contributing")}</dd>
+          <dt>${l.t("section.overall_health_configured_unavailable")}</dt><dd>${(() => {
             const unavailableRoles = health.configured.filter(r => !health.contributors.includes(r));
-            return unavailableRoles.length ? html`<ul class="configured-unavailable">${unavailableRoles.map(r => html`<li>${contributorLabel(r, localize)}</li>`)}</ul>` : allIncluded;
+            return unavailableRoles.length ? html`<ul class="configured-unavailable">${unavailableRoles.map(r => html`<li>${contributorLabel(r, l)}</li>`)}</ul>` : l.t("section.overall_health_all_included");
           })()}</dd>
         </dl>
       `}
@@ -751,42 +728,39 @@ export class SmartPlantsPanel extends LitElement {
   private _renderDiagnostics(plant: PlantRecord) {
     // Read-only status rows + effective-threshold sub-lists.
     // Editable roles are listed in THRESHOLD_EDITORS.
-    const rows = problemBinaries(plant, this._entities, this._states);
+    const l = this._l;
+    const rows = problemBinaries(plant, this._entities, this._states, l);
     const active = rows.filter(r => r.status === "on").length;
     const statusText = (status: string) => status === "on"
-      ? this._t("panel.section.advanced_diagnostics_status_problem", "problem detected")
+      ? l.t("section.advanced_diagnostics_status_problem")
       : status === "off"
-        ? this._t("panel.section.advanced_diagnostics_status_ok", "no problem")
+        ? l.t("section.advanced_diagnostics_status_ok")
         : status === "unavailable"
-          ? this._t("panel.section.advanced_diagnostics_status_unavailable", "unavailable")
-          : this._t("panel.section.advanced_diagnostics_status_not_configured", "not configured");
+          ? l.t("section.advanced_diagnostics_status_unavailable")
+          : l.t("section.advanced_diagnostics_status_not_configured");
     const pending = this._pendingThresholdSwitch;
     const currentSpec = this._thresholdRole ? _EDITOR_BY_PROBLEM_ROLE[this._thresholdRole] : null;
-    const currentLabel = currentSpec ? currentSpec.problemRole.replaceAll("_", " ") : "";
-    const pendingLabel = pending ? pending.spec.problemRole.replaceAll("_", " ") : "";
-    const heading = this._t("panel.section.advanced_diagnostics", "Advanced diagnostics");
-    const description = this._t("panel.section.advanced_diagnostics_description", "Status of the problem indicators for this plant. Threshold editing is available for every role: temperature, humidity, conductivity, CO2, soil temperature stress, low battery, and low light.");
+    const currentLabel = currentSpec ? l.t(`problem_phrase.${currentSpec.problemRole}`) : "";
+    const pendingLabel = pending ? l.t(`problem_phrase.${pending.spec.problemRole}`) : "";
     const summary = active === 0
-      ? this._t("panel.section.advanced_diagnostics_zero_active", "No active problems.")
-      : active === 1
-        ? this._t("panel.section.advanced_diagnostics_one_active", "1 active problem.")
-        : this._t("panel.section.advanced_diagnostics_many_active", "{count} active problems.", { count: active });
-    return html`<section aria-labelledby="diagnostics-heading"><h2 id="diagnostics-heading">${heading}</h2>
+      ? l.t("section.advanced_diagnostics_zero_active")
+      : l.tn(active, "section.advanced_diagnostics_one_active", "section.advanced_diagnostics_many_active");
+    return html`<section aria-labelledby="diagnostics-heading"><h2 id="diagnostics-heading">${l.t("section.advanced_diagnostics")}</h2>
       <p role="status" aria-live="polite">${summary}</p>
-      <p>${description}</p>
-      ${pending ? html`<p class="notice threshold-switch-alert" role="alert">${this._t("panel.section.advanced_diagnostics_switch_prompt", "Unsaved changes in the {current} editor. Discard them and switch to the {pending} editor?", { current: currentLabel, pending: pendingLabel })}
-        <button type="button" class="primary" @click=${() => this._confirmDiscardAndSwitch()}>${this._t("panel.section.advanced_diagnostics_switch_discard", "Discard and switch")}</button>
-        <button type="button" @click=${() => { this._pendingThresholdSwitch = null; }}>${this._t("panel.section.advanced_diagnostics_switch_keep", "Keep editing")}</button>
+      <p>${l.t("section.advanced_diagnostics_description")}</p>
+      ${pending ? html`<p class="notice threshold-switch-alert" role="alert">${l.t("section.advanced_diagnostics_switch_prompt", { current: currentLabel, pending: pendingLabel })}
+        <button type="button" class="primary" @click=${() => this._confirmDiscardAndSwitch()}>${l.t("section.advanced_diagnostics_switch_discard")}</button>
+        <button type="button" @click=${() => { this._pendingThresholdSwitch = null; }}>${l.t("section.advanced_diagnostics_switch_keep")}</button>
       </p>` : nothing}
       <dl class="diagnostics">${rows.map(row => {
-        const thresholds = row.status === "not_configured" ? [] : effectiveThresholds(plant, row.role, this._entities, this._states);
+        const thresholds = row.status === "not_configured" ? [] : effectiveThresholds(plant, row.role, this._entities, this._states, l);
         const spec = _EDITOR_BY_PROBLEM_ROLE[row.role];
         const editable = !!spec && row.status !== "not_configured";
         const editing = editable && this._thresholdRole === row.role && this._thresholdEdits !== null;
         const saved = spec ? this._thresholdSaved[row.role] : "";
         // The <dt> names the row and the <dd> text carries the status; ARIA
         // prohibits aria-label on the definition role, so none is set here.
-        return html`<dt>${row.label}</dt><dd class=${"status-" + row.status}>${statusText(row.status)}${row.reason ? html` — ${row.reason}` : nothing}${thresholds.length ? html`<ul class="thresholds" aria-label=${`${row.label} effective thresholds`}>${thresholds.map(t => html`<li><span class="threshold-label">${t.label}</span>: <span class="threshold-value">${t.value === null ? "—" : `${t.value} ${t.unit}`}</span></li>`)}</ul>` : nothing}${editable && spec ? html`<button class="threshold-toggle" type="button" aria-expanded=${editing ? "true" : "false"} aria-controls=${`${row.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(spec, plant)}>${editing ? this._t("panel.section.advanced_diagnostics_cancel_edit", "Cancel") : this._t("panel.section.advanced_diagnostics_edit_thresholds", "Edit thresholds")}</button>${editing ? this._renderThresholdEditor(spec, plant) : nothing}${saved && !editing ? html`<p class="notice" role="status">${saved}</p>` : nothing}` : nothing}</dd>`;
+        return html`<dt>${row.label}</dt><dd class=${"status-" + row.status}>${statusText(row.status)}${row.reason ? html` — ${row.reason}` : nothing}${thresholds.length ? html`<ul class="thresholds" aria-label=${l.t("section.effective_thresholds_label", { label: row.label })}>${thresholds.map(t => html`<li><span class="threshold-label">${t.label}</span>: <span class="threshold-value">${t.value === null ? "—" : `${l.number(t.value)} ${t.unit}`}</span></li>`)}</ul>` : nothing}${editable && spec ? html`<button class="threshold-toggle" type="button" aria-expanded=${editing ? "true" : "false"} aria-controls=${`${row.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(spec, plant)}>${editing ? l.t("section.advanced_diagnostics_cancel_edit") : l.t("section.advanced_diagnostics_edit_thresholds")}</button>${editing ? this._renderThresholdEditor(spec, plant) : nothing}${saved && !editing ? html`<p class="notice" role="status">${saved}</p>` : nothing}` : nothing}</dd>`;
       })}</dl></section>`;
   }
   private _persistedRoleOverrides(spec: ThresholdEditorSpec, plant: PlantRecord): Partial<Record<string, number | null>> | null {
@@ -838,38 +812,41 @@ export class SmartPlantsPanel extends LitElement {
   private _renderThresholdEditor(spec: ThresholdEditorSpec, plant: PlantRecord) {
     const edits = this._thresholdEdits;
     if (!edits) return nothing;
-    const field = (key: string) => html`<label>${spec.labels[key]}<input type="number" step=${spec.step} min=${spec.min} max=${spec.max} inputmode="decimal" .value=${edits[key]} @input=${(e: Event) => this._editThreshold({ [key]: (e.target as HTMLInputElement).value })}></label><small>Default ${spec.defaults[key]} ${spec.unit} · effective ${edits[key].trim() === "" ? spec.defaults[key] : edits[key]} ${spec.unit}</small><button type="button" @click=${() => this._editThreshold({ [key]: "" })}>Inherit</button>`;
-    return html`<div id=${`${spec.problemRole}-editor`} class="threshold-editor" role="group" aria-label=${`${spec.problemRole.replaceAll("_", " ")} thresholds`}>
-      <p>${spec.formIntro}</p>
+    const l = this._l;
+    const effective = (key: string) => { const raw = edits[key]!.trim(); const n = Number(raw); return raw === "" ? l.number(spec.defaults[key]!) : Number.isFinite(n) ? l.number(n) : raw; };
+    const field = (key: string) => html`<label>${l.t(spec.labels[key]!, { unit: spec.unit })}<input type="number" step=${spec.step} min=${spec.min} max=${spec.max} inputmode="decimal" .value=${edits[key]} @input=${(e: Event) => this._editThreshold({ [key]: (e.target as HTMLInputElement).value })}></label><small>${l.t("threshold.default_effective", { default: l.number(spec.defaults[key]!), effective: effective(key), unit: spec.unit })}</small><button type="button" @click=${() => this._editThreshold({ [key]: "" })}>${l.t("threshold.inherit")}</button>`;
+    return html`<div id=${`${spec.problemRole}-editor`} class="threshold-editor" role="group" aria-label=${l.t("threshold.group_label", { label: l.t(`problem_phrase.${spec.problemRole}`) })}>
+      <p>${l.t(`threshold_intro.${spec.problemRole}`)}</p>
       <fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>
         <div class="grid">${spec.keys.map(k => html`<div>${field(k)}</div>`)}</div>
         ${this._thresholdError ? html`<p class="error" role="alert">${this._thresholdError}</p>` : nothing}
         <div class="actions">
-          <button type="button" @click=${() => this._editThreshold(Object.fromEntries(spec.keys.map(k => [k, ""])))}>Inherit all built-in defaults</button>
-          <button type="button" @click=${() => { this._thresholdRole = null; this._thresholdEdits = null; this._thresholdBaseline = null; this._thresholdError = ""; this._pendingThresholdSwitch = null; }}>Cancel</button>
-          <button type="button" class="primary" @click=${() => void this._saveThresholds(spec, plant)}>Save thresholds</button>
+          <button type="button" @click=${() => this._editThreshold(Object.fromEntries(spec.keys.map(k => [k, ""])))}>${l.t("threshold.inherit_all")}</button>
+          <button type="button" @click=${() => { this._thresholdRole = null; this._thresholdEdits = null; this._thresholdBaseline = null; this._thresholdError = ""; this._pendingThresholdSwitch = null; }}>${l.t("common.cancel")}</button>
+          <button type="button" class="primary" @click=${() => void this._saveThresholds(spec, plant)}>${l.t("threshold.save")}</button>
         </div>
       </fieldset>
     </div>`;
   }
   private async _saveThresholds(spec: ThresholdEditorSpec, plant: PlantRecord): Promise<void> {
     if (!this.hass || !this._thresholdEdits || this._formBusy || this._blocked || this._conflict) return;
-    const { values, error } = spec.validate(this._thresholdEdits);
+    const { values, error } = spec.validate(this._thresholdEdits, this._l);
     if (error) { this._thresholdError = error; return; }
     this._thresholdError = "";
     const hass = this.hass;
     await this._mutate(() => api.setThresholdOverrides(hass, plant.id, plant.revision, spec.configRole, values));
     if (!this._error) {
       this._thresholdRole = null; this._thresholdEdits = null; this._thresholdBaseline = null; this._pendingThresholdSwitch = null;
-      this._thresholdSaved = { ...this._thresholdSaved, [spec.problemRole]: spec.successNotice };
+      this._thresholdSaved = { ...this._thresholdSaved, [spec.problemRole]: this._l.t(`threshold_saved.${spec.problemRole}`) };
     }
   }
   // ---- Sensors section: generic per-role source assignment ----
   private _sourceSummary(plant: PlantRecord, role: string): string {
     const c = roleSourceConfig(plant, role);
-    if (!c) return "role data unavailable";
-    if (!c.sources.length) return "no sources — this role has no computed entity yet";
-    return `${c.sources.length} source${c.sources.length === 1 ? "" : "s"} · ${c.aggregation}${c.primary_entity_id ? ` · primary ${c.primary_entity_id}` : ""}`;
+    const l = this._l;
+    if (!c) return l.t("sensors.summary_unavailable");
+    if (!c.sources.length) return l.t("sensors.summary_empty");
+    return `${l.tn(c.sources.length, "sensors.source_count_one", "sensors.source_count_other")} · ${aggregationLabel(l, c.aggregation)}${c.primary_entity_id ? l.t("sensors.summary_primary", { entity_id: c.primary_entity_id }) : ""}`;
   }
   private _toggleSourceEdit(role: string, plant: PlantRecord): void {
     if (this._sourceRole === role && this._sourceEdits !== null) {
@@ -903,37 +880,39 @@ export class SmartPlantsPanel extends LitElement {
     if (this._sourceEdits) this._sourceEdits = { ...this._sourceEdits, ...part };
   }
   private _renderSensors(plant: PlantRecord) {
+    const l = this._l;
     const pending = this._pendingSourceSwitch;
-    return html`<section aria-labelledby="sensors-heading"><h2 id="sensors-heading">Sensors</h2>
-      <p>Assign Home Assistant sensors to each role. A role's computed sensor and problem binary appear once it has had at least one source. The entity picker is filtered by device class and unit; other sensors are available under "Show all sensors".</p>
-      ${pending ? html`<div class="notice" role="alert"><p>You have unsaved changes in the ${roleSourceSpec(this._sourceRole ?? "")?.label ?? this._sourceRole} sources editor. Switch editors and discard them?</p>
-        <button type="button" class="primary" @click=${() => this._confirmSourceSwitch()}>Discard and switch</button>
-        <button type="button" @click=${() => { this._pendingSourceSwitch = null; }}>Keep editing</button></div>` : nothing}
+    const pendingSpec = roleSourceSpec(this._sourceRole ?? "");
+    return html`<section aria-labelledby="sensors-heading"><h2 id="sensors-heading">${l.t("sensors.heading")}</h2>
+      <p>${l.t("sensors.intro")}</p>
+      ${pending ? html`<div class="notice" role="alert"><p>${l.t("sensors.switch_prompt", { role: pendingSpec ? rolePhrase(pendingSpec.role, l) : this._sourceRole ?? "" })}</p>
+        <button type="button" class="primary" @click=${() => this._confirmSourceSwitch()}>${l.t("section.advanced_diagnostics_switch_discard")}</button>
+        <button type="button" @click=${() => { this._pendingSourceSwitch = null; }}>${l.t("section.advanced_diagnostics_switch_keep")}</button></div>` : nothing}
       <dl class="sensors">${ROLE_SOURCE_SPECS.map(spec => {
         const editing = this._sourceRole === spec.role && this._sourceEdits !== null;
         const saved = this._sourceSaved[spec.role];
-        return html`<dt>${spec.label}</dt><dd>${this._sourceSummary(plant, spec.role)}
-          <button class="source-toggle" type="button" aria-expanded=${editing ? "true" : "false"} aria-controls=${`${spec.role}-sources-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleSourceEdit(spec.role, plant)}>${editing ? "Cancel" : "Edit sources"}</button>
+        return html`<dt>${roleLabel(spec.role, l)}</dt><dd>${this._sourceSummary(plant, spec.role)}
+          <button class="source-toggle" type="button" aria-expanded=${editing ? "true" : "false"} aria-controls=${`${spec.role}-sources-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleSourceEdit(spec.role, plant)}>${editing ? l.t("common.cancel") : l.t("sensors.edit")}</button>
           ${editing ? this._renderSourceEditor(spec.role, plant) : nothing}
-          ${!editing && this._sourceRefused(plant, spec.role) ? html`<p id=${`${spec.role}-sources-unavailable`} class="error" role="alert">${spec.label} source data is missing or incompatible. Refresh or upgrade before editing; defaults will not be guessed.</p>` : nothing}
+          ${!editing && this._sourceRefused(plant, spec.role) ? html`<p id=${`${spec.role}-sources-unavailable`} class="error" role="alert">${l.t("sensors.refused", { role: roleLabel(spec.role, l) })}</p>` : nothing}
           ${saved && !editing ? html`<p class="notice" role="status">${saved}</p>` : nothing}</dd>`;
       })}</dl></section>`;
   }
-  private _renderSourceEditor(role: string, plant: PlantRecord) {
-    const spec = roleSourceSpec(role); const edits = this._sourceEdits;
+  private _renderSourceEditor(role: SourceRole, plant: PlantRecord) {
+    const spec = roleSourceSpec(role); const edits = this._sourceEdits; const l = this._l;
     if (!spec || !edits) return nothing;
     return html`<div id=${`${role}-sources-editor`} class="editor"><fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>
-      ${roleSourcesEditor(spec, edits, this._entities, this._states, this._allSourceSensors, v => this._allSourceSensors = v, v => this._editSource(v))}
+      ${roleSourcesEditor(l, spec, edits, this._entities, this._states, this._allSourceSensors, v => this._allSourceSensors = v, v => this._editSource(v))}
       ${this._sourceError ? html`<p class="error" role="alert">${this._sourceError}</p>` : nothing}
       <div class="actions">
-        <button type="button" @click=${() => { this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._pendingSourceSwitch = null; }}>Cancel</button>
-        <button type="button" class="primary" @click=${() => void this._saveRoleSources(role, plant)}>Save ${spec.label.toLowerCase()} sources</button>
+        <button type="button" @click=${() => { this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._pendingSourceSwitch = null; }}>${l.t("common.cancel")}</button>
+        <button type="button" class="primary" @click=${() => void this._saveRoleSources(role, plant)}>${l.t("sensors.save", { role: rolePhrase(role, l) })}</button>
       </div></fieldset></div>`;
   }
-  private async _saveRoleSources(role: string, plant: PlantRecord): Promise<void> {
+  private async _saveRoleSources(role: SourceRole, plant: PlantRecord): Promise<void> {
     if (!this.hass || !this._sourceEdits || this._formBusy || this._blocked || this._conflict) return;
-    if (this._registryError) { this._sourceError = "Reconnect to load current registry data before saving sources."; return; }
-    const error = validateRoleSources(this._sourceEdits); if (error) { this._sourceError = error; return; }
+    if (this._registryError) { this._sourceError = this._l.t("error.sources_reconnect"); return; }
+    const error = validateRoleSources(this._sourceEdits, this._l); if (error) { this._sourceError = error; return; }
     this._sourceError = "";
     const hass = this.hass;
     const desired = canonicalRoleSources(this._sourceEdits, this._entities);
@@ -959,46 +938,52 @@ export class SmartPlantsPanel extends LitElement {
     });
     if (!this._error) {
       this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._pendingSourceSwitch = null;
-      this._sourceSaved = { ...this._sourceSaved, [role]: `${roleSourceSpec(role)?.label ?? role} sources saved.` };
+      this._sourceSaved = { ...this._sourceSaved, [role]: this._l.t("sensors.saved", { role: roleLabel(role, this._l) }) };
     }
   }
   private _renderPlantOverview(plant: PlantRecord, evaluation: Evaluation | undefined) {
+    const l = this._l;
     const moisture = moistureRole(plant);
     const sources = moisture?.sources.map(source => resolveSource(source, this._entities)?.entity_id ?? source.entity_id) ?? [];
     const assignedRoles = ROLE_SOURCE_SPECS.flatMap(spec => {
-      if (spec.role === "moisture") return [];
       const config = roleSourceConfig(plant, spec.role);
-      return config?.sources.length ? [{ label: spec.label, count: config.sources.length }] : [];
+      return config?.sources.length ? [{ label: roleLabel(spec.role, l), count: config.sources.length }] : [];
     });
     const latestCare = this._careHistory?.events.slice(0, 3) ?? [];
-    return html`<section class="plant-overview-card"><div class="overview-heading">${this._imageUrl ? html`<img class="overview-avatar" src=${this._imageUrl} alt=${`Photo of ${plant.name}`}>` : html`<div class="overview-avatar placeholder" aria-hidden="true">${plant.name.slice(0, 1).toLocaleUpperCase()}</div>`}<div><p class="eyebrow">PLANT OVERVIEW</p><p>${plant.species?.snapshot.common_name ?? plant.species?.snapshot.latin_name ?? "No species selected"}</p>${plant.category ? html`<span class="muted">${plant.category}</span>` : nothing}<button type="button" @click=${() => this._detailSection = "details"}>Plant details and photo</button></div></div>
-      <div class="overview-metrics"><article><span>Soil moisture</span><strong>${evaluation?.computed_percent ?? "—"}${evaluation?.computed_percent === null || evaluation?.computed_percent === undefined ? "" : "%"}</strong><small>${evaluation?.computed_available ? "Current reading" : "No current reading"}</small></article><article><span>Moisture health</span><strong>${evaluation?.health_score ?? "—"}${evaluation?.health_score === null || evaluation?.health_score === undefined ? "" : "/100"}</strong><small>Based on moisture readings</small></article><article><span>Moisture sensors</span><strong>${sources.length}</strong><small>${moisture?.aggregation ?? "Not configured"} aggregation</small></article></div>
-       <section class="overview-sensors"><h2>Assigned sensors</h2>${sources.length || assignedRoles.length ? html`<ul>${sources.map(id => html`<li>Soil moisture · ${id}${id === moisture?.primary_entity_id ? html` <span class="muted">Primary</span>` : nothing}</li>`)}${assignedRoles.map(role => html`<li>${role.label} · ${role.count} source${role.count === 1 ? "" : "s"}</li>`)}</ul>` : html`<p>No sensors assigned. You can still use the plant profile and log care.</p>`}<button type="button" @click=${() => this._detailSection = "sensors"}>Manage sensors</button></section>
-       <section class="overview-care"><h2>Recent care</h2>${latestCare.length ? html`<ul>${latestCare.map(event => html`<li><strong>${event.kind}</strong> · ${event.local_date}</li>`)}</ul>` : html`<p>No care events recorded yet.</p>`}<button type="button" @click=${() => this._detailSection = "care"}>Open care history</button></section>
-      ${this._health?.[plant.id] ? html`<p class="muted">Overall health confidence: ${this._health[plant.id]?.confidence_label ?? "unknown"}</p>` : nothing}
+    const percent = evaluation?.computed_percent; const score = evaluation?.health_score;
+    const overallConfidence = this._health?.[plant.id]?.confidence_label;
+    return html`<section class="plant-overview-card"><div class="overview-heading">${this._imageUrl ? html`<img class="overview-avatar" src=${this._imageUrl} alt=${l.t("photo.alt", { name: plant.name })}>` : html`<div class="overview-avatar placeholder" aria-hidden="true">${plant.name.slice(0, 1).toLocaleUpperCase()}</div>`}<div><p class="eyebrow">${l.t("overview.eyebrow")}</p><p>${plant.species?.snapshot.common_name ?? plant.species?.snapshot.latin_name ?? l.t("common.no_species_selected")}</p>${plant.category ? html`<span class="muted">${plant.category}</span>` : nothing}<button type="button" @click=${() => this._detailSection = "details"}>${l.t("overview.details_button")}</button></div></div>
+      <div class="overview-metrics"><article><span>${l.t("metric.soil_moisture")}</span><strong>${percent === null || percent === undefined ? "—" : l.percent(percent)}</strong><small>${evaluation?.computed_available ? l.t("overview.current_reading") : l.t("overview.no_current_reading")}</small></article><article><span>${l.t("metric.moisture_health")}</span><strong>${score === null || score === undefined ? "—" : `${l.number(score)}/100`}</strong><small>${l.t("overview.based_on_moisture")}</small></article><article><span>${l.t("overview.moisture_sensors")}</span><strong>${l.number(sources.length)}</strong><small>${l.t("overview.aggregation", { aggregation: moisture ? aggregationLabel(l, moisture.aggregation) : l.t("overview.not_configured") })}</small></article></div>
+       <section class="overview-sensors"><h2>${l.t("overview.assigned_sensors")}</h2>${sources.length || assignedRoles.length ? html`<ul>${sources.map(id => html`<li>${l.t("metric.soil_moisture")} · ${id}${id === moisture?.primary_entity_id ? html` <span class="muted">${l.t("overview.primary")}</span>` : nothing}</li>`)}${assignedRoles.map(role => html`<li>${role.label} · ${l.tn(role.count, "sensors.source_count_one", "sensors.source_count_other")}</li>`)}</ul>` : html`<p>${l.t("overview.no_sensors")}</p>`}<button type="button" @click=${() => this._detailSection = "sensors"}>${l.t("overview.manage_sensors")}</button></section>
+       <section class="overview-care"><h2>${l.t("overview.recent_care")}</h2>${latestCare.length ? html`<ul>${latestCare.map(event => html`<li><strong>${l.t(`care_kind.${event.kind}`)}</strong> · ${l.date(event.local_date)}</li>`)}</ul>` : html`<p>${l.t("overview.no_care")}</p>`}<button type="button" @click=${() => this._detailSection = "care"}>${l.t("overview.open_care")}</button></section>
+      ${overallConfidence !== undefined ? html`<p class="muted">${l.t("overview.overall_confidence", { label: confidenceLabel(overallConfidence, l) })}</p>` : nothing}
     </section>`;
   }
   private _renderDetail(id: string) {
+    const l = this._l;
     const plant = this._plantById(id); const edit = this._edits;
-    if (!plant || !edit) return html`<p>Plant not found — it may have been deleted in another session.</p>`;
+    if (!plant || !edit) return html`<p>${l.t("detail.not_found")}</p>`;
     const evaluation = this._evaluations[id]; const m = moistureRole(plant); const device = plantDevice(plant, this._devices);
-    return html`${this._conflict ? html`<section class="notice" role="alert"><h2>Review changes from another session</h2><p>Revision ${this._conflict.before.revision} → ${this._conflict.after.revision}. Saving is paused. Local edits are retained.</p><ul>${this._conflict.changes.map(c => html`<li class="prose">${c}</li>`)}</ul>${this._sourceConflictFields(this._conflict.after).length ? html`<p>Both sessions changed these source fields: ${this._sourceConflictFields(this._conflict.after).join(", ")}. Review the refreshed role summary and your draft before retrying; Save will replace the refreshed values for these fields.</p>` : nothing}<button @click=${() => this._reviewConflict()}>I reviewed changes; retain my edits for reapply</button><button @click=${() => this._beginEdit(plant)}>Discard my edits and use refreshed values</button></section>` : nothing}
-       <header class="detail-heading"><div><h2>${plant.name}</h2><p>${this._status(plant)}</p></div>${device ? html`<a href="/config/devices/device/${encodeURIComponent(device.id)}">Open Home Assistant device</a>` : nothing}</header>
-      <nav class="detail-tabs" aria-label="Plant sections">${([ ["overview", "Overview"], ["sensors", "Sensors"], ["care", "Care history"], ["details", "Plant details"], ["diagnostics", "Diagnostics"] ] as [DetailSection, string][]).map(([section, label]) => html`<button type="button" aria-current=${this._detailSection === section ? "page" : nothing} @click=${() => this._detailSection = section}>${label}</button>`)}</nav>
+    const disabled = this._formBusy || this._blocked || !!this._conflict;
+    const overlaps = this._conflict ? this._sourceConflictFields(this._conflict.after) : [];
+    const tabs: [DetailSection, MessageKey][] = [["overview", "detail.tab_overview"], ["sensors", "sensors.heading"], ["care", "care.heading"], ["details", "detail.tab_details"], ["diagnostics", "detail.tab_diagnostics"]];
+    return html`${this._conflict ? html`<section class="notice" role="alert"><h2>${l.t("conflict.heading")}</h2><p>${l.t("conflict.revision", { before: this._conflict.before.revision, after: this._conflict.after.revision })}</p><ul>${this._conflict.changes.map(c => html`<li class="prose">${c}</li>`)}</ul>${overlaps.length ? html`<p>${l.t("conflict.source_overlap", { fields: this._sourceFieldList(overlaps) })}</p>` : nothing}<button @click=${() => this._reviewConflict()}>${l.t("conflict.retain")}</button><button @click=${() => this._beginEdit(plant)}>${l.t("conflict.discard")}</button></section>` : nothing}
+       <header class="detail-heading"><div><h2>${plant.name}</h2><p>${this._statusLabel(this._status(plant))}</p></div>${device ? html`<a href="/config/devices/device/${encodeURIComponent(device.id)}">${l.t("detail.open_device")}</a>` : nothing}</header>
+      <nav class="detail-tabs" aria-label=${l.t("detail.sections_label")}>${tabs.map(([section, label]) => html`<button type="button" aria-current=${this._detailSection === section ? "page" : nothing} @click=${() => this._detailSection = section}>${l.t(label)}</button>`)}</nav>
         ${this._detailSection === "overview" ? this._renderPlantOverview(plant, evaluation) : nothing}
-       ${this._detailSection === "details" ? html`<section><h2>Identity and placement</h2>${this._renderImage(plant)}<fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>${textField("Name", edit.name, v => this._edit({ name: v }))}${textField("Acquired (ISO date/time, optional)", edit.acquired, v => this._edit({ acquired: v }))}${placementEditor(edit.placement, v => this._edit({ placement: v }))}${this._saveButton("identity", "Save identity")}</fieldset></section>
-       <section><h2>Home Assistant area</h2><p>Current: ${this._areaName(device?.area_id ?? "")}. Area belongs to the native device registry.</p>${this._areaReview ? html`<p class="notice">The native area changed. Review current and selected areas before reapplying.</p><button @click=${() => this._areaReview = false}>I reviewed the native area change</button><button @click=${() => { this._edit({ area: this._baseArea }); this._areaReview = false; }}>Use current native area</button>` : nothing}<fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict || !!this._registryError || this._areaReview}>${areaEditor(edit.area, this._areas, v => this._edit({ area: v }))}${this._saveButton("area", "Save area")}</fieldset></section>
-       <section><h2>Taxonomy</h2><fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>${textField("Category", edit.category, v => this._edit({ category: v }), "text", 60)}${textField("Tags (comma-separated)", edit.tagText, v => this._edit({ tagText: v }), "text", 2000)}<p>Smart Plants taxonomy is separate from Home Assistant labels.</p>${this._saveButton("taxonomy", "Save taxonomy")}</fieldset></section>
-       <section><h2>Species</h2>${plant.species ? snapshotView(plant.species.snapshot) : html`<p>No species assigned.</p>`}<fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>
-      ${plant.species?.snapshot.provider_ref ? html`<button @click=${() => void this._previewSpecies()}>Preview species refresh</button>` : nothing}
-      ${selectField("Species provider", this._provider, [{ value: "manual", label: "Manual species" }, ...(this._capabilities?.providers.filter(p => p.available && p.search_supported).map(p => ({ value: p.provider, label: p.provider })) ?? [])], v => { this._providerRequest++; this._provider = v; this._preview = null; this._results = []; })}
-       ${this._provider === "manual" ? html`${textField("Common name", edit.common, v => this._edit({ common: v }))}${textField("Scientific name", edit.latin, v => this._edit({ latin: v }))}<p>Save replaces the species with user-supplied data. Leave both names blank to clear species.</p>${this._saveButton("species", "Save manual species")}` : html`${textField("Search species", this._query, v => { this._query = v; this._providerRequest++; this._results = []; this._preview = null; })}<button @click=${() => void this._searchSpecies()}>Search species</button><ul>${this._results.map(r => html`<li><button @click=${() => void this._previewSpecies(r)}>${r.common_name ?? r.latin_name} · ${r.latin_name}</button><small>${r.attribution}</small></li>`)}</ul><button @click=${() => { this._provider = "manual"; this._providerRequest++; this._preview = null; }}>Continue manually</button>`}</fieldset></section>
+       ${this._detailSection === "details" ? html`<section><h2>${l.t("detail.identity_heading")}</h2>${this._renderImage(plant)}<fieldset ?disabled=${disabled}>${textField(l.t("detail.name"), edit.name, v => this._edit({ name: v }))}${textField(l.t("detail.acquired"), edit.acquired, v => this._edit({ acquired: v }))}${placementEditor(l, edit.placement, v => this._edit({ placement: v }))}${this._saveButton("identity", l.t("detail.save_identity"))}</fieldset></section>
+       <section><h2>${l.t("area.label")}</h2><p>${l.t("detail.area_current", { area: this._areaName(device?.area_id ?? "") })}</p>${this._areaReview ? html`<p class="notice">${l.t("detail.area_review")}</p><button @click=${() => this._areaReview = false}>${l.t("detail.area_reviewed")}</button><button @click=${() => { this._edit({ area: this._baseArea }); this._areaReview = false; }}>${l.t("detail.area_use_current")}</button>` : nothing}<fieldset ?disabled=${disabled || !!this._registryError || this._areaReview}>${areaEditor(l, edit.area, this._areas, v => this._edit({ area: v }))}${this._saveButton("area", l.t("detail.save_area"))}</fieldset></section>
+       <section><h2>${l.t("taxonomy.heading")}</h2><fieldset ?disabled=${disabled}>${textField(l.t("taxonomy.category"), edit.category, v => this._edit({ category: v }), "text", 60)}${textField(l.t("taxonomy.tags"), edit.tagText, v => this._edit({ tagText: v }), "text", 2000)}<p>${l.t("taxonomy.hint")}</p>${this._saveButton("taxonomy", l.t("taxonomy.save"))}</fieldset></section>
+       <section><h2>${l.t("species.heading")}</h2>${plant.species ? snapshotView(l, plant.species.snapshot) : html`<p>${l.t("species.none")}</p>`}<fieldset ?disabled=${disabled}>
+      ${plant.species?.snapshot.provider_ref ? html`<button @click=${() => void this._previewSpecies()}>${l.t("species.preview_refresh")}</button>` : nothing}
+      ${selectField(l, l.t("species.provider"), this._provider, [{ value: "manual", label: l.t("species.manual") }, ...(this._capabilities?.providers.filter(p => p.available && p.search_supported).map(p => ({ value: p.provider, label: p.provider })) ?? [])], v => { this._providerRequest++; this._provider = v; this._preview = null; this._results = []; })}
+       ${this._provider === "manual" ? html`${textField(l.t("species.common_name"), edit.common, v => this._edit({ common: v }))}${textField(l.t("species.scientific_name"), edit.latin, v => this._edit({ latin: v }))}<p>${l.t("species.manual_hint")}</p>${this._saveButton("species", l.t("species.save_manual"))}` : html`${textField(l.t("species.search"), this._query, v => { this._query = v; this._providerRequest++; this._results = []; this._preview = null; })}<button @click=${() => void this._searchSpecies()}>${l.t("species.search")}</button><ul>${this._results.map(r => html`<li><button @click=${() => void this._previewSpecies(r)}>${r.common_name ?? r.latin_name} · ${r.latin_name}</button><small>${r.attribution}</small></li>`)}</ul><button @click=${() => { this._provider = "manual"; this._providerRequest++; this._preview = null; }}>${l.t("common.continue_manually")}</button>`}</fieldset></section>
        ` : nothing}
        ${this._detailSection === "details" ? html`
-       <section><h2>Lifecycle</h2><p>Disabling stops plant evaluation and makes its entities unavailable. User-authored automations remain independent.</p><fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}><div class="actions"><button @click=${() => { if (this.hass) { const hass = this.hass; void this._mutate(() => plant.lifecycle_state === "active" ? api.disable(hass, plant.id, plant.revision) : api.reenable(hass, plant.id, plant.revision)); } }}>${plant.lifecycle_state === "active" ? "Disable" : "Re-enable"}</button><button @click=${() => this._openDialog("delete")}>Delete plant</button></div></fieldset></section>` : nothing}
-       ${this._detailSection === "sensors" ? html`<section><h2>Moisture configuration</h2>${m && edit.moisture ? html`<p class="default-summary">Effective thresholds: ${keys.map(k => `${k} ${m.threshold_overrides[k] ?? this._defaults(plant)[k]}%`).join(" · ")}</p><fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>${moistureEditor(edit.moisture, this._defaults(plant), this._entities, this._states, this._allSensors, v => this._allSensors = v, v => this._edit({ moisture: v }), "sources")}<details class="advanced-disclosure"><summary>Advanced threshold overrides</summary><p>Blank values inherit the effective default shown above.</p>${moistureEditor(edit.moisture, this._defaults(plant), this._entities, this._states, this._allSensors, v => this._allSensors = v, v => this._edit({ moisture: v }), "thresholds")}</details>${this._saveButton("moisture", "Save complete moisture configuration")}</fieldset>` : html`<p class="error" role="alert">Moisture role data is missing or incompatible. Refresh or upgrade before editing; defaults will not be guessed.</p>`}</section>${this._renderSensors(plant)}` : nothing}
+       <section><h2>${l.t("lifecycle.heading")}</h2><p>${l.t("lifecycle.description")}</p><fieldset ?disabled=${disabled}><div class="actions"><button @click=${() => { if (this.hass) { const hass = this.hass; void this._mutate(() => plant.lifecycle_state === "active" ? api.disable(hass, plant.id, plant.revision) : api.reenable(hass, plant.id, plant.revision)); } }}>${plant.lifecycle_state === "active" ? l.t("lifecycle.disable") : l.t("lifecycle.reenable")}</button><button @click=${() => this._openDialog("delete")}>${l.t("lifecycle.delete")}</button></div></fieldset></section>` : nothing}
+       ${this._detailSection === "sensors" ? html`<section><h2>${l.t("moisture.heading")}</h2>${m && edit.moisture ? html`<p class="default-summary">${l.t("moisture.effective_summary", { thresholds: keys.map(k => `${thresholdKeyLabel(l, k)} ${l.percent(m.threshold_overrides[k] ?? this._defaults(plant)[k])}`).join(" · ") })}</p><fieldset ?disabled=${disabled}>${moistureEditor(l, edit.moisture, this._defaults(plant), this._entities, this._states, this._allSensors, v => this._allSensors = v, v => this._edit({ moisture: v }), "sources")}<details class="advanced-disclosure"><summary>${l.t("moisture.advanced_overrides")}</summary><p>${l.t("moisture.advanced_hint")}</p>${moistureEditor(l, edit.moisture, this._defaults(plant), this._entities, this._states, this._allSensors, v => this._allSensors = v, v => this._edit({ moisture: v }), "thresholds")}</details>${this._saveButton("moisture", l.t("moisture.save"))}</fieldset>` : html`<p class="error" role="alert">${l.t("moisture.incompatible")}</p>`}</section>${this._renderSensors(plant)}` : nothing}
        ${this._detailSection === "care" ? this._renderCare(plant) : nothing}
-       ${this._detailSection === "diagnostics" ? html`<section><h2>Native automations</h2><p>Use the plant's needs-water entity for notifications or reminders in Home Assistant. Dynamic/template references may not appear in related results.</p><a href="/config/automation/dashboard">Open automation editor</a><ul>${this._related.map(id => html`<li>${id}</li>`)}</ul></section>${this._renderOverallHealth(plant)}${this._renderDiagnostics(plant)}` : nothing}
+       ${this._detailSection === "diagnostics" ? html`<section><h2>${l.t("automations.heading")}</h2><p>${l.t("automations.description")}</p><a href="/config/automation/dashboard">${l.t("automations.open_editor")}</a><ul>${this._related.map(id => html`<li>${id}</li>`)}</ul></section>${this._renderOverallHealth(plant)}${this._renderDiagnostics(plant)}` : nothing}
        ${this._renderDialog()}`;
   }
   private async _created(e: CustomEvent<{ plant: PlantRecord; photo: File | null; navigationContext: number }>): Promise<void> {
@@ -1012,7 +997,8 @@ export class SmartPlantsPanel extends LitElement {
     const latest = this._plantById(plant.id);
     if (!latest || latest.revision <= plant.revision) this._plants = [...this._plants.filter(p => p.id !== plant.id), plant];
     this._createdPlantId = plant.id;
-    this._creationNotice = `${plant.name} created.${initialPhoto ? " Uploading its selected photo…" : photo ? " The plant changed after creation. The original wizard photo was not uploaded. Review its current photo in the plant detail and explicitly upload a photo if wanted." : ""}`;
+    const l = this._l; const created = l.t("created.notice", { name: plant.name }); const uploading = l.t("created.uploading");
+    this._creationNotice = initialPhoto ? `${created} ${uploading}` : photo ? `${created} ${l.t("created.photo_skipped")}` : created;
     if (foreground) this._show({ kind: "detail", plantId: plant.id });
     const photoContext = this._context;
     // Reconcile through reads without rebasing or clearing unrelated pending
@@ -1024,37 +1010,38 @@ export class SmartPlantsPanel extends LitElement {
       // state. Never use _mutate/_show here: either would couple background
       // creation to unrelated navigation or edits. Revision validation remains
       // authoritative if the new plant is edited while its upload is pending.
-      await validateImage(photo);
+      await validateImage(photo, l);
       if (!this.isConnected || this.hass?.connection !== hass.connection || this._blocked) return;
       const uploaded = await api.uploadImage(hass, plant.id, plant.revision, photo);
       if (!this.isConnected || this.hass?.connection !== hass.connection) return;
       // The still-current created-plant editor can adopt its own photo revision
       // while retaining dirty fields. Other contexts reconcile only via refresh.
       if (photoContext === this._context && this._base?.id === plant.id && this._base.revision === plant.revision && !this._formBusy && !this._conflict) this._rebaseEdits(this._base, uploaded);
-      if (this._createdPlantId === plant.id) this._creationNotice = `${plant.name} created. Selected photo uploaded.`;
+      if (this._createdPlantId === plant.id) this._creationNotice = `${created} ${l.t("created.photo_uploaded")}`;
     } catch (error) {
       if (!this.isConnected || this.hass?.connection !== hass.connection) return;
-      if (this._createdPlantId === plant.id) this._creationNotice = `${plant.name} created. Selected photo was not uploaded. Open the created plant to upload it again. ${this._friendly(error)}`;
+      if (this._createdPlantId === plant.id) this._creationNotice = `${created} ${l.t("created.photo_failed")} ${this._friendly(error)}`;
     } finally {
-      if (this._createdPlantId === plant.id && this._creationNotice.endsWith("Uploading its selected photo…")) this._creationNotice = `${plant.name} created. Photo upload interrupted. Open the created plant to check its photo before retrying.`;
+      if (this._createdPlantId === plant.id && this._creationNotice.endsWith(uploading)) this._creationNotice = `${created} ${l.t("created.photo_interrupted")}`;
     }
     await this._refresh(false);
   }
   protected render() {
-    if (this.hass?.user?.is_admin === false) return html`<main><div class="panel-content"><p role="alert">Smart Plants requires an admin account.</p></div></main>`;
-    const menuLabel = this.hass?.localize?.("ui.common.menu") || "Menu";
+    const l = this._l;
+    if (this.hass?.user?.is_admin === false) return html`<main><div class="panel-content"><p role="alert">${l.t("panel.admin_required")}</p></div></main>`;
+    const menuLabel = this.hass?.localize?.("ui.common.menu") || l.t("panel.menu");
     return html`<main><ha-top-app-bar-fixed class="panel-appbar" .narrow=${this.narrow}>
        <h1 slot="title" class="page-title" tabindex="-1">Smart Plants</h1>
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
          <ha-icon-button slot="trigger" .label=${menuLabel} .path=${MENU_ICON_PATH}></ha-icon-button>
-         ${this._view.kind !== "list" ? html`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>Back to overview</ha-dropdown-item>` : nothing}
-         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>Add plant<ha-svg-icon slot="icon" .path=${ADD_ICON_PATH}></ha-svg-icon></ha-dropdown-item>
+         ${this._view.kind !== "list" ? html`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${l.t("panel.back_to_overview")}</ha-dropdown-item>` : nothing}
+         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${l.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${ADD_ICON_PATH}></ha-svg-icon></ha-dropdown-item>
        </ha-dropdown>
-       <div class="panel-content">${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}${this._notice ? html`<p class="notice" role="status">${this._notice}</p>` : nothing}${this._registryError ? html`<p class="notice" role="alert">Registry/state data unavailable: ${this._registryError}. Reconnect before assigning registered sensors or areas.</p>` : nothing}
-      ${this._creationNotice ? html`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && !(this._view.kind === "detail" && this._view.plantId === this._createdPlantId) ? html`<button ?disabled=${this._formBusy} @click=${() => { if (this._createdPlantId) this._show({ kind: "detail", plantId: this._createdPlantId }); }}>Open created plant</button>` : nothing}` : nothing}
+       <div class="panel-content">${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}${this._notice ? html`<p class="notice" role="status">${this._notice}</p>` : nothing}${this._registryError ? html`<p class="notice" role="alert">${l.t("panel.registry_unavailable", { error: this._registryError })}</p>` : nothing}
+      ${this._creationNotice ? html`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && !(this._view.kind === "detail" && this._view.plantId === this._createdPlantId) ? html`<button ?disabled=${this._formBusy} @click=${() => { if (this._createdPlantId) this._show({ kind: "detail", plantId: this._createdPlantId }); }}>${l.t("panel.open_created")}</button>` : nothing}` : nothing}
       ${this._view.kind === "list" ? this._renderList() : this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : nothing}
       ${this._wizardStarted && this._capabilities ? html`<div ?hidden=${this._view.kind !== "create"}><smart-plants-wizard .hass=${this.hass} .capabilities=${this._capabilities} .areas=${this._areas} .entities=${this._entities} .states=${this._states} .blocked=${this._blocked} .navigationContext=${this._context} @plant-created=${(e: CustomEvent<{ plant: PlantRecord; photo: File | null; navigationContext: number }>) => void this._created(e)} @backend-unavailable=${(e: CustomEvent<string>) => { this._blocked = true; this._error = e.detail; }}></smart-plants-wizard></div>` : nothing}
-        <p role="status" aria-live="polite">${this._formBusy ? "Saving or loading preview…" : ""}</p></div></ha-top-app-bar-fixed></main>`;
+        <p role="status" aria-live="polite">${this._formBusy ? l.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
   }
 }
 // Keep SPA navigation and cache-busted bundle reloads idempotent: HA retains
