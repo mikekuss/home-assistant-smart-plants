@@ -760,8 +760,13 @@ export class SmartPlantsPanel extends LitElement {
         const saved = spec ? this._thresholdSaved[row.role] : "";
         // The <dt> names the row and the <dd> text carries the status; ARIA
         // prohibits aria-label on the definition role, so none is set here.
-        return html`<dt>${row.label}</dt><dd class=${"status-" + row.status}>${statusText(row.status)}${row.reason ? html` — ${row.reason}` : nothing}${thresholds.length ? html`<ul class="thresholds" aria-label=${l.t("section.effective_thresholds_label", { label: row.label })}>${thresholds.map(t => html`<li><span class="threshold-label">${t.label}</span>: <span class="threshold-value">${t.value === null ? "—" : `${l.number(t.value)} ${t.unit}`}</span></li>`)}</ul>` : nothing}${editable && spec ? html`<button class="threshold-toggle" type="button" aria-expanded=${editing ? "true" : "false"} aria-controls=${`${row.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(spec, plant)}>${editing ? l.t("section.advanced_diagnostics_cancel_edit") : l.t("section.advanced_diagnostics_edit_thresholds")}</button>${editing ? this._renderThresholdEditor(spec, plant) : nothing}${saved && !editing ? html`<p class="notice" role="status">${saved}</p>` : nothing}` : nothing}</dd>`;
+        return html`<dt>${row.label}</dt><dd class=${"status-" + row.status}>${statusText(row.status)}${row.reason ? html` — ${this._problemReason(row.reason)}` : nothing}${thresholds.length ? html`<ul class="thresholds" aria-label=${l.t("section.effective_thresholds_label", { label: row.label })}>${thresholds.map(t => html`<li><span class="threshold-label">${t.label}</span>: <span class="threshold-value">${t.value === null ? "—" : `${l.number(t.value)} ${t.unit}`}</span></li>`)}</ul>` : nothing}${editable && spec ? html`<button class="threshold-toggle" type="button" aria-expanded=${editing ? "true" : "false"} aria-controls=${`${row.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(spec, plant)}>${editing ? l.t("section.advanced_diagnostics_cancel_edit") : l.t("section.advanced_diagnostics_edit_thresholds")}</button>${editing ? this._renderThresholdEditor(spec, plant) : nothing}${saved && !editing ? html`<p class="notice" role="status">${saved}</p>` : nothing}` : nothing}</dd>`;
       })}</dl></section>`;
+  }
+  // Problem binaries report a reason code; unknown codes are shown verbatim.
+  private _problemReason(code: string): string {
+    const key = `problem_reason.${code}`;
+    return isMessageKey(key) ? this._l.t(key) : code;
   }
   private _persistedRoleOverrides(spec: ThresholdEditorSpec, plant: PlantRecord): Partial<Record<string, number | null>> | null {
     const raw = plant.roles?.[spec.configRole];
