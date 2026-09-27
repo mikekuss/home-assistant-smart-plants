@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- In the Advanced diagnostics section, each problem indicator's status no longer carries an
+  `aria-label`, which ARIA does not allow on definition-list values and which screen readers
+  announced inconsistently. Screen readers now read the indicator name followed by its visible
+  status text.
+
 ## [0.2.0] - 2026-09-27
 
 ### Changed
