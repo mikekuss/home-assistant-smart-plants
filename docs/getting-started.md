@@ -9,7 +9,7 @@ After you [add the integration](installation.md#add-the-integration), **Smart Pl
 appears in the Home Assistant sidebar (sprout icon). The panel is available to
 **administrator** accounts only; non-admin users don't see it.
 
-<!-- screenshot: panel overview with summary cards and plant list -->
+![Panel overview with summary cards, filters, and one card per plant](images/overview.png)
 
 The overview shows:
 
@@ -26,7 +26,7 @@ start the creation wizard. Select a plant's name to open its detail view.
 The wizard saves nothing until you confirm on the last step. You can move back and forth
 without losing your entries.
 
-<!-- screenshot: creation wizard, step 1 -->
+![Creation wizard, step 1: basic info](images/create-wizard.png)
 
 1. **Basic info** – Enter a name (required). Optionally add an acquired date, a Home
    Assistant area, a placement (indoor, outdoor, balcony, greenhouse, covered outdoor, or
@@ -48,6 +48,8 @@ without losing your entries.
 
 Smart Plants creates one Home Assistant device for the plant, with its moisture and health
 entities. If you selected a photo, it is uploaded right after the plant is created.
+
+![Plant detail view with the Overview tab, current soil moisture, moisture health, and assigned sensors](images/plant-detail.png)
 
 > [!TIP]
 > The default moisture aggregation is **primary**. With that setting, the plant only gets a

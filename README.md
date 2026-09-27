@@ -10,7 +10,7 @@ Manage your plants as first-class Home Assistant objects. Create plants from a g
 pick a species, link the sensors you already have, log care, and use each plant's health in
 native Home Assistant automations — no YAML or template sensors required.
 
-<!-- screenshot: overview panel -->
+![Smart Plants panel overview with summary cards and plant cards](docs/images/overview.png)
 
 > **Status:** early development (0.2). Expect rough edges and make sure your Home Assistant
 > backups include Smart Plants data (see [Installation](docs/installation.md#backup-and-restore)).
