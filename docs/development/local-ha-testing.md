@@ -81,6 +81,22 @@ Bash: `ha-reset.sh`, `ha-up.sh --expose`, `ha-down.sh`, `ha-seed-from-runtime.sh
 
 The regen script curates which `.storage/` keys ship in the seed (identity, auth, integration, layout) and strips `.storage/auth.data.refresh_tokens` so no long-lived session token lands in git. If HA adds a new key that belongs in the seed, extend the `StorageKeep` / `storage_keep` list in both scripts.
 
+### Seed Guard
+
+Both regen scripts copy the curated files into a temporary staging directory and run `scripts/seed_guard.py` on it. They need Python 3 (`python3` for bash; `py -3`, `python`, or `python3` for PowerShell). The committed seed is replaced only when the guard passes. Otherwise the script prints `Refusing to write the seed:` with one line per problem, leaves `dev/ha-config-seed/` untouched, and exits non-zero.
+
+The guard first refuses any copied file that starts with a UTF-8 byte order mark. Home Assistant 2026.9 and newer cannot decode such a storage file and moves it aside on boot, which loses the pre-onboarded login. It then strips refresh tokens from `auth`, writes `auth` back as UTF-8 without BOM and with LF line endings, and compares the result with the seed committed at `git HEAD`. It refuses the seed when:
+
+- `auth` still contains any refresh token.
+- The owner's password hash in `auth_provider.homeassistant` differs from the committed seed. Onboard with `admin` / `admin` (or reset the owner password to it) before regenerating.
+- The `smart_plants` config entry has non-empty `data` or `options`.
+- A device in `core.device_registry` (including `deleted_devices`) has `connections` such as MAC addresses, has a serial number, or belongs to an integration that has no config entry in the committed seed.
+- `core.area_registry` contains an area that the committed seed does not.
+
+Every other file is copied byte for byte; neither script re-encodes JSON itself. If a deliberate seed change trips the guard (for example a new demo area), add it to the committed seed by hand in a reviewed commit first so it becomes the baseline, or extend the guard with a test in `tests/test_seed_guard.py`.
+
+To check a staging directory by hand, run `python3 scripts/seed_guard.py <dir>`, where `<dir>` has the same layout as `dev/ha-config-seed/` (a `.storage/` folder and optionally `.HA_VERSION`). `--baseline-dir <seed dir>` compares against a directory instead of `git HEAD`. The guard strips refresh tokens in place in that directory.
+
 Never broad-stage the seed. Stage only explicit reviewed paths; `.gitignore`
 deny-lists every non-allowlisted generated `.storage` key.
 

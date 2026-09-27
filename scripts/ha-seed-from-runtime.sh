@@ -15,6 +15,10 @@
 # and refresh tokens so no long-lived credential ships in git. The password
 # for the seeded owner (admin / admin) is loopback-only per docker-compose.ha.yml
 # and documented in docs/development/local-ha-testing.md.
+#
+# Files are copied into a staging directory first and checked by
+# scripts/seed_guard.py. The committed seed is only replaced when the guard
+# passes; otherwise the script exits non-zero and lists every problem.
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -32,10 +36,10 @@ if [[ -f "$runtime/.ha_run.lock" ]]; then
   exit 1
 fi
 
-# Requires python3 (present in requirements-dev.txt) for the token-stripping
-# post-process on the auth blob.
+# Requires python3 (present in requirements-dev.txt) for the seed guard, which
+# strips refresh tokens and validates the staged files.
 if ! command -v python3 >/dev/null 2>&1; then
-  echo "python3 required to strip refresh tokens from seeded auth." >&2
+  echo "python3 required to run scripts/seed_guard.py." >&2
   exit 1
 fi
 
@@ -56,29 +60,35 @@ storage_keep=(
   lovelace.map
 )
 
-rm -rf "$seed/.storage"
-mkdir -p "$seed/.storage"
+staging=$(mktemp -d "${TMPDIR:-/tmp}/ha-seed.XXXXXX")
+trap 'rm -rf "$staging"' EXIT
+mkdir -p "$staging/.storage"
 
 for k in "${storage_keep[@]}"; do
   if [[ -f "$runtime/.storage/$k" ]]; then
-    cp "$runtime/.storage/$k" "$seed/.storage/$k"
+    cp "$runtime/.storage/$k" "$staging/.storage/$k"
   else
     echo "  skip (not present in runtime): $k"
   fi
 done
 
 if [[ -f "$runtime/.HA_VERSION" ]]; then
-  cp "$runtime/.HA_VERSION" "$seed/.HA_VERSION"
+  cp "$runtime/.HA_VERSION" "$staging/.HA_VERSION"
 fi
 
-python3 - <<'PY'
-import json, pathlib
-p = pathlib.Path("dev/ha-config-seed/.storage/auth")
-if p.exists():
-    data = json.loads(p.read_text())
-    data["data"]["refresh_tokens"] = []
-    p.write_text(json.dumps(data, indent=4))
-PY
+# Strips refresh tokens, rewrites auth as UTF-8 without BOM, and refuses the
+# seed on any privacy or login problem. The committed seed stays untouched
+# when it fails.
+if ! python3 scripts/seed_guard.py "$staging"; then
+  echo "Seed NOT written; $seed is unchanged." >&2
+  exit 1
+fi
+
+rm -rf "$seed/.storage"
+cp -R "$staging/.storage" "$seed/.storage"
+if [[ -f "$staging/.HA_VERSION" ]]; then
+  cp "$staging/.HA_VERSION" "$seed/.HA_VERSION"
+fi
 
 echo
 echo "Seed regenerated at: $seed"
