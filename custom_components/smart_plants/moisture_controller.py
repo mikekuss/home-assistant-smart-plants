@@ -77,6 +77,11 @@ class MoisturePlantController:
         return self._evaluation
 
     @property
+    def last_valid_at(self) -> datetime | None:
+        """Most recent valid reading across this role's sources, if any."""
+        return self._tracker.last_valid_at
+
+    @property
     def config(self) -> MoistureConfig:
         return self._config
 

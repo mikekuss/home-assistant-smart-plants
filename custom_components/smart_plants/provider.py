@@ -381,6 +381,7 @@ class SpeciesProviderService:
         confirmed: bool,
         moisture: Mapping[str, Any],
         accepted_preview: Mapping[str, Any] | None = None,
+        roles: Mapping[str, Any] | None = None,
         **fields: Any,
     ) -> PlantRecord:
         """Confirm once; the durable plant identity is the creation receipt."""
@@ -420,6 +421,7 @@ class SpeciesProviderService:
                 **fields,
                 _wizard=(draft_id, draft_token),
                 _moisture=moisture,
+                _roles=roles,
                 _accepted_provider=pending is not None,
             )
             if accepted_preview is not None:

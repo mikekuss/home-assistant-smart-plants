@@ -57,6 +57,11 @@ class SoilTemperaturePlantController:
     def current_evaluation(self) -> SoilTemperatureEvaluation:
         return self._evaluation
 
+    @property
+    def last_valid_at(self) -> datetime | None:
+        """Most recent valid reading across this role's sources, if any."""
+        return self._tracker.last_valid_at
+
     def add_listener(self, callback_fn: Callable[[], None]) -> Callable[[], None]:
         self._listeners.append(callback_fn)
 
