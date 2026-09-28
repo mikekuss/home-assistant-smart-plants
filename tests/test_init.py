@@ -522,7 +522,7 @@ async def test_stale_manager_reference_after_reload_is_rejected(
     """
     Stale manager reference must reject mutations after a reload.
 
-    F4: A caller that kept a reference to the old manager across an unload
+    A caller that kept a reference to the old manager across an unload
     plus reload cycle would otherwise be able to write behind the fresh
     manager's back into a store the new manager now owns.
     """
@@ -554,7 +554,7 @@ async def test_removal_after_unload_does_not_resurrect_from_stale_manager(
     """
     Removal after unload must not be resurrected by a stale reference.
 
-    F4: If async_unload correctly marks the manager unavailable, a stale
+    If async_unload correctly marks the manager unavailable, a stale
     reference that later tries to mutate cannot race the removal path
     into recreating the deleted storage.
     """

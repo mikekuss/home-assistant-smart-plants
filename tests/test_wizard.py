@@ -59,9 +59,9 @@ def _production_entity_role_count() -> int:
 
 
 def _moisture_entity_role_count() -> int:
-    # Under the entity-lifecycle contract only always-present (moisture) role
-    # entities exist for a plant whose only configured role is moisture. The
-    # seven Phase 7 roles create entities lazily once they have a source.
+    # Only always-present (moisture) role entities exist for a plant whose
+    # only configured role is moisture. The seven non-moisture roles create
+    # entities lazily once they have a source.
     return sum(
         1
         for platform in ("sensor", "binary_sensor", "number")
@@ -688,7 +688,9 @@ async def test_full_ws_create_area_entities_and_restart_replay(
     device = plant_device(dr.async_get(hass), plant["id"])
     assert device is not None
     assert device.area_id == area.id
-    entities = er.async_entries_for_device(er.async_get(hass), device.id)
+    entities = er.async_entries_for_device(
+        er.async_get(hass), device.id, include_disabled_entities=True
+    )
     assert len(entities) == _moisture_entity_role_count()
     assert await hass.config_entries.async_unload(entry.entry_id)
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -698,7 +700,11 @@ async def test_full_ws_create_area_entities_and_restart_replay(
     assert replay["result"]["plant"] == plant
     assert len(entry.runtime_data.manager.list_plants()) == 1
     assert (
-        len(er.async_entries_for_device(er.async_get(hass), device.id))
+        len(
+            er.async_entries_for_device(
+                er.async_get(hass), device.id, include_disabled_entities=True
+            )
+        )
         == _moisture_entity_role_count()
     )
 

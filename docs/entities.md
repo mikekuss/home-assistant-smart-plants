@@ -11,7 +11,7 @@ its entity history.
 | --- | --- |
 | Name | The plant name. Renaming the plant in the panel renames the device. |
 | Manufacturer | Smart Plants |
-| Model | Manual Plant |
+| Model | The species name (common name, or the Latin name if there is no common name) when a species is set, otherwise *Plant*. It follows species changes. |
 | Area | Set in the creation wizard, the panel, or the device page. |
 
 You can change the device's name, area, and labels on the Home Assistant device page as
@@ -44,8 +44,9 @@ automations. You can rename entity IDs in Home Assistant like any other entity.
   role. If you later remove all sources, the entities stay (and read unavailable) so their
   history and your customizations are kept.
 
-All entities are enabled by default. Deleting a plant removes its device and all of its
-entities.
+All entities are enabled by default, except the three moisture number entities, which are
+created disabled (see [Number entities](#number-entities)). Deleting a plant removes its device
+and all of its entities.
 
 ## Sensors
 
@@ -97,6 +98,16 @@ assigned moisture sensor is stale.
 | Moisture minimum | Always | % | 1–99, step 1 | Configuration |
 | Moisture target | Always | % | 1–99, step 1 | Configuration |
 | Moisture maximum | Always | % | 1–99, step 1 | Configuration |
+
+These entities are **disabled by default**. You don't need them to edit thresholds: the panel
+edits them directly, and health detection works the same whether they are enabled or not.
+Enable them if you want to read or change a threshold from an automation or a dashboard: open
+the plant's device page, expand the hidden entities in the **Configuration** card, select the
+entity, open its settings (cog icon), and turn on **Enabled**. You can also find them under
+**Settings → Devices & services → Entities** with the disabled-entities filter. Home Assistant
+adds the entity after a short delay.
+
+Plants created before this default was introduced keep their number entities enabled.
 
 These show the effective moisture thresholds. Setting a value stores it as a per-plant
 override, the same as editing it in the panel. A value that would break

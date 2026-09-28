@@ -32,7 +32,7 @@ REQUIRED_FILES = [
     "diagnostics.py",
     "strings.json",
     "translations/en.json",
-    # Cut 3 frontend surface. The panel and WS API modules must ship
+    # Frontend surface. The panel and WS API modules must ship
     # in-tree, and the shipped bundle (produced by frontend/) must exist
     # so a HACS install can serve the panel without a Node toolchain.
     "panel.py",
@@ -40,16 +40,16 @@ REQUIRED_FILES = [
     "frontend/smart-plants-panel.js",
     # The bundle includes BSD-3-Clause Lit, whose license text must ship with it.
     "frontend/THIRD_PARTY_LICENSES.txt",
-    # Phase 3 entity lifecycle: shared base + three forwarded platforms.
-    # Even in Cut 1 the platforms are wired for lifecycle machinery, so
-    # a HACS install missing any of these files would fail entry setup.
+    # Entity lifecycle: shared base + three forwarded platforms. Setup
+    # forwards all three platforms, so a HACS install missing any of these
+    # files would fail entry setup.
     "entity.py",
     "events.py",
     "sensor.py",
     "binary_sensor.py",
     "number.py",
-    # Phase 4 vertical slice: moisture evaluator, controller and repair
-    # monitor. All three are required so a HACS install starts up with
+    # Moisture role: evaluator, controller, source tracker and repair
+    # monitor. All of them are required so a HACS install starts up with
     # every moisture-role dependency in place.
     "moisture_evaluator.py",
     "moisture_controller.py",

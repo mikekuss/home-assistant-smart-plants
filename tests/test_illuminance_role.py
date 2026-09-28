@@ -76,7 +76,7 @@ async def test_illuminance_entity_metadata_and_state(hass: HomeAssistant) -> Non
     await hass.async_block_till_done()
 
     registry = er.async_get(hass)
-    # Entity-lifecycle contract: no computed entity until the role has a source.
+    # Lazy entity creation: no computed entity until the role has a source.
     assert (
         registry.async_get_entity_id(
             "sensor", DOMAIN, f"{DOMAIN}:{plant.id}:illuminance"
@@ -131,7 +131,7 @@ async def test_low_light_entity_metadata_and_daytime_state(
     assert not controller._light_samples
 
     registry = er.async_get(hass)
-    # Entity-lifecycle contract: no problem binary until the role has a source.
+    # Lazy entity creation: no problem binary until the role has a source.
     assert (
         registry.async_get_entity_id(
             "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:low_light"

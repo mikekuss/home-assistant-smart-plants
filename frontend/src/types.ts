@@ -150,7 +150,7 @@ export interface RoleMetadata {
   }>;
 }
 
-// Home Assistant Panel API contract for a custom lovelace panel. Only the
+// Home Assistant Panel API object for a custom lovelace panel. Only the
 // bits we actually use are typed; the runtime object HA hands us has many
 // more fields.
 export interface HomeAssistantLike {

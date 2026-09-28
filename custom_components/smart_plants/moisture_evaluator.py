@@ -1,13 +1,13 @@
 """
-Phase 4 Cut 2: pure moisture evaluation.
+Pure moisture evaluation.
 
 This module owns the *logic* of turning a plant's moisture config plus a
 snapshot of source-state readings into a typed evaluation. It performs
 no I/O and holds no state beyond what the caller passes in. Availability
-reasons are surfaced explicitly so the entities in Cut 3 can go
+reasons are surfaced explicitly so the moisture entities can go
 unavailable rather than emit synthetic healthy/off values.
 
-Design contract:
+Design rules:
 
 * Normalization: only accept numeric percent values in 0..100 with a
     unit of ``%``. Unitless, ``STATE_UNAVAILABLE``, ``STATE_UNKNOWN``, non-numeric,
@@ -24,7 +24,7 @@ Design contract:
 * Hysteresis: ``needs_water`` on when computed_percent < min, and off
   when it reaches min+2 (previously on). ``too_wet`` on when
   computed_percent > max, off at max-2. Exact boundary equality is
-  documented in the return contract's unit tests.
+  pinned by the evaluator's unit tests.
 """
 
 from __future__ import annotations
@@ -195,7 +195,7 @@ def evaluate(  # noqa: PLR0913, PLR0912, PLR0915
         reading = readings.get(stable_key)
         if reading is None:
             # Registered source missing from HA (never returned a state
-            # snapshot); the phase spec flags this as stale immediately.
+            # snapshot) counts as stale immediately.
             stale_any = True
             reasons.append(f"missing:{src.entity_id}")
             continue

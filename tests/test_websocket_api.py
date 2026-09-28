@@ -466,7 +466,7 @@ async def test_species_search_maps_malformed_provider_field(
     }
 
 
-async def test_synthetic_provider_websocket_search_preview_apply_contract(
+async def test_synthetic_provider_websocket_search_preview_apply_flow(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator
 ) -> None:
     entry = await _setup(hass)

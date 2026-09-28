@@ -1,7 +1,7 @@
 """
 Smart Plants ``binary_sensor`` platform.
 
-Phase 4 Cut 3 populates ``ROLE_FACTORIES`` with:
+``ROLE_FACTORIES`` holds the moisture-role binary sensors:
 
 * ``needs_water`` — on below ``moisture_min``, off at ``min+2``.
 * ``too_wet`` — on above ``moisture_max``, off at ``max-2``.

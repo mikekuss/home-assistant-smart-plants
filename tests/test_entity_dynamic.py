@@ -1,5 +1,5 @@
 """
-Dynamic entity lifecycle end-to-end (Phase 3 Cut 2).
+Dynamic entity lifecycle end-to-end.
 
 Exercises the full Home Assistant flow: real config-entry setup,
 real entity_platform forwarding, real entity_registry / device_registry
@@ -47,7 +47,7 @@ class _SyntheticSensor(sensor_module.SmartPlantsSensorEntity):
     Test-only sensor exposing a constant value.
 
     Kept trivial: the goal is exercising the shared lifecycle, not
-    validating any Phase 4 computation.
+    validating any role computation.
     """
 
     _attr_native_value = 42
@@ -97,9 +97,9 @@ async def _configure_all_gated_sources(
     manager: SmartPlantsManager, plant_id: str
 ) -> None:
     """
-    Give every Phase 7 role a source so all production entities are created.
+    Give every non-moisture role a source so all production entities are created.
 
-    Under the entity-lifecycle contract a role's entities exist only once it has
+    A non-moisture role's entities exist only once it has
     had a source, so these lifecycle-mechanics tests configure every role to
     exercise the full production entity set.
     """
@@ -375,8 +375,8 @@ async def test_delete_removes_runtime_entity_before_registry_cleanup(
     await manager.async_delete_plant(plant.id, expected_revision=1)
     await hass.async_block_till_done()
 
-    # Runtime object is gone; registry state is Cut 3 territory and is
-    # NOT verified here.
+    # Runtime object is gone; registry cleanup is covered by
+    # test_entity_delete.py and is NOT verified here.
     assert manager.entities_for_plant_on_platform("sensor", plant.id) == ()
 
 

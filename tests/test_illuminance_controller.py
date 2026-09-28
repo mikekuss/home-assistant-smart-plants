@@ -1,4 +1,4 @@
-"""Day/night edge scheduling for the illuminance controller (Phase 7 step 4b)."""
+"""Day/night edge scheduling for the illuminance controller."""
 
 from __future__ import annotations
 
