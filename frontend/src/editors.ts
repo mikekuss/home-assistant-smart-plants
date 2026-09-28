@@ -34,9 +34,18 @@ function candidateLabel(l: Localizer, id: string, states: Record<string, HAState
   const state = states[id]; const notSupplied = l.t("sources.not_supplied_lower");
   return l.t("sources.candidate", { name: typeof state?.attributes.friendly_name === "string" ? state.attributes.friendly_name : id, entity_id: id, unit: String(state?.attributes.unit_of_measurement ?? notSupplied), device_class: String(state?.attributes.device_class ?? notSupplied), state: state?.state ?? l.t("sources.unavailable_lower") });
 }
+// Which part of a sensor editor to show: everything, only the assigned sensor
+// list with its pickers, or only how several sensors combine (main sensor,
+// combination and the not-updating window).
+export type SourcesPart = "all" | "pick" | "combine";
 // Shared assigned-source list, primary/aggregation/staleness controls for moisture and generic roles.
-function sourcesControls<T extends MoistureInput | RoleSourceInput>(l: Localizer, c: T, entities: HAEntity[], states: Record<string, HAState>, all: boolean, setAll: (v: boolean) => void, patch: (part: Partial<T>) => void, intro: string, addLabel: string, placeholder: string, candidates: string[], warning: (s: T["sources"][number]) => string) {
+function sourcesControls<T extends MoistureInput | RoleSourceInput>(l: Localizer, c: T, entities: HAEntity[], states: Record<string, HAState>, all: boolean, setAll: (v: boolean) => void, patch: (part: Partial<T>) => void, intro: string, addLabel: string, placeholder: string, candidates: string[], warning: (s: T["sources"][number]) => string, part: SourcesPart = "all") {
   const notSupplied = l.t("common.not_supplied");
+  const combine = html`
+    ${selectField(l, l.t("sources.primary"), c.primary_entity_id ?? "", [{ value: "", label: l.t("sources.primary_none") }, ...c.sources.map(s => ({ value: s.entity_id, label: resolveSource(s, entities)?.entity_id ?? s.entity_id }))], v => patch({ primary_entity_id: v || null } as Partial<T>))}
+    ${selectField(l, l.t("sources.aggregation"), c.aggregation, ["primary", "average", "min", "max"].map(v => ({ value: v, label: aggregationLabel(l, v) })), v => patch({ aggregation: v } as Partial<T>))}
+    ${textField(l.t("sources.stale_after"), String(c.stale_after_seconds), v => patch({ stale_after_seconds: Number(v) } as Partial<T>), "number")}`;
+  if (part === "combine") return combine;
   return html`
     <p>${intro}</p>
     <label class="check"><input type="checkbox" .checked=${all} @change=${(e: Event) => setAll((e.target as HTMLInputElement).checked)}>${l.t("sources.show_all")}</label>
@@ -51,24 +60,23 @@ function sourcesControls<T extends MoistureInput | RoleSourceInput>(l: Localizer
       return html`<li><strong>${entry?.entity_id ?? s.entity_id}</strong><p>${current?.state ?? l.t("sources.unavailable")} ${current?.attributes.unit_of_measurement ?? ""}${s.entity_id === c.primary_entity_id ? l.t("sources.primary_suffix") : ""}</p><p>${l.t("sources.metadata", { device_class: String(current?.attributes.device_class ?? notSupplied), unit: String(current?.attributes.unit_of_measurement ?? notSupplied), registration: entry ? l.t("sources.registered") : l.t("sources.not_registered") })}</p><small>${warning(s)}</small>${entry ? html`<a href="/config/entities/entity/${encodeURIComponent(entry.id)}">${l.t("sources.native_settings")}</a>` : nothing}<button type="button" @click=${() => patch({ sources: c.sources.filter(v => v !== s), primary_entity_id: c.primary_entity_id === s.entity_id ? null : c.primary_entity_id } as Partial<T>)}>${l.t("sources.remove", { entity_id: s.entity_id })}</button></li>`;
     })}</ul>
     ${c.sources.some(s => s.registry_id && !resolveSource(s, entities)) ? html`<a href="/config/repairs">${l.t("sources.open_repairs")}</a>` : nothing}
-    ${selectField(l, l.t("sources.primary"), c.primary_entity_id ?? "", [{ value: "", label: l.t("sources.primary_none") }, ...c.sources.map(s => ({ value: s.entity_id, label: resolveSource(s, entities)?.entity_id ?? s.entity_id }))], v => patch({ primary_entity_id: v || null } as Partial<T>))}
-    ${selectField(l, l.t("sources.aggregation"), c.aggregation, ["primary", "average", "min", "max"].map(v => ({ value: v, label: aggregationLabel(l, v) })), v => patch({ aggregation: v } as Partial<T>))}
-    ${textField(l.t("sources.stale_after"), String(c.stale_after_seconds), v => patch({ stale_after_seconds: Number(v) } as Partial<T>), "number")}`;
+    ${part === "all" ? combine : nothing}`;
 }
-export function moistureEditor(l: Localizer, m: MoistureInput, defaults: typeof builtin, entities: HAEntity[], states: Record<string, HAState>, all: boolean, setAll: (v: boolean) => void, change: (m: MoistureInput) => void, section: "sources" | "thresholds" | "all" = "all") {
+export function moistureEditor(l: Localizer, m: MoistureInput, defaults: typeof builtin, entities: HAEntity[], states: Record<string, HAState>, all: boolean, setAll: (v: boolean) => void, change: (m: MoistureInput) => void, section: "sources" | "thresholds" | "all" | "pick" | "combine" = "all") {
   const patch = (part: Partial<MoistureInput>) => change({ ...m, ...part });
   const candidates = [...new Set([...entities.map(e => e.entity_id), ...Object.keys(states)])].filter(id => id.startsWith("sensor.") && (all || states[id]?.attributes.device_class === "moisture")).sort();
-  return html`${section !== "thresholds" ? sourcesControls(l, m, entities, states, all, setAll, patch, l.t("moisture.sources_intro"), l.t("moisture.add_sensor"), "sensor.soil_moisture", candidates, s => sourceWarning(s, entities, states, l)) : nothing}
-    ${section !== "sources" ? html`<p>${l.t("moisture.overrides_intro")}</p><div class="grid">${keys.map(k => html`<div>${textField(l.t("moisture.override_label", { key: thresholdKeyLabel(l, k) }), m.threshold_overrides[k] === null ? "" : String(m.threshold_overrides[k]), v => patch({ threshold_overrides: { ...m.threshold_overrides, [k]: v.trim() === "" ? null : Number(v) } }), "number")}<small>${l.t("moisture.default_effective", { default: l.percent(defaults[k]), effective: l.percent(m.threshold_overrides[k] ?? defaults[k]) })}</small><button type="button" @click=${() => patch({ threshold_overrides: { ...m.threshold_overrides, [k]: null } })}>${l.t("moisture.inherit_key", { key: thresholdKeyLabel(l, k) })}</button></div>`)}</div>` : nothing}`;
+  const sourcesPart: SourcesPart = section === "pick" || section === "combine" ? section : "all";
+  return html`${section !== "thresholds" ? sourcesControls(l, m, entities, states, all, setAll, patch, l.t("moisture.sources_intro"), l.t("moisture.add_sensor"), "sensor.soil_moisture", candidates, s => sourceWarning(s, entities, states, l), sourcesPart) : nothing}
+    ${section === "thresholds" || section === "all" ? html`<p>${l.t("moisture.overrides_intro")}</p><div class="grid">${keys.map(k => html`<div>${textField(l.t("moisture.override_label", { key: thresholdKeyLabel(l, k) }), m.threshold_overrides[k] === null ? "" : String(m.threshold_overrides[k]), v => patch({ threshold_overrides: { ...m.threshold_overrides, [k]: v.trim() === "" ? null : Number(v) } }), "number")}<small>${l.t("moisture.default_effective", { default: l.percent(defaults[k]), effective: l.percent(m.threshold_overrides[k] ?? defaults[k]) })}</small><button type="button" @click=${() => patch({ threshold_overrides: { ...m.threshold_overrides, [k]: null } })}>${l.t("moisture.inherit_key", { key: thresholdKeyLabel(l, k) })}</button></div>`)}</div>` : nothing}`;
 }
 // Generic per-role source editor for the Sensors section. Mirrors the source
 // portion of moistureEditor but filters candidates and warns using the role's
 // own device_class / accepted units (spec). Threshold editing is separate.
-export function roleSourcesEditor(l: Localizer, spec: RoleSourceSpec, c: RoleSourceInput, entities: HAEntity[], states: Record<string, HAState>, all: boolean, setAll: (v: boolean) => void, change: (c: RoleSourceInput) => void) {
+export function roleSourcesEditor(l: Localizer, spec: RoleSourceSpec, c: RoleSourceInput, entities: HAEntity[], states: Record<string, HAState>, all: boolean, setAll: (v: boolean) => void, change: (c: RoleSourceInput) => void, part: SourcesPart = "all") {
   const patch = (part: Partial<RoleSourceInput>) => change({ ...c, ...part });
   const candidates = [...new Set([...entities.map(e => e.entity_id), ...Object.keys(states)])].filter(id => id.startsWith("sensor.") && (all || (states[id]?.attributes.device_class === spec.deviceClass && typeof states[id]?.attributes.unit_of_measurement === "string" && spec.acceptedUnits.includes(states[id]?.attributes.unit_of_measurement as string)))).sort();
   const role = rolePhrase(spec.role, l);
-  return sourcesControls(l, c, entities, states, all, setAll, patch, l.t("sources.role_intro", { role }), l.t("sources.add_role_sensor", { role }), `sensor.${spec.role}`, candidates, s => roleSourceWarning(s, entities, states, spec, l));
+  return sourcesControls(l, c, entities, states, all, setAll, patch, l.t("sources.role_intro", { role }), l.t("sources.add_role_sensor", { role }), `sensor.${spec.role}`, candidates, s => roleSourceWarning(s, entities, states, spec, l), part);
 }
 export function snapshotView(l: Localizer, snapshot: SpeciesSnapshot, preview?: SpeciesPreview) {
   const notSupplied = l.t("common.not_supplied");

@@ -94,14 +94,14 @@ out of the health score.
 
 | Role | Turns on | Turns off | Where to edit |
 | --- | --- | --- | --- |
-| Soil moisture | below 15 % (minimum); above 55 % (maximum); target 35 % | minimum + 2; maximum − 2 | Sensors tab or the number entities |
-| Air temperature | ≤ 10 °C (cold) or ≥ 35 °C (hot) | ≥ 12 °C; ≤ 32 °C | Diagnostics tab |
-| Air humidity | ≤ 25 % (dry) or ≥ 85 % (damp) | ≥ 30 %; ≤ 80 % | Diagnostics tab |
-| Illuminance | brightest recent daytime reading < 500 lx | ≥ 700 lx | Diagnostics tab |
-| Conductivity | ≤ 350 µS/cm (low) or ≥ 2000 µS/cm (high) | ≥ 500; ≤ 1800 µS/cm | Diagnostics tab |
-| Soil temperature | ≤ 10 °C (cold) or ≥ 35 °C (hot) | ≥ 12 °C; ≤ 32 °C | Diagnostics tab |
-| CO₂ | ≥ 5000 ppm | ≤ 4000 ppm | Diagnostics tab |
-| Battery | ≤ 20 % | ≥ 25 % | Diagnostics tab |
+| Soil moisture | below 15 % (minimum); above 55 % (maximum); target 35 % | minimum + 2; maximum − 2 | Settings tab (Soil moisture targets) or the number entities |
+| Air temperature | ≤ 10 °C (cold) or ≥ 35 °C (hot) | ≥ 12 °C; ≤ 32 °C | Settings tab (Other targets) |
+| Air humidity | ≤ 25 % (dry) or ≥ 85 % (damp) | ≥ 30 %; ≤ 80 % | Settings tab (Other targets) |
+| Illuminance | brightest recent daytime reading < 500 lx | ≥ 700 lx | Settings tab (Other targets) |
+| Conductivity | ≤ 350 µS/cm (low) or ≥ 2000 µS/cm (high) | ≥ 500; ≤ 1800 µS/cm | Settings tab (Other targets) |
+| Soil temperature | ≤ 10 °C (cold) or ≥ 35 °C (hot) | ≥ 12 °C; ≤ 32 °C | Settings tab (Other targets) |
+| CO₂ | ≥ 5000 ppm | ≤ 4000 ppm | Settings tab (Other targets) |
+| Battery | ≤ 20 % | ≥ 25 % | Settings tab (Other targets) |
 
 All thresholds are editable per plant. An override applies only to that plant; clearing it
 returns to the default. Moisture thresholds must be whole numbers with

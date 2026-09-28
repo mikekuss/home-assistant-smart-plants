@@ -40,8 +40,8 @@ secret.
 With the provider enabled, you can search OpenPlantBook in two places:
 
 - In the creation wizard, choose **Search OpenPlantBook** in the *Species and care* step.
-- For an existing plant, in the **Plant details** tab under **Species**, choose
-  *openplantbook* as the species provider and search.
+- For an existing plant, in the **Settings** tab under **Species** (**Find species** or
+  **Change species**), choose *OpenPlantBook* as the species provider and search.
 
 Type at least three characters. The search uses your Home Assistant language. Selecting a
 result opens a **read-only preview** that shows:

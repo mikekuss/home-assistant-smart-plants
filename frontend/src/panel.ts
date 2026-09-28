@@ -3,11 +3,18 @@ import { property, state } from "lit/decorators.js";
 import type { PropertyValues } from "lit";
 import { api, ApiError } from "./api.js";
 import type { UpdatePlantInput } from "./api.js";
-import { aggregationLabel, areaEditor, moistureEditor, placementEditor, roleSourcesEditor, selectField, snapshotView, textField, thresholdKeyLabel } from "./editors.js";
+import { aggregationLabel, areaEditor, moistureEditor, placementEditor, placementLabel, roleSourcesEditor, selectField, snapshotView, textField } from "./editors.js";
 import { createLocalizer, isMessageKey } from "./localize.js";
 import type { Localizer, MessageKey } from "./localize.js";
-import { CO2_STRESS_BUILTIN_DEFAULTS, CO2_STRESS_KEYS, CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, CONDUCTIVITY_STRESS_KEYS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_KEYS, LOW_BATTERY_STRESS_BUILTIN_DEFAULTS, LOW_BATTERY_STRESS_KEYS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_KEYS, SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, SOIL_TEMPERATURE_STRESS_KEYS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_KEYS, builtin, canonicalMoisture, co2StressInput, conductivityStressInput, confidenceGloss, confidenceLabel, contributorLabel, effectiveThresholds, humidityStressInput, keys, lowBatteryInput, lowLightInput, manualSpecies, moistureInput, moistureRole, plantDevice, problemBinaries, resolveSource, roleLabel, rolePhrase, roleSourceConfig, roleSourceInput, roleSourceSpec, ROLE_SOURCE_SPECS, canonicalRoleSources, validateRoleSources, soilTemperatureStressInput, tags, temperatureStressInput, validateCo2StressOverrides, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowBatteryOverrides, validateLowLightOverrides, validateMoisture, validateSoilTemperatureStressOverrides, validateTaxonomy, validateTemperatureStressOverrides } from "./model.js";
+import { CO2_STRESS_BUILTIN_DEFAULTS, CO2_STRESS_KEYS, CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, CONDUCTIVITY_STRESS_KEYS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_KEYS, LOW_BATTERY_STRESS_BUILTIN_DEFAULTS, LOW_BATTERY_STRESS_KEYS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_KEYS, SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, SOIL_TEMPERATURE_STRESS_KEYS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_KEYS, builtin, canonicalMoisture, co2StressInput, conductivityStressInput, confidenceGloss, confidenceLabel, contributorLabel, effectiveThresholds, humidityStressInput, keys, lowBatteryInput, lowLightInput, manualSpecies, moistureInput, moistureRole, plantDevice, problemBinaries, resolveSource, roleSourceConfig, roleSourceInput, roleSourceSpec, ROLE_SOURCE_SPECS, canonicalRoleSources, validateRoleSources, soilTemperatureStressInput, tags, temperatureStressInput, validateCo2StressOverrides, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowBatteryOverrides, validateLowLightOverrides, validateMoisture, validateSoilTemperatureStressOverrides, validateTaxonomy, validateTemperatureStressOverrides } from "./model.js";
 import type { ProblemBinaryRole, SourceRole } from "./model.js";
+import "./components/index.js";
+import { themeFallbacks } from "./components/shared-styles.js";
+import { isDefined } from "./ha-elements.js";
+import { chipText } from "./overview-model.js";
+import { ROLE_META, formatValue, readingLabel, relativeTime } from "./status.js";
+import { CARE_ICONS, CARE_KINDS, DETAIL_SECTIONS, SECTION_LABELS, careDetails, expander, formatDuration, friendlyName, headerReason, readingPhrase, plantStyles, readingsInOrder, renderKeyReadings, renderReadingRow } from "./views/plant.js";
+import type { DetailSection } from "./views/plant.js";
 
 // Per-role editable-threshold configuration. Adding a role here + wiring
 // _persistedOverrides + validator + seeder registers a reviewed editor.
@@ -106,6 +113,12 @@ const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
 const _EDITOR_BY_PROBLEM_ROLE: Record<string, ThresholdEditorSpec> = Object.fromEntries(THRESHOLD_EDITORS.map(spec => [spec.problemRole, spec]));
 const MENU_ICON_PATH = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z";
 const ADD_ICON_PATH = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z";
+const BACK_ICON_PATH = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
+// Sections of the plant page that expand and collapse.
+type Expandable = "combine" | "troubleshooting" | "other_targets" | "more_details";
+type SettingRow = "name" | "area" | "species";
+type SensorRole = "moisture" | SourceRole;
+type SourceMode = "pick" | "combine";
 import { validateImage } from "./image.js";
 import { validState } from "./validation.js";
 import { styles } from "./styles.js";
@@ -116,7 +129,6 @@ import type { PlantOverview } from "./overview-model.js";
 import type { CareEvent, CareHistory, Evaluation, HAArea, HADevice, HAEntity, HAState, HealthEvaluation, HomeAssistantLike, MoistureInput, PanelCapabilities, PanelInfo, PlantPlacement, PlantRecord, RoleSourceInput, SpeciesPreview, SpeciesSearchResult } from "./types.js";
 
 type View = { kind: "list" } | { kind: "create" } | { kind: "detail"; plantId: string };
-type DetailSection = "overview" | "sensors" | "care" | "details" | "diagnostics";
 interface Edits { name: string; acquired: string; placement: PlantPlacement | null; category: string; tagText: string; area: string; common: string; latin: string; moisture: MoistureInput | null }
 type SaveKind = "identity" | "taxonomy" | "area" | "moisture" | "species";
 interface Conflict { before: PlantRecord; after: PlantRecord; changes: string[] }
@@ -129,7 +141,7 @@ function localTimestamp(date: Date): string {
 }
 
 export class SmartPlantsPanel extends LitElement {
-  static styles = styles;
+  static styles = [themeFallbacks, styles, plantStyles];
   @property({ attribute: false }) public hass?: HomeAssistantLike;
   @property({ attribute: false }) public panel?: PanelInfo;
   @property({ type: Boolean, reflect: true }) public narrow = false;
@@ -189,9 +201,17 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _sourceBaseline: RoleSourceInput | null = null;
   @state() private _sourceError = "";
   // Fail-closed refusal to open a role's editor, keyed to the plant snapshot it was raised against.
-  @state() private _sourceUnavailable: { role: string; plantId: string; revision: number } | null = null;
+  @state() private _sourceUnavailable: { role: string; plantId: string; revision: number; mode: SourceMode } | null = null;
   @state() private _sourceSaved: Record<string, string> = {};
-  @state() private _pendingSourceSwitch: { role: string; plant: PlantRecord } | null = null;
+  @state() private _pendingSourceSwitch: { role: string; plant: PlantRecord; mode: SourceMode } | null = null;
+  // Which part of the open role editor is shown: the sensor list or how several sensors combine.
+  @state() private _sourceMode: SourceMode = "combine";
+  // The soil moisture sensor editor edits the moisture draft in `_edits`.
+  @state() private _moistureMode: SourceMode | null = null;
+  @state() private _expanded: ReadonlySet<Expandable> = new Set();
+  @state() private _settingsOpen: ReadonlySet<SettingRow> = new Set();
+  @state() private _careFilter: CareEvent["kind"] | "all" = "all";
+  @state() private _careFormOpen = false;
   @state() private _allSourceSensors = false;
   private _base: PlantRecord | null = null;
   private _baseArea = "";
@@ -226,12 +246,16 @@ export class SmartPlantsPanel extends LitElement {
       if (this.hass?.user?.is_admin === false) this._unbind();
     }
     const dialog = this.shadowRoot?.querySelector("dialog");
-    const active = this.shadowRoot?.activeElement;
+    let active: Element | null | undefined = null;
+    // Some DOM implementations throw when the focused element was just removed, for example by a tab switch.
+    try { active = this.shadowRoot?.activeElement; } catch { active = null; }
     if (dialog?.open && (!active || !dialog.contains(active) || active.matches(":disabled"))) dialog.querySelector<HTMLElement>("button")?.focus();
   }
   connectedCallback(): void {
     super.connectedCallback();
     if (this.hasUpdated) { this._bind(); void this._refresh(); this._syncImage(); }
+    // Home Assistant may register its tab and expansion elements after the panel first renders.
+    for (const tag of ["ha-tab-group", "ha-expansion-panel", "ha-alert", "ha-area-picker"]) void customElements.whenDefined(tag).then(() => this.requestUpdate());
     // Bounded read refresh also catches integration lifecycle and other admin edits.
     this._timer = setInterval(() => { if (!this._formBusy && !this._loading && this.isConnected) void this._refresh(false); }, 30000);
   }
@@ -401,7 +425,8 @@ export class SmartPlantsPanel extends LitElement {
     this._providerRequest++; this._view = view; this._error = ""; this._notice = ""; this._healthError = ""; this._careHistory = null; this._careError = "";
     if (view.kind === "create") this._wizardStarted = true;
     if (view.kind === "detail") {
-      this._detailSection = "overview";
+      this._detailSection = "overview"; this._expanded = new Set(); this._settingsOpen = new Set(); this._moistureMode = null;
+      this._careFilter = "all"; this._careFormOpen = false; this._careEditingId = null; this._careKind = "watering"; this._careFields = {};
       const now = new Date(); this._careDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16); this._careNote = "";
       const plant = this._plantById(view.plantId); if (plant) this._beginEdit(plant);
       const targetId = view.plantId; const hass = this.hass; const context = this._context;
@@ -423,6 +448,13 @@ export class SmartPlantsPanel extends LitElement {
     if (event.detail.item.value === "back-to-overview") this._show({ kind: "list" });
     if (event.detail.item.value === "integration-options") this._navigate("/config/integrations/integration/smart_plants");
     if (event.detail.item.value === "documentation") window.open(DOCUMENTATION_URL, "_blank", "noopener,noreferrer");
+    const plant = this._view.kind === "detail" ? this._plantById(this._view.plantId) : undefined;
+    if (!plant) return;
+    const device = plantDevice(plant, this._devices);
+    if (event.detail.item.value === "open-device" && device) this._navigate(`/config/devices/device/${encodeURIComponent(device.id)}`);
+    if (event.detail.item.value === "download-diagnostics") this._downloadDiagnostics(plant);
+    if (event.detail.item.value === "toggle-monitoring") this._toggleMonitoring(plant);
+    if (event.detail.item.value === "delete-plant") this._openDialog("delete", this.shadowRoot?.querySelector<HTMLElement>(".panel-appbar ha-dropdown [slot=trigger]") ?? null);
   }
   // Home Assistant's own client-side navigation.
   private _navigate(path: string): void {
@@ -436,6 +468,28 @@ export class SmartPlantsPanel extends LitElement {
   private _openFromOverview(detail: OpenPlantDetail): void {
     this._show({ kind: "detail", plantId: detail.plantId });
     if (detail.section) this._detailSection = detail.section;
+  }
+  private _selectSection(section: string): void {
+    if ((DETAIL_SECTIONS as readonly string[]).includes(section) && section !== this._detailSection) this._detailSection = section as DetailSection;
+  }
+  // Switches tab and brings a part of it into view, for links between tabs.
+  private _goTo(section: DetailSection, target?: string, expand?: Expandable): void {
+    this._selectSection(section);
+    if (expand) this._setExpanded(expand, true);
+    const context = this._context;
+    void this.updateComplete.then(() => {
+      if (context !== this._context || !target) return;
+      const node = this.shadowRoot?.querySelector<HTMLElement>(target);
+      node?.scrollIntoView?.({ block: "nearest" }); node?.focus();
+    });
+  }
+  private _setExpanded(key: Expandable, open: boolean): void {
+    const next = new Set(this._expanded); if (open) next.add(key); else next.delete(key); this._expanded = next;
+  }
+  // Keeps the open plant's editor on the revision just written by a quick
+  // action; any other change still goes through the conflict review.
+  private _followQuickWrite(plant: PlantRecord): void {
+    if (this._base?.id === plant.id && !this._conflict && !this._formBusy && this._base.revision + 1 === plant.revision) this._rebaseEdits(this._base, plant);
   }
   // Retries once after a revision conflict, with the refreshed plant revision.
   private async _withRevision<T>(plantId: string, operation: (revision: number) => Promise<T>): Promise<T> {
@@ -466,7 +520,7 @@ export class SmartPlantsPanel extends LitElement {
     this._setWatering(plantId, true); this._error = ""; this._request++;
     try {
       const result = await this._withRevision(plantId, revision => api.addWatering(hass, plantId, revision, localTimestamp(new Date()), null));
-      this._adopt(result.plant);
+      this._adopt(result.plant); this._followQuickWrite(result.plant);
       const entry = this._overview[plantId];
       if (entry) this._overview = { ...this._overview, [plantId]: { ...entry, last_watered_at: result.event.occurred_at } };
       this._toast(l.t("watering.logged", { name: plant.name }), { text: l.t("watering.undo"), action: () => void this._undoWatering(plantId, plant.name, result.event.id) });
@@ -482,7 +536,7 @@ export class SmartPlantsPanel extends LitElement {
     const hass = this.hass; this._request++;
     try {
       const result = await this._withRevision(plantId, revision => api.deleteCareEvent(hass, plantId, revision, eventId));
-      this._adopt(result.plant);
+      this._adopt(result.plant); this._followQuickWrite(result.plant);
       const entry = this._overview[plantId];
       if (entry) this._overview = { ...this._overview, [plantId]: { ...entry, last_watered_at: result.summary.last_watered_at } };
       this._toast(this._l.t("watering.removed", { name }));
@@ -560,6 +614,13 @@ export class SmartPlantsPanel extends LitElement {
     const hass = this.hass;
     await this._mutate(async () => (await api.deleteCareEvent(hass, plant.id, plant.revision, event.id)).plant);
   }
+  private _openCareForm(): void {
+    this._careFormOpen = true;
+    this._goTo("care", "#care-form select");
+  }
+  private _closeCareForm(): void {
+    this._careFormOpen = false; this._careEditingId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; this._careError = "";
+  }
   private _renderCare(plant: PlantRecord) {
     const l = this._l;
     const history = this._careHistory;
@@ -567,40 +628,42 @@ export class SmartPlantsPanel extends LitElement {
     const fieldLabel = (key: string) => { const k = `care_field.${key}`; return isMessageKey(k) ? l.t(k) : key; };
     const kindLabel = (kind: CareEvent["kind"]) => l.t(`care_kind.${kind}`);
     const kindPhrase = (kind: CareEvent["kind"]) => l.t(`care_kind_phrase.${kind}`);
-    const fieldValue = (key: string, value: unknown) => typeof value === "number" && key === "amount" ? l.number(value) : String(value);
-    return html`<section aria-labelledby="care-heading"><h2 id="care-heading">${l.t("care.heading")}</h2>
+    const busy = this._formBusy || !!this._conflict;
+    const events = history?.events.filter(event => this._careFilter === "all" || event.kind === this._careFilter) ?? [];
+    const filters: [CareEvent["kind"] | "all", string][] = [["all", l.t("care.filter_all")], ...CARE_KINDS.map(kind => [kind, kind === "note" ? l.t("care.filter_notes") : kindLabel(kind)] as [CareEvent["kind"], string])];
+    const formOpen = this._careFormOpen || this._careEditingId !== null;
+    return html`<div class="care-bar"><div class="row" role="group" aria-label=${l.t("care.filter_label")}>${filters.map(([kind, label]) => html`<button type="button" class="fchip" aria-pressed=${this._careFilter === kind ? "true" : "false"} @click=${() => { this._careFilter = kind; }}>${label}</button>`)}</div>
+        <span class="spacer"></span><button type="button" class="btn filled" ?disabled=${this._blocked} @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("detail.log_care")}</button></div>
       ${this._careError ? html`<p class="error" role="alert">${this._careError}</p>` : nothing}
-      ${history ? html`<p role="status">${l.tn(history.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${history.summary.last_watered_local_date ? l.t("care.last_watered", { date: l.date(history.summary.last_watered_local_date) }) : l.t("care.never_watered")}</p>
-        ${history.events.length ? html`<ul aria-label=${l.t("care.events_label")}>${history.events.map(event => html`<li><strong>${kindLabel(event.kind)}</strong> <time datetime=${event.occurred_at}>${l.recordedDateTime(event.occurred_at)}</time>
-          ${Object.entries(event.payload).filter(([, value]) => value !== null).map(([key, value]) => html`<p>${fieldLabel(key)}: ${fieldValue(key, value)}</p>`)}
-          <button type="button" ?disabled=${this._formBusy || !!this._conflict} @click=${() => this._editCare(event)}>${l.t("care.edit_kind", { kind: kindPhrase(event.kind) })}</button>
-          <button type="button" ?disabled=${this._formBusy || !!this._conflict} @click=${() => void this._deleteCare(plant, event)}>${l.t("care.delete_kind", { kind: kindPhrase(event.kind) })}</button></li>`)}</ul>` : html`<p>${l.t("care.empty")}</p>`}` : html`<p>${l.t("care.loading")}</p>`}
-      <fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict || !history || history.revision !== plant.revision}>
-        <legend>${this._careEditingId ? l.t("care.edit_kind", { kind: kindPhrase(this._careKind) }) : l.t("care.record")}</legend>
-        <label>${l.t("care.type")}<select aria-label=${l.t("care.type")} .value=${this._careKind} @change=${(e: Event) => { this._careKind = (e.target as HTMLSelectElement).value as CareEvent["kind"]; this._careFields = {}; }}>${(["watering", "fertilizing", "pruning", "repotting", "note"] as const).map(kind => html`<option value=${kind}>${kindLabel(kind)}</option>`)}</select></label>
+      ${history ? html`<p class="small muted" role="status">${l.tn(history.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${history.summary.last_watered_local_date ? l.t("care.last_watered", { date: l.date(history.summary.last_watered_local_date) }) : l.t("care.never_watered")}</p>` : nothing}
+      ${formOpen ? html`<section class="sp-card" id="care-form" aria-labelledby="care-form-heading"><div class="card-h"><h3 id="care-form-heading">${this._careEditingId ? l.t("care.edit_kind", { kind: kindPhrase(this._careKind) }) : l.t("care.record")}</h3>
+          <button type="button" class="icon-btn" aria-label=${l.t("care.close_form")} @click=${() => this._closeCareForm()}><ha-icon aria-hidden="true" icon="mdi:close"></ha-icon></button></div>
+        <div class="card-b care-form"><fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict || !history || history.revision !== plant.revision}>
+        <legend class="sr-only">${this._careEditingId ? l.t("care.edit_kind", { kind: kindPhrase(this._careKind) }) : l.t("care.record")}</legend>
+        <label>${l.t("care.type")}<select aria-label=${l.t("care.type")} .value=${this._careKind} @change=${(e: Event) => { this._careKind = (e.target as HTMLSelectElement).value as CareEvent["kind"]; this._careFields = {}; }}>${CARE_KINDS.map(kind => html`<option value=${kind} ?selected=${kind === this._careKind}>${kindLabel(kind)}</option>`)}</select></label>
         <label>${l.t("care.when")}<input type="datetime-local" .value=${this._careDate} @input=${(e: Event) => this._careDate = (e.target as HTMLInputElement).value}></label>
         ${(details[this._careKind] ?? []).map(key => html`<label>${fieldLabel(key)}<input aria-label=${fieldLabel(key)} type=${key === "amount" ? "number" : "text"} maxlength=${key === "text" ? 1000 : 120} .value=${this._careFields[key] ?? ""} @input=${(e: Event) => this._careFields = { ...this._careFields, [key]: (e.target as HTMLInputElement).value }}></label>`)}
         ${this._careKind !== "note" ? html`<label>${l.t("care.note_optional")}<input type="text" maxlength="500" .value=${this._careNote} @input=${(e: Event) => this._careNote = (e.target as HTMLInputElement).value}></label>` : nothing}
         ${this._careKind === "fertilizing" ? html`<label>${l.t("care.unit")}<select aria-label=${l.t("care.unit")} .value=${this._careFields.unit ?? ""} @change=${(e: Event) => this._careFields = { ...this._careFields, unit: (e.target as HTMLSelectElement).value }}><option value="">${l.t("care.no_amount")}</option><option value="g">g</option><option value="mL">mL</option></select></label>` : nothing}
-        <button type="button" class="primary" @click=${() => void this._saveCare(plant)}>${this._careEditingId ? l.t("care.save_changes") : l.t("care.record")}</button>
-        ${this._careEditingId ? html`<button type="button" @click=${() => { this._careEditingId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; }}>${l.t("care.cancel_editing")}</button>` : nothing}
-      </fieldset><p>${l.t("care.no_irrigation")}</p></section>`;
+        <div class="actions"><button type="button" class="primary" @click=${() => void this._saveCare(plant)}>${this._careEditingId ? l.t("care.save_changes") : l.t("care.record")}</button>
+        ${this._careEditingId ? html`<button type="button" @click=${() => { this._careEditingId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; }}>${l.t("care.cancel_editing")}</button>` : nothing}</div>
+      </fieldset></div></section>` : nothing}
+      <section class="sp-card" aria-labelledby="care-heading"><div class="card-h"><h3 id="care-heading">${l.t("care.heading")}</h3></div>
+      ${!history ? html`<p class="card-b muted">${l.t("care.loading")}</p>` : !history.events.length ? html`<p class="card-b muted">${l.t("care.empty")}</p>` : !events.length ? html`<p class="card-b muted">${l.t("care.filter_empty")}</p>`
+        : html`<ul class="list" aria-label=${l.t("care.events_label")}>${events.map(event => {
+          const extra = careDetails(l, event, fieldLabel);
+          const when = l.recordedDateTime(event.occurred_at);
+          return html`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${CARE_ICONS[event.kind]}></ha-icon></span>
+            <span class="li-main"><span class="li-title">${kindLabel(event.kind)}</span><span class="li-sub"><time datetime=${event.occurred_at}>${when}</time>${extra.map(part => html` · <span class="prose">${part}</span>`)}</span></span>
+            <ha-dropdown @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => { if (e.detail.item.value === "edit") { this._editCare(event); this._goTo("care", "#care-form select"); } else if (e.detail.item.value === "delete") void this._deleteCare(plant, event); }}>
+              <button slot="trigger" type="button" class="icon-btn" ?disabled=${busy} aria-label=${l.t("care.event_menu", { kind: kindLabel(event.kind), date: when })}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
+              <ha-dropdown-item value="edit" ?disabled=${busy}>${l.t("care.edit_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>
+              <ha-dropdown-item value="delete" ?disabled=${busy}>${l.t("care.delete_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>
+            </ha-dropdown></li>`;
+        })}</ul>`}</section>
+      <p class="small muted">${l.t("care.no_irrigation")}</p>`;
   }
   private _edit(part: Partial<Edits>): void { if (this._edits) this._edits = { ...this._edits, ...part }; }
-  private _status(p: PlantRecord): string {
-    const e = this._evaluations[p.id];
-    if (p.lifecycle_state === "disabled") return "disabled";
-    if (!e || !e.computed_available) return "unavailable";
-    if (e.needs_water) return "needs water";
-    if (e.too_wet) return "too wet";
-    if (e.sensor_stale) return "stale";
-    return "healthy";
-  }
-  // `_status` values double as filter option values; this maps them for display.
-  private _statusLabel(status: string): string {
-    const keys: Record<string, MessageKey> = { healthy: "status.healthy", "needs water": "status.needs_water", "too wet": "status.too_wet", stale: "status.stale", unavailable: "status.unavailable", disabled: "status.disabled", problems: "status.problems" };
-    return keys[status] ? this._l.t(keys[status]) : status;
-  }
   private async _save(kind: SaveKind): Promise<void> {
     const base = this._base; const edit = this._edits;
     if (!this.hass || !base || !edit || this._formBusy || this._blocked || this._conflict) return;
@@ -789,12 +852,19 @@ export class SmartPlantsPanel extends LitElement {
     // The authenticated backend decodes, checks dimensions, strips metadata and re-encodes.
     await this._mutate(() => api.uploadImage(hass, plant.id, plant.revision, file));
   }
-  private _renderImage(plant: PlantRecord) {
-    const l = this._l;
-    return html`<section><h2>${l.t("photo.heading")}</h2>${plant.image ? this._imageLoading ? html`<p role="status">${l.t("photo.loading")}</p>` : this._imageError ? html`<p class="error" role="alert">${l.t("photo.load_failed", { error: this._imageError })}</p><button @click=${() => { this._clearImage(); this._syncImage(); }}>${l.t("photo.retry")}</button>` : this._imageUrl ? html`<img class="preview" alt=${l.t("photo.alt", { name: plant.name })} src=${this._imageUrl} @error=${() => { this._imageError = l.t("photo.decode_failed"); }}>` : nothing : html`<p>${l.t("photo.none")}</p>`}
-      ${plant.image ? html`<p>${l.t("photo.stored", { type: plant.image.content_type, width: plant.image.width, height: plant.image.height })}</p>` : nothing}
-      <label>${plant.image ? l.t("photo.replace") : l.t("photo.upload")}<input type="file" accept="image/jpeg,image/png,image/webp" ?disabled=${this._formBusy || this._blocked || !!this._conflict} @change=${(e: Event) => { const input = e.target as HTMLInputElement; const file = input.files?.[0]; input.value = ""; if (file) void this._uploadImage(plant, file); }}></label><small>${l.t("photo.hint")}</small>
-      ${plant.image ? html`<button ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => { if (this.hass) { const hass = this.hass; void this._mutate(() => api.deleteImage(hass, plant.id, plant.revision)); } }}>${l.t("photo.remove")}</button>` : nothing}</section>`;
+  // Photo row of the Settings tab: current state, choose a file, remove.
+  private _renderPhotoRow(plant: PlantRecord) {
+    const l = this._l; const disabled = this._formBusy || this._blocked || !!this._conflict;
+    const status = plant.image
+      ? this._imageLoading ? html`<span role="status">${l.t("photo.loading")}</span>`
+        : this._imageError ? html`<span class="error-text" role="alert">${l.t("photo.load_failed", { error: this._imageError })}</span> <button type="button" class="btn text sm" @click=${() => { this._clearImage(); this._syncImage(); }}>${l.t("photo.retry")}</button>`
+          : l.t("photo.stored", { type: plant.image.content_type, width: plant.image.width, height: plant.image.height })
+      : l.t("photo.none");
+    return html`<div class="setrow"><div><div class="setrow-h">${l.t("settings.photo")}</div><div class="setrow-d">${status}</div><div class="setrow-d">${l.t("photo.hint")}</div></div>
+      <div class="row">
+        <label class="btn text sm">${plant.image ? l.t("photo.replace") : l.t("photo.upload")}<input class="file-input" type="file" accept="image/jpeg,image/png,image/webp" ?disabled=${disabled} @change=${(e: Event) => { const input = e.target as HTMLInputElement; const file = input.files?.[0]; input.value = ""; if (file) void this._uploadImage(plant, file); }}></label>
+        ${plant.image ? html`<button type="button" class="btn text sm" ?disabled=${disabled} @click=${() => { if (this.hass) { const hass = this.hass; void this._mutate(() => api.deleteImage(hass, plant.id, plant.revision)); } }}>${l.t("photo.remove")}</button>` : nothing}
+      </div></div>`;
   }
   private _saveButton(kind: SaveKind, label: string) { return html`<button class="primary" @click=${() => void this._save(kind)}>${label}</button>`; }
   private _renderOverallHealth(plant: PlantRecord) {
@@ -804,7 +874,7 @@ export class SmartPlantsPanel extends LitElement {
     const health = this._health[plant.id];
     const l = this._l;
     const unavailable = l.t("section.overall_health_unavailable");
-    return html`<section aria-labelledby="overall-health-heading"><h2 id="overall-health-heading">${l.t("section.overall_health")}</h2>
+    return html`<section aria-labelledby="overall-health-heading"><h3 id="overall-health-heading">${l.t("section.overall_health")}</h3>
       ${!health ? html`<p role="status">${this._healthError ? `${unavailable} ${this._healthError}` : unavailable}</p>` : html`
         <p role="status" aria-live="polite">${health.available && health.health_score !== null ? l.t("section.overall_health_available_summary", { score: health.health_score }) : l.t("section.overall_health_unavailable_detail")}</p>
         <dl class="overall-health">
@@ -818,43 +888,54 @@ export class SmartPlantsPanel extends LitElement {
       `}
     </section>`;
   }
+  // Read-only status of every problem check with its effective thresholds.
+  // The thresholds are edited under Settings, Other targets.
   private _renderDiagnostics(plant: PlantRecord) {
-    // Read-only status rows + effective-threshold sub-lists.
-    // Editable roles are listed in THRESHOLD_EDITORS.
     const l = this._l;
     const rows = problemBinaries(plant, this._entities, this._states, l);
     const active = rows.filter(r => r.status === "on").length;
-    const statusText = (status: string) => status === "on"
-      ? l.t("section.advanced_diagnostics_status_problem")
-      : status === "off"
-        ? l.t("section.advanced_diagnostics_status_ok")
-        : status === "unavailable"
-          ? l.t("section.advanced_diagnostics_status_unavailable")
+    const summary = active === 0
+      ? l.t("section.advanced_diagnostics_zero_active")
+      : l.tn(active, "section.advanced_diagnostics_one_active", "section.advanced_diagnostics_many_active");
+    return html`<section aria-labelledby="diagnostics-heading"><h3 id="diagnostics-heading">${l.t("section.advanced_diagnostics")}</h3>
+      <p role="status" aria-live="polite">${summary}</p>
+      <p>${l.t("section.advanced_diagnostics_description")}</p>
+      <dl class="diagnostics">${rows.map(row => {
+        const thresholds = row.status === "not_configured" ? [] : effectiveThresholds(plant, row.role, this._entities, this._states, l);
+        // The <dt> names the row and the <dd> text carries the status; ARIA
+        // prohibits aria-label on the definition role, so none is set here.
+        return html`<dt>${row.label}</dt><dd class=${"status-" + row.status}>${this._problemStatusText(row.status)}${row.reason ? html` — ${this._problemReason(row.reason)}` : nothing}${thresholds.length ? html`<ul class="thresholds" aria-label=${l.t("section.effective_thresholds_label", { label: row.label })}>${thresholds.map(t => html`<li><span class="threshold-label">${t.label}</span>: <span class="threshold-value">${t.value === null ? "—" : `${l.number(t.value)} ${t.unit}`}</span></li>`)}</ul>` : nothing}</dd>`;
+      })}</dl></section>`;
+  }
+  private _problemStatusText(status: string): string {
+    const l = this._l;
+    return status === "on" ? l.t("section.advanced_diagnostics_status_problem")
+      : status === "off" ? l.t("section.advanced_diagnostics_status_ok")
+        : status === "unavailable" ? l.t("section.advanced_diagnostics_status_unavailable")
           : l.t("section.advanced_diagnostics_status_not_configured");
+  }
+  // Settings, Other targets: per-plant thresholds of every configured check
+  // other than soil moisture. Editable roles are listed in THRESHOLD_EDITORS.
+  private _renderOtherTargets(plant: PlantRecord) {
+    const l = this._l;
+    const rows = problemBinaries(plant, this._entities, this._states, l).filter(row => row.status !== "not_configured" && _EDITOR_BY_PROBLEM_ROLE[row.role]);
     const pending = this._pendingThresholdSwitch;
     const currentSpec = this._thresholdRole ? _EDITOR_BY_PROBLEM_ROLE[this._thresholdRole] : null;
     const currentLabel = currentSpec ? l.t(`problem_phrase.${currentSpec.problemRole}`) : "";
     const pendingLabel = pending ? l.t(`problem_phrase.${pending.spec.problemRole}`) : "";
-    const summary = active === 0
-      ? l.t("section.advanced_diagnostics_zero_active")
-      : l.tn(active, "section.advanced_diagnostics_one_active", "section.advanced_diagnostics_many_active");
-    return html`<section aria-labelledby="diagnostics-heading"><h2 id="diagnostics-heading">${l.t("section.advanced_diagnostics")}</h2>
-      <p role="status" aria-live="polite">${summary}</p>
-      <p>${l.t("section.advanced_diagnostics_description")}</p>
+    return html`<p class="small muted">${l.t("other_targets.intro")}</p>
       ${pending ? html`<p class="notice threshold-switch-alert" role="alert">${l.t("section.advanced_diagnostics_switch_prompt", { current: currentLabel, pending: pendingLabel })}
         <button type="button" class="primary" @click=${() => this._confirmDiscardAndSwitch()}>${l.t("section.advanced_diagnostics_switch_discard")}</button>
         <button type="button" @click=${() => { this._pendingThresholdSwitch = null; }}>${l.t("section.advanced_diagnostics_switch_keep")}</button>
       </p>` : nothing}
-      <dl class="diagnostics">${rows.map(row => {
-        const thresholds = row.status === "not_configured" ? [] : effectiveThresholds(plant, row.role, this._entities, this._states, l);
-        const spec = _EDITOR_BY_PROBLEM_ROLE[row.role];
-        const editable = !!spec && row.status !== "not_configured";
-        const editing = editable && this._thresholdRole === row.role && this._thresholdEdits !== null;
-        const saved = spec ? this._thresholdSaved[row.role] : "";
-        // The <dt> names the row and the <dd> text carries the status; ARIA
-        // prohibits aria-label on the definition role, so none is set here.
-        return html`<dt>${row.label}</dt><dd class=${"status-" + row.status}>${statusText(row.status)}${row.reason ? html` — ${this._problemReason(row.reason)}` : nothing}${thresholds.length ? html`<ul class="thresholds" aria-label=${l.t("section.effective_thresholds_label", { label: row.label })}>${thresholds.map(t => html`<li><span class="threshold-label">${t.label}</span>: <span class="threshold-value">${t.value === null ? "—" : `${l.number(t.value)} ${t.unit}`}</span></li>`)}</ul>` : nothing}${editable && spec ? html`<button class="threshold-toggle" type="button" aria-expanded=${editing ? "true" : "false"} aria-controls=${`${row.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(spec, plant)}>${editing ? l.t("section.advanced_diagnostics_cancel_edit") : l.t("section.advanced_diagnostics_edit_thresholds")}</button>${editing ? this._renderThresholdEditor(spec, plant) : nothing}${saved && !editing ? html`<p class="notice" role="status">${saved}</p>` : nothing}` : nothing}</dd>`;
-      })}</dl></section>`;
+      ${rows.length ? html`<dl class="other-targets">${rows.map(row => {
+        const spec = _EDITOR_BY_PROBLEM_ROLE[row.role]!;
+        const thresholds = effectiveThresholds(plant, row.role, this._entities, this._states, l);
+        const editing = this._thresholdRole === row.role && this._thresholdEdits !== null;
+        const saved = this._thresholdSaved[row.role];
+        return html`<dt>${row.label}</dt><dd>${thresholds.length ? html`<ul class="thresholds" aria-label=${l.t("section.effective_thresholds_label", { label: row.label })}>${thresholds.map(t => html`<li><span class="threshold-label">${t.label}</span>: <span class="threshold-value">${t.value === null ? "—" : `${l.number(t.value)} ${t.unit}`}</span></li>`)}</ul>` : nothing}
+          <button class="threshold-toggle btn outline sm" type="button" aria-expanded=${editing ? "true" : "false"} aria-controls=${`${row.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(spec, plant)}>${editing ? l.t("section.advanced_diagnostics_cancel_edit") : l.t("section.advanced_diagnostics_edit_thresholds")}</button>${editing ? this._renderThresholdEditor(spec, plant) : nothing}${saved && !editing ? html`<p class="notice" role="status">${saved}</p>` : nothing}</dd>`;
+      })}</dl>` : html`<p>${l.t("other_targets.none")}</p>`}`;
   }
   // Problem binaries report a reason code; unknown codes are shown verbatim.
   private _problemReason(code: string): string {
@@ -939,32 +1020,54 @@ export class SmartPlantsPanel extends LitElement {
     }
   }
   // ---- Sensors section: generic per-role source assignment ----
-  private _sourceSummary(plant: PlantRecord, role: string): string {
-    const c = roleSourceConfig(plant, role);
+  // ---- Sensors tab ----
+  // "2 sensors · Average · main sensor Kitchen probe · not updating after 6 h".
+  private _sourceSummary(plant: PlantRecord, role: SensorRole): string {
+    const c = role === "moisture" ? moistureRole(plant) : roleSourceConfig(plant, role);
     const l = this._l;
     if (!c) return l.t("sensors.summary_unavailable");
     if (!c.sources.length) return l.t("sensors.summary_empty");
-    return `${l.tn(c.sources.length, "sensors.source_count_one", "sensors.source_count_other")} · ${aggregationLabel(l, c.aggregation)}${c.primary_entity_id ? l.t("sensors.summary_primary", { entity_id: c.primary_entity_id }) : ""}`;
+    const parts = [l.tn(c.sources.length, "sensors.source_count_one", "sensors.source_count_other"), aggregationLabel(l, c.aggregation)];
+    if (c.primary_entity_id && c.sources.length > 1) parts.push(l.t("sensors.summary_primary", { name: friendlyName(l, this._states, c.primary_entity_id) }));
+    parts.push(l.t("sensors.summary_stale", { duration: formatDuration(l, c.stale_after_seconds) }));
+    return parts.join(" · ");
   }
-  private _toggleSourceEdit(role: string, plant: PlantRecord): void {
+  private _toggleSourceEdit(role: string, plant: PlantRecord, mode: SourceMode = "combine"): void {
     if (this._sourceRole === role && this._sourceEdits !== null) {
+      if (this._sourceMode !== mode) { this._sourceMode = mode; return; }
       this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._pendingSourceSwitch = null; return;
     }
-    if (this._sourceRole && this._sourceRole !== role && this._hasUnsavedSourceChanges()) { this._pendingSourceSwitch = { role, plant }; return; }
-    this._openSourceEditor(role, plant);
+    this._openSensorEditor(role, plant, mode);
   }
-  private _openSourceEditor(role: string, plant: PlantRecord): void {
+  // Opens a role's editor, asking first when another role has unsaved changes.
+  private _openSensorEditor(role: string, plant: PlantRecord, mode: SourceMode): void {
+    if (role === "moisture") { this._moistureMode = mode; this._focusEditor(mode, role); return; }
+    if (this._sourceRole === role && this._sourceEdits !== null) { this._sourceMode = mode; this._focusEditor(mode, role); return; }
+    if (this._sourceRole && this._sourceRole !== role && this._hasUnsavedSourceChanges()) { this._pendingSourceSwitch = { role, plant, mode }; return; }
+    this._openSourceEditor(role, plant, mode);
+  }
+  private _focusEditor(mode: SourceMode, role: string): void {
+    if (mode !== "pick") return;
+    const context = this._context;
+    void this.updateComplete.then(() => {
+      if (context !== this._context) return;
+      const heading = this.shadowRoot?.querySelector<HTMLElement>(`#${role}-picker-heading`);
+      heading?.scrollIntoView?.({ block: "nearest" }); heading?.focus();
+    });
+  }
+  private _openSourceEditor(role: string, plant: PlantRecord, mode: SourceMode = "combine"): void {
     const c = roleSourceConfig(plant, role);
-    if (!c) { this._sourceUnavailable = { role, plantId: plant.id, revision: plant.revision }; this._pendingSourceSwitch = null; return; }
+    if (!c) { this._sourceUnavailable = { role, plantId: plant.id, revision: plant.revision, mode }; this._pendingSourceSwitch = null; return; }
     const seeded = roleSourceInput(c);
-    this._sourceRole = role; this._sourceEdits = seeded; this._sourceBaseline = structuredClone(seeded);
+    this._sourceRole = role; this._sourceEdits = seeded; this._sourceBaseline = structuredClone(seeded); this._sourceMode = mode;
     this._sourceError = ""; this._pendingSourceSwitch = null; this._allSourceSensors = false; this._sourceUnavailable = null;
     this._sourceSaved = { ...this._sourceSaved, [role]: "" };
+    this._focusEditor(mode, role);
   }
-  private _sourceRefused(plant: PlantRecord, role: string): boolean {
+  private _sourceRefused(plant: PlantRecord, role: string, mode: SourceMode): boolean {
     const u = this._sourceUnavailable;
     // Stale once the plant data changes; the next click re-evaluates the fresh snapshot.
-    return !!u && u.role === role && u.plantId === plant.id && u.revision === plant.revision && !roleSourceConfig(plant, role);
+    return !!u && u.role === role && u.mode === mode && u.plantId === plant.id && u.revision === plant.revision && !roleSourceConfig(plant, role);
   }
   private _hasUnsavedSourceChanges(): boolean {
     if (!this._sourceEdits || !this._sourceBaseline) return false;
@@ -972,40 +1075,220 @@ export class SmartPlantsPanel extends LitElement {
   }
   private _confirmSourceSwitch(): void {
     const pending = this._pendingSourceSwitch;
-    if (pending) this._openSourceEditor(pending.role, pending.plant);
+    if (pending) this._openSourceEditor(pending.role, pending.plant, pending.mode);
   }
   private _editSource(part: Partial<RoleSourceInput>): void {
     if (this._sourceEdits) this._sourceEdits = { ...this._sourceEdits, ...part };
   }
-  private _renderSensors(plant: PlantRecord) {
+  private _closeSourceEditor(): void {
+    this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._pendingSourceSwitch = null;
+  }
+  // Closes the soil moisture sensor editor and drops its unsaved sensor
+  // changes; unsaved moisture targets stay in the draft.
+  private _closeMoistureEditor(): void {
+    const m = this._base ? moistureRole(this._base) : null;
+    if (m && this._edits?.moisture) {
+      const base = moistureInput(m);
+      this._edit({ moisture: { ...this._edits.moisture, sources: base.sources, primary_entity_id: base.primary_entity_id, aggregation: base.aggregation, stale_after_seconds: base.stale_after_seconds } });
+    }
+    this._moistureMode = null;
+  }
+  private async _saveMoistureSensors(): Promise<void> {
+    await this._save("moisture");
+    if (!this._error) this._moistureMode = null;
+  }
+  // Assigned sensors across all roles, in reading order.
+  private _assignedSensors(plant: PlantRecord): { role: SensorRole; entityId: string; main: boolean; several: boolean }[] {
+    const roles: SensorRole[] = ["moisture", ...ROLE_SOURCE_SPECS.map(spec => spec.role)];
+    const order = Object.keys(ROLE_META);
+    return roles.sort((a, b) => order.indexOf(a) - order.indexOf(b)).flatMap(role => {
+      const c = role === "moisture" ? moistureRole(plant) : roleSourceConfig(plant, role);
+      if (!c) return [];
+      return c.sources.map(source => ({ role, entityId: resolveSource(source, this._entities)?.entity_id ?? source.entity_id, main: c.primary_entity_id === source.entity_id, several: c.sources.length > 1 }));
+    });
+  }
+  private _sensorValue(entityId: string): string {
+    const state = this._states[entityId]; const l = this._l;
+    if (!state) return "";
+    const value = Number(state.state); const unit = typeof state.attributes.unit_of_measurement === "string" ? state.attributes.unit_of_measurement : "";
+    if (state.state.trim() !== "" && Number.isFinite(value)) return formatValue(l, value, unit);
+    return state.state === "unavailable" || state.state === "unknown" ? l.t("sources.unavailable") : state.state;
+  }
+  // Row actions on an assigned sensor; they save straight away.
+  private async _sensorAction(plant: PlantRecord, role: SensorRole, entityId: string, action: string): Promise<void> {
+    if (action === "change") { this._openSensorEditor(role, plant, "pick"); return; }
+    if (!this.hass || this._formBusy || this._blocked || this._conflict) return;
+    if (this._registryError) { this._error = this._l.t("error.sources_reconnect"); return; }
+    const hass = this.hass;
+    if (role === "moisture") {
+      const m = moistureRole(plant); if (!m) return;
+      const next = moistureInput(m);
+      if (action === "remove") { next.sources = next.sources.filter(s => s.entity_id !== entityId); if (next.primary_entity_id === entityId) next.primary_entity_id = null; }
+      else if (action === "primary") next.primary_entity_id = entityId;
+      else return;
+      await this._mutate(() => api.configureMoisture(hass, plant.id, plant.revision, canonicalMoisture(next, this._entities)));
+      return;
+    }
+    const c = roleSourceConfig(plant, role); if (!c) return;
+    if (action === "remove") {
+      const sources = canonicalRoleSources({ ...c, sources: c.sources.filter(s => s.entity_id !== entityId) }, this._entities).sources;
+      await this._mutate(() => api.setRoleSources(hass, plant.id, plant.revision, role, sources));
+    } else if (action === "primary") {
+      await this._mutate(() => api.setRolePrimary(hass, plant.id, plant.revision, role, entityId));
+    }
+  }
+  private _staleAlert(plant: PlantRecord) {
+    const l = this._l; const reading = this._overview[plant.id]?.roles.moisture;
+    if (!reading || reading.state !== "stale") return nothing;
+    const name = reading.sources.map(id => friendlyName(l, this._states, id)).join(", ") || readingLabel(l, "moisture");
+    const title = reading.last_reported ? l.t("stale_alert.title", { name, age: relativeTime(l, reading.last_reported) }) : l.t("stale_alert.title_no_age", { name });
+    if (isDefined("ha-alert")) return html`<ha-alert class="stale-alert" alert-type="warning" .title=${title}>${l.t("stale_alert.body")}</ha-alert>`;
+    return html`<div class="alert-fallback stale-alert" role="alert"><ha-icon aria-hidden="true" icon="mdi:alert-outline"></ha-icon><div><p class="alert-title">${title}</p><p>${l.t("stale_alert.body")}</p></div></div>`;
+  }
+  private _renderSensorsTab(plant: PlantRecord) {
     const l = this._l;
+    const disabled = this._formBusy || this._blocked || !!this._conflict;
     const pending = this._pendingSourceSwitch;
     const pendingSpec = roleSourceSpec(this._sourceRole ?? "");
-    return html`<section aria-labelledby="sensors-heading"><h2 id="sensors-heading">${l.t("sensors.heading")}</h2>
-      <p>${l.t("sensors.intro")}</p>
-      ${pending ? html`<div class="notice" role="alert"><p>${l.t("sensors.switch_prompt", { role: pendingSpec ? rolePhrase(pendingSpec.role, l) : this._sourceRole ?? "" })}</p>
+    const assigned = this._assignedSensors(plant);
+    const free: SensorRole[] = [
+      ...(moistureRole(plant)?.sources.length ? [] : ["moisture" as const]),
+      ...ROLE_SOURCE_SPECS.filter(spec => !roleSourceConfig(plant, spec.role)?.sources.length).map(spec => spec.role),
+    ];
+    const pickRefused = ROLE_SOURCE_SPECS.find(spec => this._sourceRefused(plant, spec.role, "pick"));
+    return html`${this._staleAlert(plant)}
+      ${pending ? html`<div class="notice" role="alert"><p>${l.t("sensors.switch_prompt", { role: pendingSpec ? readingPhrase(l, pendingSpec.role) : this._sourceRole ?? "" })}</p>
         <button type="button" class="primary" @click=${() => this._confirmSourceSwitch()}>${l.t("section.advanced_diagnostics_switch_discard")}</button>
         <button type="button" @click=${() => { this._pendingSourceSwitch = null; }}>${l.t("section.advanced_diagnostics_switch_keep")}</button></div>` : nothing}
-      <dl class="sensors">${ROLE_SOURCE_SPECS.map(spec => {
-        const editing = this._sourceRole === spec.role && this._sourceEdits !== null;
-        const saved = this._sourceSaved[spec.role];
-        return html`<dt>${roleLabel(spec.role, l)}</dt><dd>${this._sourceSummary(plant, spec.role)}
-          <button class="source-toggle" type="button" aria-expanded=${editing ? "true" : "false"} aria-controls=${`${spec.role}-sources-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleSourceEdit(spec.role, plant)}>${editing ? l.t("common.cancel") : l.t("sensors.edit")}</button>
-          ${editing ? this._renderSourceEditor(spec.role, plant) : nothing}
-          ${!editing && this._sourceRefused(plant, spec.role) ? html`<p id=${`${spec.role}-sources-unavailable`} class="error" role="alert">${l.t("sensors.refused", { role: roleLabel(spec.role, l) })}</p>` : nothing}
-          ${saved && !editing ? html`<p class="notice" role="status">${saved}</p>` : nothing}</dd>`;
-      })}</dl></section>`;
+      <section class="sp-card" aria-labelledby="assigned-heading"><div class="card-h"><h3 id="assigned-heading">${l.t("assigned.heading")}</h3></div>
+        ${assigned.length ? html`<ul class="list">${assigned.map(item => {
+          const name = friendlyName(l, this._states, item.entityId); const state = this._states[item.entityId];
+          const updated = state ? l.t("assigned.updated", { age: relativeTime(l, state.last_updated) }) : l.t("assigned.not_found");
+          return html`<li class="li"><span class="ic" aria-hidden="true"><ha-icon .icon=${ROLE_META[item.role].icon}></ha-icon></span>
+            <span class="li-main"><span class="li-title">${name}</span><span class="li-sub">${readingLabel(l, item.role)} · ${updated}${item.main && item.several ? ` · ${l.t("assigned.main")}` : ""}</span></span>
+            <span class="li-actions"><span class="li-value">${this._sensorValue(item.entityId)}</span>
+              <ha-dropdown @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => void this._sensorAction(plant, item.role, item.entityId, e.detail.item.value)}>
+                <button slot="trigger" type="button" class="icon-btn" ?disabled=${disabled} aria-label=${l.t("assigned.menu", { name })}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
+                <ha-dropdown-item value="change">${l.t("assigned.change", { role: readingPhrase(l, item.role) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>
+                ${item.several && !item.main ? html`<ha-dropdown-item value="primary">${l.t("assigned.make_main")}<ha-icon slot="icon" icon="mdi:star-outline"></ha-icon></ha-dropdown-item>` : nothing}
+                <ha-dropdown-item value="remove">${l.t("assigned.remove")}<ha-icon slot="icon" icon="mdi:link-variant-off"></ha-icon></ha-dropdown-item>
+              </ha-dropdown></span></li>`;
+        })}</ul>` : html`<p class="card-b muted">${l.t("assigned.empty")}</p>`}
+        <div class="card-b"><div class="row">${free.length ? html`<ha-dropdown class="add-sensor" @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => this._openSensorEditor(e.detail.item.value, plant, "pick")}>
+            <button slot="trigger" type="button" class="btn tonal" ?disabled=${disabled}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("assigned.add")}</button>
+            ${free.map(role => html`<ha-dropdown-item value=${role}>${readingLabel(l, role)}<ha-icon slot="icon" .icon=${ROLE_META[role].icon}></ha-icon></ha-dropdown-item>`)}
+          </ha-dropdown><span class="small muted">${l.t("assigned.available", { roles: free.map(role => readingLabel(l, role)).join(", ") })}</span>` : html`<span class="small muted">${l.t("assigned.all_assigned")}</span>`}</div>
+          ${pickRefused ? html`<p id=${`${pickRefused.role}-sources-unavailable`} class="error" role="alert">${l.t("sensors.refused", { role: readingLabel(l, pickRefused.role) })}</p>` : nothing}
+        </div></section>
+      ${this._moistureMode === "pick" ? this._renderPicker("moisture", plant) : nothing}
+      ${this._sourceRole && this._sourceEdits && this._sourceMode === "pick" ? this._renderPicker(this._sourceRole as SourceRole, plant) : nothing}
+      ${this._expander("combine", "mdi:call-merge", l.t("combine.heading"), l.t("combine.secondary"), () => this._renderCombine(plant))}
+      ${this._expander("troubleshooting", "mdi:stethoscope", l.t("troubleshooting.heading"), l.t("troubleshooting.secondary"), () => this._renderTroubleshooting(plant))}`;
+  }
+  // Card that edits which sensors a role uses.
+  private _renderPicker(role: SensorRole, plant: PlantRecord) {
+    const l = this._l; const label = readingLabel(l, role);
+    const disabled = this._formBusy || this._blocked || !!this._conflict;
+    const edit = this._edits;
+    let body;
+    if (role === "moisture") {
+      body = edit?.moisture ? html`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${disabled}>${moistureEditor(l, edit.moisture, this._defaults(plant), this._entities, this._states, this._allSensors, v => this._allSensors = v, v => this._edit({ moisture: v }), "pick")}
+        <div class="actions"><button type="button" @click=${() => this._closeMoistureEditor()}>${l.t("common.cancel")}</button><button type="button" class="primary" @click=${() => void this._saveMoistureSensors()}>${l.t("sensors.save_moisture")}</button></div></fieldset></div>`
+        : html`<p class="error" role="alert">${l.t("moisture.incompatible")}</p>`;
+    } else body = this._renderSourceEditor(role, plant);
+    return html`<section class="sp-card picker" aria-labelledby=${`${role}-picker-heading`}><div class="card-h"><h3 id=${`${role}-picker-heading`} tabindex="-1">${l.t("sensors.edit_heading", { role: label })}</h3></div>
+      <div class="card-b">${body}</div></section>`;
   }
   private _renderSourceEditor(role: SourceRole, plant: PlantRecord) {
     const spec = roleSourceSpec(role); const edits = this._sourceEdits; const l = this._l;
     if (!spec || !edits) return nothing;
     return html`<div id=${`${role}-sources-editor`} class="editor"><fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>
-      ${roleSourcesEditor(l, spec, edits, this._entities, this._states, this._allSourceSensors, v => this._allSourceSensors = v, v => this._editSource(v))}
+      ${roleSourcesEditor(l, spec, edits, this._entities, this._states, this._allSourceSensors, v => this._allSourceSensors = v, v => this._editSource(v), this._sourceMode)}
       ${this._sourceError ? html`<p class="error" role="alert">${this._sourceError}</p>` : nothing}
       <div class="actions">
-        <button type="button" @click=${() => { this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._pendingSourceSwitch = null; }}>${l.t("common.cancel")}</button>
-        <button type="button" class="primary" @click=${() => void this._saveRoleSources(role, plant)}>${l.t("sensors.save", { role: rolePhrase(role, l) })}</button>
+        <button type="button" @click=${() => this._closeSourceEditor()}>${l.t("common.cancel")}</button>
+        <button type="button" class="primary" @click=${() => void this._saveRoleSources(role, plant)}>${l.t("sensors.save", { role: readingPhrase(l, role) })}</button>
       </div></fieldset></div>`;
+  }
+  // "Several sensors for one reading": how each role combines its sensors.
+  private _renderCombine(plant: PlantRecord) {
+    const l = this._l; const disabled = this._formBusy || this._blocked || !!this._conflict;
+    const edit = this._edits; const moistureOpen = this._moistureMode === "combine";
+    return html`<p class="small muted">${l.t("combine.intro")}</p>
+      <dl class="sensors">
+        <dt>${readingLabel(l, "moisture")}</dt><dd>${this._sourceSummary(plant, "moisture")}
+          <button class="source-toggle btn text sm" type="button" aria-expanded=${moistureOpen ? "true" : "false"} aria-controls="moisture-sources-editor" aria-label=${moistureOpen ? l.t("common.cancel") : l.t("combine.edit_label", { role: readingPhrase(l, "moisture") })} ?disabled=${disabled || !edit?.moisture} @click=${() => { if (moistureOpen) this._closeMoistureEditor(); else this._moistureMode = "combine"; }}>${moistureOpen ? l.t("common.cancel") : l.t("sensors.edit")}</button>
+          ${moistureOpen && edit?.moisture ? html`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${disabled}>${moistureEditor(l, edit.moisture, this._defaults(plant), this._entities, this._states, this._allSensors, v => this._allSensors = v, v => this._edit({ moisture: v }), "combine")}
+            <div class="actions"><button type="button" @click=${() => this._closeMoistureEditor()}>${l.t("common.cancel")}</button><button type="button" class="primary" @click=${() => void this._saveMoistureSensors()}>${l.t("sensors.save_moisture")}</button></div></fieldset></div>` : nothing}</dd>
+        ${ROLE_SOURCE_SPECS.map(spec => {
+          const editing = this._sourceRole === spec.role && this._sourceEdits !== null && this._sourceMode === "combine";
+          const saved = this._sourceSaved[spec.role];
+          const label = readingLabel(l, spec.role);
+          return html`<dt>${label}</dt><dd>${this._sourceSummary(plant, spec.role)}
+            <button class="source-toggle btn text sm" type="button" aria-expanded=${editing ? "true" : "false"} aria-controls=${`${spec.role}-sources-editor`} aria-label=${editing ? l.t("common.cancel") : l.t("combine.edit_label", { role: readingPhrase(l, spec.role) })} ?disabled=${disabled} @click=${() => this._toggleSourceEdit(spec.role, plant, "combine")}>${editing ? l.t("common.cancel") : l.t("sensors.edit")}</button>
+            ${editing ? this._renderSourceEditor(spec.role, plant) : nothing}
+            ${!editing && this._sourceRefused(plant, spec.role, "combine") ? html`<p id=${`${spec.role}-sources-unavailable`} class="error" role="alert">${l.t("sensors.refused", { role: label })}</p>` : nothing}
+            ${saved && !editing ? html`<p class="notice" role="status">${saved}</p>` : nothing}</dd>`;
+        })}
+      </dl>`;
+  }
+  private _renderTroubleshooting(plant: PlantRecord) {
+    const l = this._l; const device = plantDevice(plant, this._devices); const evaluation = this._evaluations[plant.id];
+    const roles: SensorRole[] = ["moisture", ...ROLE_SOURCE_SPECS.map(spec => spec.role)];
+    const configured = roles.flatMap(role => {
+      const c = role === "moisture" ? moistureRole(plant) : roleSourceConfig(plant, role);
+      return c?.sources.length ? [{ role, c }] : [];
+    });
+    return html`<section aria-labelledby="entities-heading"><h3 id="entities-heading">${l.t("troubleshooting.entities_heading")}</h3>
+        <dl class="kv entity-ids">${configured.map(({ role, c }) => html`<dt>${readingLabel(l, role)}</dt><dd>${c.sources.map(source => { const id = resolveSource(source, this._entities)?.entity_id ?? source.entity_id; return html`<div><code>${id}</code>${id === c.primary_entity_id ? html` <span class="muted">(${l.t("assigned.main")})</span>` : nothing}</div>`; })}</dd>`)}
+          <dt>${l.t("troubleshooting.plant_id")}</dt><dd><code>${plant.id}</code></dd>
+          ${device ? html`<dt>${l.t("troubleshooting.device_id")}</dt><dd><code>${device.id}</code></dd>` : nothing}</dl></section>
+      <section aria-labelledby="evaluation-heading"><h3 id="evaluation-heading">${l.t("troubleshooting.moisture_heading")}</h3>
+        ${evaluation ? html`<dl class="kv moisture-evaluation"><dt>${l.t("troubleshooting.moisture_value")}</dt><dd>${evaluation.computed_percent === null ? "—" : l.percent(evaluation.computed_percent)}</dd>
+          <dt>${l.t("troubleshooting.moisture_health")}</dt><dd>${evaluation.health_score === null ? "—" : l.t("section.overall_health_available_summary", { score: evaluation.health_score })}</dd>
+          ${evaluation.reasons.length ? html`<dt>${l.t("troubleshooting.reasons")}</dt><dd>${evaluation.reasons.join(" ")}</dd>` : nothing}</dl>` : html`<p>${l.t("troubleshooting.no_evaluation")}</p>`}</section>
+      ${this._renderOverallHealth(plant)}
+      ${this._renderDiagnostics(plant)}
+      <section aria-labelledby="related-heading"><h3 id="related-heading">${l.t("automations.related_heading")}</h3>
+        ${this._related.length ? html`<ul class="related">${this._related.map(id => html`<li><code>${id}</code></li>`)}</ul>` : html`<p>${l.t("automations.related_none")}</p>`}
+        <p class="small muted">${l.t("automations.description")}</p>
+        <a href="/config/automation/dashboard" @click=${(e: MouseEvent) => this._internalLink(e, "/config/automation/dashboard")}>${l.t("automations.open_editor")}</a></section>
+      <section aria-labelledby="download-heading"><h3 id="download-heading">${l.t("troubleshooting.download_heading")}</h3>
+        <p class="small muted">${l.t("troubleshooting.download_hint")}</p>
+        <div class="row"><button type="button" class="btn outline sm" @click=${() => this._downloadDiagnostics(plant)}><ha-icon aria-hidden="true" icon="mdi:download"></ha-icon>${l.t("detail.menu_download")}</button></div></section>`;
+  }
+  // Follows an in-app link with Home Assistant's own navigation.
+  private _internalLink(event: MouseEvent, path: string): void {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault(); this._navigate(path);
+  }
+  // Technical snapshot of the plant for bug reports: configuration, entity
+  // IDs and current evaluation. No name, notes, tags or photo.
+  private _downloadDiagnostics(plant: PlantRecord): void {
+    const device = plantDevice(plant, this._devices);
+    const data = {
+      generated_at: new Date().toISOString(),
+      plant: { id: plant.id, revision: plant.revision, lifecycle_state: plant.lifecycle_state, created_at: plant.created_at, has_photo: plant.image !== null, care_event_count: this._careHistory?.events.length ?? null,
+        species: plant.species ? { provider: plant.species.provider, provider_ref: plant.species.snapshot.provider_ref, source_status: plant.species.snapshot.source_status, fetched_at: plant.species.snapshot.fetched_at } : null },
+      device_id: device?.id ?? null,
+      roles: plant.roles ?? null,
+      status: this._overview[plant.id] ?? null,
+      moisture_evaluation: this._evaluations[plant.id] ?? null,
+      overall_health: this._health[plant.id] ?? null,
+      problem_checks: problemBinaries(plant, this._entities, this._states, this._l).map(row => ({ role: row.role, status: row.status, reason: row.reason })),
+      related_automations: this._related,
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    const link = document.createElement("a"); link.href = url; link.download = `smart-plants-${plant.id}-diagnostics.json`;
+    link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  private _toggleMonitoring(plant: PlantRecord): void {
+    if (!this.hass) return;
+    const hass = this.hass;
+    void this._mutate(() => plant.lifecycle_state === "active" ? api.disable(hass, plant.id, plant.revision) : api.reenable(hass, plant.id, plant.revision));
+  }
+  private _expander(key: Expandable, icon: string, header: string, secondary: string, content: () => ReturnType<typeof html> | typeof nothing) {
+    return expander({ key, icon, header, secondary, content, open: this._expanded.has(key), native: isDefined("ha-expansion-panel"), toggle: open => this._setExpanded(key, open) });
   }
   private async _saveRoleSources(role: SourceRole, plant: PlantRecord): Promise<void> {
     if (!this.hass || !this._sourceEdits || this._formBusy || this._blocked || this._conflict) return;
@@ -1036,53 +1319,179 @@ export class SmartPlantsPanel extends LitElement {
     });
     if (!this._error) {
       this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._pendingSourceSwitch = null;
-      this._sourceSaved = { ...this._sourceSaved, [role]: this._l.t("sensors.saved", { role: roleLabel(role, this._l) }) };
+      this._sourceSaved = { ...this._sourceSaved, [role]: this._l.t("sensors.saved", { role: readingLabel(this._l, role) }) };
     }
   }
-  private _renderPlantOverview(plant: PlantRecord, evaluation: Evaluation | undefined) {
+  // ---- Plant page ----
+  private _renderHeader(plant: PlantRecord) {
+    const l = this._l; const o = this._overview[plant.id];
+    const areaId = plantDevice(plant, this._devices)?.area_id;
+    const species = plant.species?.snapshot.latin_name ?? plant.species?.snapshot.common_name ?? null;
+    const chip = o ? chipText(l, o) : null;
+    return html`<div class="sp-card header-card">
+      <div class="hero">
+        <sp-plant-avatar size="large" .src=${this._imageUrl} .name=${plant.name} .l=${l}></sp-plant-avatar>
+        <div class="hero-text">
+          <h2 class="hero-name">${plant.name}</h2>
+          <div class="hero-meta">${areaId ? html`<span><ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${this._areaName(areaId)}</span>` : nothing}
+            <span><ha-icon aria-hidden="true" icon="mdi:leaf"></ha-icon>${species ? html`<i>${species}</i>` : l.t("detail.no_species")}</span></div>
+          ${o && chip ? html`<div class="hero-status"><sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip><span class="reason">${headerReason(l, o)}</span></div>` : nothing}
+        </div>
+        <div class="hero-actions">
+          <button type="button" class="btn filled" ?disabled=${this._blocked || this._watering.has(plant.id) || !!this._conflict} @click=${() => void this._logWatering(plant.id)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${l.t("card.log_watering")}</button>
+          <button type="button" class="btn outline" @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:note-edit-outline"></ha-icon>${l.t("detail.log_care")}</button>
+        </div>
+      </div>
+      ${renderKeyReadings(l, o)}
+    </div>`;
+  }
+  private _renderTabs() {
     const l = this._l;
-    const moisture = moistureRole(plant);
-    const sources = moisture?.sources.map(source => resolveSource(source, this._entities)?.entity_id ?? source.entity_id) ?? [];
-    const assignedRoles = ROLE_SOURCE_SPECS.flatMap(spec => {
-      const config = roleSourceConfig(plant, spec.role);
-      return config?.sources.length ? [{ label: roleLabel(spec.role, l), count: config.sources.length }] : [];
-    });
-    const latestCare = this._careHistory?.events.slice(0, 3) ?? [];
-    const percent = evaluation?.computed_percent; const score = evaluation?.health_score;
-    const overallConfidence = this._health?.[plant.id]?.confidence_label;
-    return html`<section class="plant-overview-card"><div class="overview-heading">${this._imageUrl ? html`<img class="overview-avatar" src=${this._imageUrl} alt=${l.t("photo.alt", { name: plant.name })}>` : html`<div class="overview-avatar placeholder" aria-hidden="true">${plant.name.slice(0, 1).toLocaleUpperCase()}</div>`}<div><p class="eyebrow">${l.t("overview.eyebrow")}</p><p>${plant.species?.snapshot.common_name ?? plant.species?.snapshot.latin_name ?? l.t("common.no_species_selected")}</p>${plant.category ? html`<span class="muted">${plant.category}</span>` : nothing}<button type="button" @click=${() => this._detailSection = "details"}>${l.t("overview.details_button")}</button></div></div>
-      <div class="overview-metrics"><article><span>${l.t("metric.soil_moisture")}</span><strong>${percent === null || percent === undefined ? "—" : l.percent(percent)}</strong><small>${evaluation?.computed_available ? l.t("overview.current_reading") : l.t("overview.no_current_reading")}</small></article><article><span>${l.t("metric.moisture_health")}</span><strong>${score === null || score === undefined ? "—" : `${l.number(score)}/100`}</strong><small>${l.t("overview.based_on_moisture")}</small></article><article><span>${l.t("overview.moisture_sensors")}</span><strong>${l.number(sources.length)}</strong><small>${l.t("overview.aggregation", { aggregation: moisture ? aggregationLabel(l, moisture.aggregation) : l.t("overview.not_configured") })}</small></article></div>
-       <section class="overview-sensors"><h2>${l.t("overview.assigned_sensors")}</h2>${sources.length || assignedRoles.length ? html`<ul>${sources.map(id => html`<li>${l.t("metric.soil_moisture")} · ${id}${id === moisture?.primary_entity_id ? html` <span class="muted">${l.t("overview.primary")}</span>` : nothing}</li>`)}${assignedRoles.map(role => html`<li>${role.label} · ${l.tn(role.count, "sensors.source_count_one", "sensors.source_count_other")}</li>`)}</ul>` : html`<p>${l.t("overview.no_sensors")}</p>`}<button type="button" @click=${() => this._detailSection = "sensors"}>${l.t("overview.manage_sensors")}</button></section>
-       <section class="overview-care"><h2>${l.t("overview.recent_care")}</h2>${latestCare.length ? html`<ul>${latestCare.map(event => html`<li><strong>${l.t(`care_kind.${event.kind}`)}</strong> · ${l.date(event.local_date)}</li>`)}</ul>` : html`<p>${l.t("overview.no_care")}</p>`}<button type="button" @click=${() => this._detailSection = "care"}>${l.t("overview.open_care")}</button></section>
-      ${overallConfidence !== undefined ? html`<p class="muted">${l.t("overview.overall_confidence", { label: confidenceLabel(overallConfidence, l) })}</p>` : nothing}
-    </section>`;
+    if (isDefined("ha-tab-group")) {
+      return html`<ha-tab-group class="tabs" @wa-tab-show=${(e: CustomEvent<{ name: string }>) => this._selectSection(e.detail.name)}>
+        ${DETAIL_SECTIONS.map(section => html`<ha-tab-group-tab slot="nav" .panel=${section} .active=${this._detailSection === section}>${l.t(SECTION_LABELS[section])}</ha-tab-group-tab>`)}</ha-tab-group>`;
+    }
+    const move = (e: KeyboardEvent) => {
+      const index = DETAIL_SECTIONS.indexOf(this._detailSection);
+      const next = e.key === "ArrowRight" ? (index + 1) % DETAIL_SECTIONS.length : e.key === "ArrowLeft" ? (index + DETAIL_SECTIONS.length - 1) % DETAIL_SECTIONS.length : e.key === "Home" ? 0 : e.key === "End" ? DETAIL_SECTIONS.length - 1 : -1;
+      if (next < 0) return;
+      e.preventDefault(); this._selectSection(DETAIL_SECTIONS[next]!);
+      void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>(`#tab-${DETAIL_SECTIONS[next]}`)?.focus());
+    };
+    return html`<div class="tablist" role="tablist" aria-label=${l.t("detail.sections_label")} @keydown=${move}>${DETAIL_SECTIONS.map(section => {
+      const selected = this._detailSection === section;
+      return html`<button type="button" role="tab" id=${`tab-${section}`} aria-controls="detail-panel" aria-selected=${selected ? "true" : "false"} tabindex=${selected ? "0" : "-1"} @click=${() => this._selectSection(section)}>${l.t(SECTION_LABELS[section])}</button>`;
+    })}</div>`;
+  }
+  private _renderOverviewTab(plant: PlantRecord) {
+    const l = this._l; const o = this._overview[plant.id]; const readings = readingsInOrder(o);
+    const history = this._careHistory; const recent = history?.events.slice(0, 3) ?? [];
+    const device = plantDevice(plant, this._devices);
+    const notSet = l.t("about.not_set");
+    const snapshot = plant.species?.snapshot;
+    const cap = (text: string) => text.charAt(0).toLocaleUpperCase() + text.slice(1);
+    const createPath = device ? `/config/automation/edit/new?add_automation_element=trigger&target_device_id=${encodeURIComponent(device.id)}` : "";
+    const devicePath = device ? `/config/devices/device/${encodeURIComponent(device.id)}` : "";
+    return html`<div class="cols">
+      <div class="stack">
+        <section class="sp-card" aria-labelledby="readings-heading"><div class="card-h"><h3 id="readings-heading">${l.t("readings.heading")}</h3>
+          ${readings.length ? html`<button type="button" class="btn text sm" @click=${() => this._selectSection("sensors")}>${l.t("readings.manage")}</button>` : nothing}</div>
+          ${readings.length ? html`<ul class="list">${readings.map(([role, reading]) => renderReadingRow(l, role, reading, this._states))}</ul>`
+            : html`<div class="card-b"><div class="empty-box"><span>${o?.status === "paused" ? l.t("readings.paused") : l.t("readings.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._selectSection("sensors")}>${l.t("readings.assign")}</button></div></div>`}
+        </section>
+        <section class="sp-card" aria-labelledby="recent-heading"><div class="card-h"><h3 id="recent-heading">${l.t("recent.heading")}</h3>
+          ${history?.events.length ? html`<button type="button" class="btn text sm" @click=${() => this._selectSection("care")}>${l.t("recent.show_all")}</button>` : nothing}</div>
+          ${!history ? html`<p class="card-b muted">${l.t("care.loading")}</p>` : recent.length ? html`<ul class="list">${recent.map(event => html`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${CARE_ICONS[event.kind]}></ha-icon></span>
+            <span class="li-main"><span class="li-title">${l.t(`care_done.${event.kind}`)}</span><span class="li-sub">${l.date(event.local_date)}</span></span><span></span></li>`)}</ul>`
+            : html`<div class="card-b"><div class="empty-box"><span>${l.t("care.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._openCareForm()}>${l.t("detail.log_care")}</button></div></div>`}
+        </section>
+      </div>
+      <div class="stack">
+        <section class="sp-card" aria-labelledby="about-heading"><div class="card-h"><h3 id="about-heading">${l.t("about.heading")}</h3>
+          <button type="button" class="icon-btn" aria-label=${l.t("about.edit")} @click=${() => this._selectSection("settings")}><ha-icon aria-hidden="true" icon="mdi:pencil-outline"></ha-icon></button></div>
+          <div class="card-b"><dl class="kv about">
+            <dt>${l.t("about.species")}</dt><dd>${snapshot ? html`${snapshot.latin_name ? html`<i>${snapshot.latin_name}</i>` : nothing}${snapshot.common_name && snapshot.common_name !== snapshot.latin_name ? html`${snapshot.latin_name ? " · " : ""}${snapshot.common_name}` : nothing}
+              <div class="small muted">${snapshot.source_status === "provider" ? l.t("about.species_provider", { provider: snapshot.provider === "openplantbook" ? "OpenPlantBook" : snapshot.provider }) : l.t("about.species_manual")}</div>`
+              : html`<button type="button" class="btn text sm" @click=${() => this._openSetting("species")}>${l.t("about.add_species")}</button>`}</dd>
+            <dt>${l.t("about.area")}</dt><dd>${device?.area_id ? this._areaName(device.area_id) : l.t("area.none")}</dd>
+            <dt>${l.t("about.placement")}</dt><dd>${plant.placement ? cap(placementLabel(l, plant.placement.mode)) : notSet}</dd>
+            <dt>${l.t("about.since")}</dt><dd>${plant.acquired_at ? l.date(plant.acquired_at.slice(0, 10)) : notSet}</dd>
+            <dt>${l.t("about.category")}</dt><dd>${plant.category ?? notSet}</dd>
+            <dt>${l.t("about.tags")}</dt><dd>${plant.tags.length ? plant.tags.map(tag => html`<span class="tag">${tag}</span>`) : notSet}</dd>
+          </dl></div></section>
+        <section class="sp-card" aria-labelledby="automations-heading"><div class="card-h"><h3 id="automations-heading">${l.t("automations.heading")}</h3></div>
+          <div class="card-b"><p class="small muted">${l.t("automations.body")}</p>
+            ${device ? html`<div class="row"><a class="btn outline sm" href=${devicePath} @click=${(e: MouseEvent) => this._internalLink(e, devicePath)}><ha-icon aria-hidden="true" icon="mdi:devices"></ha-icon>${l.t("automations.open_device")}</a>
+              <a class="btn outline sm" href=${createPath} @click=${(e: MouseEvent) => this._internalLink(e, createPath)}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("automations.create")}</a></div>` : nothing}
+          </div></section>
+      </div></div>`;
+  }
+  private _openSetting(row: SettingRow): void {
+    const next = new Set(this._settingsOpen); next.add(row); this._settingsOpen = next;
+    this._goTo("settings", `#setting-${row}-editor input, #setting-${row}-editor select, #setting-${row}-editor ha-area-picker`);
+  }
+  private _closeSetting(row: SettingRow): void {
+    const next = new Set(this._settingsOpen); next.delete(row); this._settingsOpen = next;
+  }
+  // One row of the Plant card: title, current value and an inline editor.
+  private _settingRow(row: SettingRow, title: string, value: unknown, action: string, editor: () => unknown, forceOpen = false) {
+    const l = this._l; const open = forceOpen || this._settingsOpen.has(row);
+    return html`<div class="setrow"><div><div class="setrow-h" id=${`setting-${row}`}>${title}</div><div class="setrow-d">${value}</div></div>
+      <button type="button" class="btn text sm" aria-expanded=${open ? "true" : "false"} aria-controls=${`setting-${row}-editor`} ?disabled=${forceOpen} @click=${() => open ? this._closeSetting(row) : this._openSetting(row)}>${open ? l.t("settings.close") : action}</button>
+      ${open ? html`<div class="setrow-editor" id=${`setting-${row}-editor`}>${editor()}</div>` : nothing}</div>`;
+  }
+  private _renderSettingsTab(plant: PlantRecord) {
+    const l = this._l; const edit = this._edits!; const m = moistureRole(plant);
+    const disabled = this._formBusy || this._blocked || !!this._conflict;
+    const device = plantDevice(plant, this._devices);
+    const snapshot = plant.species?.snapshot;
+    const speciesName = snapshot ? snapshot.latin_name ?? snapshot.common_name ?? l.t("snapshot.species") : "";
+    const speciesValue = snapshot ? html`<i>${speciesName}</i> · ${snapshot.source_status === "provider" ? l.t("settings.species_provider", { provider: snapshot.provider === "openplantbook" ? "OpenPlantBook" : snapshot.provider, date: l.date(snapshot.fetched_at.slice(0, 10)) }) : l.t("about.species_manual")}` : l.t("settings.species_none");
+    const areaPicker = isDefined("ha-area-picker") && this.hass
+      ? html`<ha-area-picker .hass=${this.hass} .label=${l.t("area.label")} .value=${edit.area || undefined} .noAdd=${true} .disabled=${disabled || !!this._registryError || this._areaReview} @value-changed=${(e: CustomEvent<{ value?: string }>) => this._edit({ area: e.detail.value ?? "" })}></ha-area-picker>`
+      : html`<fieldset ?disabled=${disabled || !!this._registryError || this._areaReview}>${areaEditor(l, edit.area, this._areas, v => this._edit({ area: v }))}</fieldset>`;
+    const defaults = this._defaults(plant);
+    const fromSpecies = m ? keys.some(k => m.threshold_defaults[k].source === "provider") : false;
+    const custom = m ? keys.some(k => m.threshold_overrides[k] !== null) : false;
+    const targetLine = custom ? l.t(fromSpecies ? "targets.custom_species" : "targets.custom_defaults") : l.t(fromSpecies ? "targets.from_species" : "targets.from_defaults");
+    const targetLabels: Record<typeof keys[number], MessageKey> = { min: "targets.needs_water", target: "targets.ideal", max: "targets.too_wet" };
+    const lifecycleActive = plant.lifecycle_state === "active";
+    return html`<section class="sp-card" aria-labelledby="plant-settings-heading"><div class="card-h"><h3 id="plant-settings-heading">${l.t("settings.plant_heading")}</h3></div>
+        ${this._settingRow("name", l.t("settings.name"), plant.name, l.t("settings.rename"), () => html`<fieldset ?disabled=${disabled}>${textField(l.t("detail.name"), edit.name, v => this._edit({ name: v }))}
+          <div class="actions"><button type="button" @click=${() => { this._edit({ name: plant.name }); this._closeSetting("name"); }}>${l.t("common.cancel")}</button>${this._saveButton("identity", l.t("settings.save_name"))}</div></fieldset>`)}
+        ${this._settingRow("area", l.t("settings.area"), l.t("settings.area_value", { area: this._areaName(device?.area_id ?? "") }), l.t("settings.change_area"), () => html`
+          ${this._areaReview ? html`<p class="notice">${l.t("detail.area_review")}</p><div class="row"><button type="button" @click=${() => this._areaReview = false}>${l.t("detail.area_reviewed")}</button><button type="button" @click=${() => { this._edit({ area: this._baseArea }); this._areaReview = false; }}>${l.t("detail.area_use_current")}</button></div>` : nothing}
+          ${areaPicker}<div class="actions"><button type="button" ?disabled=${disabled} @click=${() => { this._edit({ area: this._baseArea }); this._closeSetting("area"); }}>${l.t("common.cancel")}</button><button type="button" class="primary" ?disabled=${disabled || !!this._registryError || this._areaReview} @click=${() => void this._save("area")}>${l.t("detail.save_area")}</button></div>`, this._areaReview)}
+        ${this._renderPhotoRow(plant)}
+        ${this._settingRow("species", l.t("settings.species"), speciesValue, snapshot ? l.t("settings.change_species") : l.t("settings.find_species"), () => html`
+          ${plant.species ? snapshotView(l, plant.species.snapshot) : nothing}<fieldset ?disabled=${disabled}>
+          ${plant.species?.snapshot.provider_ref ? html`<button type="button" @click=${() => void this._previewSpecies()}>${l.t("species.preview_refresh")}</button>` : nothing}
+          ${selectField(l, l.t("species.provider"), this._provider, [{ value: "manual", label: l.t("species.manual") }, ...(this._capabilities?.providers.filter(p => p.available && p.search_supported).map(p => ({ value: p.provider, label: p.provider === "openplantbook" ? "OpenPlantBook" : p.provider })) ?? [])], v => { this._providerRequest++; this._provider = v; this._preview = null; this._results = []; })}
+          ${this._provider === "manual" ? html`${textField(l.t("species.common_name"), edit.common, v => this._edit({ common: v }))}${textField(l.t("species.scientific_name"), edit.latin, v => this._edit({ latin: v }))}<p class="small muted">${l.t("species.manual_hint")}</p><div class="actions">${this._saveButton("species", l.t("species.save_manual"))}</div>`
+            : html`${textField(l.t("species.search"), this._query, v => { this._query = v; this._providerRequest++; this._results = []; this._preview = null; })}<div class="actions"><button type="button" @click=${() => void this._searchSpecies()}>${l.t("species.search")}</button></div><ul class="result-list">${this._results.map(r => html`<li><button type="button" @click=${() => void this._previewSpecies(r)}>${r.common_name ?? r.latin_name} · ${r.latin_name}</button><small>${r.attribution}</small></li>`)}</ul><button type="button" @click=${() => { this._provider = "manual"; this._providerRequest++; this._preview = null; }}>${l.t("common.continue_manually")}</button>`}</fieldset>`)}
+      </section>
+      <section class="sp-card" aria-labelledby="targets-heading"><div class="card-h"><h3 id="targets-heading">${l.t("targets.heading")}</h3></div>
+        <div class="card-b">${m && edit.moisture ? html`<p class="small muted">${targetLine}</p>
+          <fieldset ?disabled=${disabled}><div class="thr">${keys.map(k => {
+            const override = edit.moisture!.threshold_overrides[k];
+            return html`<div><label>${l.t(targetLabels[k])}<span class="field-suffix"><input type="number" min="1" max="99" step="1" inputmode="numeric" aria-label=${l.t(targetLabels[k])} .value=${override === null ? "" : String(override)} placeholder=${String(defaults[k])}
+              @input=${(e: Event) => { const v = (e.target as HTMLInputElement).value; this._edit({ moisture: { ...edit.moisture!, threshold_overrides: { ...edit.moisture!.threshold_overrides, [k]: v.trim() === "" ? null : Number(v) } } }); }}><span aria-hidden="true">%</span></span></label>
+              <small>${override === null ? l.t("targets.default_hint", { value: l.percent(defaults[k]) }) : l.t("targets.custom_hint", { value: l.percent(defaults[k]) })}</small></div>`;
+          })}</div>
+          <div class="row"><button type="button" class="btn text sm" @click=${() => this._edit({ moisture: { ...edit.moisture!, threshold_overrides: { min: null, target: null, max: null } } })}>${l.t("targets.reset")}</button><span class="spacer"></span>
+            <button type="button" class="btn filled sm" @click=${() => void this._save("moisture")}>${l.t("targets.save")}</button></div></fieldset>`
+          : html`<p class="error" role="alert">${l.t("moisture.incompatible")}</p>`}</div></section>
+      ${this._expander("other_targets", "mdi:tune-variant", l.t("other_targets.heading"), l.t("other_targets.secondary"), () => this._renderOtherTargets(plant))}
+      ${this._expander("more_details", "mdi:tag-outline", l.t("more_details.heading"), l.t("more_details.secondary"), () => html`
+        <fieldset ?disabled=${disabled}>${placementEditor(l, edit.placement, v => this._edit({ placement: v }))}
+          <label>${l.t("detail.acquired")}<input type="date" .value=${edit.acquired.slice(0, 10)} @input=${(e: Event) => this._edit({ acquired: (e.target as HTMLInputElement).value })}></label>
+          <div class="actions">${this._saveButton("identity", l.t("more_details.save_identity"))}</div></fieldset>
+        <fieldset ?disabled=${disabled}>${textField(l.t("taxonomy.category"), edit.category, v => this._edit({ category: v }), "text", 60)}${textField(l.t("taxonomy.tags"), edit.tagText, v => this._edit({ tagText: v }), "text", 2000)}<p class="small muted">${l.t("taxonomy.hint")}</p>
+          <div class="actions">${this._saveButton("taxonomy", l.t("taxonomy.save"))}</div></fieldset>`)}
+      <section class="sp-card" aria-labelledby="manage-heading"><div class="card-h"><h3 id="manage-heading">${l.t("manage.heading")}</h3></div>
+        <div class="setrow"><div><div class="setrow-h">${lifecycleActive ? l.t("manage.pause") : l.t("manage.resume")}</div><div class="setrow-d">${lifecycleActive ? l.t("manage.pause_hint") : l.t("manage.resume_hint")}</div></div>
+          <button type="button" class="btn outline sm" ?disabled=${disabled} @click=${() => this._toggleMonitoring(plant)}>${lifecycleActive ? l.t("manage.pause_button") : l.t("manage.resume_button")}</button></div>
+        <div class="setrow"><div><div class="setrow-h">${l.t("manage.delete")}</div><div class="setrow-d">${l.t("manage.delete_hint")}</div></div>
+          <button type="button" class="btn danger sm" ?disabled=${disabled} @click=${() => this._openDialog("delete")}>${l.t("manage.delete_button")}</button></div>
+      </section>`;
   }
   private _renderDetail(id: string) {
     const l = this._l;
     const plant = this._plantById(id); const edit = this._edits;
     if (!plant || !edit) return html`<p>${l.t("detail.not_found")}</p>`;
-    const evaluation = this._evaluations[id]; const m = moistureRole(plant); const device = plantDevice(plant, this._devices);
-    const disabled = this._formBusy || this._blocked || !!this._conflict;
     const overlaps = this._conflict ? this._sourceConflictFields(this._conflict.after) : [];
-    const tabs: [DetailSection, MessageKey][] = [["overview", "detail.tab_overview"], ["sensors", "sensors.heading"], ["care", "care.heading"], ["details", "detail.tab_details"], ["diagnostics", "detail.tab_diagnostics"]];
-    return html`${this._conflict ? html`<section class="notice" role="alert"><h2>${l.t("conflict.heading")}</h2><p>${l.t("conflict.revision", { before: this._conflict.before.revision, after: this._conflict.after.revision })}</p><ul>${this._conflict.changes.map(c => html`<li class="prose">${c}</li>`)}</ul>${overlaps.length ? html`<p>${l.t("conflict.source_overlap", { fields: this._sourceFieldList(overlaps) })}</p>` : nothing}<button @click=${() => this._reviewConflict()}>${l.t("conflict.retain")}</button><button @click=${() => this._beginEdit(plant)}>${l.t("conflict.discard")}</button></section>` : nothing}
-       <header class="detail-heading"><div><h2>${plant.name}</h2><p>${this._statusLabel(this._status(plant))}</p></div>${device ? html`<a href="/config/devices/device/${encodeURIComponent(device.id)}">${l.t("detail.open_device")}</a>` : nothing}</header>
-      <nav class="detail-tabs" aria-label=${l.t("detail.sections_label")}>${tabs.map(([section, label]) => html`<button type="button" aria-current=${this._detailSection === section ? "page" : nothing} @click=${() => this._detailSection = section}>${l.t(label)}</button>`)}</nav>
-        ${this._detailSection === "overview" ? this._renderPlantOverview(plant, evaluation) : nothing}
-       ${this._detailSection === "details" ? html`<section><h2>${l.t("detail.identity_heading")}</h2>${this._renderImage(plant)}<fieldset ?disabled=${disabled}>${textField(l.t("detail.name"), edit.name, v => this._edit({ name: v }))}${textField(l.t("detail.acquired"), edit.acquired, v => this._edit({ acquired: v }))}${placementEditor(l, edit.placement, v => this._edit({ placement: v }))}${this._saveButton("identity", l.t("detail.save_identity"))}</fieldset></section>
-       <section><h2>${l.t("area.label")}</h2><p>${l.t("detail.area_current", { area: this._areaName(device?.area_id ?? "") })}</p>${this._areaReview ? html`<p class="notice">${l.t("detail.area_review")}</p><button @click=${() => this._areaReview = false}>${l.t("detail.area_reviewed")}</button><button @click=${() => { this._edit({ area: this._baseArea }); this._areaReview = false; }}>${l.t("detail.area_use_current")}</button>` : nothing}<fieldset ?disabled=${disabled || !!this._registryError || this._areaReview}>${areaEditor(l, edit.area, this._areas, v => this._edit({ area: v }))}${this._saveButton("area", l.t("detail.save_area"))}</fieldset></section>
-       <section><h2>${l.t("taxonomy.heading")}</h2><fieldset ?disabled=${disabled}>${textField(l.t("taxonomy.category"), edit.category, v => this._edit({ category: v }), "text", 60)}${textField(l.t("taxonomy.tags"), edit.tagText, v => this._edit({ tagText: v }), "text", 2000)}<p>${l.t("taxonomy.hint")}</p>${this._saveButton("taxonomy", l.t("taxonomy.save"))}</fieldset></section>
-       <section><h2>${l.t("species.heading")}</h2>${plant.species ? snapshotView(l, plant.species.snapshot) : html`<p>${l.t("species.none")}</p>`}<fieldset ?disabled=${disabled}>
-      ${plant.species?.snapshot.provider_ref ? html`<button @click=${() => void this._previewSpecies()}>${l.t("species.preview_refresh")}</button>` : nothing}
-      ${selectField(l, l.t("species.provider"), this._provider, [{ value: "manual", label: l.t("species.manual") }, ...(this._capabilities?.providers.filter(p => p.available && p.search_supported).map(p => ({ value: p.provider, label: p.provider })) ?? [])], v => { this._providerRequest++; this._provider = v; this._preview = null; this._results = []; })}
-       ${this._provider === "manual" ? html`${textField(l.t("species.common_name"), edit.common, v => this._edit({ common: v }))}${textField(l.t("species.scientific_name"), edit.latin, v => this._edit({ latin: v }))}<p>${l.t("species.manual_hint")}</p>${this._saveButton("species", l.t("species.save_manual"))}` : html`${textField(l.t("species.search"), this._query, v => { this._query = v; this._providerRequest++; this._results = []; this._preview = null; })}<button @click=${() => void this._searchSpecies()}>${l.t("species.search")}</button><ul>${this._results.map(r => html`<li><button @click=${() => void this._previewSpecies(r)}>${r.common_name ?? r.latin_name} · ${r.latin_name}</button><small>${r.attribution}</small></li>`)}</ul><button @click=${() => { this._provider = "manual"; this._providerRequest++; this._preview = null; }}>${l.t("common.continue_manually")}</button>`}</fieldset></section>
-       ` : nothing}
-       ${this._detailSection === "details" ? html`
-       <section><h2>${l.t("lifecycle.heading")}</h2><p>${l.t("lifecycle.description")}</p><fieldset ?disabled=${disabled}><div class="actions"><button @click=${() => { if (this.hass) { const hass = this.hass; void this._mutate(() => plant.lifecycle_state === "active" ? api.disable(hass, plant.id, plant.revision) : api.reenable(hass, plant.id, plant.revision)); } }}>${plant.lifecycle_state === "active" ? l.t("lifecycle.disable") : l.t("lifecycle.reenable")}</button><button @click=${() => this._openDialog("delete")}>${l.t("lifecycle.delete")}</button></div></fieldset></section>` : nothing}
-       ${this._detailSection === "sensors" ? html`<section><h2>${l.t("moisture.heading")}</h2>${m && edit.moisture ? html`<p class="default-summary">${l.t("moisture.effective_summary", { thresholds: keys.map(k => `${thresholdKeyLabel(l, k)} ${l.percent(m.threshold_overrides[k] ?? this._defaults(plant)[k])}`).join(" · ") })}</p><fieldset ?disabled=${disabled}>${moistureEditor(l, edit.moisture, this._defaults(plant), this._entities, this._states, this._allSensors, v => this._allSensors = v, v => this._edit({ moisture: v }), "sources")}<details class="advanced-disclosure"><summary>${l.t("moisture.advanced_overrides")}</summary><p>${l.t("moisture.advanced_hint")}</p>${moistureEditor(l, edit.moisture, this._defaults(plant), this._entities, this._states, this._allSensors, v => this._allSensors = v, v => this._edit({ moisture: v }), "thresholds")}</details>${this._saveButton("moisture", l.t("moisture.save"))}</fieldset>` : html`<p class="error" role="alert">${l.t("moisture.incompatible")}</p>`}</section>${this._renderSensors(plant)}` : nothing}
-       ${this._detailSection === "care" ? this._renderCare(plant) : nothing}
-       ${this._detailSection === "diagnostics" ? html`<section><h2>${l.t("automations.heading")}</h2><p>${l.t("automations.description")}</p><a href="/config/automation/dashboard">${l.t("automations.open_editor")}</a><ul>${this._related.map(id => html`<li>${id}</li>`)}</ul></section>${this._renderOverallHealth(plant)}${this._renderDiagnostics(plant)}` : nothing}
-       ${this._renderDialog()}`;
+    const panels: Record<DetailSection, () => unknown> = {
+      overview: () => this._renderOverviewTab(plant),
+      sensors: () => this._renderSensorsTab(plant),
+      care: () => this._renderCare(plant),
+      settings: () => this._renderSettingsTab(plant),
+    };
+    return html`<div class="pd">
+      ${this._conflict ? html`<section class="notice" role="alert"><h2>${l.t("conflict.heading")}</h2><p>${l.t("conflict.revision", { before: this._conflict.before.revision, after: this._conflict.after.revision })}</p><ul>${this._conflict.changes.map(c => html`<li class="prose">${c}</li>`)}</ul>${overlaps.length ? html`<p>${l.t("conflict.source_overlap", { fields: this._sourceFieldList(overlaps) })}</p>` : nothing}<div class="actions"><button @click=${() => this._reviewConflict()}>${l.t("conflict.retain")}</button><button @click=${() => this._beginEdit(plant)}>${l.t("conflict.discard")}</button></div></section>` : nothing}
+      ${this._renderHeader(plant)}
+      ${this._renderTabs()}
+      <div class="tabpanel" id="detail-panel" role="tabpanel" aria-label=${l.t(SECTION_LABELS[this._detailSection])}>${panels[this._detailSection]()}</div>
+      ${this._renderDialog()}</div>`;
   }
   private async _created(e: CustomEvent<{ plant: PlantRecord; photo: File | null; navigationContext: number }>): Promise<void> {
     const { plant, photo, navigationContext } = e.detail;
@@ -1128,14 +1537,22 @@ export class SmartPlantsPanel extends LitElement {
     const l = this._l;
     if (this.hass?.user?.is_admin === false) return html`<main><div class="panel-content"><p role="alert">${l.t("panel.admin_required")}</p></div></main>`;
     const menuLabel = this.hass?.localize?.("ui.common.menu") || l.t("panel.menu");
+    const detailPlant = this._view.kind === "detail" ? this._plantById(this._view.plantId) : undefined;
+    const busy = this._formBusy || this._blocked || !!this._conflict;
     return html`<main><ha-top-app-bar-fixed class="panel-appbar" .narrow=${this.narrow}>
-       <h1 slot="title" class="page-title" tabindex="-1">Smart Plants</h1>
+       ${this._view.kind === "detail" ? html`<ha-icon-button slot="navigationIcon" class="back" .label=${l.t("detail.back")} .path=${BACK_ICON_PATH} @click=${() => { if (!this._formBusy) this._show({ kind: "list" }); }}></ha-icon-button>` : nothing}
+       <h1 slot="title" class="page-title" tabindex="-1">${detailPlant ? detailPlant.name : "Smart Plants"}</h1>
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
          <ha-icon-button slot="trigger" .label=${menuLabel} .path=${MENU_ICON_PATH}></ha-icon-button>
+         ${detailPlant ? html`
+         <ha-dropdown-item value="open-device" ?disabled=${!plantDevice(detailPlant, this._devices)}>${l.t("detail.menu_open_device")}<ha-icon slot="icon" icon="mdi:open-in-new"></ha-icon></ha-dropdown-item>
+         <ha-dropdown-item value="download-diagnostics">${l.t("detail.menu_download")}<ha-icon slot="icon" icon="mdi:download"></ha-icon></ha-dropdown-item>
+         <ha-dropdown-item value="toggle-monitoring" ?disabled=${busy}>${detailPlant.lifecycle_state === "active" ? l.t("manage.pause") : l.t("manage.resume")}<ha-icon slot="icon" .icon=${detailPlant.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
+         <ha-dropdown-item value="delete-plant" ?disabled=${busy}>${l.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>` : html`
          ${this._view.kind !== "list" ? html`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${l.t("panel.back_to_overview")}</ha-dropdown-item>` : nothing}
          <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${l.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${ADD_ICON_PATH}></ha-svg-icon></ha-dropdown-item>
          <ha-dropdown-item value="integration-options">${l.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
-         <ha-dropdown-item value="documentation">${l.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>
+         <ha-dropdown-item value="documentation">${l.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>`}
        </ha-dropdown>
        <div class="panel-content">${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}${this._notice ? html`<p class="notice" role="status">${this._notice}</p>` : nothing}${this._registryError ? html`<p class="notice" role="alert">${l.t("panel.registry_unavailable", { error: this._registryError })}</p>` : nothing}
       ${this._creationNotice ? html`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && !(this._view.kind === "detail" && this._view.plantId === this._createdPlantId) ? html`<button ?disabled=${this._formBusy} @click=${() => { if (this._createdPlantId) this._show({ kind: "detail", plantId: this._createdPlantId }); }}>${l.t("panel.open_created")}</button>` : nothing}` : nothing}

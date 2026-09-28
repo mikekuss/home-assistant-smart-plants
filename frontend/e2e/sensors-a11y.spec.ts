@@ -2,8 +2,8 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { writeFile } from "node:fs/promises";
 
-// Browser/axe accessibility matrix for the generic Sensors section (per-role
-// source assignment). Runs desktop and mobile via the Playwright projects.
+// Browser/axe accessibility matrix for the Sensors tab: assigned sensors, the
+// sensor lists per reading and "Several sensors for one reading". Runs desktop and mobile via the Playwright projects.
 // Data is synthetic; the harness never touches real HA or providers.
 
 const url = "/frontend/e2e/harness.html";
@@ -23,9 +23,17 @@ async function openSensors(page: Page, malformedRole?: string) {
     }, malformedRole);
   }
   await button(page, "Office Aloe").click();
-  await button(page, "Sensors").click();
-  await expect(page.getByRole("heading", { name: "Office Aloe", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Sensors", exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Sensors", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Office Aloe", level: 2, exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Assigned sensors", exact: true })).toBeVisible();
+  const combine = page.getByRole("button", { name: /^Several sensors for one reading/ });
+  await combine.click();
+  await expect(combine).toHaveAttribute("aria-expanded", "true");
+}
+async function addSensor(page: Page, reading: string) {
+  await button(page, "Add sensor").click();
+  const item = page.getByRole("menuitem", { name: reading, exact: true });
+  await item.focus(); await item.press("Enter");
 }
 
 async function audit(page: Page, info: TestInfo, name: string) {
@@ -55,23 +63,28 @@ test.afterEach(async ({ page }) => {
   expect(unexpected).toEqual([]);
 });
 
-test("sensors section: all seven role rows render and pass axe closed", async ({ page }, info) => {
+test("sensors tab: assigned sensors and every reading row render and pass axe", async ({ page }, info) => {
   await openSensors(page);
-  for (const label of ["Air temperature", "Air humidity", "Illuminance", "Battery", "Conductivity", "Soil temperature", "CO₂"]) {
-    await expect(roleRow(page, label).getByRole("button", { name: "Edit sources", exact: true })).toBeVisible();
+  await expect(page.locator("smart-plants-panel section", { hasText: "Assigned sensors" })).toContainText("Soil probe");
+  for (const label of ["Soil moisture", "Temperature", "Humidity", "Light", "Battery", "Fertilizer level", "Soil temperature", "CO₂"]) {
+    await expect(roleRow(page, label).locator("button.source-toggle")).toHaveText("Change");
   }
+  await expect(roleRow(page, "Temperature").getByRole("button", { name: "Change how temperature sensors combine", exact: true })).toBeVisible();
   await audit(page, info, "sensors-baseline");
 });
 
 test("temperature editor: open, filtered picker, add, save, axe", async ({ page }, info) => {
   await openSensors(page);
-  const row = roleRow(page, "Air temperature");
-  const toggle = row.getByRole("button", { name: "Edit sources", exact: true });
-  await toggle.click();
-  const editor = page.locator("smart-plants-panel div#temperature-sources-editor");
-  await expect(editor).toBeVisible();
+  const row = roleRow(page, "Temperature");
+  await row.locator("button.source-toggle").click();
   await expect(row.locator("button.source-toggle")).toHaveAttribute("aria-expanded", "true");
   await expect(row.locator("button.source-toggle")).toHaveAttribute("aria-controls", "temperature-sources-editor");
+  await expect(row.getByRole("combobox", { name: "Combine readings", exact: true })).toHaveValue("average");
+  await audit(page, info, "sensors-combine-open");
+  await addSensor(page, "Temperature");
+  await expect(page.getByRole("heading", { name: "Temperature sensors", exact: true })).toBeFocused();
+  const editor = page.locator("smart-plants-panel section.picker div#temperature-sources-editor");
+  await expect(editor).toBeVisible();
   // The filtered picker offers the temperature sensor but not a moisture one.
   const picker = editor.getByRole("combobox", { name: "Add air temperature sensor", exact: true });
   const options = await picker.locator("option").allTextContents();
@@ -79,18 +92,19 @@ test("temperature editor: open, filtered picker, add, save, axe", async ({ page 
   expect(options.some(o => o.includes("sensor.soil"))).toBe(false);
   await picker.selectOption("sensor.living_temp");
   await audit(page, info, "sensors-editor-open");
-  await editor.getByRole("button", { name: "Save air temperature sources", exact: true }).click();
-  await expect(page.getByText("Air temperature sources saved.", { exact: true })).toBeVisible();
-  await expect(roleRow(page, "Air temperature")).toContainText("1 source");
+  await editor.getByRole("button", { name: "Save temperature sensors", exact: true }).click();
+  await expect(page.getByText("Temperature sensors saved.", { exact: true })).toBeVisible();
+  await expect(roleRow(page, "Temperature")).toContainText("1 sensor");
+  await expect(page.locator("smart-plants-panel section", { hasText: "Assigned sensors" })).toContainText("Living room temperature");
 });
 
 test("single active editor: switching with unsaved changes prompts", async ({ page }, info) => {
   await openSensors(page);
-  await roleRow(page, "Air temperature").getByRole("button", { name: "Edit sources", exact: true }).click();
+  await roleRow(page, "Temperature").locator("button.source-toggle").click();
   const editor = page.locator("smart-plants-panel div#temperature-sources-editor");
-  await editor.getByLabel("Stale after (seconds, 60–604800)", { exact: true }).fill("3600");
-  await roleRow(page, "Air humidity").getByRole("button", { name: "Edit sources", exact: true }).click();
-  const alert = page.locator("smart-plants-panel section[aria-labelledby='sensors-heading'] div[role='alert']");
+  await editor.getByLabel("Not updating after (seconds, 60–604800)", { exact: true }).fill("3600");
+  await roleRow(page, "Humidity").locator("button.source-toggle").click();
+  const alert = page.locator("smart-plants-panel #detail-panel > div.notice[role='alert']");
   await expect(alert).toBeVisible();
   await expect(alert.getByRole("button", { name: "Keep editing", exact: true })).toBeVisible();
   await expect(alert.getByRole("button", { name: "Discard and switch", exact: true })).toBeVisible();
@@ -99,18 +113,18 @@ test("single active editor: switching with unsaved changes prompts", async ({ pa
   await expect(page.locator("smart-plants-panel div#humidity-sources-editor")).toBeVisible();
 });
 
-test("malformed role: Edit sources refuses fail-closed with a row-scoped alert, axe", async ({ page }, info) => {
+test("malformed role: Change refuses fail-closed with a row-scoped alert, axe", async ({ page }, info) => {
   await openSensors(page, "temperature");
-  const row = roleRow(page, "Air temperature");
-  await expect(row).toContainText("role data unavailable");
-  await row.getByRole("button", { name: "Edit sources", exact: true }).click();
+  const row = roleRow(page, "Temperature");
+  await expect(row).toContainText("Sensor settings could not be read");
+  await row.locator("button.source-toggle").click();
   const alert = row.getByRole("alert");
-  await expect(alert).toHaveText("Air temperature source data is missing or incompatible. Refresh or upgrade before editing; defaults will not be guessed.");
+  await expect(alert).toHaveText("Temperature sensor settings are missing or incompatible. Refresh or update before editing; defaults will not be guessed.");
   await expect(page.locator("smart-plants-panel div#temperature-sources-editor")).toHaveCount(0);
   await expect(row.locator("button.source-toggle")).toHaveAttribute("aria-expanded", "false");
-  await expect(roleRow(page, "Air humidity").getByRole("alert")).toHaveCount(0);
+  await expect(roleRow(page, "Humidity").getByRole("alert")).toHaveCount(0);
   await audit(page, info, "sensors-role-unavailable");
-  await roleRow(page, "Air humidity").getByRole("button", { name: "Edit sources", exact: true }).click();
+  await roleRow(page, "Humidity").locator("button.source-toggle").click();
   await expect(page.locator("smart-plants-panel div#humidity-sources-editor")).toBeVisible();
   await expect(alert).toHaveCount(0);
 });

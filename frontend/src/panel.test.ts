@@ -23,6 +23,10 @@ const plant: PlantRecord = {
   },
 };
 
+// The plant photo is shown by the header avatar.
+function avatarImg(element: Element): HTMLImageElement | null | undefined {
+  return element.shadowRoot?.querySelector("sp-plant-avatar")?.shadowRoot?.querySelector("img");
+}
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((done) => {
@@ -49,7 +53,7 @@ async function openDetail(
   });
   cardName()!.click();
   await element.updateComplete;
-  await click(element, "Plant details");
+  await click(element, "Settings");
   return element;
 }
 
@@ -152,7 +156,7 @@ describe("SmartPlantsPanel image loading", () => {
     const element = await openDetail([plant]); const signal = vi.mocked(fetch).mock.calls[0]?.[1]?.signal;
     await click(element, "Back to overview"); expect(signal?.aborted).toBe(true);
     pending.resolve(new Response(new Blob(["late"], { type: "image/webp" }))); await settle(element);
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:photo"); expect(element.shadowRoot?.querySelector("img")).toBeNull();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:photo"); expect(avatarImg(element)).toBeFalsy();
   });
 
   it("refetches protected images when HA rotates the access token", async () => {
@@ -169,7 +173,7 @@ describe("SmartPlantsPanel image loading", () => {
       return new Response(new Blob(["image"], { type: "image/webp" }));
     });
     const element = document.createElement("smart-plants-panel"); element.hass = harness([plant], msg => msg.type === "smart_plants/plants/list" ? { plants: [current] } : undefined).hass;
-    document.body.append(element); await settle(element); await click(element, "Aloe"); await click(element, "Plant details");
+    document.body.append(element); await settle(element); await click(element, "Aloe"); await click(element, "Settings");
     await vi.waitFor(() => expect(button(element.shadowRoot!, "Remove photo")).toBeDefined());
     await click(element, "Remove photo");
     expect(fetch).toHaveBeenCalledWith("/api/smart_plants/plants/plt-1/image?expected_revision=1", expect.objectContaining({ method: "DELETE", headers: { Authorization: "Bearer test-token" } }));
@@ -179,6 +183,6 @@ describe("SmartPlantsPanel image loading", () => {
   it("reports a failed authenticated image read and supports retry", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response("", { status: 401 }));
     const element = await openDetail([plant]); await settle(element);
-    expect(element.shadowRoot?.textContent).toContain("Photo could not be loaded"); await click(element, "Retry photo"); await settle(element); expect(element.shadowRoot?.querySelector("img")?.src).toBe("blob:photo");
+    expect(element.shadowRoot?.textContent).toContain("Photo could not be loaded"); await click(element, "Retry photo"); await settle(element); expect(avatarImg(element)?.src).toBe("blob:photo");
   });
 });

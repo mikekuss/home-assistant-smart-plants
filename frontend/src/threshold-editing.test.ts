@@ -59,7 +59,7 @@ async function mountDetail(plant: PlantRecord, entities: HAEntity[], states: Rec
   document.body.append(el);
   await settle(el);
   await click(el, plant.name);
-  await click(el, "Diagnostics");
+  await click(el, "Settings");
   return { el, calls: h.calls };
 }
 
@@ -108,7 +108,7 @@ describe("temperature stress threshold editor UI", () => {
     const toggles = [...el.shadowRoot!.querySelectorAll("button.threshold-toggle")];
     expect(toggles.length).toBe(1);
     expect(toggles[0].textContent).toContain("Edit thresholds");
-    const tempDd = [...el.shadowRoot!.querySelectorAll("dl.diagnostics dd")].find(dd => dd.querySelector("button.threshold-toggle"));
+    const tempDd = [...el.shadowRoot!.querySelectorAll("dl.other-targets dd")].find(dd => dd.querySelector("button.threshold-toggle"));
     const tempDt = tempDd?.previousElementSibling;
     expect(tempDt?.textContent).toContain("Temperature stress");
   });
@@ -263,7 +263,7 @@ describe("humidity stress threshold editor UI", () => {
     const { el } = await mountDetail(withHumidityRole(), entities, states);
     const toggles = [...el.shadowRoot!.querySelectorAll("button.threshold-toggle")];
     expect(toggles.length).toBe(2); // one per editable configured role
-    const dds = [...el.shadowRoot!.querySelectorAll("dl.diagnostics dd")];
+    const dds = [...el.shadowRoot!.querySelectorAll("dl.other-targets dd")];
     const humidityDd = dds.find(dd => dd.previousElementSibling?.textContent?.includes("Humidity stress"));
     expect(humidityDd?.querySelector("button.threshold-toggle")).not.toBeNull();
   });
@@ -403,7 +403,7 @@ describe("conductivity stress threshold editor UI", () => {
     const { el } = await mountDetail(withConductivityRole(), entities, states);
     const toggles = [...el.shadowRoot!.querySelectorAll("button.threshold-toggle")];
     expect(toggles.length).toBe(2);
-    const dds = [...el.shadowRoot!.querySelectorAll("dl.diagnostics dd")];
+    const dds = [...el.shadowRoot!.querySelectorAll("dl.other-targets dd")];
     const condDd = dds.find(dd => dd.previousElementSibling?.textContent?.includes("Conductivity stress"));
     expect(condDd?.querySelector("button.threshold-toggle")).not.toBeNull();
   });
@@ -544,7 +544,7 @@ describe("co2 stress threshold editor UI", () => {
     const { el } = await mountDetail(withCo2Role(), entities, states);
     const toggles = [...el.shadowRoot!.querySelectorAll("button.threshold-toggle")];
     expect(toggles.length).toBe(2);
-    const dds = [...el.shadowRoot!.querySelectorAll("dl.diagnostics dd")];
+    const dds = [...el.shadowRoot!.querySelectorAll("dl.other-targets dd")];
     const co2Dd = dds.find(dd => dd.previousElementSibling?.textContent?.includes("CO2 stress"));
     expect(co2Dd?.querySelector("button.threshold-toggle")).not.toBeNull();
   });
@@ -712,7 +712,7 @@ describe("soil temperature stress threshold editor UI", () => {
     const { el } = await mountDetail(withSoilTemperatureRole(), entities, states);
     const toggles = [...el.shadowRoot!.querySelectorAll("button.threshold-toggle")];
     expect(toggles.length).toBe(2);
-    const dds = [...el.shadowRoot!.querySelectorAll("dl.diagnostics dd")];
+    const dds = [...el.shadowRoot!.querySelectorAll("dl.other-targets dd")];
     const soilDd = dds.find(dd => dd.previousElementSibling?.textContent?.includes("Soil temperature stress"));
     expect(soilDd?.querySelector("button.threshold-toggle")).not.toBeNull();
   });
@@ -861,7 +861,7 @@ describe("low battery threshold editor UI", () => {
     const { el } = await mountDetail(withBatteryRole(), entities, states);
     const toggles = [...el.shadowRoot!.querySelectorAll("button.threshold-toggle")];
     expect(toggles.length).toBe(2);
-    const dds = [...el.shadowRoot!.querySelectorAll("dl.diagnostics dd")];
+    const dds = [...el.shadowRoot!.querySelectorAll("dl.other-targets dd")];
     const batDd = dds.find(dd => dd.previousElementSibling?.textContent?.includes("Low battery"));
     expect(batDd?.querySelector("button.threshold-toggle")).not.toBeNull();
   });
@@ -1026,7 +1026,7 @@ describe("low light threshold editor UI", () => {
     const { el } = await mountDetail(withIlluminanceRole(), entities, states);
     const toggles = [...el.shadowRoot!.querySelectorAll("button.threshold-toggle")];
     expect(toggles.length).toBe(2);
-    const dds = [...el.shadowRoot!.querySelectorAll("dl.diagnostics dd")];
+    const dds = [...el.shadowRoot!.querySelectorAll("dl.other-targets dd")];
     const lightDd = dds.find(dd => dd.previousElementSibling?.textContent?.includes("Low light"));
     expect(lightDd?.querySelector("button.threshold-toggle")).not.toBeNull();
   });
@@ -1258,7 +1258,7 @@ describe("Threshold editor localization", () => {
     document.body.append(el);
     await settle(el);
     await click(el, "Aloe");
-    await click(el, "Diagnose");
+    await click(el, "Einstellungen");
     const toggle = el.shadowRoot!.querySelector("button.threshold-toggle") as HTMLButtonElement;
     expect(toggle.textContent?.trim()).toBe("Schwellenwerte bearbeiten");
     toggle.click(); await settle(el);
@@ -1287,7 +1287,7 @@ describe("Threshold editor localization", () => {
     document.body.append(el);
     await settle(el);
     await click(el, "Aloe");
-    await click(el, "Diagnostics");
+    await click(el, "Settings");
     const toggle = el.shadowRoot!.querySelector("button.threshold-toggle") as HTMLButtonElement;
     expect(toggle.textContent?.trim()).toBe("Edit thresholds");
   });
