@@ -106,6 +106,16 @@ class SourceTracker:
             for key, item in self._sources.items()
         }
 
+    @property
+    def last_valid_at(self) -> datetime | None:
+        """Return the newest valid-reading timestamp across tracked sources."""
+        stamps = [
+            item.last_valid_at
+            for item in self._sources.values()
+            if item.last_valid_at is not None
+        ]
+        return max(stamps) if stamps else None
+
     def configure(
         self,
         sources: Iterable[SourceDescriptor],
