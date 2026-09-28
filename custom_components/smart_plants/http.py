@@ -12,7 +12,7 @@ Three routes, all under ``/api/smart_plants/plants/{plant_id}/image``:
 Every handler is admin-gated (``request['hass_user'].is_admin``) and
 resolves the loaded manager per request via the singleton entry lookup,
 returning ``integration_not_loaded`` while unloaded — matching the
-frozen WebSocket contract.
+WebSocket API's error codes.
 """
 
 from __future__ import annotations

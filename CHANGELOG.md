@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-28
+
+### Changed
+
+- The plant device's model is now the plant's species name (common name, or Latin name as a
+  fallback), or *Plant* when no species is set, instead of *Manual Plant*. Existing devices
+  pick up the new model the next time Home Assistant starts.
+- The moisture minimum, target, and maximum number entities are now created disabled by
+  default. Thresholds stay editable in the panel; enable the entities if you use them in
+  automations or dashboards. Existing number entities keep their current enabled state.
+
 ## [0.3.1] - 2026-09-28
 
 ### Fixed
@@ -79,7 +90,8 @@ First public release.
 - English and German translations for the integration's entities, setup, and repairs. The
   sidebar panel is English-only.
 
-[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.3.1...HEAD
+[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.2.0...0.3.0
 [0.2.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.1.1...0.2.0

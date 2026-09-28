@@ -74,10 +74,10 @@ state.seed = () => {
   state.evaluations[uuid(1)] = { computed_percent: 12, health_score: 30, needs_water: true, too_wet: false, sensor_stale: false, computed_available: true, reasons: ["Primary moisture is below the minimum."] };
   state.evaluations[uuid(2)] = { ...unavailable, sensor_stale: true, reasons: ["Assigned registered source is missing."] };
 };
-// Register the seven Phase 7 stress binaries against one dedicated diagnostics
-// plant. Attribute keys mirror the backend diagnostics attributes so the panel
-// resolves effective thresholds without a live evaluator. Opt-in for a11y-only
-// specs; leaves existing tests undisturbed.
+// Register the seven non-moisture problem binaries against one dedicated
+// diagnostics plant. Attribute keys mirror the backend diagnostics attributes
+// so the panel resolves effective thresholds without a live evaluator. Opt-in
+// for a11y-only specs; leaves existing tests undisturbed.
 state.seedDiagnostics = () => {
   const diag = plant(50, "Diagnostics Plant", { category: "Test", placement: { mode: "indoor", exposure: "partial_sun", rain_exposure: "none", container: true } });
   state.plants.push(diag);

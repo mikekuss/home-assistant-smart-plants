@@ -70,7 +70,7 @@ async def test_battery_entity_metadata_and_state(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
 
     registry = er.async_get(hass)
-    # Entity-lifecycle contract: the role's entity is not created until the role
+    # Lazy entity creation: the role's entity is not created until the role
     # has had at least one source.
     assert (
         registry.async_get_entity_id("sensor", DOMAIN, f"{DOMAIN}:{plant.id}:battery")
@@ -114,7 +114,7 @@ async def test_low_battery_entity_metadata_and_state(hass: HomeAssistant) -> Non
     await hass.async_block_till_done()
 
     registry = er.async_get(hass)
-    # Entity-lifecycle contract: no problem binary until the role has a source.
+    # Lazy entity creation: no problem binary until the role has a source.
     assert (
         registry.async_get_entity_id(
             "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:low_battery"

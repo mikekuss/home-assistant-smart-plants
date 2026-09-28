@@ -1,8 +1,8 @@
 """
-Phase 7 slice: composite plant health.
+Composite plant health.
 
 Pure function ``evaluate`` combines the moisture controller's continuous
-0..100 health score with the seven Phase 7 stress binaries into a single
+0..100 health score with the non-moisture stress binaries into a single
 weighted-mean composite score. Roles that are not configured or currently
 unavailable are excluded from both the numerator and the weight
 denominator; they are never treated as healthy.
@@ -154,8 +154,8 @@ def evaluate(inputs: HealthInputs) -> HealthEvaluation:
         if moisture_value is not None:
             values["moisture"] = moisture_value
 
-    # Seven Phase 7 stress binaries. The lookup key on each dataclass
-    # matches the accepted per-role contract.
+    # Non-moisture stress binaries. The attribute names match each role's
+    # evaluation dataclass and its problem flag.
     stress_specs: tuple[tuple[str, object, str, str], ...] = (
         (
             "temperature",
@@ -190,7 +190,7 @@ def evaluate(inputs: HealthInputs) -> HealthEvaluation:
             continue
         # Illuminance at night is not evaluable for plant health: exclude it from
         # the composite rather than counting a nighttime "off" as healthy. The
-        # low_light binary keeps reporting off for its own contract. A dead or
+        # low_light binary itself still reports off at night. A dead or
         # stale light sensor is already available=False here (the evaluator
         # checks unavailability before nighttime), so it is excluded, never 100.
         if getattr(sub, "reason", None) == "nighttime":

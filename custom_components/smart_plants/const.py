@@ -20,7 +20,7 @@ STORAGE_MINOR_VERSION = 11
 OPENPLANTBOOK_PROVIDER = "openplantbook"
 MANUAL_PROVIDER = "manual"
 
-# --- Image lifecycle (Phase 2, Cut 4) -------------------------------------
+# --- Image lifecycle --------------------------------------------------------
 
 # Directory under ``hass.config.path`` that holds the re-encoded WebP files.
 # Kept outside ``custom_components/`` so an integration-directory replacement

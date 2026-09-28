@@ -1,5 +1,5 @@
 """
-Shared Smart Plants entity infrastructure (Phase 3).
+Shared Smart Plants entity infrastructure.
 
 This module owns the pieces every Smart Plants platform (sensor,
 binary_sensor, number) needs so the platform files stay tiny and
@@ -16,9 +16,8 @@ lifecycle rules do not drift between them:
   drives. It adds entities for plants that already exist at setup
   time, subscribes to ``PlantAddedEvent`` so future plants get their
   entities exactly once, and tears down its subscription on entry
-  unload. Cut 1 ships with empty factory tables so no meaningless
-  production entities land on users; tests and future cuts add real
-  factories.
+  unload. Each platform supplies its role → factory table; tests can
+  extend a table with synthetic factories to exercise the lifecycle.
 """
 
 from __future__ import annotations
@@ -120,7 +119,7 @@ class SmartPlantsEntity(Entity):
         # Availability follows two things: the manager must still hold
         # the plant, and the plant must be ``active``. A disabled plant
         # keeps its registry entries but its entities read unavailable,
-        # matching the Phase 3 lifecycle rules.
+        # so history and customizations survive a disable/re-enable.
         plant = self._manager.snapshot.plants.get(self._plant_id)
         if plant is None:
             return False
@@ -177,10 +176,9 @@ class SmartPlantsEntity(Entity):
         if event.plant.id != self._plant_id:
             return
         if isinstance(event, PlantLifecycleChangedEvent):
-            # Give subclasses a hook to pause/resume Phase 4 source
-            # subscriptions in lockstep with availability. The base
-            # implementations are no-ops so a plain Cut 1 entity still
-            # works.
+            # Give subclasses a hook to pause/resume source subscriptions
+            # in lockstep with availability. The base implementations are
+            # no-ops so an entity without source subscriptions still works.
             if event.plant.lifecycle_state == "disabled":
                 self._on_plant_disabled()
             elif event.plant.lifecycle_state == "active":
@@ -196,7 +194,7 @@ class SmartPlantsEntity(Entity):
         """
         Pause source subscriptions in subclasses.
 
-        Default implementation is a no-op. Phase 4 entities that hold
+        Default implementation is a no-op. Entities that hold
         source-state or interval subscriptions override this to detach
         without deleting their registry entry.
         """
@@ -205,7 +203,7 @@ class SmartPlantsEntity(Entity):
         """
         Resume source subscriptions in subclasses.
 
-        Default implementation is a no-op. Phase 4 entities re-attach
+        Default implementation is a no-op. Entities with sources re-attach
         their source-state listeners here so a re-enable does not
         create duplicate subscriptions.
         """
@@ -216,10 +214,9 @@ class SmartPlantsPlatformLifecycle:
     Shared lifecycle machinery for a single Smart Plants platform.
 
     A platform ``async_setup_entry`` builds one of these, passing the
-    role → factory table it owns. Cut 1 platform tables are empty by
-    design (no meaningful production entities yet); Cut 2 wires the
-    dynamic-add hook so plants created after setup receive their
-    entities exactly once, and Cut 3 handles deletion cleanup.
+    role → factory table it owns. It adds entities for existing plants,
+    wires the dynamic-add hook so plants created after setup receive
+    their entities exactly once, and handles deletion cleanup.
     """
 
     def __init__(  # noqa: PLR0913, PLR0917 — each is a distinct HA dependency
@@ -356,7 +353,7 @@ class SmartPlantsPlatformLifecycle:
         """
         Decide whether ``plant``'s ``entity_role`` entity should exist now.
 
-        Moisture (always_present) entities are always created. A Phase 7 role's
+        Moisture (always_present) entities are always created. Any other role's
         entities are created once the role has had a source; they are kept after
         sources are removed because the registry entry (and thus history and
         customizations) already exists.

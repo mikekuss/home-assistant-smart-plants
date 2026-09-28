@@ -1,9 +1,8 @@
 """
-Shared entity/platform lifecycle machinery (Phase 3 Cut 1).
+Shared entity/platform lifecycle machinery.
 
 Uses synthetic test-only entities to exercise the machinery in
-``entity.py`` without relying on production role factories, which
-remain empty until Phase 4.
+``entity.py`` without relying on production role factories.
 """
 
 from __future__ import annotations

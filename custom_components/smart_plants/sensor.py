@@ -1,7 +1,7 @@
 """
 Smart Plants ``sensor`` platform.
 
-Phase 4 Cut 3 populates ``ROLE_FACTORIES`` with:
+``ROLE_FACTORIES`` holds the moisture-role sensors:
 
 * ``moisture`` — computed soil moisture percent.
 * ``health_score`` — piecewise-linear moisture-only score (0..100).
@@ -762,7 +762,7 @@ def _factory_role(
 
 
 # Materialized from the registry after this module's implementation factories
-# exist. Tests may extend the table to exercise Phase 3 lifecycle behavior.
+# exist. Tests may extend the table to exercise the shared entity lifecycle.
 ROLE_FACTORIES = entity_factories(PLATFORM)
 
 

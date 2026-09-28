@@ -5,7 +5,7 @@ import type { HADevice, HAEntity, HAState, MoistureInput, MoistureRoleConfig, Pl
 export const keys = ["min", "target", "max"] as const;
 export const builtin = { min: 15, target: 35, max: 55 };
 export const placements = ["indoor", "outdoor", "balcony", "greenhouse", "covered_outdoor", "dormant_storage"];
-// The Phase 7 problem binaries surfaced by the read-only diagnostics section.
+// The non-moisture problem binaries surfaced by the read-only diagnostics section.
 // Moisture problems (needs_water, too_wet, sensor_stale) are already summarized
 // in the detail header; this list intentionally excludes them so both places
 // stay unambiguous.
@@ -45,7 +45,7 @@ export interface ProblemBinaryReading {
   status: ProblemStatus;
   reason: string | null;
 }
-// Effective threshold attributes each Phase 7 stress binary exposes. The
+// Effective threshold attributes each non-moisture problem binary exposes. The
 // diagnostics section surfaces these read-only. Overrides (storage minor 8/9)
 // are applied backend-side so `value` already reflects the effective (built-in
 // or overridden) threshold.
@@ -146,7 +146,7 @@ export function temperatureStressInput(persisted: Partial<Record<TemperatureStre
   return out;
 }
 // Humidity stress overrides, mirroring the temperature helpers with the
-// backend humidity contract's bounds/hysteresis/stable-band rules.
+// backend humidity validator's bounds/hysteresis/stable-band rules.
 export const HUMIDITY_STRESS_BUILTIN_DEFAULTS: Record<string, number> = {
   dry_threshold_percent: 25.0,
   dry_clear_percent: 30.0,
@@ -194,7 +194,7 @@ export function humidityStressInput(persisted: Partial<Record<HumidityStressKey,
   return out;
 }
 // Conductivity stress overrides, mirroring the temperature/humidity helpers
-// with the backend conductivity contract's bounds/hysteresis/stable-band
+// with the backend conductivity validator's bounds/hysteresis/stable-band
 // rules.
 export const CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS: Record<string, number> = {
   low_threshold_micro_siemens_per_cm: 350.0,
@@ -521,7 +521,7 @@ export function sourceWarning(source: SensorSource, entities: HAEntity[], states
   if (state && !["unknown", "unavailable"].includes(state.state) && (!state.state.trim() || !Number.isFinite(Number(state.state)) || Number(state.state) < 0 || Number(state.state) > 100)) warnings.push(l.t("source_warning.moisture_reading"));
   return warnings.join(l.t("source_warning.separator"));
 }
-// The seven Phase 7 roles that accept sources via the generic Sensors section.
+// The seven non-moisture roles that accept sources via the generic Sensors section.
 // deviceClass/acceptedUnits drive the picker filter and metadata warnings and
 // must match each role's evaluator so the UI warns before the backend rejects.
 export type SourceRole = "temperature" | "humidity" | "illuminance" | "battery" | "conductivity" | "soil_temperature" | "co2";

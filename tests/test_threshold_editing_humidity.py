@@ -1,17 +1,14 @@
-"""End-to-end contract test for the conductivity_stress threshold-editing slice."""
+"""End-to-end tests for editing humidity_stress thresholds over the WebSocket API."""
 
 from __future__ import annotations
 
 from typing import Any
 
 import pytest
-from custom_components.smart_plants.conductivity_evaluator import (
-    CONDUCTIVITY_MICROSIEMENS_PER_CM,
-)
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.models import (
-    CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS,
-    ConductivityConfig,
+    HUMIDITY_STRESS_BUILTIN_DEFAULTS,
+    HumidityConfig,
 )
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -33,22 +30,12 @@ async def test_websocket_override_persists_and_updates_binary_sensor_attributes(
     entry = await _setup(hass)
     manager = entry.runtime_data.manager
     plant = await manager.async_create_plant(name="Fern")
-    hass.states.async_set(
-        "sensor.conductivity",
-        "600",
-        {"unit_of_measurement": CONDUCTIVITY_MICROSIEMENS_PER_CM},
-    )
-    sourced = await manager.async_set_role_sources(
+    hass.states.async_set("sensor.humidity", "50", {"unit_of_measurement": "%"})
+    assigned = await manager.async_set_role_sources(
         plant.id,
-        role="conductivity",
+        role="humidity",
         expected_revision=plant.revision,
-        sources=[{"entity_id": "sensor.conductivity"}],
-    )
-    assigned = await manager.async_set_role_primary(
-        plant.id,
-        role="conductivity",
-        expected_revision=sourced.revision,
-        primary_entity_id="sensor.conductivity",
+        sources=[{"entity_id": "sensor.humidity"}],
     )
     await hass.async_block_till_done()
 
@@ -58,12 +45,12 @@ async def test_websocket_override_persists_and_updates_binary_sensor_attributes(
         "type": "smart_plants/roles/set_threshold_overrides",
         "plant_id": plant.id,
         "expected_revision": assigned.revision,
-        "role": "conductivity",
+        "role": "humidity",
         "values": {
-            "low_threshold_micro_siemens_per_cm": 400.0,
-            "low_clear_micro_siemens_per_cm": 550.0,
-            "high_clear_micro_siemens_per_cm": None,
-            "high_threshold_micro_siemens_per_cm": None,
+            "dry_threshold_percent": 15.0,
+            "dry_clear_percent": 20.0,
+            "damp_threshold_percent": None,
+            "damp_clear_percent": None,
         },
     }
     await client.send_json(payload)
@@ -73,42 +60,32 @@ async def test_websocket_override_persists_and_updates_binary_sensor_attributes(
     assert returned["id"] == plant.id
     assert returned["revision"] == assigned.revision + 1
 
-    persisted = manager.snapshot.plants[plant.id].role_config("conductivity")
-    assert isinstance(persisted, ConductivityConfig)
+    persisted = manager.snapshot.plants[plant.id].role_config("humidity")
+    assert isinstance(persisted, HumidityConfig)
+    assert persisted.stress_threshold_overrides["dry_threshold_percent"] == 15.0
+    assert persisted.stress_threshold_overrides["dry_clear_percent"] == 20.0
+    assert persisted.stress_threshold_overrides["damp_threshold_percent"] is None
+    assert persisted.stress_threshold_overrides["damp_clear_percent"] is None
     assert (
-        persisted.stress_threshold_overrides["low_threshold_micro_siemens_per_cm"]
-        == 400.0
-    )
-    assert (
-        persisted.stress_threshold_overrides["low_clear_micro_siemens_per_cm"] == 550.0
-    )
-    assert (
-        persisted.stress_threshold_overrides["high_clear_micro_siemens_per_cm"] is None
-    )
-    assert (
-        persisted.stress_threshold_overrides["high_threshold_micro_siemens_per_cm"]
-        is None
-    )
-    assert (
-        persisted.effective_stress_threshold("high_threshold_micro_siemens_per_cm")
-        == CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS["high_threshold_micro_siemens_per_cm"]
+        persisted.effective_stress_threshold("damp_threshold_percent")
+        == HUMIDITY_STRESS_BUILTIN_DEFAULTS["damp_threshold_percent"]
     )
 
     await hass.async_block_till_done()
-    entity_id = "binary_sensor.fern_conductivity_stress"
+    entity_id = "binary_sensor.fern_humidity_stress"
     state = hass.states.get(entity_id)
     assert state is not None, hass.states.async_entity_ids()
-    # Overridden low side.
-    assert state.attributes["low_threshold_micro_siemens_per_cm"] == 400.0
-    assert state.attributes["low_clear_micro_siemens_per_cm"] == 550.0
-    # Inherited high side still uses built-in defaults.
+    # Overridden dry side.
+    assert state.attributes["dry_threshold_percent"] == 15.0
+    assert state.attributes["dry_clear_percent"] == 20.0
+    # Inherited damp side still uses built-in defaults.
     assert (
-        state.attributes["high_clear_micro_siemens_per_cm"]
-        == CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS["high_clear_micro_siemens_per_cm"]
+        state.attributes["damp_threshold_percent"]
+        == HUMIDITY_STRESS_BUILTIN_DEFAULTS["damp_threshold_percent"]
     )
     assert (
-        state.attributes["high_threshold_micro_siemens_per_cm"]
-        == CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS["high_threshold_micro_siemens_per_cm"]
+        state.attributes["damp_clear_percent"]
+        == HUMIDITY_STRESS_BUILTIN_DEFAULTS["damp_clear_percent"]
     )
 
 
@@ -125,12 +102,12 @@ async def test_websocket_rejects_invalid_effective_ordering(
             "type": "smart_plants/roles/set_threshold_overrides",
             "plant_id": plant.id,
             "expected_revision": plant.revision,
-            "role": "conductivity",
+            "role": "humidity",
             "values": {
-                "low_threshold_micro_siemens_per_cm": 600.0,
-                "low_clear_micro_siemens_per_cm": 500.0,
-                "high_clear_micro_siemens_per_cm": None,
-                "high_threshold_micro_siemens_per_cm": None,
+                "dry_threshold_percent": 50.0,
+                "dry_clear_percent": 40.0,
+                "damp_threshold_percent": None,
+                "damp_clear_percent": None,
             },
         }
     )
@@ -152,11 +129,11 @@ async def test_websocket_rejects_missing_key(
             "type": "smart_plants/roles/set_threshold_overrides",
             "plant_id": plant.id,
             "expected_revision": plant.revision,
-            "role": "conductivity",
+            "role": "humidity",
             "values": {
-                "low_threshold_micro_siemens_per_cm": None,
-                "low_clear_micro_siemens_per_cm": None,
-                "high_clear_micro_siemens_per_cm": None,
+                "dry_threshold_percent": None,
+                "dry_clear_percent": None,
+                "damp_threshold_percent": None,
             },
         }
     )
@@ -187,12 +164,12 @@ async def test_websocket_revision_conflict(
             "type": "smart_plants/roles/set_threshold_overrides",
             "plant_id": plant.id,
             "expected_revision": bad_revision,
-            "role": "conductivity",
+            "role": "humidity",
             "values": {
-                "low_threshold_micro_siemens_per_cm": None,
-                "low_clear_micro_siemens_per_cm": None,
-                "high_clear_micro_siemens_per_cm": None,
-                "high_threshold_micro_siemens_per_cm": None,
+                "dry_threshold_percent": None,
+                "dry_clear_percent": None,
+                "damp_threshold_percent": None,
+                "damp_clear_percent": None,
             },
         }
     )

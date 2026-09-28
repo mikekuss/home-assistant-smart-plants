@@ -25,7 +25,7 @@ to the harness HTML/JS and packaged module; real WebSocket connections and all
 other network requests fail the test. Native HA links are checked without
 navigating to a real HA instance.
 
-## Mock contract
+## Mock behavior
 
 - Complete immutable-on-response plant/species snapshots, including exactly
   populated `field_sources`, attributed defaults, and explicit null overrides.

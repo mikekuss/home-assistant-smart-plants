@@ -161,7 +161,7 @@ class SmartPlantsManager:
         # on ``async_added_to_hass`` and cleared on removal so lookups
         # never return a detached HA entity handle.
         self._entity_index: dict[str, dict[str, dict[str, Any]]] = {}
-        # Phase 4 Cut 1: entity_registry rename/remove tracking. Populated
+        # entity_registry rename/remove tracking. Populated
         # in ``async_load`` from HA's bus listener. The unsubscribe callable
         # is called in ``async_unload`` so a config-entry reload never
         # leaks a stale listener into the next runtime.
@@ -235,7 +235,7 @@ class SmartPlantsManager:
     def available(self) -> bool:
         return self._loaded and not self._closing and not self._unavailable
 
-    # --- Event subscription (Phase 3 Cut 1) ------------------------------
+    # --- Event subscription ----------------------------------------------
 
     def subscribe(self, callback: EventCallback) -> Unsubscribe:
         """
@@ -319,7 +319,7 @@ class SmartPlantsManager:
     def _prepare_event(self, event: PlantEvent) -> None:
         self._queue_event(event)
 
-    # --- Entity index (Phase 3 Cut 1) ------------------------------------
+    # --- Entity index ----------------------------------------------------
 
     def register_entity(
         self, platform: str, plant_id: str, role: str, entity: Any
@@ -391,7 +391,7 @@ class SmartPlantsManager:
         return self._controllers.get(plant_id, {}).get(role)
 
     def get_moisture_controller(self, plant_id: str) -> Any | None:
-        """Compatibility accessor for the Phase 4 entity contract."""
+        """Return the moisture controller; kept for moisture-only callers."""
         return self.get_role_controller(plant_id, "moisture")
 
     def _create_controllers(self, plant: PlantRecord, *, start: bool) -> None:
@@ -511,7 +511,7 @@ class SmartPlantsManager:
         self._registry_subscribers.clear()
         self._entity_index.clear()
 
-    # --- Phase 4 Cut 1: entity_registry rename/remove tracking ---------
+    # --- entity_registry rename/remove tracking --------------------------
 
     def _start_registry_tracking(self) -> None:
         """
@@ -520,7 +520,7 @@ class SmartPlantsManager:
         The listener translates entity_id renames into moisture-source
         record updates so a stored ``(registry_id, entity_id)`` pair keeps
         the current entity_id after a native HA edit. Registry removals
-        preserve the assignment as-is (Cut 4 raises a repair issue).
+        preserve the assignment as-is (``repairs.py`` raises a repair issue).
         """
         from homeassistant.helpers.entity_registry import (  # noqa: PLC0415
             EVENT_ENTITY_REGISTRY_UPDATED,
@@ -1106,7 +1106,7 @@ class SmartPlantsManager:
         await self._dispatch_event(event)
         return updated
 
-    # --- Phase 4 Cut 1: moisture assignment mutations ---------------------
+    # --- Moisture assignment mutations ----------------------------------
 
     def _configure_moisture(
         self,
@@ -1563,7 +1563,7 @@ class SmartPlantsManager:
         """
         Atomically set the moisture thresholds.
 
-        All three fields are validated together against the phase's
+        All three fields are validated together against the documented
         ordering rule (0 < min < target < max < 100 with ``max - min >=
         4``) so a partial write can never leave the record in an
         inconsistent state.
@@ -1723,6 +1723,10 @@ class SmartPlantsManager:
                 updated = updated.with_role_config(definition.key, candidate)
             updated = updated.with_next_revision(species=cleaned_species)
             await self._async_publish(self._snapshot.with_plant(updated))
+            if self._reconciler is not None:
+                # The device model follows the species name. The startup
+                # inventory scan re-applies it if this write is interrupted.
+                await self._reconciler.async_reconcile_present(updated)
             event = PlantUpdatedEvent(
                 kind="plant_updated", plant=updated, previous=current
             )
@@ -1774,7 +1778,7 @@ class SmartPlantsManager:
             # absent from the live snapshot, before non-transactional
             # side effects (device removal, image unlink) run. Entity
             # listeners use this signal to detach themselves ahead of
-            # the device removal Cut 3 will drive.
+            # the device removal that follows.
         await self._dispatch_event(event)
         if self.entities_for_plant(plant_id):
             raise RuntimeError("plant entities remain attached after deletion dispatch")
@@ -1782,9 +1786,9 @@ class SmartPlantsManager:
         async with self._mutation_lock:
             if self._closing or self._unavailable:
                 return
-            # Phase 2 (side effect) + phase 3 (drop tombstone) run only when
-            # a reconciler is attached; tests without one leave the tombstone
-            # in place to exercise the persistence contract.
+            # The side effect and the tombstone drop run only when a
+            # reconciler is attached; tests without one leave the tombstone
+            # in place to exercise tombstone persistence.
             if self._reconciler is not None:
                 known_plant_ids = {
                     *self._snapshot.plants,
@@ -1880,9 +1884,10 @@ class SmartPlantsManager:
         """
         Append a typed pending-operation record without touching plant state.
 
-        Cut 2 uses this to persist intent before non-transactional device or
-        area side effects. Kept on the manager (not the store) so the write
-        goes through the mutation lock and the published snapshot flow.
+        The device reconciler uses this to persist intent before
+        non-transactional device or area side effects. Kept on the manager
+        (not the store) so the write goes through the mutation lock and the
+        published snapshot flow.
         """
         self._raise_if_unavailable()
         async with self._mutation_lock:
@@ -1980,7 +1985,7 @@ class SmartPlantsManager:
             if not plant_updates and not pending_cleanup:
                 return
 
-    # --- Image lifecycle (Cut 4) -----------------------------------------
+    # --- Image lifecycle -------------------------------------------------
 
     async def async_upsert_image(
         self,
@@ -2142,7 +2147,7 @@ class SmartPlantsManager:
         return updated
 
     async def async_create_internal_record(self, name: str) -> PlantRecord:
-        """Back-compat shim for Phase 1A callers; forwards to async_create_plant."""
+        """Back-compat shim for name-only callers; forwards to async_create_plant."""
         return await self.async_create_plant(name=name)
 
     async def async_mutate_for_test(

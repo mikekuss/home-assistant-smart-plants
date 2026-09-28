@@ -40,7 +40,7 @@ NON_MOISTURE_ROLES = (
 )
 SOURCE_ROLES = ("moisture", *NON_MOISTURE_ROLES)
 # Backend-owned PlantView defaults, shared with the frontend unit tests and the
-# e2e harness so their unconfigured-role data cannot drift from this contract.
+# e2e harness so their unconfigured-role data cannot drift from the backend.
 ROLE_VIEW_DEFAULTS_FIXTURE = (
     Path(__file__).parent / "fixtures" / "plant_view_role_defaults.json"
 )
@@ -409,8 +409,8 @@ async def test_new_plant_view_includes_default_for_every_source_role(
     # Regression: a freshly created plant persists only roles.moisture, but
     # the panel needs every source-accepting role's config to open its
     # sources editor. The WS view fills registered defaults without storing
-    # them, so the create/list payloads expose each role from the backend
-    # contract and storage stays moisture-only until a role is configured.
+    # them, so the create/list payloads expose each registered role and
+    # storage stays moisture-only until a role is configured.
     entry = await _setup(hass)
     manager: SmartPlantsManager = entry.runtime_data.manager
     client = await hass_ws_client(hass)

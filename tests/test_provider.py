@@ -766,7 +766,7 @@ async def test_service_maps_malformed_search_result_fields(
         await service.async_search("synthetic", "Plant", "en", 5)
 
 
-async def test_synthetic_provider_search_preview_apply_contract(
+async def test_synthetic_provider_search_preview_apply_flow(
     hass: HomeAssistant,
 ) -> None:
     manager = await _manager(hass)

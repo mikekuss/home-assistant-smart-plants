@@ -297,8 +297,8 @@ export class SmartPlantsPanel extends LitElement {
         catch { return null; }
       }));
       if (request === this._request) this._evaluations = Object.fromEntries(entries.filter((v): v is NonNullable<typeof v> => v !== null));
-      // Composite multi-role health, backend-neutral: read-only, per the
-      // multi-role health contract. Fetched only for the currently-viewed
+      // Composite multi-role health is computed by the backend and shown
+      // read-only. Fetched only for the currently-viewed
       // plant to keep list scrolling cheap.
       if (this._view.kind === "detail") {
         const targetId = this._view.plantId;
