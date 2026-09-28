@@ -1493,6 +1493,7 @@ var zt = {
 	"dialog.species_confirm": "Geprüfte Art übernehmen und anwenden",
 	"photo.loading": "Foto wird geladen …",
 	"photo.load_failed": "Foto konnte nicht geladen werden: {error}",
+	"photo.decode_failed": "die heruntergeladene Datei ist kein darstellbares Bild",
 	"photo.retry": "Foto erneut laden",
 	"photo.alt": "Foto von {name}",
 	"photo.none": "Noch kein Foto.",
@@ -2199,6 +2200,7 @@ var zt = {
 	"photo.loading": "Loading photo…",
 	"photo.load_failed": "Photo could not be loaded: {error}",
 	"photo.retry": "Retry photo",
+	"photo.decode_failed": "the downloaded file is not a displayable image",
 	"photo.alt": "Photo of {name}",
 	"photo.none": "No photo yet.",
 	"photo.stored": "Stored locally: {type} · {width} × {height} pixels",
@@ -4020,7 +4022,10 @@ var Xr, Zr = class extends x {
 		super(...e), this.src = null, this.name = "", this.size = "small", this.l = L;
 	}
 	render() {
-		return y`<div class="tile" part="tile">${this.src ? y`<img src=${this.src} alt=${this.l.t("photo.alt", { name: this.name })}>` : y`<ha-icon aria-hidden="true" icon="mdi:sprout"></ha-icon>`}</div>`;
+		return y`<div class="tile" part="tile">${this.src ? y`<img src=${this.src} alt=${this.l.t("photo.alt", { name: this.name })} @error=${() => this.dispatchEvent(new CustomEvent("photo-error", {
+			bubbles: !0,
+			composed: !0
+		}))}>` : y`<ha-icon aria-hidden="true" icon="mdi:sprout"></ha-icon>`}</div>`;
 	}
 };
 Xr = Zr, Xr.styles = [K, o`
@@ -6243,7 +6248,9 @@ var $ = class extends x {
 		let t = this._l, n = this._overview[e.id], r = B(e, this._devices)?.area_id, i = e.species?.snapshot.latin_name ?? e.species?.snapshot.common_name ?? null, a = n ? Ct(t, n) : null;
 		return y`<div class="sp-card header-card">
       <div class="hero">
-        <sp-plant-avatar size="large" .src=${this._imageUrl} .name=${e.name} .l=${t}></sp-plant-avatar>
+        <sp-plant-avatar size="large" .src=${this._imageUrl} .name=${e.name} .l=${t} @photo-error=${() => {
+			this._imageError = t.t("photo.decode_failed");
+		}}></sp-plant-avatar>
         <div class="hero-text">
           <h2 class="hero-name">${e.name}</h2>
           <div class="hero-meta">${r ? y`<span><ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${this._areaName(r)}</span>` : b}

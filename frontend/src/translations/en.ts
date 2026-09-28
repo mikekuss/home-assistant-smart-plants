@@ -151,6 +151,7 @@ export const en = {
   "photo.loading": "Loading photo…",
   "photo.load_failed": "Photo could not be loaded: {error}",
   "photo.retry": "Retry photo",
+  "photo.decode_failed": "the downloaded file is not a displayable image",
   "photo.alt": "Photo of {name}",
   "photo.none": "No photo yet.",
   "photo.stored": "Stored locally: {type} · {width} × {height} pixels",

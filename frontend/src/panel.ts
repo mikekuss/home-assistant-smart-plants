@@ -1330,7 +1330,7 @@ export class SmartPlantsPanel extends LitElement {
     const chip = o ? chipText(l, o) : null;
     return html`<div class="sp-card header-card">
       <div class="hero">
-        <sp-plant-avatar size="large" .src=${this._imageUrl} .name=${plant.name} .l=${l}></sp-plant-avatar>
+        <sp-plant-avatar size="large" .src=${this._imageUrl} .name=${plant.name} .l=${l} @photo-error=${() => { this._imageError = l.t("photo.decode_failed"); }}></sp-plant-avatar>
         <div class="hero-text">
           <h2 class="hero-name">${plant.name}</h2>
           <div class="hero-meta">${areaId ? html`<span><ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${this._areaName(areaId)}</span>` : nothing}

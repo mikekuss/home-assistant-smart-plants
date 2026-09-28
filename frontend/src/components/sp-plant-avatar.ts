@@ -6,6 +6,7 @@ import { themeFallbacks } from "./shared-styles.js";
 
 // The plant photo, or a plant icon on a tinted tile when there is none.
 // `src` is an object URL the view created from the authenticated image fetch.
+// A photo that downloads but cannot be displayed fires `photo-error`.
 export class SpPlantAvatar extends LitElement {
   static styles = [themeFallbacks, css`
     :host { --sp-avatar-size: 56px; --sp-avatar-radius: 12px; display: inline-block; flex: none; width: var(--sp-avatar-size); height: var(--sp-avatar-size); max-width: 100%; }
@@ -24,7 +25,7 @@ export class SpPlantAvatar extends LitElement {
 
   protected render() {
     return html`<div class="tile" part="tile">${this.src
-      ? html`<img src=${this.src} alt=${this.l.t("photo.alt", { name: this.name })}>`
+      ? html`<img src=${this.src} alt=${this.l.t("photo.alt", { name: this.name })} @error=${() => this.dispatchEvent(new CustomEvent("photo-error", { bubbles: true, composed: true }))}>`
       : html`<ha-icon aria-hidden="true" icon="mdi:sprout"></ha-icon>`}</div>`;
   }
 }

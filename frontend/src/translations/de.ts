@@ -151,6 +151,7 @@ export const de: Catalog = {
 
   "photo.loading": "Foto wird geladen …",
   "photo.load_failed": "Foto konnte nicht geladen werden: {error}",
+  "photo.decode_failed": "die heruntergeladene Datei ist kein darstellbares Bild",
   "photo.retry": "Foto erneut laden",
   "photo.alt": "Foto von {name}",
   "photo.none": "Noch kein Foto.",
