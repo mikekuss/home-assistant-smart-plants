@@ -8,11 +8,18 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Protocol
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
-from homeassistant.core import Event, EventStateChangedData, State, callback
+from homeassistant.core import (
+    Event,
+    EventStateChangedData,
+    EventStateReportedData,
+    State,
+    callback,
+)
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import (
     async_track_point_in_utc_time,
     async_track_state_change_event,
+    async_track_state_report_event,
 )
 from homeassistant.util import dt as dt_util
 
@@ -73,6 +80,7 @@ class SourceTracker:
         self._on_change = on_change
         self._sources: dict[str, _MutableTrackedSource] = {}
         self._unsub_states: Callable[[], None] | None = None
+        self._unsub_reports: Callable[[], None] | None = None
         self._unsub_deadline: Callable[[], None] | None = None
         self._unsub_shutdown = self._hass.bus.async_listen_once(
             EVENT_HOMEASSISTANT_STOP, self._handle_shutdown
@@ -120,7 +128,7 @@ class SourceTracker:
                     state=state,
                     last_changed_at=changed,
                     last_valid_at=(
-                        state.last_updated
+                        state.last_reported
                         if state is not None and self._is_valid(state)
                         else None
                     ),
@@ -155,9 +163,7 @@ class SourceTracker:
 
     def stop(self) -> None:
         self._active = False
-        if self._unsub_states is not None:
-            self._unsub_states()
-            self._unsub_states = None
+        self._detach_states()
         if self._unsub_deadline is not None:
             self._unsub_deadline()
             self._unsub_deadline = None
@@ -205,7 +211,7 @@ class SourceTracker:
                 continue
             tracked.last_changed_at = state.last_changed if state is not None else None
             tracked.last_valid_at = (
-                state.last_updated
+                state.last_reported
                 if state is not None and self._is_valid(state)
                 else None
             )
@@ -217,14 +223,26 @@ class SourceTracker:
     def _handle_shutdown(self, _event: Event) -> None:
         self.stop()
 
-    def _attach_states(self) -> None:
+    def _detach_states(self) -> None:
         if self._unsub_states is not None:
             self._unsub_states()
             self._unsub_states = None
+        if self._unsub_reports is not None:
+            self._unsub_reports()
+            self._unsub_reports = None
+
+    def _attach_states(self) -> None:
+        self._detach_states()
         entity_ids = [item.entity_id for item in self._sources.values()]
         if entity_ids:
             self._unsub_states = async_track_state_change_event(
                 self._hass, entity_ids, self._handle_state
+            )
+            # A sensor that writes the same value again only produces a state
+            # report, not a state change. Reports still prove the source is
+            # alive, so they refresh its staleness clock.
+            self._unsub_reports = async_track_state_report_event(
+                self._hass, entity_ids, self._handle_report
             )
 
     @callback
@@ -245,13 +263,52 @@ class SourceTracker:
                 else dt_util.utcnow()
             )
             if isinstance(new_state, State) and self._is_valid(new_state):
-                tracked.last_valid_at = new_state.last_updated
+                tracked.last_valid_at = new_state.last_reported
                 tracked.grace_started_at = None
                 tracked.grace_until = None
             break
         now = dt_util.utcnow()
         self._schedule_deadline(now)
         self._on_change(now)
+
+    @callback
+    def _handle_report(self, event: Event[EventStateReportedData]) -> None:
+        """
+        Refresh freshness on an identical re-report without recomputing.
+
+        The reported value is unchanged, so outputs only change when the
+        source was stale or still inside its assignment grace. A pending
+        stale deadline that is now too early reschedules itself when it
+        fires, so frequent reports stay cheap.
+        """
+        entity_id = event.data["entity_id"]
+        new_state = event.data["new_state"]
+        now = dt_util.utcnow()
+        needs_update = False
+        for tracked in self._sources.values():
+            if tracked.entity_id != entity_id:
+                continue
+            if tracked.registry_id is not None:
+                entry = er.async_get(self._hass).async_get(tracked.registry_id)
+                if entry is None or entry.entity_id != entity_id:
+                    continue
+            tracked.state = new_state
+            if not self._is_valid(new_state):
+                break
+            was_stale = (
+                tracked.last_valid_at is None
+                or now - tracked.last_valid_at >= self._stale_after
+            )
+            tracked.last_valid_at = event.data["last_reported"]
+            if tracked.grace_until is not None:
+                tracked.grace_started_at = None
+                tracked.grace_until = None
+                needs_update = True
+            needs_update = needs_update or was_stale
+            break
+        if needs_update:
+            self._schedule_deadline(now)
+            self._on_change(now)
 
     @callback
     def _handle_registry(self, _event: Event) -> None:
@@ -279,7 +336,7 @@ class SourceTracker:
                     state.last_changed if state is not None else None
                 )
                 tracked.last_valid_at = (
-                    state.last_updated
+                    state.last_reported
                     if state is not None and self._is_valid(state)
                     else None
                 )

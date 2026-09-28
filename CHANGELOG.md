@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- A sensor that kept reporting the same value (for example a steady moisture reading, or 0 lx
+  at night) was marked as stale after the stale-after window, because only value changes were
+  counted. Staleness now follows the last time a sensor reported, even if the value was
+  unchanged. A sensor that goes silent still becomes stale.
+
 ## [0.3.0] - 2026-09-27
 
 ### Added
