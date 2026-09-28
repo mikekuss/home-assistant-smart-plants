@@ -61,6 +61,7 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
     from .device import SmartPlantsDeviceReconciler
+    from .roles import RoleDefinition
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -906,6 +907,7 @@ class SmartPlantsManager:
         area_id: str | None = None,
         _wizard: tuple[str, str] | None = None,
         _moisture: Mapping[str, Any] | None = None,
+        _roles: Mapping[str, Any] | None = None,
         _accepted_provider: bool = False,
     ) -> PlantRecord:
         # ``image`` is deliberately absent: image ids and metadata are
@@ -950,6 +952,8 @@ class SmartPlantsManager:
                         plant.moisture, _moisture, species=cleaned_species
                     ),
                 )
+            if _roles:
+                plant = self._configure_wizard_roles(plant, _roles)
             # Validate the complete record before the first durable intent.
             if _wizard is not None:
                 plant = PlantRecord.from_storage(plant.as_storage(), require_roles=True)
@@ -1247,6 +1251,133 @@ class SmartPlantsManager:
         await self._dispatch_event(event)
         return plant
 
+    def _resolve_role_sources(  # noqa: PLR0912
+        self,
+        definition: RoleDefinition,
+        config: Any,
+        sources: Iterable[Mapping[str, Any]],
+    ) -> tuple[SensorSource, ...]:
+        """
+        Validate and canonicalize a requested source list for one role.
+
+        Shared by ``async_set_role_sources`` and wizard creation so both apply
+        the same entity, registry-identity and uniqueness rules.
+        """
+        from homeassistant.helpers import entity_registry as er  # noqa: PLC0415
+
+        role = definition.key
+        registry = er.async_get(self._hass)
+        missing_by_entity = {
+            source.entity_id: source
+            for source in config.sources
+            if source.registry_id is not None
+            and registry.async_get(source.registry_id) is None
+        }
+        parsed: list[SensorSource] = []
+        seen_entity_ids: set[str] = set()
+        seen_keys: set[str] = set()
+        for src in sources:
+            if not isinstance(src, Mapping):
+                raise SmartPlantsValidationError(f"{role} source must be an object")
+            try:
+                source = SensorSource.from_storage(dict(src))
+            except ValueError as err:
+                raise SmartPlantsValidationError(str(err)) from err
+            if not valid_entity_id(source.entity_id) or not source.entity_id.startswith(
+                f"{definition.source_domain}."
+            ):
+                raise SmartPlantsValidationError(
+                    f"{role} source entity_id must be a valid "
+                    f"{definition.source_domain} entity id"
+                )
+            missing = missing_by_entity.get(source.entity_id)
+            if missing is not None and source != missing:
+                raise SmartPlantsValidationError(
+                    f"{role} missing source requires its assigned registry identity"
+                )
+            if source.registry_id is not None:
+                by_uuid = registry.async_get(source.registry_id)
+                if by_uuid is None:
+                    if source != missing:
+                        raise SmartPlantsValidationError(
+                            f"{role} source registry_id does not exist"
+                        )
+                elif by_uuid.entity_id != source.entity_id:
+                    raise SmartPlantsValidationError(
+                        f"{role} source entity_id and registry_id do not match"
+                    )
+                else:
+                    source = SensorSource(by_uuid.entity_id, by_uuid.id)
+            else:
+                by_entity = registry.async_get(source.entity_id)
+                if by_entity is not None:
+                    source = SensorSource(by_entity.entity_id, by_entity.id)
+            key = source.registry_id or source.entity_id
+            if source.entity_id in seen_entity_ids or key in seen_keys:
+                raise SmartPlantsValidationError(
+                    f"{role} sources must be unique by entity and registry id"
+                )
+            seen_entity_ids.add(source.entity_id)
+            seen_keys.add(key)
+            parsed.append(source)
+        return tuple(parsed)
+
+    def _configure_wizard_roles(
+        self, plant: PlantRecord, roles: Mapping[str, Any]
+    ) -> PlantRecord:
+        """
+        Apply the wizard's non-moisture source configurations to ``plant``.
+
+        Every role is validated with the same rules as the individual
+        ``roles/*`` commands and nothing is persisted here, so any error
+        leaves storage untouched.
+        """
+        if not isinstance(roles, Mapping):
+            raise SmartPlantsValidationError("roles must be an object")
+        allowed = {"sources", "primary_entity_id", "aggregation", "stale_after_seconds"}
+        for role, values in roles.items():
+            if role == "moisture":
+                raise SmartPlantsValidationError(
+                    "moisture is configured through the moisture field"
+                )
+            try:
+                definition = require_role(role)
+            except ValueError as err:
+                raise SmartPlantsValidationError(str(err)) from err
+            if definition.replace_sources is None:
+                raise SmartPlantsValidationError(
+                    f"role {role!r} does not accept sources"
+                )
+            if not isinstance(values, Mapping) or "sources" not in values:
+                raise SmartPlantsValidationError(f"{role} requires a sources list")
+            if not set(values) <= allowed:
+                raise SmartPlantsValidationError(
+                    f"{role} configuration has unsupported fields"
+                )
+            if not isinstance(values["sources"], (list, tuple)):
+                raise SmartPlantsValidationError(f"{role} sources must be a list")
+            config = definition.config_for(plant)
+            parsed = self._resolve_role_sources(definition, config, values["sources"])
+            primary = values.get("primary_entity_id")
+            _validate_primary_shape(primary)
+            if primary is not None and primary not in {s.entity_id for s in parsed}:
+                raise SmartPlantsValidationError(
+                    "primary_entity_id must reference an assigned source"
+                )
+            config = definition.replace_sources(config, parsed, primary)
+            if "aggregation" in values:
+                aggregation = values["aggregation"]
+                config = _validate_role_aggregation(definition, aggregation)(
+                    config, aggregation
+                )
+            if "stale_after_seconds" in values:
+                stale_after = values["stale_after_seconds"]
+                config = _validate_role_stale_after(definition, stale_after)(
+                    config, stale_after
+                )
+            plant = plant.with_role_config(role, config)
+        return plant
+
     async def async_set_moisture_sources(
         self,
         plant_id: str,
@@ -1261,7 +1392,7 @@ class SmartPlantsManager:
             sources=sources,
         )
 
-    async def async_set_role_sources(  # noqa: PLR0912, PLR0915
+    async def async_set_role_sources(
         self,
         plant_id: str,
         *,
@@ -1278,8 +1409,6 @@ class SmartPlantsManager:
         supplied sources, it is cleared silently: callers must set the
         primary explicitly via ``async_set_moisture_primary`` afterwards.
         """
-        from homeassistant.helpers import entity_registry as er  # noqa: PLC0415
-
         try:
             definition = require_role(role)
         except ValueError as err:
@@ -1295,60 +1424,8 @@ class SmartPlantsManager:
             config = definition.config_for(current)
             if config is None:
                 raise SmartPlantsValidationError(f"role {role!r} is not configured")
-            registry = er.async_get(self._hass)
-            missing_by_entity = {
-                source.entity_id: source
-                for source in config.sources
-                if source.registry_id is not None
-                and registry.async_get(source.registry_id) is None
-            }
-            parsed: list[SensorSource] = []
-            seen_entity_ids: set[str] = set()
-            seen_keys: set[str] = set()
-            for src in sources:
-                if not isinstance(src, Mapping):
-                    raise SmartPlantsValidationError(f"{role} source must be an object")
-                try:
-                    source = SensorSource.from_storage(dict(src))
-                except ValueError as err:
-                    raise SmartPlantsValidationError(str(err)) from err
-                if not valid_entity_id(
-                    source.entity_id
-                ) or not source.entity_id.startswith(f"{definition.source_domain}."):
-                    raise SmartPlantsValidationError(
-                        f"{role} source entity_id must be a valid "
-                        f"{definition.source_domain} entity id"
-                    )
-                missing = missing_by_entity.get(source.entity_id)
-                if missing is not None and source != missing:
-                    raise SmartPlantsValidationError(
-                        f"{role} missing source requires its assigned registry identity"
-                    )
-                if source.registry_id is not None:
-                    by_uuid = registry.async_get(source.registry_id)
-                    if by_uuid is None:
-                        if source != missing:
-                            raise SmartPlantsValidationError(
-                                f"{role} source registry_id does not exist"
-                            )
-                    elif by_uuid.entity_id != source.entity_id:
-                        raise SmartPlantsValidationError(
-                            f"{role} source entity_id and registry_id do not match"
-                        )
-                    else:
-                        source = SensorSource(by_uuid.entity_id, by_uuid.id)
-                else:
-                    by_entity = registry.async_get(source.entity_id)
-                    if by_entity is not None:
-                        source = SensorSource(by_entity.entity_id, by_entity.id)
-                key = source.registry_id or source.entity_id
-                if source.entity_id in seen_entity_ids or key in seen_keys:
-                    raise SmartPlantsValidationError(
-                        f"{role} sources must be unique by entity and registry id"
-                    )
-                seen_entity_ids.add(source.entity_id)
-                seen_keys.add(key)
-                parsed.append(source)
+            parsed = self._resolve_role_sources(definition, config, sources)
+            seen_entity_ids = {source.entity_id for source in parsed}
             new_primary = getattr(config, "primary_entity_id", None)
             if new_primary is not None and new_primary not in seen_entity_ids:
                 new_primary = None
@@ -1402,12 +1479,7 @@ class SmartPlantsManager:
             raise SmartPlantsValidationError(str(err)) from err
         if definition.replace_sources is None:
             raise SmartPlantsValidationError(f"role {role!r} does not accept sources")
-        if primary_entity_id is not None and (
-            not isinstance(primary_entity_id, str) or not primary_entity_id
-        ):
-            raise SmartPlantsValidationError(
-                "primary_entity_id must be a non-empty string or null"
-            )
+        _validate_primary_shape(primary_entity_id)
 
         self._raise_if_unavailable()
         async with self._mutation_lock:
@@ -1464,14 +1536,7 @@ class SmartPlantsManager:
             definition = require_role(role)
         except ValueError as err:
             raise SmartPlantsValidationError(str(err)) from err
-        if definition.replace_aggregation is None:
-            raise SmartPlantsValidationError(
-                f"role {role!r} does not accept aggregation"
-            )
-        if aggregation not in definition.aggregations:
-            raise SmartPlantsValidationError(
-                f"{role} aggregation {aggregation!r} is not supported"
-            )
+        replace_aggregation = _validate_role_aggregation(definition, aggregation)
         self._raise_if_unavailable()
         async with self._mutation_lock:
             self._raise_if_unavailable()
@@ -1480,7 +1545,7 @@ class SmartPlantsManager:
             config = definition.config_for(current)
             if getattr(config, "aggregation", None) == aggregation:
                 return current
-            new_config = definition.replace_aggregation(config, aggregation)
+            new_config = replace_aggregation(config, aggregation)
             updated = current.with_role_config(role, new_config).with_next_revision()
             await self._async_publish(self._snapshot.with_plant(updated))
             event = PlantUpdatedEvent(
@@ -1516,23 +1581,9 @@ class SmartPlantsManager:
             definition = require_role(role)
         except ValueError as err:
             raise SmartPlantsValidationError(str(err)) from err
-        if definition.replace_stale_after is None:
-            raise SmartPlantsValidationError(
-                f"role {role!r} does not accept staleness configuration"
-            )
-        stale_range = definition.stale_after_range
-        if stale_range is None:
-            raise SmartPlantsValidationError(f"role {role!r} has no staleness range")
-        if (
-            isinstance(stale_after_seconds, bool)
-            or not isinstance(stale_after_seconds, int)
-            or stale_after_seconds < stale_range[0]
-            or stale_after_seconds > stale_range[1]
-        ):
-            raise SmartPlantsValidationError(
-                "stale_after_seconds must be an integer within "
-                f"[{stale_range[0]}, {stale_range[1]}]"
-            )
+        replace_stale_after = _validate_role_stale_after(
+            definition, stale_after_seconds
+        )
         self._raise_if_unavailable()
         async with self._mutation_lock:
             self._raise_if_unavailable()
@@ -1541,7 +1592,7 @@ class SmartPlantsManager:
             config = definition.config_for(current)
             if getattr(config, "stale_after_seconds", None) == stale_after_seconds:
                 return current
-            new_config = definition.replace_stale_after(config, stale_after_seconds)
+            new_config = replace_stale_after(config, stale_after_seconds)
             updated = current.with_role_config(role, new_config).with_next_revision()
             await self._async_publish(self._snapshot.with_plant(updated))
             event = PlantUpdatedEvent(
@@ -2267,6 +2318,56 @@ class SmartPlantsManager:
                 "Smart Plants failed to persist snapshot"
             ) from err
         self._snapshot = snapshot
+
+
+def _validate_primary_shape(primary_entity_id: object) -> None:
+    if primary_entity_id is not None and (
+        not isinstance(primary_entity_id, str) or not primary_entity_id
+    ):
+        raise SmartPlantsValidationError(
+            "primary_entity_id must be a non-empty string or null"
+        )
+
+
+def _validate_role_aggregation(
+    definition: RoleDefinition, aggregation: object
+) -> Callable[[Any, str], Any]:
+    """Validate ``aggregation`` for ``definition`` and return its replacer."""
+    role = definition.key
+    replace_aggregation = definition.replace_aggregation
+    if replace_aggregation is None:
+        raise SmartPlantsValidationError(f"role {role!r} does not accept aggregation")
+    if aggregation not in definition.aggregations:
+        raise SmartPlantsValidationError(
+            f"{role} aggregation {aggregation!r} is not supported"
+        )
+    return replace_aggregation
+
+
+def _validate_role_stale_after(
+    definition: RoleDefinition, stale_after_seconds: object
+) -> Callable[[Any, int], Any]:
+    """Validate ``stale_after_seconds`` for ``definition`` and return its replacer."""
+    role = definition.key
+    replace_stale_after = definition.replace_stale_after
+    if replace_stale_after is None:
+        raise SmartPlantsValidationError(
+            f"role {role!r} does not accept staleness configuration"
+        )
+    stale_range = definition.stale_after_range
+    if stale_range is None:
+        raise SmartPlantsValidationError(f"role {role!r} has no staleness range")
+    if (
+        isinstance(stale_after_seconds, bool)
+        or not isinstance(stale_after_seconds, int)
+        or stale_after_seconds < stale_range[0]
+        or stale_after_seconds > stale_range[1]
+    ):
+        raise SmartPlantsValidationError(
+            "stale_after_seconds must be an integer within "
+            f"[{stale_range[0]}, {stale_range[1]}]"
+        )
+    return replace_stale_after
 
 
 def _validate_name(name: object) -> str:

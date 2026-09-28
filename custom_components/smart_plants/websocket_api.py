@@ -13,6 +13,7 @@ Commands (all admin-only):
 * ``smart_plants/plants/reenable`` -> ``{"plant": PlantView}``
 * ``smart_plants/plants/set_area`` -> ``{"plant": PlantView}``
 * ``smart_plants/plants/delete`` -> ``{}``
+* ``smart_plants/plants/overview`` -> ``{"plants": [PlantOverview, ...]}``
 * ``smart_plants/roles/set_sources`` -> ``{"plant": PlantView}``
 * ``smart_plants/roles/set_primary`` -> ``{"plant": PlantView}``
 * ``smart_plants/roles/set_aggregation`` -> ``{"plant": PlantView}``
@@ -27,6 +28,36 @@ semantics are identical across every role.
 ``PlantView`` is the storage shape plus a registered default config for every
 source-accepting role the plant has not configured yet (``PlantRecord.as_view``).
 The defaults are view-only; storage keeps only configured roles.
+
+``PlantOverview`` summarizes one plant for the panel's overview in a single
+call, derived on the server from the same evaluations the entities read:
+
+* ``plant_id``, ``revision``, ``lifecycle_state``.
+* ``status`` -- exactly one of ``paused``, ``needs_water``, ``too_wet``,
+  ``problem``, ``stale``, ``no_sensors``, ``healthy``, chosen in that
+  priority order (see ``plant_status.py``).
+* ``problems`` -- ``[{"role", "kind"}, ...]`` for every active issue in the
+  same priority order; the first entry matches ``status``. Kinds name the
+  direction, for example ``needs_water``, ``too_wet``, ``too_cold``,
+  ``too_hot``, ``too_dry``, ``too_humid``, ``low_light``,
+  ``low_conductivity``, ``high_conductivity``, ``high_co2``,
+  ``battery_low``, ``stale``, ``unavailable`` and ``no_sensors``.
+* ``roles`` -- keyed by role, only for roles with at least one source:
+  ``{"value", "unit", "state", "range", "last_reported", "sources"}``.
+  ``state`` is ``ok``, ``low``, ``high``, ``stale`` or ``unavailable``;
+  ``range`` is ``{"min", "target", "max"}`` from the effective thresholds
+  (defaults, species values and overrides), ``null`` where a role has no
+  such bound; ``last_reported`` is the ISO time of the newest valid source
+  reading.
+* ``last_watered_at`` -- the latest watering care event, or ``null``.
+* ``image`` -- ``{"id"}`` when the plant has a photo, otherwise ``null``.
+
+``smart_plants/wizard/create`` takes a required ``moisture`` configuration
+and an optional ``roles`` object mapping any other source-accepting role to
+``{"sources", "primary_entity_id"?, "aggregation"?, "stale_after_seconds"?}``.
+Each field is validated exactly like its ``smart_plants/roles/*`` command,
+everything is validated before anything is written, and the plant is created
+with all roles at revision 1.
 
 Error codes:
 
@@ -69,6 +100,7 @@ from .manager import (
     SmartPlantsValidationError,
 )
 from .models import PlantPlacement, PlantRecord, PlantSpecies
+from .overview import plant_overview
 from .provider import (
     ProviderAuthenticationError,
     ProviderDisabledError,
@@ -1348,6 +1380,28 @@ async def _handle_plant_health(
 
 @websocket_command(
     {
+        vol.Required("type"): "smart_plants/plants/overview",
+    }
+)
+@require_admin
+@async_response
+async def _handle_plants_overview(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    manager = _current_manager(hass)
+    if manager is None:
+        _reply_not_loaded(connection, msg["id"])
+        return
+    connection.send_result(
+        msg["id"],
+        {"plants": [plant_overview(manager, plant) for plant in manager.list_plants()]},
+    )
+
+
+@websocket_command(
+    {
         vol.Required("type"): "smart_plants/plants/delete",
         vol.Required("plant_id"): _plant_id,
         vol.Required("expected_revision"): _positive_int,
@@ -1632,6 +1686,18 @@ _MOISTURE_CONFIG_SCHEMA = vol.Schema(
         },
     }
 )
+_ROLE_SOURCE_CONFIG_SCHEMA = vol.Schema(
+    {
+        vol.Required("sources"): vol.All([_MOISTURE_SOURCE_SCHEMA], vol.Length(max=32)),
+        vol.Optional("primary_entity_id"): vol.Any(_plant_id, None),
+        vol.Optional("aggregation"): vol.In(("primary", "average", "min", "max")),
+        vol.Optional("stale_after_seconds"): _positive_int,
+    }
+)
+_WIZARD_ROLES_SCHEMA = vol.All(
+    {vol.All(str, vol.Length(min=1, max=60)): _ROLE_SOURCE_CONFIG_SCHEMA},
+    vol.Length(max=16),
+)
 _ACCEPTED_PREVIEW_SCHEMA = vol.Schema(
     {
         vol.Required("preview_token"): vol.All(str, vol.Length(min=32, max=128)),
@@ -1688,6 +1754,7 @@ async def _execute_panel_command(
         confirmed=msg["confirmed"],
         moisture=msg["moisture"],
         accepted_preview=msg.get("accepted_preview"),
+        roles=msg.get("roles"),
         **fields,
     )
     return {"plant": _plant_view(plant)}
@@ -1746,6 +1813,7 @@ _PANEL_HANDLERS = (
             vol.Required("confirmed"): bool,
             vol.Required("moisture"): _MOISTURE_CONFIG_SCHEMA,
             vol.Optional("accepted_preview"): _ACCEPTED_PREVIEW_SCHEMA,
+            vol.Optional("roles"): _WIZARD_ROLES_SCHEMA,
         },
     ),
     _panel_handler(
@@ -1787,6 +1855,7 @@ def async_register(hass: HomeAssistant) -> None:
     async_register_command(hass, _handle_moisture_set_thresholds)
     async_register_command(hass, _handle_moisture_evaluation)
     async_register_command(hass, _handle_plant_health)
+    async_register_command(hass, _handle_plants_overview)
     async_register_command(hass, _handle_roles_list)
     async_register_command(hass, _handle_role_set_sources)
     async_register_command(hass, _handle_role_set_primary)
