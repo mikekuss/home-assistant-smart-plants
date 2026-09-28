@@ -1,5 +1,5 @@
 """
-Phase 4 Cut 4: repair-issue reconciliation for missing moisture sources.
+Repair-issue reconciliation for missing moisture sources.
 
 Verifies that:
 

@@ -1,5 +1,5 @@
 """
-Permanent-deletion protocol and interrupted-cleanup recovery (Phase 3 Cut 3).
+Permanent-deletion protocol and interrupted-cleanup recovery.
 
 Every boundary in the durable deletion flow is asserted to be
 restart-recoverable via an idempotent tombstone-driven replay. The
@@ -43,9 +43,9 @@ async def _configure_all_role_sources(
     manager: SmartPlantsManager, plant_id: str
 ) -> Any:
     """
-    Give every source-accepting Phase 7 role one source.
+    Give every source-accepting non-moisture role one source.
 
-    Under the entity-lifecycle contract a role's entities exist only once it has
+    A non-moisture role's entities exist only once it has
     had a source, so tests that need the full production entity set must first
     configure every role.
     """

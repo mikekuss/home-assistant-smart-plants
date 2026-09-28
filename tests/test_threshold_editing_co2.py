@@ -1,16 +1,16 @@
-"""End-to-end contract test for the soil_temperature_stress threshold-editing slice."""
+"""End-to-end tests for editing co2_stress thresholds over the WebSocket API."""
 
 from __future__ import annotations
 
 from typing import Any
 
 import pytest
+from custom_components.smart_plants.co2_evaluator import CO2_PARTS_PER_MILLION
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.models import (
-    SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS,
-    SoilTemperatureConfig,
+    CO2_STRESS_BUILTIN_DEFAULTS,
+    Co2Config,
 )
-from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
@@ -32,21 +32,21 @@ async def test_websocket_override_persists_and_updates_binary_sensor_attributes(
     manager = entry.runtime_data.manager
     plant = await manager.async_create_plant(name="Fern")
     hass.states.async_set(
-        "sensor.soil_temperature",
-        "22",
-        {"unit_of_measurement": UnitOfTemperature.CELSIUS},
+        "sensor.co2",
+        "800",
+        {"unit_of_measurement": CO2_PARTS_PER_MILLION},
     )
     sourced = await manager.async_set_role_sources(
         plant.id,
-        role="soil_temperature",
+        role="co2",
         expected_revision=plant.revision,
-        sources=[{"entity_id": "sensor.soil_temperature"}],
+        sources=[{"entity_id": "sensor.co2"}],
     )
     assigned = await manager.async_set_role_primary(
         plant.id,
-        role="soil_temperature",
+        role="co2",
         expected_revision=sourced.revision,
-        primary_entity_id="sensor.soil_temperature",
+        primary_entity_id="sensor.co2",
     )
     await hass.async_block_till_done()
 
@@ -56,12 +56,10 @@ async def test_websocket_override_persists_and_updates_binary_sensor_attributes(
         "type": "smart_plants/roles/set_threshold_overrides",
         "plant_id": plant.id,
         "expected_revision": assigned.revision,
-        "role": "soil_temperature",
+        "role": "co2",
         "values": {
-            "cold_threshold_celsius": 8.0,
-            "cold_clear_celsius": 11.0,
-            "hot_clear_celsius": None,
-            "hot_threshold_celsius": None,
+            "threshold_ppm": 6000,
+            "clear_ppm": None,
         },
     }
     await client.send_json(payload)
@@ -71,32 +69,23 @@ async def test_websocket_override_persists_and_updates_binary_sensor_attributes(
     assert returned["id"] == plant.id
     assert returned["revision"] == assigned.revision + 1
 
-    persisted = manager.snapshot.plants[plant.id].role_config("soil_temperature")
-    assert isinstance(persisted, SoilTemperatureConfig)
-    assert persisted.stress_threshold_overrides["cold_threshold_celsius"] == 8.0
-    assert persisted.stress_threshold_overrides["cold_clear_celsius"] == 11.0
-    assert persisted.stress_threshold_overrides["hot_clear_celsius"] is None
-    assert persisted.stress_threshold_overrides["hot_threshold_celsius"] is None
+    persisted = manager.snapshot.plants[plant.id].role_config("co2")
+    assert isinstance(persisted, Co2Config)
+    assert persisted.stress_threshold_overrides["threshold_ppm"] == 6000
+    assert persisted.stress_threshold_overrides["clear_ppm"] is None
     assert (
-        persisted.effective_stress_threshold("hot_threshold_celsius")
-        == SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_threshold_celsius"]
+        persisted.effective_stress_threshold("clear_ppm")
+        == CO2_STRESS_BUILTIN_DEFAULTS["clear_ppm"]
     )
-    assert persisted.effective_stress_threshold("cold_threshold_celsius") == 8.0
+    assert persisted.effective_stress_threshold("threshold_ppm") == 6000
 
     await hass.async_block_till_done()
-    entity_id = "binary_sensor.fern_soil_temperature_stress"
+    entity_id = "binary_sensor.fern_co2_stress"
     state = hass.states.get(entity_id)
     assert state is not None, hass.states.async_entity_ids()
-    assert state.attributes["cold_threshold_celsius"] == 8.0
-    assert state.attributes["cold_clear_celsius"] == 11.0
-    assert (
-        state.attributes["hot_clear_celsius"]
-        == SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_clear_celsius"]
-    )
-    assert (
-        state.attributes["hot_threshold_celsius"]
-        == SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_threshold_celsius"]
-    )
+    # Overridden threshold, inherited clear.
+    assert state.attributes["threshold_ppm"] == 6000
+    assert state.attributes["clear_ppm"] == CO2_STRESS_BUILTIN_DEFAULTS["clear_ppm"]
 
 
 async def test_websocket_rejects_invalid_effective_ordering(
@@ -106,18 +95,17 @@ async def test_websocket_rejects_invalid_effective_ordering(
     manager = entry.runtime_data.manager
     plant = await manager.async_create_plant(name="Fern")
     client = await hass_ws_client(hass)
+    # clear_ppm >= threshold_ppm violates ordering.
     await client.send_json(
         {
             "id": 1,
             "type": "smart_plants/roles/set_threshold_overrides",
             "plant_id": plant.id,
             "expected_revision": plant.revision,
-            "role": "soil_temperature",
+            "role": "co2",
             "values": {
-                "cold_threshold_celsius": 20.0,
-                "cold_clear_celsius": 18.0,
-                "hot_clear_celsius": None,
-                "hot_threshold_celsius": None,
+                "threshold_ppm": 3000,
+                "clear_ppm": 4000,
             },
         }
     )
@@ -139,11 +127,9 @@ async def test_websocket_rejects_missing_key(
             "type": "smart_plants/roles/set_threshold_overrides",
             "plant_id": plant.id,
             "expected_revision": plant.revision,
-            "role": "soil_temperature",
+            "role": "co2",
             "values": {
-                "cold_threshold_celsius": None,
-                "cold_clear_celsius": None,
-                "hot_clear_celsius": None,
+                "threshold_ppm": None,
             },
         }
     )
@@ -174,12 +160,10 @@ async def test_websocket_revision_conflict(
             "type": "smart_plants/roles/set_threshold_overrides",
             "plant_id": plant.id,
             "expected_revision": bad_revision,
-            "role": "soil_temperature",
+            "role": "co2",
             "values": {
-                "cold_threshold_celsius": None,
-                "cold_clear_celsius": None,
-                "hot_clear_celsius": None,
-                "hot_threshold_celsius": None,
+                "threshold_ppm": None,
+                "clear_ppm": None,
             },
         }
     )

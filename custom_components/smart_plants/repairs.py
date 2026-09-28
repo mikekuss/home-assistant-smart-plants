@@ -1,9 +1,9 @@
 """
-Phase 4 Cut 4: Repair issues for missing moisture sources.
+Repair issues for missing moisture sources.
 
 A plant may reference an entity_registry UUID that no longer resolves
 to a live entity (the source device was removed, the user deleted the
-registry entry, etc.). Per phase-04 the assignment is preserved and a
+registry entry, etc.). The assignment is preserved and a
 Home Assistant repair issue is created so the user can fix it via the
 Repairs dashboard. When the assignment is fixed — the source
 reappears, the plant is reassigned, or the source is removed from the

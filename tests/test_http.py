@@ -3,7 +3,7 @@ Integration tests for the admin-only image HTTP endpoints.
 
 Every endpoint is exercised against a real HA test client so the
 authentication, error-code shape, and manager/reconciler wiring stay
-consistent with the frozen WebSocket contract.
+consistent with the WebSocket API.
 """
 
 from __future__ import annotations

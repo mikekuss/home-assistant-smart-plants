@@ -1,7 +1,8 @@
 """
-Admin-only WebSocket API for Smart Plants (Phase 2, Cut 3).
+Admin-only WebSocket API for Smart Plants.
 
-Frozen contract:
+Command and response shapes (clients depend on these; change them only
+compatibly):
 
 Commands (all admin-only):
 
@@ -157,7 +158,7 @@ _PLACEMENT_SCHEMA = vol.Schema(
 
 
 def _plant_view(plant: PlantRecord) -> dict[str, Any]:
-    """Serialize a PlantRecord for the WS frontend contract."""
+    """Serialize a PlantRecord into the PlantView the panel consumes."""
     return plant.as_view()
 
 

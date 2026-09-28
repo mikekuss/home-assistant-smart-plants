@@ -114,6 +114,6 @@ The minimum-support rig uses the exact `homeassistant/home-assistant:2026.8.0` t
 ## Limitations
 
 - Python integration changes require a container restart or config-entry reload where supported.
-- Playwright covers the exact production panel artifact against a deterministic mocked Home Assistant contract. A live-HA panel smoke still requires disposable onboarding credentials and manual config-entry setup in this isolated rig; CI must not report that gate as passed.
+- Playwright covers the exact production panel artifact against a deterministic mock of the Home Assistant WebSocket API. A live-HA panel smoke still requires disposable onboarding credentials and manual config-entry setup in this isolated rig; CI must not report that gate as passed.
 - HACS installation validation remains separate from this bind-mounted development rig.
 - Base images and validator images should eventually be pinned by reviewed digests for fully deterministic clean-machine reproduction.

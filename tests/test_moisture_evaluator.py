@@ -1,9 +1,9 @@
 """
-Phase 4 Cut 2: pure moisture-evaluator behavior.
+Pure moisture-evaluator behavior.
 
 The evaluator holds no state, does no I/O, and is fully deterministic
 given (config, readings, now, grace_until, previous_needs_water,
-previous_too_wet). These tests pin the phase spec's numeric contract.
+previous_too_wet). These tests pin its numeric boundaries and hysteresis.
 """
 
 from __future__ import annotations

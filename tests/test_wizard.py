@@ -59,9 +59,9 @@ def _production_entity_role_count() -> int:
 
 
 def _moisture_entity_role_count() -> int:
-    # Under the entity-lifecycle contract only always-present (moisture) role
-    # entities exist for a plant whose only configured role is moisture. The
-    # seven Phase 7 roles create entities lazily once they have a source.
+    # Only always-present (moisture) role entities exist for a plant whose
+    # only configured role is moisture. The seven non-moisture roles create
+    # entities lazily once they have a source.
     return sum(
         1
         for platform in ("sensor", "binary_sensor", "number")

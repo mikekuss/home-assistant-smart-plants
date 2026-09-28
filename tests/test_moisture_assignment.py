@@ -1,5 +1,5 @@
 """
-Phase 4 Cut 1: moisture sensor assignment model and manager mutations.
+Moisture sensor assignment model and manager mutations.
 
 Exercises:
 - New PlantRecord round-trips the moisture config.
@@ -257,7 +257,7 @@ async def test_registered_source_removal_preserves_assignment(
     await hass.async_block_till_done()
 
     current = manager.get_plant(plant.id)
-    # Missing assignment preserved as-is; Cut 4 handles the repair issue.
+    # Missing assignment preserved as-is; repairs.py raises the repair issue.
     assert current.moisture.sources == (
         SensorSource(entity_id=entry.entity_id, registry_id=entry.id),
     )

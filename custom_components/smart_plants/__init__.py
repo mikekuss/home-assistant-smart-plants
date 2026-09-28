@@ -62,7 +62,7 @@ type SmartPlantsConfigEntry = ConfigEntry[SmartPlantsRuntimeData]
 # Smart Plants is UI-configured (config_flow: true) and takes no YAML.
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-# Phase 3 forwards these three platforms so plant-scoped entities can be
+# Forward these three platforms so plant-scoped entities can be
 # added and torn down through the standard HA lifecycle. The forward
 # runs only AFTER storage is validated and startup reconciliation has
 # drained pending operations so a corrupt inventory never authorizes

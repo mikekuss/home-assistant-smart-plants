@@ -1,7 +1,7 @@
 """
 Secure image validation, re-encoding, and on-disk storage.
 
-Cut 4 accepts a JPEG/PNG/WebP upload from the admin panel, decodes and
+The image lifecycle accepts a JPEG/PNG/WebP upload from the admin panel, decodes and
 sanitizes it with Pillow, re-encodes to WebP, and writes it under
 ``<config>/smart_plants/images/`` with a server-generated opaque
 identifier. The directory sits outside ``custom_components/`` so a
@@ -175,8 +175,8 @@ def _decode_and_sanitize(raw: bytes) -> Any:
 
     Returns a fresh Pillow ``Image`` object with no ``info`` block, so
     EXIF/ICC/XMP is dropped by construction. Oversized dimensions are
-    rejected (never resized) — the upload contract is "what you sent is
-    what we keep, or nothing".
+    rejected (never resized): the stored image is exactly what was
+    uploaded, re-encoded, or nothing at all.
     """
     try:
         with Image.open(io.BytesIO(raw)) as decoded:

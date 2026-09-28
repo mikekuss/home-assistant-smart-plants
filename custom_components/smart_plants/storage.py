@@ -37,7 +37,7 @@ STORE_MINOR_VERSION: Final = STORAGE_MINOR_VERSION
 # constants so PLR2004 doesn't fire on the migration comparisons and each
 # branch's meaning is legible without cross-referencing const.py.
 _MINOR_OPERATION_COLLECTIONS_ADDED: Final = 1
-_MINOR_PHASE_2_TYPED_RECORDS: Final = 2
+_MINOR_TYPED_RECORDS: Final = 2
 _MINOR_STRICT_RECOVERY_SCHEMAS: Final = 3
 _MINOR_MOISTURE_ASSIGNMENTS: Final = 4
 _MINOR_DURABLE_REGISTRY_CLEANUP: Final = 5
@@ -67,10 +67,10 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        # Finding F1 from the reopened Phase 1A gate: HA Store's
-        # ``_async_handle_write_data`` catches ``SerializationError`` and
-        # ``WriteError`` and only logs them, so a bare ``async_save`` can
-        # return "success" even when nothing was written. We shadow
+        # HA Store's ``_async_handle_write_data`` catches
+        # ``SerializationError`` and ``WriteError`` and only logs them, so a
+        # bare ``async_save`` can return "success" even when nothing was
+        # written. We shadow
         # ``_async_write_data`` below and record the outcome here so
         # ``SmartPlantsStore.async_save`` can surface swallowed failures
         # to the manager before it advances the in-memory snapshot.
@@ -105,8 +105,8 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                 "Smart Plants storage major version is not supported"
             )
 
-        # Finding F3: migrations must recognize the previous format's minimum
-        # contract before transforming it. Otherwise a payload that happens
+        # Migrations must recognize the previous format's minimum shape
+        # before transforming it. Otherwise a payload that happens
         # to be missing ``plants`` gets a synthesized empty list and passes
         # downstream validation as a valid empty inventory. The pre-2 shape
         # always carried ``revision`` (int) and ``plants`` (list); anything
@@ -128,8 +128,8 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
             data.setdefault("pending_operations", [])
             data.setdefault("tombstones", [])
 
-        if old_major_version == 1 and old_minor_version < _MINOR_PHASE_2_TYPED_RECORDS:
-            # Phase 2 (minor 2) adds timestamps, species, placement, tags,
+        if old_major_version == 1 and old_minor_version < _MINOR_TYPED_RECORDS:
+            # Minor 2 adds timestamps, species, placement, tags,
             # category, and image metadata to PlantRecord, and switches the
             # operation collections from opaque dicts to typed records. Pre-2
             # storage never carried real pending operations or tombstones
@@ -195,7 +195,7 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
             data["tombstones"] = migrated_tombstones
 
         if old_major_version == 1 and old_minor_version < _MINOR_MOISTURE_ASSIGNMENTS:
-            # Phase 4 (minor 4) adds a moisture config to every plant. Existing
+            # Minor 4 adds a moisture config to every plant. Existing
             # plants get the documented defaults: no assigned sources, primary
             # aggregation, six-hour staleness, and the 15/35/55 threshold
             # anchors. from_storage still accepts a missing 'moisture' key
@@ -328,7 +328,7 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
             and old_minor_version < _MINOR_STRESS_THRESHOLD_OVERRIDES
         ):
             # Minor 9 adds a per-plant stress override map for the six
-            # remaining Phase 7 stress binaries. Every persisted role config
+            # remaining non-moisture stress binaries. Every persisted role config
             # for humidity, illuminance, battery, conductivity,
             # soil_temperature, and co2 is re-round-tripped so it carries
             # the explicit all-``null`` override map; effective threshold
@@ -457,7 +457,7 @@ class SmartPlantsStore:
         return _snapshot_from_payload(stored, require_roles=True)
 
     async def async_save(self, snapshot: InventorySnapshot) -> None:
-        # F1: HA's Store swallows WriteError/SerializationError inside
+        # HA's Store swallows WriteError/SerializationError inside
         # _async_handle_write_data. Our subclass captures the exception on
         # _last_write_error; reset it before the save and re-raise it as
         # our own error if the write failed, so the manager never publishes
@@ -595,7 +595,7 @@ def _has_corrupt_sibling(path: str) -> bool:
     """
     Return True if HA has quarantined an earlier copy of ``path``.
 
-    F2: HA names the quarantined file ``<path>.corrupt.<isoformat>`` (see
+    HA names the quarantined file ``<path>.corrupt.<isoformat>`` (see
     ``homeassistant.helpers.storage.Store._async_load_data``), not the bare
     ``<path>.corrupt`` the older HA versions used. Checking for the bare
     name missed every real quarantine and let the loader fall back to an

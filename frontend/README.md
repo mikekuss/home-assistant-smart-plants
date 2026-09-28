@@ -20,7 +20,7 @@ npm run build        # Vite prod build + artifact-layout check
 serve it directly. The `check-artifact` script fails if the bundle is
 missing after a build.
 
-The frontend talks to Home Assistant via the frozen WebSocket contract
+The frontend talks to Home Assistant via the WebSocket API defined
 in `custom_components/smart_plants/websocket_api.py`
 (`smart_plants/plants/{list,create,update,disable,reenable,delete}`) with
 the error codes `integration_not_loaded`, `not_found`, `revision_conflict`,

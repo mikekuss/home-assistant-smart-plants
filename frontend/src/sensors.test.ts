@@ -8,7 +8,7 @@ function emptyRole(): RoleSourceConfig {
   return { sources: [], primary_entity_id: null, aggregation: "primary", stale_after_seconds: 21600 };
 }
 
-// A plant whose seven Phase 7 roles all carry a valid (empty) source config.
+// A plant whose seven non-moisture roles all carry a valid (empty) source config.
 function withRoles(over: Record<string, RoleSourceConfig> = {}): PlantRecord {
   const clone = structuredClone(sample);
   const roles: Record<string, RoleSourceConfig> = {};

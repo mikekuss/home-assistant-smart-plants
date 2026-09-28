@@ -17,7 +17,7 @@ def hass_config_dir(hass_tmp_config_dir: str) -> str:
     """
     Give every test an isolated HA config directory.
 
-    Cut 4 writes real files under ``<config>/smart_plants/images/``.
+    Image uploads write real files under ``<config>/smart_plants/images/``.
     pytest-homeassistant-custom-component defaults to a shared
     ``testing_config/`` inside its own package, which would let one
     test's WebP files leak into the next test's reconciler. Rebind
