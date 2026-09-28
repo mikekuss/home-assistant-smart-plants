@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- The plant device's model is now the plant's species name (common name, or Latin name as a
+  fallback), or *Plant* when no species is set, instead of *Manual Plant*. Existing devices
+  pick up the new model the next time Home Assistant starts.
+- The moisture minimum, target, and maximum number entities are now created disabled by
+  default. Thresholds stay editable in the panel; enable the entities if you use them in
+  automations or dashboards. Existing number entities keep their current enabled state.
+
 ## [0.3.1] - 2026-09-28
 
 ### Fixed

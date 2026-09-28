@@ -18,6 +18,8 @@ from custom_components.smart_plants.models import (
     InventorySnapshot,
     PendingOperation,
     PlantRecord,
+    PlantSpecies,
+    SpeciesSnapshot,
     Tombstone,
 )
 from homeassistant.core import HomeAssistant
@@ -34,6 +36,7 @@ def _plant(
     name: str = "Aloe",
     revision: int = 1,
     lifecycle_state: str = "active",
+    species: PlantSpecies | None = None,
 ) -> PlantRecord:
     return PlantRecord(
         id=plant_id,
@@ -41,6 +44,36 @@ def _plant(
         name=name,
         created_at="2026-09-05T00:00:00Z",
         lifecycle_state=lifecycle_state,  # type: ignore[arg-type]
+        species=species,
+    )
+
+
+def _species(
+    *,
+    common_name: str | None = "Aloe",
+    latin_name: str | None = "Aloe vera",
+    provider: str = "manual",
+) -> PlantSpecies:
+    populated = {
+        key: "User supplied"
+        for key, value in (("common_name", common_name), ("latin_name", latin_name))
+        if value is not None
+    }
+    is_manual = provider == "manual"
+    return PlantSpecies(
+        provider=provider,
+        snapshot=SpeciesSnapshot(
+            provider=provider,
+            provider_id=None if is_manual else "aloe-vera",
+            provider_ref=None if is_manual else "aloe-vera",
+            fetched_at="2026-09-05T00:00:00Z",
+            locale="und" if is_manual else "en",
+            source_status="manual" if is_manual else "provider",
+            attribution="User supplied",
+            common_name=common_name,
+            latin_name=latin_name,
+            field_sources=populated,
+        ),
     )
 
 
@@ -73,6 +106,140 @@ async def test_reconciler_creates_a_single_device_for_a_plant(
     assert device.manufacturer == "Smart Plants"
     assert device.entry_type is dr.DeviceEntryType.SERVICE
     assert entry.entry_id in device.config_entries
+
+
+async def test_new_device_without_species_uses_generic_model(
+    hass: HomeAssistant,
+) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
+    entry.add_to_hass(hass)
+    reconciler = SmartPlantsDeviceReconciler(hass, entry.entry_id)
+
+    await reconciler.async_reconcile_present(_plant())
+
+    device = plant_device(dr.async_get(hass), "plt-1")
+    assert device is not None
+    assert device.model == "Plant"
+    assert device.manufacturer == "Smart Plants"
+
+
+async def test_new_device_with_species_uses_common_name_as_model(
+    hass: HomeAssistant,
+) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
+    entry.add_to_hass(hass)
+    reconciler = SmartPlantsDeviceReconciler(hass, entry.entry_id)
+
+    await reconciler.async_reconcile_present(_plant(species=_species()))
+
+    device = plant_device(dr.async_get(hass), "plt-1")
+    assert device is not None
+    assert device.model == "Aloe"
+
+
+async def test_device_model_falls_back_to_latin_name(hass: HomeAssistant) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
+    entry.add_to_hass(hass)
+    reconciler = SmartPlantsDeviceReconciler(hass, entry.entry_id)
+
+    await reconciler.async_reconcile_present(_plant(species=_species(common_name=None)))
+
+    device = plant_device(dr.async_get(hass), "plt-1")
+    assert device is not None
+    assert device.model == "Aloe vera"
+
+
+async def test_device_model_follows_species_changes(hass: HomeAssistant) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
+    entry.add_to_hass(hass)
+    reconciler = SmartPlantsDeviceReconciler(hass, entry.entry_id)
+    registry = dr.async_get(hass)
+
+    await reconciler.async_reconcile_present(_plant())
+    device = plant_device(registry, "plt-1")
+    assert device is not None
+    device_id = device.id
+    registry.async_update_device(device_id, name_by_user="My Aloe")
+
+    steps: tuple[tuple[PlantSpecies | None, str], ...] = (
+        (_species(), "Aloe"),
+        (_species(common_name="Tiger Aloe", latin_name="Gonialoe"), "Tiger Aloe"),
+        (_species(common_name=None, latin_name="Gonialoe"), "Gonialoe"),
+        (None, "Plant"),
+    )
+    for revision, (species, expected_model) in enumerate(steps, start=2):
+        await reconciler.async_reconcile_present(
+            _plant(revision=revision, species=species)
+        )
+        device = plant_device(registry, "plt-1")
+        assert device is not None
+        assert device.id == device_id
+        assert device.model == expected_model
+        assert device.name == "Aloe"
+        assert device.name_by_user == "My Aloe"
+
+
+async def test_existing_device_with_legacy_model_is_updated_on_reconcile(
+    hass: HomeAssistant,
+) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
+    entry.add_to_hass(hass)
+    registry = dr.async_get(hass)
+    legacy = registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "plt-1")},
+        manufacturer="Smart Plants",
+        model="Manual Plant",
+        name="Aloe",
+        entry_type=dr.DeviceEntryType.SERVICE,
+    )
+    registry.async_update_device(legacy.id, name_by_user="My Aloe")
+    reconciler = SmartPlantsDeviceReconciler(hass, entry.entry_id)
+
+    await reconciler.async_reconcile_present(_plant(species=_species()))
+
+    device = plant_device(registry, "plt-1")
+    assert device is not None
+    assert device.id == legacy.id
+    assert device.model == "Aloe"
+    assert device.name_by_user == "My Aloe"
+
+
+async def test_manager_species_changes_update_device_model(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup_entry(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    registry = dr.async_get(hass)
+    plant = await manager.async_create_plant(name="Aloe")
+    device = plant_device(registry, plant.id)
+    assert device is not None
+    assert device.model == "Plant"
+
+    plant = await manager.async_update_plant(
+        plant.id, expected_revision=plant.revision, species=_species()
+    )
+    device = plant_device(registry, plant.id)
+    assert device is not None
+    assert device.model == "Aloe"
+
+    plant = await manager.async_apply_species_snapshot(
+        plant.id,
+        expected_revision=plant.revision,
+        species=_species(
+            common_name="Tiger Aloe", latin_name=None, provider="openplantbook"
+        ),
+    )
+    device = plant_device(registry, plant.id)
+    assert device is not None
+    assert device.model == "Tiger Aloe"
+
+    plant = await manager.async_update_plant(
+        plant.id, expected_revision=plant.revision, species=None
+    )
+    device = plant_device(registry, plant.id)
+    assert device is not None
+    assert device.model == "Plant"
 
 
 async def test_rename_keeps_device_id_stable_and_updates_name(

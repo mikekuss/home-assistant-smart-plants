@@ -59,6 +59,11 @@ class SmartPlantsNumberEntity(SmartPlantsEntity, NumberEntity):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_mode = NumberMode.BOX
     _attr_entity_category = EntityCategory.CONFIG
+    # The panel edits thresholds through the websocket API, so these
+    # entities are only needed for automations and dashboards. Home
+    # Assistant applies this default only when an entity is first
+    # registered; entities that already exist keep their enabled state.
+    _attr_entity_registry_enabled_default = False
 
 
 class _MoistureThresholdNumber(SmartPlantsNumberEntity):

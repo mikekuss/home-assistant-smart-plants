@@ -1723,6 +1723,10 @@ class SmartPlantsManager:
                 updated = updated.with_role_config(definition.key, candidate)
             updated = updated.with_next_revision(species=cleaned_species)
             await self._async_publish(self._snapshot.with_plant(updated))
+            if self._reconciler is not None:
+                # The device model follows the species name. The startup
+                # inventory scan re-applies it if this write is interrupted.
+                await self._reconciler.async_reconcile_present(updated)
             event = PlantUpdatedEvent(
                 kind="plant_updated", plant=updated, previous=current
             )
