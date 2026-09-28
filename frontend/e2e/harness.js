@@ -322,6 +322,15 @@ if (!customElements.get("ha-dropdown-item")) {
   });
 }
 if (!customElements.get("ha-svg-icon")) customElements.define("ha-svg-icon", class extends HTMLElement {});
+// HA resolves `mdi:*` names from its own icon set; the fixture keeps the
+// `icon` value and the icon's box so layout and accessibility checks match.
+if (!customElements.get("ha-icon")) {
+  customElements.define("ha-icon", class extends HTMLElement {
+    set icon(value) { this.setAttribute("icon", value ?? ""); }
+    get icon() { return this.getAttribute("icon"); }
+    connectedCallback() { this.style.display = "inline-block"; this.style.width = this.style.height = "var(--mdc-icon-size, 24px)"; }
+  });
+}
 await import("/custom_components/smart_plants/frontend/smart-plants-panel.js");
 const panel = document.createElement("smart-plants-panel");
 // `?lang=de` renders the panel as a Home Assistant user with that profile language.
