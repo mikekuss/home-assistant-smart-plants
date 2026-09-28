@@ -1,7 +1,7 @@
 """
 Home Assistant device registry reconciliation for Smart Plants.
 
-Cut 2 owns exactly one HA device per plant, keyed by the immutable
+The reconciler owns exactly one HA device per plant, keyed by the immutable
 ``(DOMAIN, plant_id)`` identifier tuple. The integration is the source
 of truth only for the fields it wrote: identifiers, model,
 manufacturer, entry type, and the plant's canonical ``name``.
@@ -10,8 +10,8 @@ Everything a user can edit natively on the device page — ``name_by_user``,
 labels, area, disabled state — is treated as authoritative and is never
 overwritten by us. In particular, the requested area is honoured only
 on first device creation; after that HA's ``area_id`` wins for the
-lifetime of the plant, matching the phase spec's "authoritative area"
-rule.
+lifetime of the plant, so an area the user changes natively is never
+reverted.
 
 Reconciliation goes through a two-phase flow driven by the manager:
 
@@ -194,7 +194,7 @@ class SmartPlantsDeviceReconciler:
            legitimate reason to survive in the registry.
         2. Remove the device itself.
 
-        Cut 3 keeps runtime entity teardown ahead of this call (driven
+        Runtime entity teardown runs ahead of this call (driven
         by the ``PlantDeletedEvent`` handler in
         ``SmartPlantsPlatformLifecycle``) so the entity_registry rows
         are handled without a live entity trying to write state through
@@ -346,8 +346,8 @@ class SmartPlantsDeviceReconciler:
                     images_dir=images_dir,
                 ):
                     completed_ops.add(op.op_id)
-            # disable_plant / reenable_plant have no Cut 2 side effect
-            # (no entities yet); drop the op to keep the queue clean.
+            # disable_plant / reenable_plant need no device-registry side
+            # effect; drop the op to keep the queue clean.
             else:
                 completed_ops.add(op.op_id)
 

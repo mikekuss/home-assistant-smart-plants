@@ -1,5 +1,5 @@
 """
-Phase 4 Cut 3: end-to-end entity contract tests.
+End-to-end moisture entity tests.
 
 Uses the real config entry / platform / entity_registry flow to verify
 every moisture role's state, availability, disable/re-enable hook

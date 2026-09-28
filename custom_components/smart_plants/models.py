@@ -64,12 +64,12 @@ CO2_AGGREGATIONS: Final[frozenset[str]] = frozenset(
     ("primary", "average", "min", "max")
 )
 
-# Documented in phase-04: 0 < min < target < max < 100 with at least four
+# Moisture thresholds must satisfy 0 < min < target < max < 100 with at least four
 # percentage points between min and max. Kept as a module constant so
 # validation and tests agree on the exact numeric boundary.
 MOISTURE_MIN_SPAN: Final = 4
 
-# Default six-hour staleness window from the phase spec. Editable per plant.
+# Default six-hour staleness window. Editable per plant.
 DEFAULT_STALE_AFTER_SECONDS: Final = 21_600
 # Bounded upper limit so a persisted mistake cannot silently disable
 # staleness detection forever. Seven days is well beyond the six-hour
@@ -2687,7 +2687,7 @@ class PlantRecord:
 
     def as_view(self) -> dict[str, Any]:
         """
-        Serialize for the panel/API contract, never for persistence.
+        Serialize for the panel and WebSocket API, never for persistence.
 
         Storage keeps only roles that have been configured, so a new plant
         stores just ``roles.moisture``. Clients still need every

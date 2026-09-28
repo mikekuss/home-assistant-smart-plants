@@ -39,9 +39,8 @@ async function openDiagnostics(page: Page) {
 }
 
 async function audit(page: Page, info: TestInfo, name: string) {
-  // The whole detail view already carries the Phase 6 accepted a11y baseline;
-  // scanning it here covers the diagnostics section plus its parents while
-  // avoiding shadow-DOM include-selector limitations in AxeBuilder.
+  // Scanning the whole detail view covers the diagnostics section plus its
+  // parents while avoiding shadow-DOM include-selector limitations in AxeBuilder.
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   const path = info.outputPath(`axe-${name}.json`);
   await writeFile(path, JSON.stringify(result, null, 2));
@@ -189,7 +188,7 @@ test("overall health composite section renders and passes axe", async ({ page },
   await audit(page, info, "overall-health");
 });
 
-test("toggle button focus and keyboard contract for every editor row", async ({ page }, info) => {
+test("toggle button focus and keyboard behavior for every editor row", async ({ page }, info) => {
   await openDiagnostics(page);
   for (const spec of EDITORS) {
     const toggle = page.locator(`smart-plants-panel dl.diagnostics dt:text-is("${spec.displayName}") + dd button.threshold-toggle`);

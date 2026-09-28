@@ -113,7 +113,7 @@ async def test_current_version_round_trip(
 
 
 @pytest.mark.parametrize("minor", [3, 4, 5])
-async def test_direct_role_migrations_supply_current_contract(
+async def test_direct_role_migrations_supply_current_schema(
     hass: HomeAssistant, hass_storage: dict[str, Any], minor: int
 ) -> None:
     plant = {
@@ -311,7 +311,7 @@ async def test_migration_from_supported_minors_loads_with_moisture(
     hass: HomeAssistant, hass_storage: dict[str, Any], minor: int
 ) -> None:
     # Minors 6+ store moisture under roles.moisture; migration must carry every
-    # supported older minor up to the current strict contract without failing.
+    # supported older minor up to the current strict schema without failing.
     plant = _plant_base()
     plant["roles"] = {"moisture": MoistureConfig().as_storage()}
     _seed(
@@ -370,7 +370,7 @@ async def test_migration_adds_stress_overrides_to_pre_minor_8_temperature(
 async def test_current_minor_rejects_role_config_missing_stress_overrides(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
-    # Fail-closed: at the current minor a stored Phase 7 role config missing its
+    # Fail-closed: at the current minor a stored non-moisture role config missing its
     # stress_threshold_overrides map is corrupt, not a legacy shape.
     plant = _plant_base()
     plant["roles"] = {
@@ -455,7 +455,7 @@ async def test_minor_migration_is_persisted(
     snapshot = await store.async_load()
     plant = snapshot.plants["plant-1"]
     assert plant.name == "Fern"
-    # Phase 2 migration must fill in the new field slots with typed defaults
+    # The minor-2 migration must fill in the new field slots with typed defaults
     # rather than leaving them missing on old records.
     assert plant.tags == ()
     assert plant.category is None
@@ -692,13 +692,13 @@ def test_pending_operation_payloads_are_deeply_frozen() -> None:
     assert serialized["pending_operations"][0]["kind"] == "update_plant"
 
 
-# --- Reopened Phase 1A regressions ---------------------------------------
+# --- Store write-failure and quarantine regressions ----------------------
 
 
 async def test_write_failure_swallowed_by_ha_still_raises(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
-    """F1: HA Store swallows WriteError; SmartPlantsStore must still surface it."""
+    """HA Store swallows WriteError; SmartPlantsStore must still surface it."""
     # HA's ``Store._async_handle_write_data`` catches WriteError and
     # SerializationError and only logs them. Our subclass captures the
     # exception on ``_last_write_error`` before HA's swallow catches it, so
@@ -723,7 +723,7 @@ async def test_write_failure_swallowed_by_ha_still_raises(
 async def test_manager_write_failure_swallowed_by_ha_does_not_publish(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
-    """F1 through the manager: swallowed HA write must not advance snapshot."""
+    """Through the manager, a swallowed HA write must not advance snapshot."""
     manager = SmartPlantsManager(hass)
     await manager.async_load()
     assert manager.snapshot.revision == 0
@@ -778,7 +778,7 @@ async def test_failed_automatic_migration_save_rejects_load(
 async def test_timestamped_corrupt_marker_refuses_empty_fallback(
     hass: HomeAssistant,
 ) -> None:
-    """F2: HA quarantines as ``<key>.corrupt.<iso>``; that must still be seen."""
+    """HA quarantines as ``<key>.corrupt.<iso>``; that must still be seen."""
     store = SmartPlantsStore(hass)
     store_path = Path(store.path)
     store_path.parent.mkdir(parents=True, exist_ok=True)
@@ -804,7 +804,7 @@ async def test_corrupt_marker_scan_error_fails_closed(hass: HomeAssistant) -> No
 async def test_migration_rejects_payload_without_previous_shape(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
-    """F3: migration must not synthesize a valid empty inventory from garbage."""
+    """Migration must not synthesize a valid empty inventory from garbage."""
     # Seeded payload matches an older minor but lacks the ``plants`` list
     # that every previous format carried. Migration must refuse rather
     # than invent an empty inventory that then passes downstream
@@ -822,7 +822,7 @@ async def test_migration_rejects_payload_without_previous_shape(
 async def test_migration_rejects_payload_without_revision(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
-    """F3 companion: missing revision on the source is also unrecognized."""
+    """A missing revision on the source is also unrecognized."""
     _seed(
         hass_storage,
         major=STORAGE_MAJOR_VERSION,
@@ -833,7 +833,7 @@ async def test_migration_rejects_payload_without_revision(
         await SmartPlantsStore(hass).async_load()
 
 
-# --- Recovery-schema validation (Phase 2 stabilization #3) ---------------
+# --- Recovery-schema validation -----------------------------------------
 #
 # Strict kind-specific payload validation and exact schema-version
 # enforcement guard the reconciler from acting on records whose shape

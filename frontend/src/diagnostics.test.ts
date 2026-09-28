@@ -55,7 +55,7 @@ async function mountDetailWith(entities: HAEntity[], states: Record<string, HASt
 }
 
 describe("problemBinaries model helper", () => {
-  it("returns one reading per Phase 7 problem role in a stable order", () => {
+  it("returns one reading per non-moisture problem role in a stable order", () => {
     const plant: PlantRecord = structuredClone(sample);
     const rows = problemBinaries(plant, [], {});
     expect(rows.map(r => r.role)).toEqual([...PROBLEM_BINARY_ROLES]);

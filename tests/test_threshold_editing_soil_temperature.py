@@ -1,20 +1,17 @@
-"""End-to-end contract test for the low_light threshold-editing slice."""
+"""End-to-end tests for editing soil_temperature_stress thresholds via WebSocket."""
 
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import Any
 
 import pytest
-from custom_components.smart_plants import illuminance_evaluator
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.models import (
-    LOW_LIGHT_BUILTIN_DEFAULTS,
-    IlluminanceConfig,
+    SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS,
+    SoilTemperatureConfig,
 )
-from homeassistant.const import LIGHT_LUX
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
@@ -30,45 +27,27 @@ async def _setup(hass: HomeAssistant) -> MockConfigEntry:
 async def test_websocket_override_persists_and_updates_binary_sensor_attributes(
     hass: HomeAssistant,
     hass_ws_client: WebSocketGenerator,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Low-light attributes are published with the binary's state. Provide the
-    # two distinct daytime observations required for an available evaluation;
-    # otherwise HA correctly suppresses attributes for an unavailable entity.
-    monkeypatch.setattr(illuminance_evaluator, "is_daytime", lambda _value: True)
     entry = await _setup(hass)
     manager = entry.runtime_data.manager
     plant = await manager.async_create_plant(name="Fern")
     hass.states.async_set(
-        "sensor.light",
-        "1200",
-        {"unit_of_measurement": LIGHT_LUX},
+        "sensor.soil_temperature",
+        "22",
+        {"unit_of_measurement": UnitOfTemperature.CELSIUS},
     )
     sourced = await manager.async_set_role_sources(
         plant.id,
-        role="illuminance",
+        role="soil_temperature",
         expected_revision=plant.revision,
-        sources=[{"entity_id": "sensor.light"}],
+        sources=[{"entity_id": "sensor.soil_temperature"}],
     )
     assigned = await manager.async_set_role_primary(
         plant.id,
-        role="illuminance",
+        role="soil_temperature",
         expected_revision=sourced.revision,
-        primary_entity_id="sensor.light",
+        primary_entity_id="sensor.soil_temperature",
     )
-    await hass.async_block_till_done()
-    controller = manager.get_role_controller(plant.id, "illuminance")
-    assert controller is not None
-    # Model two distinct, recent sensor observations with synthetic timestamps.
-    now = dt_util.utcnow()
-    controller._evaluation_now = now
-    controller._light_samples = [
-        illuminance_evaluator.LightSample(
-            (now - timedelta(minutes=1)).timestamp(), 1200.0
-        ),
-        illuminance_evaluator.LightSample(now.timestamp(), 1200.0),
-    ]
-    controller._recompute_and_notify(now)
     await hass.async_block_till_done()
 
     client = await hass_ws_client(hass)
@@ -77,10 +56,12 @@ async def test_websocket_override_persists_and_updates_binary_sensor_attributes(
         "type": "smart_plants/roles/set_threshold_overrides",
         "plant_id": plant.id,
         "expected_revision": assigned.revision,
-        "role": "illuminance",
+        "role": "soil_temperature",
         "values": {
-            "target_lux": 600.0,
-            "clear_lux": None,
+            "cold_threshold_celsius": 8.0,
+            "cold_clear_celsius": 11.0,
+            "hot_clear_celsius": None,
+            "hot_threshold_celsius": None,
         },
     }
     await client.send_json(payload)
@@ -90,23 +71,32 @@ async def test_websocket_override_persists_and_updates_binary_sensor_attributes(
     assert returned["id"] == plant.id
     assert returned["revision"] == assigned.revision + 1
 
-    persisted = manager.snapshot.plants[plant.id].role_config("illuminance")
-    assert isinstance(persisted, IlluminanceConfig)
-    assert persisted.stress_threshold_overrides["target_lux"] == 600.0
-    assert persisted.stress_threshold_overrides["clear_lux"] is None
+    persisted = manager.snapshot.plants[plant.id].role_config("soil_temperature")
+    assert isinstance(persisted, SoilTemperatureConfig)
+    assert persisted.stress_threshold_overrides["cold_threshold_celsius"] == 8.0
+    assert persisted.stress_threshold_overrides["cold_clear_celsius"] == 11.0
+    assert persisted.stress_threshold_overrides["hot_clear_celsius"] is None
+    assert persisted.stress_threshold_overrides["hot_threshold_celsius"] is None
     assert (
-        persisted.effective_stress_threshold("clear_lux")
-        == LOW_LIGHT_BUILTIN_DEFAULTS["clear_lux"]
+        persisted.effective_stress_threshold("hot_threshold_celsius")
+        == SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_threshold_celsius"]
     )
-    assert persisted.effective_stress_threshold("target_lux") == 600.0
+    assert persisted.effective_stress_threshold("cold_threshold_celsius") == 8.0
 
     await hass.async_block_till_done()
-    entity_id = "binary_sensor.fern_low_light"
+    entity_id = "binary_sensor.fern_soil_temperature_stress"
     state = hass.states.get(entity_id)
     assert state is not None, hass.states.async_entity_ids()
-    # Overridden target, inherited clear.
-    assert state.attributes["target_lux"] == 600.0
-    assert state.attributes["clear_lux"] == LOW_LIGHT_BUILTIN_DEFAULTS["clear_lux"]
+    assert state.attributes["cold_threshold_celsius"] == 8.0
+    assert state.attributes["cold_clear_celsius"] == 11.0
+    assert (
+        state.attributes["hot_clear_celsius"]
+        == SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_clear_celsius"]
+    )
+    assert (
+        state.attributes["hot_threshold_celsius"]
+        == SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_threshold_celsius"]
+    )
 
 
 async def test_websocket_rejects_invalid_effective_ordering(
@@ -116,17 +106,18 @@ async def test_websocket_rejects_invalid_effective_ordering(
     manager = entry.runtime_data.manager
     plant = await manager.async_create_plant(name="Fern")
     client = await hass_ws_client(hass)
-    # target_lux >= clear_lux violates ordering.
     await client.send_json(
         {
             "id": 1,
             "type": "smart_plants/roles/set_threshold_overrides",
             "plant_id": plant.id,
             "expected_revision": plant.revision,
-            "role": "illuminance",
+            "role": "soil_temperature",
             "values": {
-                "target_lux": 800.0,
-                "clear_lux": 700.0,
+                "cold_threshold_celsius": 20.0,
+                "cold_clear_celsius": 18.0,
+                "hot_clear_celsius": None,
+                "hot_threshold_celsius": None,
             },
         }
     )
@@ -148,9 +139,11 @@ async def test_websocket_rejects_missing_key(
             "type": "smart_plants/roles/set_threshold_overrides",
             "plant_id": plant.id,
             "expected_revision": plant.revision,
-            "role": "illuminance",
+            "role": "soil_temperature",
             "values": {
-                "target_lux": None,
+                "cold_threshold_celsius": None,
+                "cold_clear_celsius": None,
+                "hot_clear_celsius": None,
             },
         }
     )
@@ -181,10 +174,12 @@ async def test_websocket_revision_conflict(
             "type": "smart_plants/roles/set_threshold_overrides",
             "plant_id": plant.id,
             "expected_revision": bad_revision,
-            "role": "illuminance",
+            "role": "soil_temperature",
             "values": {
-                "target_lux": None,
-                "clear_lux": None,
+                "cold_threshold_celsius": None,
+                "cold_clear_celsius": None,
+                "hot_clear_celsius": None,
+                "hot_threshold_celsius": None,
             },
         }
     )

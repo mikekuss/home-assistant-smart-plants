@@ -73,7 +73,7 @@ async def test_conductivity_entity_metadata_and_state(hass: HomeAssistant) -> No
     await hass.async_block_till_done()
 
     registry = er.async_get(hass)
-    # Entity-lifecycle contract: no computed entity until the role has a source.
+    # Lazy entity creation: no computed entity until the role has a source.
     assert (
         registry.async_get_entity_id(
             "sensor", DOMAIN, f"{DOMAIN}:{plant.id}:conductivity"
@@ -265,7 +265,7 @@ async def test_conductivity_stress_entity_metadata_and_state(
     await hass.async_block_till_done()
 
     registry = er.async_get(hass)
-    # Entity-lifecycle contract: no problem binary until the role has a source.
+    # Lazy entity creation: no problem binary until the role has a source.
     assert (
         registry.async_get_entity_id(
             "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:conductivity_stress"

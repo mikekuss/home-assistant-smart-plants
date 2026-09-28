@@ -1,5 +1,5 @@
 """
-Typed manager events for Phase 3 entity lifecycle.
+Typed manager events that drive the entity lifecycle.
 
 Events are dispatched only after a snapshot is durably published (a
 successful ``async_save`` on the underlying Home Assistant Store), and,

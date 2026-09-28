@@ -1,5 +1,5 @@
 """
-Admin-only Lovelace panel for Smart Plants (Phase 2, Cut 3).
+Admin-only Lovelace panel for Smart Plants.
 
 The static bundle is served from ``custom_components/smart_plants/frontend/``
 via a single process-lifetime static route (registered from

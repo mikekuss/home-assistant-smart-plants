@@ -1,6 +1,6 @@
 // Unit tests for the WebSocket client wrapper. The transport itself lives
-// on hass.connection and is mocked; we exercise the frozen contract on
-// the message shape we send and the error mapping we do on the way back.
+// on hass.connection and is mocked; we check the message shape we send and
+// the error mapping we do on the way back.
 
 import { describe, expect, it, vi } from "vitest";
 import { api, ApiError } from "./api.js";

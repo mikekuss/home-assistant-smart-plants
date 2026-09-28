@@ -10,7 +10,7 @@ export const preview = { draft_id: draft.draft_id, revision: 0, preview_token: "
 export const role: MoistureRoleConfig = { ...emptyMoisture(), threshold_defaults: Object.fromEntries(keys.map(k => [k, { value: builtin[k], source: "builtin", provider: null, provider_ref: null }])) as MoistureRoleConfig["threshold_defaults"] };
 // `sample` is storage-shaped (moisture only), as an older backend or a raw
 // record would send. The backend PlantView fills every unconfigured source role
-// with its registered default; this backend-owned fixture is that contract.
+// with its registered default; this backend-owned fixture holds those defaults.
 export const backendRoleDefaults: Record<string, unknown> = plantViewRoleDefaults;
 export const sample: PlantRecord = { id: "plant-1", revision: 1, name: "Aloe", created_at: "2026-09-10T00:00:00Z", acquired_at: null, lifecycle_state: "active", species: null, placement: null, category: null, tags: [], image: null, roles: { moisture: role } };
 export const newPlantView: PlantRecord = { ...sample, roles: { ...structuredClone(backendRoleDefaults), moisture: role } };

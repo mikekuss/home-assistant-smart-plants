@@ -21,8 +21,8 @@ logger:
 recorder:
   purge_keep_days: 2
 
-# Simulated soil-moisture, temperature, and illuminance sensors. Phase 4+
-# attaches to these via entity selector. Extend as new roles are added.
+# Simulated soil-moisture, temperature, and illuminance sensors. Plants
+# attach to these via entity selector. Extend as new roles are added.
 template:
   - sensor:
       - name: "Mock Fiddle Leaf Moisture"

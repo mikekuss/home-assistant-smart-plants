@@ -1,7 +1,7 @@
 """
-Phase 7 entity-lifecycle gating (minor 10).
+Entity-lifecycle gating for non-moisture roles (storage minor 10).
 
-A Phase 7 role's computed sensor and problem binary are created only once the
+A non-moisture role's computed sensor and problem binary are created only once the
 role has had a source; they are kept after sources are removed (going
 unavailable), which preserves history and customizations. Old storage does not
 track past assignments, so migration retains existing registry entries even
@@ -115,7 +115,7 @@ async def test_unconfigured_roles_never_create_entities(
     plant = await manager.async_create_plant(name="Aloe")
     await hass.async_block_till_done()
 
-    # Configure only humidity; the other six Phase 7 roles stay entity-less.
+    # Configure only humidity; the other six non-moisture roles stay entity-less.
     await manager.async_set_role_sources(
         plant.id,
         role="humidity",

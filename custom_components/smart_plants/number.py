@@ -1,7 +1,7 @@
 """
 Smart Plants ``number`` platform.
 
-Phase 4 Cut 3 populates ``ROLE_FACTORIES`` with editable percentage
+``ROLE_FACTORIES`` holds the editable moisture percentage
 thresholds:
 
 * ``moisture_min``

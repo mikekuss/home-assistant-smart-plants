@@ -1,4 +1,4 @@
-"""Manager event contract and subscription semantics (Phase 3 Cut 1)."""
+"""Manager event payloads and subscription semantics."""
 
 from __future__ import annotations
 

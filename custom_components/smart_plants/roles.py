@@ -113,10 +113,10 @@ class RoleDefinition:
     source_domain: str
     thresholds: tuple[ThresholdRole, ...]
     entities: tuple[EntityRole, ...]
-    # Moisture is the plant's core role: its entities are always created so the
-    # accepted Phase 2-6 moisture-only guarantees hold even with no sources. The
-    # seven Phase 7 roles are opt-in: their entities are created only once the
-    # role has had at least one source (see the entity-lifecycle contract).
+    # Moisture is the plant's core role: its entities are always created, even
+    # with no sources. The other roles are opt-in: their entities are created
+    # only once the role has had at least one source, which avoids unused
+    # entities on every plant.
     always_present: bool = False
     parse_config: Callable[[object], Any] | None = None
     serialize_config: Callable[[Any], object] | None = None

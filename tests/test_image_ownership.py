@@ -1,5 +1,5 @@
 """
-Image ownership and cleanup coverage (Phase 2 stabilization #4).
+Image ownership and cleanup coverage.
 
 These tests prove:
 
