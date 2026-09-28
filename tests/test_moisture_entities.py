@@ -19,6 +19,7 @@ from custom_components.smart_plants.manager import (
     SmartPlantsRevisionConflictError,
     SmartPlantsValidationError,
 )
+from custom_components.smart_plants.number import SmartPlantsNumberEntity
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -28,6 +29,8 @@ from pytest_homeassistant_custom_component.common import (
     async_fire_time_changed,
 )
 
+_THRESHOLD_ROLES = ("moisture_min", "moisture_target", "moisture_max")
+
 
 async def _setup(hass: HomeAssistant) -> MockConfigEntry:
     entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
@@ -35,6 +38,24 @@ async def _setup(hass: HomeAssistant) -> MockConfigEntry:
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     return entry
+
+
+async def _create_with_enabled_thresholds(
+    hass: HomeAssistant, entry: MockConfigEntry
+) -> tuple[SmartPlantsManager, str]:
+    """Create a plant and enable its threshold numbers as a user would."""
+    plant = await entry.runtime_data.manager.async_create_plant(name="Aloe")
+    await hass.async_block_till_done()
+    registry = er.async_get(hass)
+    for role in _THRESHOLD_ROLES:
+        entity_id = registry.async_get_entity_id(
+            "number", DOMAIN, f"{DOMAIN}:{plant.id}:{role}"
+        )
+        assert entity_id is not None
+        registry.async_update_entity(entity_id, disabled_by=None)
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry.runtime_data.manager, plant.id
 
 
 async def test_moisture_role_entities_are_created(hass: HomeAssistant) -> None:
@@ -57,9 +78,65 @@ async def test_moisture_role_entities_are_created(hass: HomeAssistant) -> None:
         unique_id = f"{DOMAIN}:{plant.id}:{role}"
         assert registry.async_get_entity_id(platform, DOMAIN, unique_id) is not None
     moisture = manager.get_entity("sensor", plant.id, "moisture")
-    threshold = manager.get_entity("number", plant.id, "moisture_min")
     assert moisture.state_class == "measurement"
+    threshold_id = registry.async_get_entity_id(
+        "number", DOMAIN, f"{DOMAIN}:{plant.id}:moisture_min"
+    )
+    assert threshold_id is not None
+    threshold = registry.async_get(threshold_id)
+    assert threshold is not None
     assert threshold.entity_category is EntityCategory.CONFIG
+
+
+async def test_threshold_numbers_are_disabled_by_default(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    manager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    for role in _THRESHOLD_ROLES:
+        entity_id = registry.async_get_entity_id(
+            "number", DOMAIN, f"{DOMAIN}:{plant.id}:{role}"
+        )
+        assert entity_id is not None
+        registry_entry = registry.async_get(entity_id)
+        assert registry_entry is not None
+        assert registry_entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+        assert hass.states.get(entity_id) is None
+        assert manager.get_entity("number", plant.id, role) is None
+
+    # Health detection does not depend on the threshold entities.
+    assert manager.get_entity("binary_sensor", plant.id, "needs_water") is not None
+
+
+async def test_previously_enabled_threshold_numbers_stay_enabled(
+    hass: HomeAssistant,
+) -> None:
+    # Register the entities the way earlier releases did (enabled by
+    # default), then reload with the current default in place.
+    with patch.object(
+        SmartPlantsNumberEntity, "_attr_entity_registry_enabled_default", new=True
+    ):
+        entry = await _setup(hass)
+        plant = await entry.runtime_data.manager.async_create_plant(name="Aloe")
+        await hass.async_block_till_done()
+
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    manager = entry.runtime_data.manager
+    for role in _THRESHOLD_ROLES:
+        entity_id = registry.async_get_entity_id(
+            "number", DOMAIN, f"{DOMAIN}:{plant.id}:{role}"
+        )
+        assert entity_id is not None
+        registry_entry = registry.async_get(entity_id)
+        assert registry_entry is not None
+        assert registry_entry.disabled_by is None
+        assert hass.states.get(entity_id) is not None
+        assert manager.get_entity("number", plant.id, role) is not None
 
 
 async def test_controller_listener_attach_is_idempotent(hass: HomeAssistant) -> None:
@@ -410,13 +487,11 @@ async def test_care_edit_and_delete_recompute_watering_grace_from_retained_event
 
 async def test_number_write_updates_thresholds(hass: HomeAssistant) -> None:
     entry = await _setup(hass)
-    manager = entry.runtime_data.manager
-    plant = await manager.async_create_plant(name="Aloe")
-    await hass.async_block_till_done()
+    manager, plant_id = await _create_with_enabled_thresholds(hass, entry)
 
     registry = er.async_get(hass)
     min_entity = registry.async_get_entity_id(
-        "number", DOMAIN, f"{DOMAIN}:{plant.id}:moisture_min"
+        "number", DOMAIN, f"{DOMAIN}:{plant_id}:moisture_min"
     )
     assert min_entity is not None
 
@@ -427,18 +502,16 @@ async def test_number_write_updates_thresholds(hass: HomeAssistant) -> None:
         blocking=True,
     )
     await hass.async_block_till_done()
-    assert manager.get_plant(plant.id).moisture.moisture_min == 20
+    assert manager.get_plant(plant_id).moisture.moisture_min == 20
 
 
 async def test_number_write_rejects_bad_ordering(hass: HomeAssistant) -> None:
     entry = await _setup(hass)
-    manager = entry.runtime_data.manager
-    plant = await manager.async_create_plant(name="Aloe")
-    await hass.async_block_till_done()
+    manager, plant_id = await _create_with_enabled_thresholds(hass, entry)
 
     registry = er.async_get(hass)
     max_entity = registry.async_get_entity_id(
-        "number", DOMAIN, f"{DOMAIN}:{plant.id}:moisture_max"
+        "number", DOMAIN, f"{DOMAIN}:{plant_id}:moisture_max"
     )
     assert max_entity is not None
     # Setting max below target should be refused by the manager and the
@@ -450,7 +523,7 @@ async def test_number_write_rejects_bad_ordering(hass: HomeAssistant) -> None:
             {"entity_id": max_entity, "value": 10},
             blocking=True,
         )
-    assert manager.get_plant(plant.id).moisture.moisture_max == 55
+    assert manager.get_plant(plant_id).moisture.moisture_max == 55
 
 
 async def test_disable_reenable_pauses_and_resumes_controller(
@@ -541,32 +614,28 @@ async def test_number_write_rejects_fractional_threshold(
     hass: HomeAssistant,
 ) -> None:
     entry = await _setup(hass)
-    manager = entry.runtime_data.manager
-    plant = await manager.async_create_plant(name="Aloe")
-    await hass.async_block_till_done()
-    entity = manager.get_entity("number", plant.id, "moisture_min")
+    manager, plant_id = await _create_with_enabled_thresholds(hass, entry)
+    entity = manager.get_entity("number", plant_id, "moisture_min")
     assert entity is not None
     with pytest.raises(SmartPlantsValidationError, match="whole"):
         await entity.async_set_native_value(20.5)
-    assert manager.get_plant(plant.id).moisture.moisture_min == 15
+    assert manager.get_plant(plant_id).moisture.moisture_min == 15
 
 
 async def test_revision_conflict_number_write_retries_once(
     hass: HomeAssistant,
 ) -> None:
     entry = await _setup(hass)
-    manager = entry.runtime_data.manager
-    plant = await manager.async_create_plant(name="Aloe")
-    await hass.async_block_till_done()
+    manager, plant_id = await _create_with_enabled_thresholds(hass, entry)
 
     # Force the record's revision forward so the entity's cached revision
     # is stale when it writes.
-    await manager.async_update_plant(plant.id, expected_revision=1, name="Renamed")
+    await manager.async_update_plant(plant_id, expected_revision=1, name="Renamed")
     await hass.async_block_till_done()
 
     registry = er.async_get(hass)
     min_entity = registry.async_get_entity_id(
-        "number", DOMAIN, f"{DOMAIN}:{plant.id}:moisture_min"
+        "number", DOMAIN, f"{DOMAIN}:{plant_id}:moisture_min"
     )
     assert min_entity is not None
     # First attempt inside the entity fetches the current revision, so
@@ -578,7 +647,7 @@ async def test_revision_conflict_number_write_retries_once(
         blocking=True,
     )
     await hass.async_block_till_done()
-    assert manager.get_plant(plant.id).moisture.moisture_min == 18
+    assert manager.get_plant(plant_id).moisture.moisture_min == 18
 
 
 def test_revision_conflict_type_is_still_importable() -> None:
