@@ -50,9 +50,11 @@ Each role has a **stale after** window: 6 hours by default, adjustable from 60 s
 
 - A newly assigned source gets one full window as a grace period before it can be stale.
 - An assigned sensor that no longer exists counts as stale.
-- The window is measured from the last time the source's state or attributes changed in Home
-  Assistant. A very steady sensor that keeps reporting exactly the same value can therefore
-  look stale; increase the window for such sensors.
+- The window is measured from the last time the source reported a valid state to Home
+  Assistant, even if the value didn't change. A sensor that keeps reporting the same value (for
+  example 0 lx at night) stays fresh.
+- Some devices only send an update when their value changes. If such a sensor can stay
+  silent longer than the window, increase the window for that role.
 
 For soil moisture, the **Sensor stale** entity turns on while any assigned moisture source is
 stale. For the other roles, the problem indicator becomes unavailable while any of that
