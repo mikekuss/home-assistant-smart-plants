@@ -128,6 +128,9 @@ async function menuAction(page: Page, name: string) {
 async function addPlant(page: Page) { await menuAction(page, "Add plant"); }
 async function backToOverview(page: Page) { await menuAction(page, "Back to overview"); }
 const next = (page: Page) => button(page, "Next step").click();
+const overview = (page: Page) => page.locator("smart-plants-overview");
+const cards = (page: Page) => overview(page).locator("article.card");
+const tile = (page: Page, name: string) => overview(page).locator("button.tile").filter({ hasText: name });
 async function open(page: Page, seeded = true) {
   await page.goto(`${url}${seeded ? "?seed" : ""}`);
   await expect(button(page, "Menu")).toBeVisible();
@@ -145,7 +148,7 @@ async function detail(page: Page, name = "Office Aloe", section = "Plant details
 }
 async function start(page: Page, name = "Manual Aloe") {
   await open(page, false);
-  await button(page, "Add your first plant").click();
+  await overview(page).getByRole("button", { name: "Add plant", exact: true }).click();
   await expect(button(page, "Next step")).toBeEnabled();
   await page.getByLabel("Plant name", { exact: true }).fill(name);
 }
@@ -268,18 +271,37 @@ test("overview prioritizes plant summaries with compact filters and native-style
   }
   await expect(page.getByRole("heading", { name: "Smart Plants", exact: true })).toBeVisible();
   await expect(page.locator("smart-plants-panel ha-top-app-bar-fixed .top-app-bar")).toHaveCSS("border-bottom-style", "solid");
-  await expect(page.locator("smart-plants-panel .inventory-summary")).toHaveText("Total plants3Needs water1Problems1");
-  await expect(page.locator("smart-plants-panel details.filter-disclosure")).not.toHaveAttribute("open", "");
-  await expect(page.locator("smart-plants-panel .plant-card")).toHaveCount(3);
+  await expect(overview(page).locator("button.tile")).toHaveText([/3\s*All plants/, /1\s*Needs water/, /0\s*Problems/, /1\s*Sensor issues/]);
+  await expect(tile(page, "All plants")).toHaveAttribute("aria-pressed", "true");
+  await expect(cards(page)).toHaveCount(3);
+  await expect(cards(page).first()).toContainText("Needs water");
+  await expect(cards(page).first()).toContainText("Soil moisture 12% is below the minimum of 20%");
+  await expect(page.locator("smart-plants-panel details")).toHaveCount(0);
   await expect(button(page, "Refresh")).toHaveCount(0);
+  await expect(button(page, "Add plant")).toBeVisible();
   await button(page, "Menu").click();
   await expect(menuItem(page, "Add plant")).toBeVisible();
+  await expect(menuItem(page, "Integration options")).toBeVisible();
+  await expect(menuItem(page, "Documentation")).toBeVisible();
   await page.keyboard.press("Escape");
-  await page.locator("smart-plants-panel details.filter-disclosure > summary").click();
-  await expect(page.getByLabel("Search plants", { exact: true })).toBeVisible();
-  await audit(page, info, "overview-filter-expanded");
-  await page.locator("smart-plants-panel details.filter-disclosure > summary").click();
   await audit(page, info, "overview-prioritized");
+  await tile(page, "Needs water").click();
+  await expect(tile(page, "Needs water")).toHaveAttribute("aria-pressed", "true");
+  await expect(cards(page)).toHaveCount(1);
+  await expect(overview(page).getByRole("status")).toHaveText("1 of 3 plants · Needs water");
+  await audit(page, info, "overview-filtered");
+  await tile(page, "Needs water").click();
+  await expect(cards(page)).toHaveCount(3);
+  await button(page, "Sort: Needs attention first").click();
+  // The open menu covers the cards, so axe cannot measure text behind it; check
+  // the menu by role and audit the page again once the choice is applied.
+  for (const name of ["Needs attention first", "Name", "Group by area"]) await expect(overview(page).getByRole("menuitem", { name })).toBeVisible();
+  await overview(page).getByRole("menuitem", { name: "Group by area" }).focus();
+  await overview(page).getByRole("menuitem", { name: "Group by area" }).press("Enter");
+  await expect(overview(page).locator("h2.group-heading")).toHaveText([/Garden\s*· 2/, /Office\s*· 1/]);
+  await expect(button(page, "Sort: Group by area")).toBeVisible();
+  await audit(page, info, "overview-grouped");
+  await screenshot(page, info, "overview-grouped");
   const registrations = await page.evaluate(async () => {
     const panel = customElements.get("smart-plants-panel");
     const wizard = customElements.get("smart-plants-wizard");
@@ -553,7 +575,8 @@ test("authenticated image upload, decoded display, replacement, navigation and r
   await button(page, "Remove photo").click();
   await expect(page.getByText("No photo yet.", { exact: true })).toBeVisible();
   const requests = await page.evaluate(() => window.__smartPlantsHarness.requests);
-  expect(requests.map(r => r.method)).toEqual(["POST", "GET", "POST", "GET", "GET", "DELETE"]);
+  // The GET after the second upload's GET is the overview card thumbnail.
+  expect(requests.map(r => r.method)).toEqual(["POST", "GET", "POST", "GET", "GET", "GET", "DELETE"]);
   expect(requests.every(r => r.authorization === "Bearer playwright-token")).toBe(true);
   expect(requests.filter(r => r.method === "POST").every(r => r.contentType === "image/png" && r.bytes > 0)).toBe(true);
   expect(requests.filter(r => r.method !== "GET").map(r => r.path.split("expected_revision=")[1])).toEqual(["1", "2", "3"]);
@@ -589,8 +612,12 @@ test("late image reads and uploads cannot replace a newer navigation context", a
   await button(page, "Garden Fern").click(); await button(page, "Plant details").click();
   await page.evaluate(() => window.__smartPlantsHarness.release("image/GET"));
   await expect(page.getByText("No photo yet.", { exact: true })).toBeVisible();
+  // Every plant page photo blob is released; only live overview thumbnails remain.
   await expect.poll(() => page.evaluate(() => {
-    const h = window.__smartPlantsHarness; return h.blobsCreated.every(url => h.blobsRevoked.includes(url));
+    const h = window.__smartPlantsHarness;
+    const panel = document.querySelector("smart-plants-panel") as unknown as { _thumbnails: Record<string, string> };
+    const thumbnails = Object.values(panel._thumbnails);
+    return h.blobsCreated.filter(url => !thumbnails.includes(url)).every(url => h.blobsRevoked.includes(url));
   })).toBe(true);
   await backToOverview(page); await button(page, "Office Aloe").click(); await button(page, "Plant details").click();
   await expect(page.getByAltText("Photo of Office Aloe")).toHaveJSProperty("naturalWidth", 160);
@@ -724,12 +751,12 @@ test("native area changes require review of a dirty selection without automatic 
   expect((await messages(page, "plants/set_area"))[0]).toMatchObject({ area_id: "garden", expected_revision: 1 });
 });
 
-test("combined inventory filters, authoritative detail and native links", async ({ page }) => {
+test("tile filters, search, authoritative detail and native links", async ({ page }) => {
   await open(page);
-  await page.locator("smart-plants-panel details.filter-disclosure > summary").click();
-  await page.getByLabel("Search plants", { exact: true }).fill("aloe");
-  for (const [label, value] of [["Status", "needs water"], ["Lifecycle", "active"], ["Area", "office"], ["Placement", "indoor"], ["Species", "Aloe vera"], ["Category", "Succulent"], ["Tags", "sunny"]]) await page.getByRole("combobox", { name: label!, exact: true }).selectOption(value!);
-  await expect(page.getByRole("status").filter({ hasText: /^1 of 3 plants$/ })).toBeVisible();
+  await overview(page).getByLabel("Search plants", { exact: true }).fill("succulent");
+  await expect(overview(page).getByRole("status")).toHaveText("2 of 3 plants");
+  await overview(page).getByLabel("Search plants", { exact: true }).fill("aloe vera");
+  await expect(cards(page)).toHaveCount(1);
   await expect(button(page, "Garden Fern")).toHaveCount(0);
   await button(page, "Office Aloe").click();
   await expect(page.getByText("12%", { exact: true })).toBeVisible();
@@ -737,22 +764,45 @@ test("combined inventory filters, authoritative detail and native links", async 
   await button(page, "Diagnostics").click();
   await expect(page.getByText("automation.plant_reminder", { exact: true })).toBeVisible();
   await backToOverview(page);
-  await page.locator("smart-plants-panel details.filter-disclosure > summary").click();
-  await expect(page.getByLabel("Search plants", { exact: true })).toHaveValue("aloe");
-  await page.getByRole("combobox", { name: "Sensor condition", exact: true }).selectOption("missing");
-  await expect(page.getByText("No plants match these filters.", { exact: true })).toBeVisible();
-  await button(page, "Clear filters").click();
-  await page.getByRole("combobox", { name: "Sensor condition", exact: true }).selectOption("missing");
+  await expect(overview(page).getByLabel("Search plants", { exact: true })).toHaveValue("aloe vera");
+  await tile(page, "Sensor issues").click();
+  await expect(overview(page).getByText("No plants match", { exact: true })).toBeVisible();
+  await button(page, "Show all plants").click();
+  await expect(overview(page).getByLabel("Search plants", { exact: true })).toHaveValue("");
+  await tile(page, "Sensor issues").click();
+  await expect(cards(page)).toHaveCount(1);
+  await expect(cards(page).first()).toContainText("No recent data");
   await button(page, "Garden Fern").click();
   await expect(page.getByText("No current reading", { exact: true })).toBeVisible();
   await backToOverview(page);
-  await page.locator("smart-plants-panel details.filter-disclosure > summary").click();
-  await page.getByRole("combobox", { name: "Sensor condition", exact: true }).selectOption("stale");
-  await expect(button(page, "Garden Fern")).toBeVisible();
-  await button(page, "Clear filters").click();
-  await page.getByRole("combobox", { name: "Lifecycle", exact: true }).selectOption("disabled");
-  await expect(button(page, "Resting Cactus")).toBeVisible();
+  await button(page, "Clear filter").click();
+  await expect(cards(page)).toHaveCount(3);
+  await expect(cards(page).last()).toContainText("Paused");
   await noOverflow(page);
+});
+
+test("watering from a card logs now and can be undone from the toast", async ({ page }, info) => {
+  await open(page);
+  await page.evaluate(() => {
+    const w = window as unknown as { __toasts: { message: string; action?: { text: string; action: () => void } }[] };
+    w.__toasts = [];
+    document.addEventListener("hass-notification", e => w.__toasts.push((e as CustomEvent).detail));
+  });
+  const card = cards(page).filter({ hasText: "Office Aloe" });
+  await expect(card).toContainText("Not watered yet");
+  await button(page, "Log watering for Office Aloe").click();
+  await expect(card).toContainText("Watered just now");
+  const [added] = await messages(page, "care/add_watering");
+  expect(added).toMatchObject({ plant_id: id(1), expected_revision: 1, note: null });
+  expect(String((added as { occurred_at: string }).occurred_at)).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d$/);
+  expect((await inventory(page))[0]!.care_events).toHaveLength(1);
+  const toast = await page.evaluate(() => { const t = (window as unknown as { __toasts: { message: string; action?: { text: string } }[] }).__toasts[0]!; return { message: t.message, action: t.action?.text }; });
+  expect(toast).toEqual({ message: "Watering logged for Office Aloe", action: "Undo" });
+  await audit(page, info, "overview-after-watering");
+  await page.evaluate(() => (window as unknown as { __toasts: { action: { action: () => void } }[] }).__toasts[0]!.action.action());
+  await expect(card).toContainText("Not watered yet");
+  expect(await messages(page, "care/delete")).toHaveLength(1);
+  expect((await inventory(page))[0]!.care_events).toHaveLength(0);
 });
 
 test("revision conflict retains dirty edits and requires explicit review and reapply", async ({ page }) => {
@@ -857,7 +907,7 @@ test("disabled provider capability supports completely network-free manual creat
   await open(page, false);
   await page.evaluate(() => { window.__smartPlantsHarness.providerAvailable = false; });
   await refreshData(page);
-  await button(page, "Add your first plant").click();
+  await overview(page).getByRole("button", { name: "Add plant", exact: true }).click();
   await page.getByLabel("Plant name", { exact: true }).fill("Offline plant");
   await next(page);
   await expect(page.getByText("OpenPlantBook is not connected", { exact: true })).toBeVisible();
@@ -915,7 +965,7 @@ test("integration unload and malformed provider preview preserve local state", a
 test("axe full-rule audit and screenshots cover overview, all seven steps, detail, dialogs and error", async ({ page }, info) => {
   test.setTimeout(120000);
   await open(page, false); await audit(page, info, "empty");
-  await button(page, "Add your first plant").click();
+  await overview(page).getByRole("button", { name: "Add plant", exact: true }).click();
   await page.getByLabel("Plant name", { exact: true }).fill("Accessible Aloe");
   await photo(page, "Optional local photo");
   const steps = ["basic", "species-manual", "sources", "thresholds", "taxonomy", "review"];

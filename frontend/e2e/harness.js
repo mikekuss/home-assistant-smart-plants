@@ -28,7 +28,8 @@ const view = p => ({ ...copy(p), roles: { ...copy(roleDefaults), ...copy(p.roles
 const viewResult = result => {
   if (!result || typeof result !== "object") return result;
   if (result.plant) return { ...result, plant: view(result.plant) };
-  if (Array.isArray(result.plants)) return { ...result, plants: result.plants.map(view) };
+  // Overview entries are not plant records and keep their own shape.
+  if (Array.isArray(result.plants) && !result.plants.some(p => "plant_id" in p)) return { ...result, plants: result.plants.map(view) };
   return result;
 };
 const plant = (n, name, changes = {}) => ({ id: uuid(n), revision: 1, name, created_at: now, lifecycle_state: "active", acquired_at: null, species: null, placement: null, tags: [], category: null, image: null, care_events: [], roles: { moisture: moisture() }, ...changes });
@@ -103,6 +104,24 @@ state.seedDiagnostics = () => {
     state.states.push({ entity_id: eid, state: value, attributes: { friendly_name: `Diagnostics ${role}`, ...attrs }, last_updated: now });
   });
 };
+// Mirrors the backend overview: one status per plant from the same evaluation
+// the entities use, plus the moisture reading and the last watering.
+function overviewOf(p) {
+  const e = p.lifecycle_state === "disabled" ? unavailable : state.evaluations[p.id] ?? unavailable;
+  const sources = p.roles.moisture?.sources ?? [];
+  const status = p.lifecycle_state === "disabled" ? "paused" : !sources.length ? "no_sensors" : e.needs_water ? "needs_water" : e.too_wet ? "too_wet" : e.sensor_stale || !e.computed_available ? "stale" : "healthy";
+  const kind = { needs_water: "needs_water", too_wet: "too_wet", stale: e.sensor_stale ? "stale" : "unavailable", no_sensors: "no_sensors" }[status];
+  const d = p.roles.moisture?.threshold_defaults ?? defaults(); const o = p.roles.moisture?.threshold_overrides ?? {};
+  const bound = k => o[k] ?? d[k].value;
+  const watered = [...(p.care_events ?? [])].filter(c => c.kind === "watering").sort((a, b) => b.occurred_at.localeCompare(a.occurred_at))[0];
+  return {
+    plant_id: p.id, revision: p.revision, lifecycle_state: p.lifecycle_state, status,
+    problems: kind ? [{ role: "moisture", kind }] : [],
+    roles: sources.length ? { moisture: { value: e.computed_available ? e.computed_percent : null, unit: "%", state: e.needs_water ? "low" : e.too_wet ? "high" : e.sensor_stale ? "stale" : e.computed_available ? "ok" : "unavailable", range: { min: bound("min"), target: bound("target"), max: bound("max") }, last_reported: e.computed_available ? now : null, sources: sources.map(s => s.entity_id) } } : {},
+    last_watered_at: watered?.occurred_at ?? null,
+    image: p.image ? { id: p.image.id } : null,
+  };
+}
 const params = new URLSearchParams(location.search);
 if (params.has("seed") || params.has("diagnostics")) state.seed();
 if (params.has("diagnostics")) state.seedDiagnostics();
@@ -136,6 +155,7 @@ async function respond(message) {
   switch (message.type) {
     case "smart_plants/panel/info": return { api_version: 1, schema_version: 1, providers: [{ provider: "manual", available: true, search_supported: false }, { provider: "openplantbook", available: state.providerAvailable, search_supported: true }] };
     case "smart_plants/plants/list": return { plants: copy(state.plants) };
+    case "smart_plants/plants/overview": return { plants: state.plants.map(overviewOf) };
     case "config/area_registry/list": return copy(state.areas);
     case "config/entity_registry/list": return copy(state.entities);
     case "config/device_registry/list": return copy(state.devices);
@@ -281,6 +301,8 @@ if (!customElements.get("ha-dropdown")) {
     constructor() {
       super(); this.attachShadow({ mode: "open" }).innerHTML = `<style>:host{position:relative}.menu[hidden]{display:none}.menu{position:absolute;right:0;top:48px;z-index:5;min-width:180px;background:white;box-shadow:0 2px 8px #0003;border-radius:8px}</style><slot name="trigger"></slot><div class="menu" role="menu" hidden><slot></slot></div>`;
       this.shadowRoot.addEventListener("keydown", (event) => { if (event.key === "Escape") this.closeMenu(); });
+      // Like HA's dropdown, any element in the trigger slot opens the menu.
+      this.shadowRoot.querySelector("slot[name=trigger]").addEventListener("click", () => this.toggleMenu());
     }
     toggleMenu() { const menu = this.shadowRoot.querySelector(".menu"); menu.hidden = !menu.hidden; }
     openMenu() { this.shadowRoot.querySelector(".menu").hidden = false; }
@@ -297,7 +319,6 @@ if (!customElements.get("ha-icon-button")) {
     render() {
       if (!this.shadowRoot) return;
       this.shadowRoot.innerHTML = `<button type="button" aria-label="${this._label ?? "Menu"}" style="width:44px;height:44px;border:0;border-radius:50%;background:transparent;cursor:pointer"><svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg></button><style>button:focus-visible{outline:3px solid #03a9f4;outline-offset:2px}</style>`;
-      this.shadowRoot.querySelector("button").addEventListener("click", () => this.closest("ha-dropdown")?.toggleMenu());
     }
   });
 }

@@ -28,13 +28,14 @@ async function audit(page: Page, info: TestInfo, name: string) {
 test("German inventory, detail tabs and sensors use the German catalog", async ({ page }, info) => {
   await page.goto(`${url}?seed&lang=de`);
   await expect(button(page, "Menü")).toBeVisible();
-  const summary = page.getByRole("region", { name: "Pflanzenübersicht" });
-  await expect(summary).toContainText("Pflanzen gesamt");
-  await expect(summary).toContainText("Braucht Wasser");
-  await expect(page.getByText("Pflanzen filtern")).toBeVisible();
-  await expect(page.getByRole("status").filter({ hasText: "3 Pflanzen" })).toBeVisible();
-  await expect(page.locator(".plant-card", { hasText: "Office Aloe" })).toContainText("braucht Wasser");
-  await expect(page.locator(".plant-card", { hasText: "Office Aloe" })).toContainText("Bodenfeuchte");
+  const tiles = page.getByRole("group", { name: "Nach Status filtern" });
+  await expect(tiles.getByRole("button")).toHaveText([/3\s*Alle Pflanzen/, /1\s*Braucht Wasser/, /0\s*Probleme/, /1\s*Sensorprobleme/]);
+  await expect(page.getByRole("status").filter({ hasText: "3 von 3 Pflanzen" })).toBeVisible();
+  const card = page.locator("smart-plants-overview article.card", { hasText: "Office Aloe" });
+  await expect(card).toContainText("Braucht Wasser");
+  await expect(card).toContainText("Bodenfeuchte 12 % liegt unter dem Minimum von 20 %");
+  await expect(page.getByRole("button", { name: "Sortierung: Handlungsbedarf zuerst" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Gießen für Office Aloe eintragen" })).toBeVisible();
   await audit(page, info, "german-inventory");
 
   await button(page, "Office Aloe").click();

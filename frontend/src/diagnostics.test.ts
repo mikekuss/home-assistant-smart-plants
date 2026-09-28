@@ -294,7 +294,7 @@ describe("Advanced diagnostics section", () => {
     await click(el, "Aloe");
     const forbidden = h.calls.filter(c => {
       const t = typeof c.type === "string" ? c.type : "";
-      return t.startsWith("smart_plants/") && !["smart_plants/panel/info", "smart_plants/plants/list", "smart_plants/moisture/evaluation", "smart_plants/plants/health", "smart_plants/care/list"].includes(t);
+      return t.startsWith("smart_plants/") && !["smart_plants/panel/info", "smart_plants/plants/list", "smart_plants/plants/overview", "smart_plants/moisture/evaluation", "smart_plants/plants/health", "smart_plants/care/list"].includes(t);
     });
     expect(forbidden).toEqual([]);
   });
