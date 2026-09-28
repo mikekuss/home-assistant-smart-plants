@@ -11,7 +11,7 @@ its entity history.
 | --- | --- |
 | Name | The plant name. Renaming the plant in the panel renames the device. |
 | Manufacturer | Smart Plants |
-| Model | Manual Plant |
+| Model | The species name (common name, or the Latin name if there is no common name) when a species is set, otherwise *Plant*. It follows species changes. |
 | Area | Set in the creation wizard, the panel, or the device page. |
 
 You can change the device's name, area, and labels on the Home Assistant device page as
