@@ -117,9 +117,10 @@ OpenPlantBook problems never affect your existing plants or their entities.
 
 ### Photo upload is rejected
 
-Photos must be JPEG, PNG, or WebP, at most 5 MiB, and at most 2048 × 2048 pixels. Larger
-images are rejected rather than resized, so scale them down first. The file content must
-match its type (for example, a PNG renamed to `.jpg` is rejected).
+Photos must be JPEG, PNG, or WebP. The panel scales larger photos down to 2048 × 2048 pixels
+and 5 MiB before upload, but it refuses files above 40 MiB or 64 megapixels; scale those down
+first. The file content must match its type (for example, a PNG renamed to `.jpg` is
+rejected).
 
 ### "Review changes from another session"
 
