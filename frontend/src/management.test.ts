@@ -389,14 +389,14 @@ describe("local image validation and mutation", () => {
     pending.resolve(new Response(JSON.stringify({ plant: { ...sample, revision: 2, name: "Old upload result" } }))); await settle(el);
     expect(el.shadowRoot?.textContent).toContain("Newer plant"); expect(el.shadowRoot?.textContent).not.toContain("Old upload result");
   });
-  it.each([new File(["x"], "bad.gif", { type: "image/gif" }), new File([], "empty.png", { type: "image/png" }), new File([new Uint8Array(5 * 1024 * 1024 + 1)], "large.jpg", { type: "image/jpeg" })])("rejects invalid local file $name before upload", async file => {
+  it.each([new File(["x"], "bad.gif", { type: "image/gif" }), new File([], "empty.png", { type: "image/png" }), new File([new Uint8Array(40 * 1024 * 1024 + 1)], "large.jpg", { type: "image/jpeg" })])("rejects invalid local file $name before upload", async file => {
     vi.stubGlobal("fetch", vi.fn()); const el = await detail(harness().hass); const input = el.shadowRoot!.querySelector<HTMLInputElement>('input[type="file"]')!; Object.defineProperty(input, "files", { value: [file] }); input.dispatchEvent(new Event("change")); await settle(el);
     expect(el.shadowRoot?.textContent).toContain("nonempty JPEG, PNG or WebP"); expect(fetch).not.toHaveBeenCalled();
   });
-  it("rejects oversized dimensions and closes the decoded bitmap", async () => {
-    const close = vi.fn(); vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 2049, height: 100, close }))); vi.stubGlobal("fetch", vi.fn());
+  it("rejects images too large to scale down and closes the decoded bitmap", async () => {
+    const close = vi.fn(); vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 10000, height: 7000, close }))); vi.stubGlobal("fetch", vi.fn());
     const el = await detail(harness().hass); const input = el.shadowRoot!.querySelector<HTMLInputElement>('input[type="file"]')!; Object.defineProperty(input, "files", { value: [pngFile()] }); input.dispatchEvent(new Event("change")); await settle(el);
-    expect(close).toHaveBeenCalledOnce(); expect(el.shadowRoot?.textContent).toContain("Image dimensions must be at most"); expect(fetch).not.toHaveBeenCalled();
+    expect(close).toHaveBeenCalledOnce(); expect(el.shadowRoot?.textContent).toContain("more than 64 megapixels"); expect(fetch).not.toHaveBeenCalled();
   });
   it("uploads authenticated validated bytes and surfaces backend validation errors", async () => {
     vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 100, height: 100, close: vi.fn() })));

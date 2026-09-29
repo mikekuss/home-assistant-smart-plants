@@ -9,7 +9,7 @@ import { createLocalizer } from "./localize.js";
 import type { Localizer } from "./localize.js";
 import { builtin, canonicalMoisture, emptyMoisture, keys, manualSpecies, placements, resolveSource, roleSourceSpec, tags, validateMoisture, validateTaxonomy } from "./model.js";
 import type { SourceRole } from "./model.js";
-import { validateImage } from "./image.js";
+import { prepareImage } from "./image.js";
 import { READING_ROLES, ROLE_META, formatValue, readingLabel } from "./status.js";
 import type { ReadingRole } from "./status.js";
 import { srOnly, themeFallbacks } from "./components/shared-styles.js";
@@ -120,7 +120,7 @@ export class SmartPlantsWizard extends LitElement {
     .sections { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
 
     .expander { display: block; border-radius: 12px; background: var(--wz-card); --expansion-panel-summary-padding: 4px 16px; --expansion-panel-content-padding: 0 16px; }
-    ha-expansion-panel.expander .expander-body { padding-bottom: 16px; }
+    ha-expansion-panel.expander .expander-body { padding: 12px 0 16px; }
     details.expander { border: 1px solid var(--wz-divider); }
     details.expander > summary { display: flex; align-items: center; gap: 14px; padding: 12px 16px; min-height: 56px; cursor: pointer; list-style: none; }
     details.expander > summary::-webkit-details-marker { display: none; }
@@ -147,6 +147,9 @@ export class SmartPlantsWizard extends LitElement {
     .preview dl { display: grid; grid-template-columns: minmax(90px, 1fr) 2fr; gap: 2px 12px; margin: 0; font-size: 13px; }
     .preview dt { color: var(--wz-muted); }
     .preview dd { margin: 0; }
+    .preview details > summary { cursor: pointer; font-size: 13px; color: var(--primary-color); padding: 4px 0; }
+    .preview details[open] > summary { margin-bottom: 6px; }
+    .preview .muted { color: var(--wz-muted); }
     .check { display: flex; align-items: center; gap: 10px; font-weight: 500; cursor: pointer; }
     .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--sp-primary-strong); }
     .species-chip { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--wz-tonal); }
@@ -185,6 +188,16 @@ export class SmartPlantsWizard extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistantLike;
   @property({ attribute: false }) capabilities!: PanelCapabilities;
   @property({ attribute: false }) areas: HAArea[] = [];
+  // The area picker lists the areas from hass.areas. Accept those too, so a
+  // choice from the picker is not reported as missing while the panel's own
+  // registry request is failing or still loading.
+  private get knownAreas(): HAArea[] {
+    const known = new Map(this.areas.map(a => [a.area_id, a]));
+    for (const [id, a] of Object.entries(this.hass?.areas ?? {})) {
+      if (!known.has(id) && a && a.area_id === id && typeof a.name === "string") known.set(id, { area_id: id, name: a.name });
+    }
+    return [...known.values()];
+  }
   @property({ attribute: false }) entities: HAEntity[] = [];
   @property({ attribute: false }) devices: HADevice[] = [];
   @property({ attribute: false }) states: Record<string, HAState> = {};
@@ -358,9 +371,9 @@ export class SmartPlantsWizard extends LitElement {
     if (!file) return;
     const check = ++this.photoCheck; this.photoChecking = true;
     try {
-      await validateImage(file, this.l);
+      const prepared = await prepareImage(file, this.l);
       if (check !== this.photoCheck) return;
-      this.photo = file; this.photoUrl = URL.createObjectURL(file);
+      this.photo = prepared; this.photoUrl = URL.createObjectURL(prepared);
     } catch (e) { if (check === this.photoCheck) this.photoError = (e as Error).message; }
     finally { if (check === this.photoCheck) this.photoChecking = false; }
   }
@@ -398,7 +411,7 @@ export class SmartPlantsWizard extends LitElement {
   private validate(): string | null {
     const l = this.l;
     if (!this.name.trim() || this.name.trim().length > 200) return l.t("wizard.error_name_length");
-    if (this.area && !this.areas.some(a => a.area_id === this.area)) return l.t("wizard.error_area");
+    if (this.area && !this.knownAreas.some(a => a.area_id === this.area)) return l.t("wizard.error_area");
     if (this.preview && !this.accepted) { this.toggle("species", true); return l.t("wizard.error_accept_preview"); }
     if (validateMoisture(this.moisture, this.defaults, l)) { this.toggle("species", true); return l.t("wizard.error_targets"); }
     if (this.acquired && !Number.isFinite(Date.parse(this.acquired))) { this.toggle("details", true); return l.t("wizard.error_acquired"); }
@@ -486,8 +499,8 @@ export class SmartPlantsWizard extends LitElement {
       ? html`<ha-area-picker .hass=${this.hass} .label=${l.t("wizard.area")} .value=${this.area || undefined} .noAdd=${true} .disabled=${this.busy || this.blocked} @value-changed=${(e: CustomEvent<{ value?: string }>) => { this.area = e.detail.value ?? ""; }}></ha-area-picker>`
       : html`<div class="field"><label for="area">${l.t("wizard.area")}</label><select id="area" aria-describedby="area-helper" @change=${(e: Event) => { this.area = (e.target as HTMLSelectElement).value; }}>
           <option value="" ?selected=${!this.area}>${l.t("wizard.no_area")}</option>
-          ${this.area && !this.areas.some(a => a.area_id === this.area) ? html`<option value=${this.area} selected>${l.t("area.missing_option", { area: this.area })}</option>` : nothing}
-          ${this.areas.map(a => html`<option value=${a.area_id} ?selected=${a.area_id === this.area}>${a.name}</option>`)}</select><ha-icon class="trail" aria-hidden="true" icon="mdi:menu-down"></ha-icon></div>`;
+          ${this.area && !this.knownAreas.some(a => a.area_id === this.area) ? html`<option value=${this.area} selected>${l.t("area.missing_option", { area: this.area })}</option>` : nothing}
+          ${this.knownAreas.map(a => html`<option value=${a.area_id} ?selected=${a.area_id === this.area}>${a.name}</option>`)}</select><ha-icon class="trail" aria-hidden="true" icon="mdi:menu-down"></ha-icon></div>`;
     return html`<h2 tabindex="-1">${l.t("wizard.plant_heading")}</h2><p class="intro">${l.t("wizard.plant_intro")}</p>
       <div class="stack">
         <label class="field">${l.t("wizard.plant_name")}<input required maxlength="200" autocomplete="off" .value=${this.name} @input=${(e: Event) => { this.name = (e.target as HTMLInputElement).value; }} @keydown=${(e: KeyboardEvent) => { if (e.key === "Enter") void this.next(); }}></label>
@@ -520,7 +533,7 @@ export class SmartPlantsWizard extends LitElement {
       .map(s => ({ id: s.entity_id, text: `${this.friendly(s.entity_id)} · ${this.valueText(s.entity_id)}`, near: !!this.area && this.areaOfEntity.get(s.entity_id) === this.area }))
       .sort((a, b) => a.text.localeCompare(b.text));
     const near = candidates.filter(c => c.near); const other = candidates.filter(c => !c.near);
-    const areaName = this.areas.find(a => a.area_id === this.area)?.name;
+    const areaName = this.knownAreas.find(a => a.area_id === this.area)?.name;
     const option = (c: { id: string; text: string }) => html`<option value=${c.id}>${c.text}</option>`;
     return html`<div class="field"><label for="sensor-${role}">${label}</label><select id="sensor-${role}" @change=${(e: Event) => this.assign(role, (e.target as HTMLSelectElement).value)}>
         <option value="" selected>${candidates.length ? l.t("wizard.choose_sensor") : l.t("wizard.no_suitable_sensors")}</option>
@@ -538,7 +551,7 @@ export class SmartPlantsWizard extends LitElement {
   private renderSensors() {
     const l = this.l;
     const moisture = this.moisture.sources[0]?.entity_id;
-    const areaName = this.areas.find(a => a.area_id === this.area)?.name;
+    const areaName = this.knownAreas.find(a => a.area_id === this.area)?.name;
     const suggestions = this.suggestions();
     const free = EXTRA_ROLES.filter(role => !this.takenRoles.has(role) && role !== this.pendingRole);
     return html`<h2 tabindex="-1">${l.t("wizard.sensors_heading")}</h2><p class="intro">${l.t("wizard.sensors_intro")}</p>
@@ -591,7 +604,7 @@ export class SmartPlantsWizard extends LitElement {
   private renderReview() {
     const l = this.l;
     const moisture = this.moisture.sources[0]?.entity_id;
-    const areaName = this.area ? this.areas.find(a => a.area_id === this.area)?.name ?? l.t("area.missing_option", { area: this.area }) : l.t("wizard.no_area");
+    const areaName = this.area ? this.knownAreas.find(a => a.area_id === this.area)?.name ?? l.t("area.missing_option", { area: this.area }) : l.t("wizard.no_area");
     const d = this.defaults; const eff = (k: typeof keys[number]) => this.moisture.threshold_overrides[k] ?? d[k];
     const species = this.accepted && this.preview ? this.preview.snapshot.latin_name ?? this.preview.snapshot.common_name : [this.common.trim(), this.latin.trim()].filter(Boolean).join(" · ");
     const speciesSummary = this.accepted && species ? l.t("wizard.species_summary_accepted", { species })
@@ -626,7 +639,7 @@ export class SmartPlantsWizard extends LitElement {
         ${this.speciesError ? html`<p class="error" role="alert">${this.speciesError}</p><button type="button" class="btn text sm flush" @click=${() => this.manual()}>${l.t("common.continue_manually")}</button>` : nothing}
         ${this.searched && !this.results.length ? html`<p class="small muted">${l.t("wizard.no_matches")}</p>` : nothing}
         ${this.results.length && !this.preview ? html`<ul class="results" aria-label=${l.t("wizard.results")}>${this.results.map(r => html`<li><button type="button" @click=${() => void this.choose(r)}>${r.common_name ?? r.latin_name} · ${r.latin_name}</button><small>${r.attribution}</small></li>`)}</ul>` : nothing}
-        ${this.preview ? html`<div class="preview">${snapshotView(l, this.preview.snapshot, this.preview)}</div>
+        ${this.preview ? html`<div class="preview">${snapshotView(l, this.preview.snapshot)}</div>
           <label class="check"><input type="checkbox" .checked=${this.accepted} @change=${(e: Event) => { this.accepted = (e.target as HTMLInputElement).checked; this.error = ""; }}>${l.t("wizard.accept_species")}</label>
           <button type="button" class="btn text sm flush" @click=${() => this.manual()}>${l.t("wizard.remove_species")}</button>` : nothing}`
       : provider ? this.alert("info", html`${l.t("wizard.provider_unavailable_body")}<span class="alert-links"><a href=${INTEGRATION_OPTIONS} @click=${(e: Event) => { e.preventDefault(); history.pushState(null, "", INTEGRATION_OPTIONS); window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } })); }}>${l.t("wizard.open_options")}</a><a href=${CREDENTIALS_URL} target="_blank" rel="noreferrer">${l.t("wizard.openplantbook_credentials_link")}</a></span>`, l.t("wizard.provider_unavailable_title"))
@@ -663,7 +676,7 @@ export class SmartPlantsWizard extends LitElement {
 
   private renderDone() {
     const l = this.l; const plant = this.created!;
-    const areaName = this.area ? this.areas.find(a => a.area_id === this.area)?.name : undefined;
+    const areaName = this.area ? this.knownAreas.find(a => a.area_id === this.area)?.name : undefined;
     return html`<div class="wz" lang=${l.language}><div class="card done">
       <div class="big" aria-hidden="true"><ha-icon icon="mdi:check"></ha-icon></div>
       <h2 tabindex="-1">${l.t("wizard.done_heading", { name: plant.name })}</h2>

@@ -119,7 +119,7 @@ type Expandable = "combine" | "troubleshooting" | "other_targets" | "more_detail
 type SettingRow = "name" | "area" | "species";
 type SensorRole = "moisture" | SourceRole;
 type SourceMode = "pick" | "combine";
-import { validateImage } from "./image.js";
+import { prepareImage, validateImage } from "./image.js";
 import { bundleOutdated, loadedBundleVersion } from "./bundle-version.js";
 import { validState } from "./validation.js";
 import { styles } from "./styles.js";
@@ -852,13 +852,14 @@ export class SmartPlantsPanel extends LitElement {
     if (!this.hass || this._formBusy || this._blocked) return;
     const context = this._context;
     this._formBusy = true;
-    try { await validateImage(file, this._l); }
+    let upload: File;
+    try { upload = await prepareImage(file, this._l); }
     catch (e) { if (context === this._context) this._error = (e as Error).message; return; }
     finally { if (context === this._context) this._formBusy = false; }
     if (context !== this._context || !this.isConnected || this._view.kind !== "detail" || this._view.plantId !== plant.id || this._base?.revision !== plant.revision) return;
     const hass = this.hass;
     // The authenticated backend decodes, checks dimensions, strips metadata and re-encodes.
-    await this._mutate(() => api.uploadImage(hass, plant.id, plant.revision, file));
+    await this._mutate(() => api.uploadImage(hass, plant.id, plant.revision, upload));
   }
   // Photo row of the Settings tab: current state, choose a file, remove.
   private _renderPhotoRow(plant: PlantRecord) {

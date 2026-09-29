@@ -269,22 +269,22 @@ ce.elementStyles = [], ce.shadowRootOptions = { mode: "open" }, ce[ie("elementPr
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
 */
-var le = globalThis, ue = (e) => e, de = le.trustedTypes, fe = de ? de.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, pe = "$lit$", g = `lit$${Math.random().toFixed(9).slice(2)}$`, me = "?" + g, he = `<${me}>`, _ = document, ge = () => _.createComment(""), _e = (e) => e === null || typeof e != "object" && typeof e != "function", ve = Array.isArray, ye = (e) => ve(e) || typeof e?.[Symbol.iterator] == "function", be = "[ 	\n\f\r]", xe = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, Se = /-->/g, Ce = />/g, we = RegExp(`>|${be}(?:([^\\s"'>=/]+)(${be}*=${be}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`, "g"), Te = /'/g, Ee = /"/g, De = /^(?:script|style|textarea|title)$/i, v = ((e) => (t, ...n) => ({
+var le = globalThis, ue = (e) => e, de = le.trustedTypes, fe = de ? de.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, pe = "$lit$", g = `lit$${Math.random().toFixed(9).slice(2)}$`, me = "?" + g, he = `<${me}>`, ge = document, _e = () => ge.createComment(""), ve = (e) => e === null || typeof e != "object" && typeof e != "function", ye = Array.isArray, be = (e) => ye(e) || typeof e?.[Symbol.iterator] == "function", xe = "[ 	\n\f\r]", Se = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, Ce = /-->/g, we = />/g, _ = RegExp(`>|${xe}(?:([^\\s"'>=/]+)(${xe}*=${xe}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`, "g"), Te = /'/g, Ee = /"/g, De = /^(?:script|style|textarea|title)$/i, v = ((e) => (t, ...n) => ({
 	_$litType$: e,
 	strings: t,
 	values: n
-}))(1), Oe = Symbol.for("lit-noChange"), y = Symbol.for("lit-nothing"), ke = /* @__PURE__ */ new WeakMap(), b = _.createTreeWalker(_, 129);
+}))(1), Oe = Symbol.for("lit-noChange"), y = Symbol.for("lit-nothing"), ke = /* @__PURE__ */ new WeakMap(), b = ge.createTreeWalker(ge, 129);
 function Ae(e, t) {
-	if (!ve(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
+	if (!ye(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
 	return fe === void 0 ? t : fe.createHTML(t);
 }
 var je = (e, t) => {
-	let n = e.length - 1, r = [], i, a = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", o = xe;
+	let n = e.length - 1, r = [], i, a = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", o = Se;
 	for (let t = 0; t < n; t++) {
 		let n = e[t], s, c, l = -1, u = 0;
-		for (; u < n.length && (o.lastIndex = u, c = o.exec(n), c !== null);) u = o.lastIndex, o === xe ? c[1] === "!--" ? o = Se : c[1] === void 0 ? c[2] === void 0 ? c[3] !== void 0 && (o = we) : (De.test(c[2]) && (i = RegExp("</" + c[2], "g")), o = we) : o = Ce : o === we ? c[0] === ">" ? (o = i ?? xe, l = -1) : c[1] === void 0 ? l = -2 : (l = o.lastIndex - c[2].length, s = c[1], o = c[3] === void 0 ? we : c[3] === "\"" ? Ee : Te) : o === Ee || o === Te ? o = we : o === Se || o === Ce ? o = xe : (o = we, i = void 0);
-		let d = o === we && e[t + 1].startsWith("/>") ? " " : "";
-		a += o === xe ? n + he : l >= 0 ? (r.push(s), n.slice(0, l) + pe + n.slice(l) + g + d) : n + g + (l === -2 ? t : d);
+		for (; u < n.length && (o.lastIndex = u, c = o.exec(n), c !== null);) u = o.lastIndex, o === Se ? c[1] === "!--" ? o = Ce : c[1] === void 0 ? c[2] === void 0 ? c[3] !== void 0 && (o = _) : (De.test(c[2]) && (i = RegExp("</" + c[2], "g")), o = _) : o = we : o === _ ? c[0] === ">" ? (o = i ?? Se, l = -1) : c[1] === void 0 ? l = -2 : (l = o.lastIndex - c[2].length, s = c[1], o = c[3] === void 0 ? _ : c[3] === "\"" ? Ee : Te) : o === Ee || o === Te ? o = _ : o === Ce || o === we ? o = Se : (o = _, i = void 0);
+		let d = o === _ && e[t + 1].startsWith("/>") ? " " : "";
+		a += o === Se ? n + he : l >= 0 ? (r.push(s), n.slice(0, l) + pe + n.slice(l) + g + d) : n + g + (l === -2 ? t : d);
 	}
 	return [Ae(e, a + (e[n] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), r];
 }, Me = class e {
@@ -315,11 +315,11 @@ var je = (e, t) => {
 					let e = i.textContent.split(g), t = e.length - 1;
 					if (t > 0) {
 						i.textContent = de ? de.emptyScript : "";
-						for (let n = 0; n < t; n++) i.append(e[n], ge()), b.nextNode(), c.push({
+						for (let n = 0; n < t; n++) i.append(e[n], _e()), b.nextNode(), c.push({
 							type: 2,
 							index: ++a
 						});
-						i.append(e[t], ge());
+						i.append(e[t], _e());
 					}
 				}
 			} else if (i.nodeType === 8) {
@@ -339,13 +339,13 @@ var je = (e, t) => {
 		}
 	}
 	static createElement(e, t) {
-		let n = _.createElement("template");
+		let n = ge.createElement("template");
 		return n.innerHTML = e, n;
 	}
 };
 function Ne(e, t, n = e, r) {
 	if (t === Oe) return t;
-	let i = r === void 0 ? n._$Cl : n._$Co?.[r], a = _e(t) ? void 0 : t._$litDirective$;
+	let i = r === void 0 ? n._$Cl : n._$Co?.[r], a = ve(t) ? void 0 : t._$litDirective$;
 	return i?.constructor !== a && (i?._$AO?.(!1), a === void 0 ? i = void 0 : (i = new a(e), i._$AT(e, n, r)), r === void 0 ? n._$Cl = i : (n._$Co ?? (n._$Co = []))[r] = i), i !== void 0 && (t = Ne(e, i._$AS(e, t.values), i, r)), t;
 }
 var Pe = class {
@@ -359,7 +359,7 @@ var Pe = class {
 		return this._$AM._$AU;
 	}
 	u(e) {
-		let { el: { content: t }, parts: n } = this._$AD, r = (e?.creationScope ?? _).importNode(t, !0);
+		let { el: { content: t }, parts: n } = this._$AD, r = (e?.creationScope ?? ge).importNode(t, !0);
 		b.currentNode = r;
 		let i = b.nextNode(), a = 0, o = 0, s = n[0];
 		for (; s !== void 0;) {
@@ -369,7 +369,7 @@ var Pe = class {
 			}
 			a !== s?.index && (i = b.nextNode(), a++);
 		}
-		return b.currentNode = _, r;
+		return b.currentNode = ge, r;
 	}
 	p(e) {
 		let t = 0;
@@ -393,7 +393,7 @@ var Pe = class {
 		return this._$AB;
 	}
 	_$AI(e, t = this) {
-		e = Ne(this, e, t), _e(e) ? e === y || e == null || e === "" ? (this._$AH !== y && this._$AR(), this._$AH = y) : e !== this._$AH && e !== Oe && this._(e) : e._$litType$ === void 0 ? e.nodeType === void 0 ? ye(e) ? this.k(e) : this._(e) : this.T(e) : this.$(e);
+		e = Ne(this, e, t), ve(e) ? e === y || e == null || e === "" ? (this._$AH !== y && this._$AR(), this._$AH = y) : e !== this._$AH && e !== Oe && this._(e) : e._$litType$ === void 0 ? e.nodeType === void 0 ? be(e) ? this.k(e) : this._(e) : this.T(e) : this.$(e);
 	}
 	O(e) {
 		return this._$AA.parentNode.insertBefore(e, this._$AB);
@@ -402,7 +402,7 @@ var Pe = class {
 		this._$AH !== e && (this._$AR(), this._$AH = this.O(e));
 	}
 	_(e) {
-		this._$AH !== y && _e(this._$AH) ? this._$AA.nextSibling.data = e : this.T(_.createTextNode(e)), this._$AH = e;
+		this._$AH !== y && ve(this._$AH) ? this._$AA.nextSibling.data = e : this.T(ge.createTextNode(e)), this._$AH = e;
 	}
 	$(e) {
 		let { values: t, _$litType$: n } = e, r = typeof n == "number" ? this._$AC(e) : (n.el === void 0 && (n.el = Me.createElement(Ae(n.h, n.h[0]), this.options)), n);
@@ -417,9 +417,9 @@ var Pe = class {
 		return t === void 0 && ke.set(e.strings, t = new Me(e)), t;
 	}
 	k(t) {
-		ve(this._$AH) || (this._$AH = [], this._$AR());
+		ye(this._$AH) || (this._$AH = [], this._$AR());
 		let n = this._$AH, r, i = 0;
-		for (let a of t) i === n.length ? n.push(r = new e(this.O(ge()), this.O(ge()), this, this.options)) : r = n[i], r._$AI(a), i++;
+		for (let a of t) i === n.length ? n.push(r = new e(this.O(_e()), this.O(_e()), this, this.options)) : r = n[i], r._$AI(a), i++;
 		i < n.length && (this._$AR(r && r._$AB.nextSibling, i), n.length = i);
 	}
 	_$AR(e = this._$AA.nextSibling, t) {
@@ -443,10 +443,10 @@ var Pe = class {
 	}
 	_$AI(e, t = this, n, r) {
 		let i = this.strings, a = !1;
-		if (i === void 0) e = Ne(this, e, t, 0), a = !_e(e) || e !== this._$AH && e !== Oe, a && (this._$AH = e);
+		if (i === void 0) e = Ne(this, e, t, 0), a = !ve(e) || e !== this._$AH && e !== Oe, a && (this._$AH = e);
 		else {
 			let r = e, o, s;
-			for (e = i[0], o = 0; o < i.length - 1; o++) s = Ne(this, r[n + o], t, o), s === Oe && (s = this._$AH[o]), a || (a = !_e(s) || s !== this._$AH[o]), s === y ? e = y : e !== y && (e += (s ?? "") + i[o + 1]), this._$AH[o] = s;
+			for (e = i[0], o = 0; o < i.length - 1; o++) s = Ne(this, r[n + o], t, o), s === Oe && (s = this._$AH[o]), a || (a = !ve(s) || s !== this._$AH[o]), s === y ? e = y : e !== y && (e += (s ?? "") + i[o + 1]), this._$AH[o] = s;
 		}
 		a && !r && this.j(e);
 	}
@@ -495,7 +495,7 @@ var He = (e, t, n) => {
 	let r = n?.renderBefore ?? t, i = r._$litPart$;
 	if (i === void 0) {
 		let e = n?.renderBefore ?? null;
-		r._$litPart$ = i = new Fe(t.insertBefore(ge(), e), e, void 0, n ?? {});
+		r._$litPart$ = i = new Fe(t.insertBefore(_e(), e), e, void 0, n ?? {});
 	}
 	return i._$AI(e), i;
 }, Ue = globalThis, x = class extends ce {
@@ -1492,7 +1492,9 @@ var zt = {
 	"snapshot.confidence": "Zuverlässigkeit",
 	"snapshot.category": "Kategorie",
 	"snapshot.imported_defaults": "Importierte Feuchte-Standardwerte",
-	"snapshot.default_not_supplied": "Nicht angegeben (integrierter Standardwert gilt)",
+	"snapshot.default_not_supplied": "Mit — markierte Werte liefert die Art nicht; es gilt der eingebaute Standardwert.",
+	"snapshot.care_notes": "Pflegehinweise",
+	"snapshot.source_details": "Quellendetails",
 	"snapshot.field_attribution": "Quellenangabe je Feld",
 	"snapshot.proposed_changes": "Vorgeschlagene Änderungen",
 	"snapshot.preview_read_only": "Die Vorschau ist schreibgeschützt. Lokale Überschreibungen bleiben erhalten. Es werden keine externen Bilder geladen.",
@@ -1511,13 +1513,16 @@ var zt = {
 	"photo.stored": "Lokal gespeichert: {type} · {width} × {height} Pixel",
 	"photo.replace": "Foto ändern",
 	"photo.upload": "Foto hinzufügen",
-	"photo.hint": "JPEG, PNG oder WebP · bis 5 MiB und 2048 × 2048 Pixel. Wird nur in Home Assistant gespeichert.",
+	"photo.hint": "JPEG, PNG oder WebP. Große Fotos werden auf 2048 × 2048 Pixel verkleinert. Wird nur in Home Assistant gespeichert.",
 	"photo.remove": "Foto entfernen",
 	"image_error.type_or_size": "Wähle ein nicht leeres JPEG-, PNG- oder WebP-Bild mit höchstens 5 MiB.",
 	"image_error.unreadable": "Dieses Bild konnte nicht gelesen werden. Wähle die Datei erneut aus.",
 	"image_error.signature": "Der Bildinhalt passt nicht zum Dateityp JPEG, PNG oder WebP. Wähle ein anderes Bild.",
 	"image_error.decode": "Diese Datei konnte nicht als Bild dekodiert werden. Wähle ein anderes JPEG-, PNG- oder WebP-Bild.",
 	"image_error.dimensions": "Das Bild darf höchstens 2048 × 2048 Pixel groß sein.",
+	"image_error.type_or_input_size": "Wähle ein nicht leeres JPEG-, PNG- oder WebP-Bild mit höchstens 40 MiB.",
+	"image_error.too_many_pixels": "Das Bild hat mehr als 64 Megapixel. Wähle ein kleineres Bild.",
+	"image_error.resize": "Das Bild konnte für den Upload nicht verkleinert werden. Wähle ein kleineres JPEG-, PNG- oder WebP-Bild.",
 	"created.notice": "{name} wurde erstellt.",
 	"created.uploading": "Das ausgewählte Foto wird hochgeladen …",
 	"created.photo_skipped": "Die Pflanze wurde nach dem Erstellen geändert. Das ursprüngliche Foto aus dem Assistenten wurde nicht hochgeladen. Prüfe das aktuelle Foto in den Pflanzendetails und lade bei Bedarf ausdrücklich ein Foto hoch.",
@@ -1799,7 +1804,7 @@ var zt = {
 	"wizard.photo_add": "Foto hinzufügen",
 	"wizard.photo_optional": "(optional)",
 	"wizard.photo_label": "Foto hinzufügen (optional)",
-	"wizard.photo_hint": "Bild hierher ziehen oder Datei auswählen · JPEG, PNG oder WebP bis 5 MB",
+	"wizard.photo_hint": "Bild hierher ziehen oder Datei auswählen · JPEG, PNG oder WebP, große Fotos werden verkleinert",
 	"wizard.photo_checking": "Foto wird geprüft …",
 	"wizard.photo_pending": "Wird beim Erstellen der Pflanze hochgeladen",
 	"wizard.photo_remove": "Entfernen",
@@ -2224,7 +2229,9 @@ var zt = {
 	"snapshot.confidence": "Confidence",
 	"snapshot.category": "Category",
 	"snapshot.imported_defaults": "Imported moisture defaults",
-	"snapshot.default_not_supplied": "Not supplied (built-in default applies)",
+	"snapshot.default_not_supplied": "Values marked — are not supplied by the species; the built-in default applies.",
+	"snapshot.care_notes": "Care notes",
+	"snapshot.source_details": "Source details",
 	"snapshot.field_attribution": "Field attribution",
 	"snapshot.proposed_changes": "Proposed changes",
 	"snapshot.preview_read_only": "Preview is read-only. Local overrides are preserved. No remote images are loaded.",
@@ -2243,13 +2250,16 @@ var zt = {
 	"photo.stored": "Stored locally: {type} · {width} × {height} pixels",
 	"photo.replace": "Change photo",
 	"photo.upload": "Add photo",
-	"photo.hint": "JPEG, PNG or WebP · up to 5 MiB and 2048 × 2048 pixels. Stored only in Home Assistant.",
+	"photo.hint": "JPEG, PNG or WebP. Large photos are scaled down to 2048 × 2048 pixels. Stored only in Home Assistant.",
 	"photo.remove": "Remove photo",
 	"image_error.type_or_size": "Choose a nonempty JPEG, PNG or WebP image up to 5 MiB.",
 	"image_error.unreadable": "This image could not be read. Select the file again.",
 	"image_error.signature": "Image content does not match its JPEG, PNG or WebP file type. Choose another image.",
 	"image_error.decode": "This file could not be decoded as an image. Choose another JPEG, PNG or WebP.",
 	"image_error.dimensions": "Image dimensions must be at most 2048 × 2048 pixels.",
+	"image_error.type_or_input_size": "Choose a nonempty JPEG, PNG or WebP image up to 40 MiB.",
+	"image_error.too_many_pixels": "This image has more than 64 megapixels. Choose a smaller image.",
+	"image_error.resize": "This image could not be scaled down for upload. Choose a smaller JPEG, PNG or WebP.",
 	"created.notice": "{name} created.",
 	"created.uploading": "Uploading its selected photo…",
 	"created.photo_skipped": "The plant changed after creation. The original wizard photo was not uploaded. Review its current photo in the plant detail and explicitly upload a photo if wanted.",
@@ -2531,7 +2541,7 @@ var zt = {
 	"wizard.photo_add": "Add a photo",
 	"wizard.photo_optional": "(optional)",
 	"wizard.photo_label": "Add a photo (optional)",
-	"wizard.photo_hint": "Drop an image or choose a file · JPEG, PNG or WebP up to 5 MB",
+	"wizard.photo_hint": "Drop an image or choose a file · JPEG, PNG or WebP, large photos are scaled down",
 	"wizard.photo_checking": "Checking the photo…",
 	"wizard.photo_pending": "Uploaded when you create the plant",
 	"wizard.photo_remove": "Remove",
@@ -3919,13 +3929,20 @@ function Ur(e, t, n) {
 		[e.t("snapshot.status"), t.source_status === "manual" || t.source_status === "provider" ? e.t(`snapshot.status_${t.source_status}`) : t.source_status],
 		[e.t("snapshot.confidence"), t.confidence === null ? r : e.number(t.confidence)],
 		[e.t("snapshot.category"), t.category ?? r]
-	];
-	return v`<article><h3>${t.common_name ?? t.latin_name ?? e.t("snapshot.species")}</h3><p><i>${t.latin_name}</i></p>
-    <dl>${i.map(([e, t]) => v`<dt>${e}</dt><dd>${t}</dd>`)}</dl>
-    <h4>${e.t("snapshot.imported_defaults")}</h4>${R.map((n) => v`<p>${Ir(e, n)}: ${t.threshold_defaults.moisture?.[n] === void 0 ? e.t("snapshot.default_not_supplied") : e.number(t.threshold_defaults.moisture[n])}</p>`)}
-    ${Object.entries(t.care_text).map(([e, t]) => v`<h4>${e}</h4><p class="prose">${t}</p>`)}
-    <details><summary>${e.t("snapshot.field_attribution")}</summary>${Object.entries(t.field_sources).map(([e, t]) => v`<p>${e}: ${t}</p>`)}</details>
-    ${n ? v`<h4>${e.t("snapshot.proposed_changes")}</h4>${Object.entries(n.diff).map(([e, t]) => v`<p>${e}: ${JSON.stringify(t.before)} → ${JSON.stringify(t.after)}</p>`)}<p>${e.t("snapshot.preview_read_only")}</p>` : y}</article>`;
+	], a = t.threshold_defaults.moisture, o = Object.entries(t.care_text), s = (e) => {
+		let t = e == null ? "—" : typeof e == "string" ? e : JSON.stringify(e);
+		return t.length > 80 ? `${t.slice(0, 79)}…` : t;
+	};
+	return v`<article><h3>${t.common_name ?? t.latin_name ?? e.t("snapshot.species")}</h3>${t.latin_name && t.latin_name !== t.common_name ? v`<p><i>${t.latin_name}</i></p>` : y}
+    <p class="snapshot-targets">${e.t("snapshot.imported_defaults")}: ${R.map((t) => `${Ir(e, t)} ${a?.[t] === void 0 ? "—" : e.percent(a[t])}`).join(" · ")}</p>
+    ${R.some((e) => a?.[e] === void 0) ? v`<p class="small muted">${e.t("snapshot.default_not_supplied")}</p>` : y}
+    ${o.length ? v`<details><summary>${e.t("snapshot.care_notes")}</summary>${o.map(([e, t]) => v`<h4>${e}</h4><p class="prose">${t}</p>`)}</details>` : y}
+    <details><summary>${e.t("snapshot.source_details")}</summary>
+      <dl>${i.map(([e, t]) => v`<dt>${e}</dt><dd>${t}</dd>`)}</dl>
+      <h4>${e.t("snapshot.field_attribution")}</h4>${Object.entries(t.field_sources).map(([e, t]) => v`<p>${e}: ${t}</p>`)}
+      ${n ? v`<h4>${e.t("snapshot.proposed_changes")}</h4>${Object.entries(n.diff).map(([e, t]) => v`<p>${e}: ${s(t.before)} → ${s(t.after)}</p>`)}` : y}
+    </details>
+    ${n ? v`<p class="small muted">${e.t("snapshot.preview_read_only")}</p>` : y}</article>`;
 }
 //#endregion
 //#region src/components/shared-styles.ts
@@ -4381,65 +4398,112 @@ var gi = o`
     dl.sensors, dl.other-targets { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }
     dl.sensors dd, dl.other-targets dd { margin-bottom: 10px; }
   }
-`;
-//#endregion
-//#region src/image.ts
-async function _i(e, t = L) {
-	if (![
-		"image/jpeg",
-		"image/png",
-		"image/webp"
-	].includes(e.type) || e.size === 0 || e.size > 5242880) throw Error(t.t("image_error.type_or_size"));
-	let n;
+`, _i = 5242880, vi = 2048, yi = 41943040, bi = 64e6, xi = [
+	"image/jpeg",
+	"image/png",
+	"image/webp"
+];
+async function Si(e, t, n) {
+	if (!xi.includes(e.type) || e.size === 0 || e.size > t) throw Error(n.t(t > 5242880 ? "image_error.type_or_input_size" : "image_error.type_or_size"));
+	let r;
 	try {
-		n = new Uint8Array(await e.slice(0, 12).arrayBuffer());
+		r = new Uint8Array(await e.slice(0, 12).arrayBuffer());
 	} catch {
-		throw Error(t.t("image_error.unreadable"));
+		throw Error(n.t("image_error.unreadable"));
 	}
-	let r = (...e) => e.every((e, t) => n[t] === e), i = r(255, 216, 255) ? "image/jpeg" : r(137, 80, 78, 71, 13, 10, 26, 10) ? "image/png" : r(82, 73, 70, 70) && n[8] === 87 && n[9] === 69 && n[10] === 66 && n[11] === 80 ? "image/webp" : null;
-	if (i !== e.type) throw Error(t.t("image_error.signature"));
-	let a, o;
+	let i = (...e) => e.every((e, t) => r[t] === e), a = i(255, 216, 255) ? "image/jpeg" : i(137, 80, 78, 71, 13, 10, 26, 10) ? "image/png" : i(82, 73, 70, 70) && r[8] === 87 && r[9] === 69 && r[10] === 66 && r[11] === 80 ? "image/webp" : null;
+	if (a !== e.type) throw Error(n.t("image_error.signature"));
+	return a;
+}
+async function Ci(e, t) {
 	try {
 		if (typeof createImageBitmap == "function") {
-			let t = await createImageBitmap(e);
-			a = t.width, o = t.height, t.close();
-		} else {
-			let t = URL.createObjectURL(e);
-			try {
-				let e = new Image();
-				await new Promise((n, r) => {
-					e.onload = () => n(), e.onerror = () => r(/* @__PURE__ */ Error("decode")), e.src = t;
-				}), a = e.naturalWidth, o = e.naturalHeight;
-			} finally {
-				URL.revokeObjectURL(t);
-			}
+			let t = await createImageBitmap(e, { imageOrientation: "from-image" });
+			return {
+				source: t,
+				width: t.width,
+				height: t.height,
+				release: () => t.close()
+			};
+		}
+		let t = URL.createObjectURL(e);
+		try {
+			let e = new Image();
+			return await new Promise((n, r) => {
+				e.onload = () => n(), e.onerror = () => r(/* @__PURE__ */ Error("decode")), e.src = t;
+			}), {
+				source: e,
+				width: e.naturalWidth,
+				height: e.naturalHeight,
+				release: () => void 0
+			};
+		} finally {
+			URL.revokeObjectURL(t);
 		}
 	} catch {
 		throw Error(t.t("image_error.decode"));
 	}
-	if (!Number.isInteger(a) || !Number.isInteger(o) || a < 1 || o < 1 || a > 2048 || o > 2048) throw Error(t.t("image_error.dimensions"));
+}
+var wi = (e, t) => Number.isInteger(e) && Number.isInteger(t) && e >= 1 && t >= 1;
+async function Ti(e, t = L) {
+	let n = await Si(e, _i, t), { width: r, height: i, release: a } = await Ci(e, t);
+	if (a(), !wi(r, i) || r > 2048 || i > 2048) throw Error(t.t("image_error.dimensions"));
 	return {
-		format: i,
+		format: n,
 		bytes: e.size,
-		width: a,
-		height: o
+		width: r,
+		height: i
 	};
+}
+function Ei(e, t, n) {
+	return new Promise((r) => {
+		e.toBlob((e) => r(e), t, n);
+	});
+}
+async function Di(e, t = L) {
+	await Si(e, yi, t);
+	let { source: n, width: r, height: i, release: a } = await Ci(e, t);
+	try {
+		if (!wi(r, i)) throw Error(t.t("image_error.decode"));
+		if (r * i > bi) throw Error(t.t("image_error.too_many_pixels"));
+		if (r <= 2048 && i <= 2048 && e.size <= 5242880) return e;
+		let a = Math.min(1, vi / Math.max(r, i)), o = document.createElement("canvas");
+		o.width = Math.max(1, Math.round(r * a)), o.height = Math.max(1, Math.round(i * a));
+		let s = o.getContext("2d");
+		if (!s) throw Error(t.t("image_error.resize"));
+		s.imageSmoothingEnabled = !0, s.imageSmoothingQuality = "high", s.drawImage(n, 0, 0, o.width, o.height);
+		for (let t of [
+			.9,
+			.8,
+			.65
+		]) {
+			let n = await Ei(o, "image/webp", t);
+			if (n?.type !== "image/webp" && (n = await Ei(o, "image/jpeg", t)), !n || !xi.includes(n.type)) break;
+			if (n.size > 0 && n.size <= 5242880) {
+				let t = n.type === "image/webp" ? "webp" : "jpg";
+				return new File([n], `${e.name.replace(/\.[^.]*$/, "") || "photo"}.${t}`, { type: n.type });
+			}
+		}
+		throw Error(t.t("image_error.resize"));
+	} finally {
+		a();
+	}
 }
 //#endregion
 //#region src/bundle-version.ts
-function vi(e) {
+function Oi(e) {
 	try {
 		return new URL(e).searchParams.get("v") || null;
 	} catch {
 		return null;
 	}
 }
-function yi(e, t) {
+function ki(e, t) {
 	return !!e && !!t && e !== t;
 }
 //#endregion
 //#region src/styles.ts
-var bi = o`
+var Ai = o`
   :host{display:block;color:var(--primary-text-color,#212121);font-family:var(--paper-font-body1_-_font-family,system-ui,sans-serif);line-height:1.5;overflow-wrap:anywhere}
   *{box-sizing:border-box} .update-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-left:4px solid var(--info-color,#039be5);padding:8px 16px;margin-bottom:16px;background:var(--card-background-color,#fff)} .update-banner p{margin:0} main{width:100%;max-width:none;margin:0;padding:0} .panel-content{width:100%;max-width:1280px;margin:0 auto;padding:16px 24px 24px} header,.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap} header{justify-content:space-between;margin-bottom:24px}
   .page-title{font-size:inherit;font-weight:inherit;margin:inherit;line-height:inherit}
@@ -4453,7 +4517,7 @@ var bi = o`
    .detail-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 12px;margin:8px 0 16px}.detail-tabs button{flex:0 0 auto;background:var(--secondary-background-color,#f5f5f5);border-color:transparent}.detail-tabs button[aria-current=page]{background:var(--secondary-background-color,#f5f5f5);color:var(--primary-text-color,#212121);border:2px solid var(--primary-color,#007bad);font-weight:600}.plant-overview-card{padding:0;overflow:hidden}.overview-heading{display:flex;align-items:center;gap:20px;padding:24px;background:var(--secondary-background-color,#f5f5f5)}.overview-avatar{width:84px;height:84px;flex:0 0 84px;object-fit:cover;border-radius:16px}.overview-avatar.placeholder{display:grid;place-items:center;background:var(--secondary-background-color,#f5f5f5);color:var(--primary-text-color,#212121);font-size:2rem;font-weight:700;border:1px solid var(--divider-color,#ddd)}.overview-heading h2{font-size:1.8rem;margin:4px 0}.overview-heading>section,.overview-heading>article{padding:0;margin:0;border:0;background:transparent}.eyebrow{font-size:.75rem;font-weight:700;letter-spacing:.08em;color:var(--secondary-text-color,#666);margin:0}.overview-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:20px}.overview-metrics article{display:grid;gap:4px;margin:0;background:var(--secondary-background-color,#f5f5f5);border:0}.overview-metrics article span{color:var(--secondary-text-color,#666)}.overview-metrics article strong{font-size:1.45rem}.overview-sensors,.overview-care{border:0;border-top:1px solid var(--divider-color,#ddd);border-radius:0;margin:0}.overview-sensors h2,.overview-care h2{margin-top:0}.overview-heading button{margin-top:8px}
   .detail-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:4px 2px 8px}.detail-heading h2{font-size:1.5rem;margin:0}.detail-heading p{margin:4px 0;color:var(--secondary-text-color,#666)}.detail-heading a{color:var(--primary-text-color,#212121);text-decoration:underline;text-underline-offset:3px}
   @media(max-width:600px){.panel-content{padding:16px 16px 16px}section,article{padding:16px}.actions button{flex:1 1 auto}header{align-items:flex-start}dl{grid-template-columns:1fr}dd{margin-bottom:8px}.stepper li span:last-child{display:none}.stepper li[aria-current=step] span:last-child{display:inline}.choice-card{min-height:0}.overview-heading{align-items:flex-start;flex-direction:column;padding:18px}.overview-metrics{grid-template-columns:1fr;padding:14px}.detail-tabs button{font-size:.9rem;padding:8px}}
-`, xi, Si = [
+`, ji, Mi = [
 	"ha-area-picker",
 	"ha-entity-picker",
 	"ha-selector",
@@ -4461,16 +4525,24 @@ var bi = o`
 	"ha-expansion-panel",
 	"ha-dropdown",
 	"ha-dropdown-item"
-], Ci = dt.filter((e) => e !== "moisture"), wi = "/config/integrations/integration/smart_plants", Ti = "https://open.plantbook.io/apikey/", Z = class extends x {
+], Ni = dt.filter((e) => e !== "moisture"), Pi = "/config/integrations/integration/smart_plants", Fi = "https://open.plantbook.io/apikey/", Z = class extends x {
 	constructor(...e) {
 		super(...e), this.areas = [], this.entities = [], this.devices = [], this.states = {}, this.blocked = !1, this.navigationContext = 0, this.photoStatus = "", this.step = 1, this.busy = !1, this.error = "", this.name = "", this.area = "", this.photo = null, this.photoUrl = null, this.photoError = "", this.photoChecking = !1, this.dragging = !1, this.moisture = hr(), this.extras = [], this.pendingRole = null, this.roleMenu = !1, this.expanded = /* @__PURE__ */ new Set(), this.opened = /* @__PURE__ */ new Set(), this.query = "", this.results = [], this.searched = !1, this.preview = null, this.accepted = !1, this.speciesError = "", this.common = "", this.latin = "", this.acquired = "", this.placement = "", this.category = "", this.tagText = "", this.draft = null, this.finalRequest = null, this.rejected = !1, this.created = null, this.generation = 0, this.lifecycle = 0, this.photoCheck = 0, this.entityById = /* @__PURE__ */ new Map(), this.areaOfEntity = /* @__PURE__ */ new Map();
+	}
+	get knownAreas() {
+		let e = new Map(this.areas.map((e) => [e.area_id, e]));
+		for (let [t, n] of Object.entries(this.hass?.areas ?? {})) !e.has(t) && n && n.area_id === t && typeof n.name == "string" && e.set(t, {
+			area_id: t,
+			name: n.name
+		});
+		return [...e.values()];
 	}
 	get l() {
 		return Yt(this.hass);
 	}
 	connectedCallback() {
 		super.connectedCallback();
-		for (let e of Si) Y(e) || customElements.whenDefined(e).then(() => this.requestUpdate());
+		for (let e of Mi) Y(e) || customElements.whenDefined(e).then(() => this.requestUpdate());
 		this.photo && !this.photoUrl && (this.photoUrl = URL.createObjectURL(this.photo)), !this.draft && !this.created && this.start();
 	}
 	disconnectedCallback() {
@@ -4651,8 +4723,9 @@ var bi = o`
 		let t = ++this.photoCheck;
 		this.photoChecking = !0;
 		try {
-			if (await _i(e, this.l), t !== this.photoCheck) return;
-			this.photo = e, this.photoUrl = URL.createObjectURL(e);
+			let n = await Di(e, this.l);
+			if (t !== this.photoCheck) return;
+			this.photo = n, this.photoUrl = URL.createObjectURL(n);
 		} catch (e) {
 			t === this.photoCheck && (this.photoError = e.message);
 		} finally {
@@ -4688,7 +4761,7 @@ var bi = o`
 	validate() {
 		let e = this.l;
 		if (!this.name.trim() || this.name.trim().length > 200) return e.t("wizard.error_name_length");
-		if (this.area && !this.areas.some((e) => e.area_id === this.area)) return e.t("wizard.error_area");
+		if (this.area && !this.knownAreas.some((e) => e.area_id === this.area)) return e.t("wizard.error_area");
 		if (this.preview && !this.accepted) return this.toggle("species", !0), e.t("wizard.error_accept_preview");
 		if (_r(this.moisture, this.defaults, e)) return this.toggle("species", !0), e.t("wizard.error_targets");
 		if (this.acquired && !Number.isFinite(Date.parse(this.acquired))) return this.toggle("details", !0), e.t("wizard.error_acquired");
@@ -4835,8 +4908,8 @@ var bi = o`
 			this.area = e.target.value;
 		}}>
           <option value="" ?selected=${!this.area}>${e.t("wizard.no_area")}</option>
-          ${this.area && !this.areas.some((e) => e.area_id === this.area) ? v`<option value=${this.area} selected>${e.t("area.missing_option", { area: this.area })}</option>` : y}
-          ${this.areas.map((e) => v`<option value=${e.area_id} ?selected=${e.area_id === this.area}>${e.name}</option>`)}</select><ha-icon class="trail" aria-hidden="true" icon="mdi:menu-down"></ha-icon></div>`;
+          ${this.area && !this.knownAreas.some((e) => e.area_id === this.area) ? v`<option value=${this.area} selected>${e.t("area.missing_option", { area: this.area })}</option>` : y}
+          ${this.knownAreas.map((e) => v`<option value=${e.area_id} ?selected=${e.area_id === this.area}>${e.name}</option>`)}</select><ha-icon class="trail" aria-hidden="true" icon="mdi:menu-down"></ha-icon></div>`;
 		return v`<h2 tabindex="-1">${e.t("wizard.plant_heading")}</h2><p class="intro">${e.t("wizard.plant_intro")}</p>
       <div class="stack">
         <label class="field">${e.t("wizard.plant_name")}<input required maxlength="200" autocomplete="off" .value=${this.name} @input=${(e) => {
@@ -4876,7 +4949,7 @@ var bi = o`
 			id: e.entity_id,
 			text: `${this.friendly(e.entity_id)} · ${this.valueText(e.entity_id)}`,
 			near: !!this.area && this.areaOfEntity.get(e.entity_id) === this.area
-		})).sort((e, t) => e.text.localeCompare(t.text)), a = i.filter((e) => e.near), o = i.filter((e) => !e.near), s = this.areas.find((e) => e.area_id === this.area)?.name, c = (e) => v`<option value=${e.id}>${e.text}</option>`;
+		})).sort((e, t) => e.text.localeCompare(t.text)), a = i.filter((e) => e.near), o = i.filter((e) => !e.near), s = this.knownAreas.find((e) => e.area_id === this.area)?.name, c = (e) => v`<option value=${e.id}>${e.text}</option>`;
 		return v`<div class="field"><label for="sensor-${e}">${t}</label><select id="sensor-${e}" @change=${(t) => this.assign(e, t.target.value)}>
         <option value="" selected>${i.length ? n.t("wizard.choose_sensor") : n.t("wizard.no_suitable_sensors")}</option>
         ${a.length && s ? v`<optgroup label=${n.t("wizard.group_in_area", { area: s })}>${a.map(c)}</optgroup><optgroup label=${n.t("wizard.group_other")}>${o.map(c)}</optgroup>` : i.map(c)}
@@ -4892,7 +4965,7 @@ var bi = o`
       <button type="button" class="iconbtn" aria-label=${n.t("wizard.remove_sensor", { name: r })} @click=${() => this.unassign(e)}><ha-icon aria-hidden="true" icon="mdi:close"></ha-icon></button></div>`;
 	}
 	renderSensors() {
-		let e = this.l, t = this.moisture.sources[0]?.entity_id, n = this.areas.find((e) => e.area_id === this.area)?.name, r = this.suggestions(), i = Ci.filter((e) => !this.takenRoles.has(e) && e !== this.pendingRole);
+		let e = this.l, t = this.moisture.sources[0]?.entity_id, n = this.knownAreas.find((e) => e.area_id === this.area)?.name, r = this.suggestions(), i = Ni.filter((e) => !this.takenRoles.has(e) && e !== this.pendingRole);
 		return v`<h2 tabindex="-1">${e.t("wizard.sensors_heading")}</h2><p class="intro">${e.t("wizard.sensors_intro")}</p>
       <div class="stack">
         ${t ? this.assignedRow("moisture", t) : this.sensorPicker("moisture", e.t("wizard.moisture_sensor"))}
@@ -4917,7 +4990,7 @@ var bi = o`
 		}}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("wizard.add_another")}</button>`;
 		return Y("ha-dropdown") && Y("ha-dropdown-item") ? v`<ha-dropdown @wa-select=${(e) => {
 			let t = e.detail.item.value;
-			Ci.includes(t) && (this.pendingRole = t);
+			Ni.includes(t) && (this.pendingRole = t);
 		}}>
         ${n(!0)}${e.map((e) => v`<ha-dropdown-item value=${e}><ha-icon slot="icon" .icon=${k[e].icon}></ha-icon>${A(t, e)}</ha-dropdown-item>`)}</ha-dropdown>` : v`${n(!1)}${this.roleMenu ? v`<div class="role-menu">${e.map((e) => v`<button type="button" class="btn outline sm" @click=${() => {
 			this.pendingRole = e, this.roleMenu = !1;
@@ -4944,7 +5017,7 @@ var bi = o`
       ${a ? v`<div class="expander-body">${i()}</div>` : y}</details>`;
 	}
 	renderReview() {
-		let e = this.l, t = this.moisture.sources[0]?.entity_id, n = this.area ? this.areas.find((e) => e.area_id === this.area)?.name ?? e.t("area.missing_option", { area: this.area }) : e.t("wizard.no_area"), r = this.defaults, i = (e) => this.moisture.threshold_overrides[e] ?? r[e], a = this.accepted && this.preview ? this.preview.snapshot.latin_name ?? this.preview.snapshot.common_name : [this.common.trim(), this.latin.trim()].filter(Boolean).join(" · "), o = this.accepted && a ? e.t("wizard.species_summary_accepted", { species: a }) : a ? e.t("wizard.species_summary_manual", {
+		let e = this.l, t = this.moisture.sources[0]?.entity_id, n = this.area ? this.knownAreas.find((e) => e.area_id === this.area)?.name ?? e.t("area.missing_option", { area: this.area }) : e.t("wizard.no_area"), r = this.defaults, i = (e) => this.moisture.threshold_overrides[e] ?? r[e], a = this.accepted && this.preview ? this.preview.snapshot.latin_name ?? this.preview.snapshot.common_name : [this.common.trim(), this.latin.trim()].filter(Boolean).join(" · "), o = this.accepted && a ? e.t("wizard.species_summary_accepted", { species: a }) : a ? e.t("wizard.species_summary_manual", {
 			species: a,
 			min: e.percent(i("min")),
 			max: e.percent(i("max"))
@@ -4985,13 +5058,13 @@ var bi = o`
         ${this.speciesError ? v`<p class="error" role="alert">${this.speciesError}</p><button type="button" class="btn text sm flush" @click=${() => this.manual()}>${e.t("common.continue_manually")}</button>` : y}
         ${this.searched && !this.results.length ? v`<p class="small muted">${e.t("wizard.no_matches")}</p>` : y}
         ${this.results.length && !this.preview ? v`<ul class="results" aria-label=${e.t("wizard.results")}>${this.results.map((e) => v`<li><button type="button" @click=${() => void this.choose(e)}>${e.common_name ?? e.latin_name} · ${e.latin_name}</button><small>${e.attribution}</small></li>`)}</ul>` : y}
-        ${this.preview ? v`<div class="preview">${Ur(e, this.preview.snapshot, this.preview)}</div>
+        ${this.preview ? v`<div class="preview">${Ur(e, this.preview.snapshot)}</div>
           <label class="check"><input type="checkbox" .checked=${this.accepted} @change=${(e) => {
 			this.accepted = e.target.checked, this.error = "";
 		}}>${e.t("wizard.accept_species")}</label>
-          <button type="button" class="btn text sm flush" @click=${() => this.manual()}>${e.t("wizard.remove_species")}</button>` : y}` : t ? this.alert("info", v`${e.t("wizard.provider_unavailable_body")}<span class="alert-links"><a href=${wi} @click=${(e) => {
-			e.preventDefault(), history.pushState(null, "", wi), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
-		}}>${e.t("wizard.open_options")}</a><a href=${Ti} target="_blank" rel="noreferrer">${e.t("wizard.openplantbook_credentials_link")}</a></span>`, e.t("wizard.provider_unavailable_title")) : y}
+          <button type="button" class="btn text sm flush" @click=${() => this.manual()}>${e.t("wizard.remove_species")}</button>` : y}` : t ? this.alert("info", v`${e.t("wizard.provider_unavailable_body")}<span class="alert-links"><a href=${Pi} @click=${(e) => {
+			e.preventDefault(), history.pushState(null, "", Pi), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
+		}}>${e.t("wizard.open_options")}</a><a href=${Fi} target="_blank" rel="noreferrer">${e.t("wizard.openplantbook_credentials_link")}</a></span>`, e.t("wizard.provider_unavailable_title")) : y}
       ${this.accepted || this.preview ? y : v`<h3>${e.t("wizard.manual_species")}</h3><div class="two">
         <label class="field">${e.t("species.common_name")}<input maxlength="200" .value=${this.common} @input=${(e) => {
 			this.common = e.target.value;
@@ -5041,7 +5114,7 @@ var bi = o`
     </div>`;
 	}
 	renderDone() {
-		let e = this.l, t = this.created, n = this.area ? this.areas.find((e) => e.area_id === this.area)?.name : void 0;
+		let e = this.l, t = this.created, n = this.area ? this.knownAreas.find((e) => e.area_id === this.area)?.name : void 0;
 		return v`<div class="wz" lang=${e.language}><div class="card done">
       <div class="big" aria-hidden="true"><ha-icon icon="mdi:check"></ha-icon></div>
       <h2 tabindex="-1">${e.t("wizard.done_heading", { name: t.name })}</h2>
@@ -5057,7 +5130,7 @@ var bi = o`
     </div></div>`;
 	}
 };
-xi = Z, xi.styles = [
+ji = Z, ji.styles = [
 	G,
 	Wr,
 	o`
@@ -5149,7 +5222,7 @@ xi = Z, xi.styles = [
     .sections { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
 
     .expander { display: block; border-radius: 12px; background: var(--wz-card); --expansion-panel-summary-padding: 4px 16px; --expansion-panel-content-padding: 0 16px; }
-    ha-expansion-panel.expander .expander-body { padding-bottom: 16px; }
+    ha-expansion-panel.expander .expander-body { padding: 12px 0 16px; }
     details.expander { border: 1px solid var(--wz-divider); }
     details.expander > summary { display: flex; align-items: center; gap: 14px; padding: 12px 16px; min-height: 56px; cursor: pointer; list-style: none; }
     details.expander > summary::-webkit-details-marker { display: none; }
@@ -5176,6 +5249,9 @@ xi = Z, xi.styles = [
     .preview dl { display: grid; grid-template-columns: minmax(90px, 1fr) 2fr; gap: 2px 12px; margin: 0; font-size: 13px; }
     .preview dt { color: var(--wz-muted); }
     .preview dd { margin: 0; }
+    .preview details > summary { cursor: pointer; font-size: 13px; color: var(--primary-color); padding: 4px 0; }
+    .preview details[open] > summary { margin-bottom: 6px; }
+    .preview .muted { color: var(--wz-muted); }
     .check { display: flex; align-items: center; gap: 10px; font-weight: 500; cursor: pointer; }
     .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--sp-primary-strong); }
     .species-chip { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--wz-tonal); }
@@ -5213,7 +5289,7 @@ xi = Z, xi.styles = [
 ], K([S({ attribute: !1 })], Z.prototype, "hass", void 0), K([S({ attribute: !1 })], Z.prototype, "capabilities", void 0), K([S({ attribute: !1 })], Z.prototype, "areas", void 0), K([S({ attribute: !1 })], Z.prototype, "entities", void 0), K([S({ attribute: !1 })], Z.prototype, "devices", void 0), K([S({ attribute: !1 })], Z.prototype, "states", void 0), K([S({ type: Boolean })], Z.prototype, "blocked", void 0), K([S({ type: Number })], Z.prototype, "navigationContext", void 0), K([S()], Z.prototype, "photoStatus", void 0), K([C()], Z.prototype, "step", void 0), K([C()], Z.prototype, "busy", void 0), K([C()], Z.prototype, "error", void 0), K([C()], Z.prototype, "name", void 0), K([C()], Z.prototype, "area", void 0), K([C()], Z.prototype, "photo", void 0), K([C()], Z.prototype, "photoUrl", void 0), K([C()], Z.prototype, "photoError", void 0), K([C()], Z.prototype, "photoChecking", void 0), K([C()], Z.prototype, "dragging", void 0), K([C()], Z.prototype, "moisture", void 0), K([C()], Z.prototype, "extras", void 0), K([C()], Z.prototype, "pendingRole", void 0), K([C()], Z.prototype, "roleMenu", void 0), K([C()], Z.prototype, "expanded", void 0), K([C()], Z.prototype, "opened", void 0), K([C()], Z.prototype, "query", void 0), K([C()], Z.prototype, "results", void 0), K([C()], Z.prototype, "searched", void 0), K([C()], Z.prototype, "preview", void 0), K([C()], Z.prototype, "accepted", void 0), K([C()], Z.prototype, "speciesError", void 0), K([C()], Z.prototype, "common", void 0), K([C()], Z.prototype, "latin", void 0), K([C()], Z.prototype, "acquired", void 0), K([C()], Z.prototype, "placement", void 0), K([C()], Z.prototype, "category", void 0), K([C()], Z.prototype, "tagText", void 0), K([C()], Z.prototype, "draft", void 0), K([C()], Z.prototype, "finalRequest", void 0), K([C()], Z.prototype, "rejected", void 0), K([C()], Z.prototype, "created", void 0), customElements.get("smart-plants-wizard") || customElements.define("smart-plants-wizard", Z);
 //#endregion
 //#region src/views/overview.ts
-var Ei, Di = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", Oi = {
+var Ii, Li = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", Ri = {
 	all: {
 		label: "overview.tile_all",
 		icon: "mdi:sprout",
@@ -5234,11 +5310,11 @@ var Ei, Di = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 		icon: "mdi:clock-alert-outline",
 		tone: "var(--sp-disabled)"
 	}
-}, ki = {
+}, zi = {
 	attention: "overview.sort_attention",
 	name: "overview.sort_name",
 	area: "overview.sort_area"
-}, Ai = {
+}, Bi = {
 	attention: "mdi:alert-circle-outline",
 	name: "mdi:sort-alphabetical-ascending",
 	area: "mdi:texture-box"
@@ -5295,22 +5371,22 @@ var Ei, Di = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 			let t = e.detail.item.value;
 			jt.includes(t) && (this._sort = t);
 		}}>
-          <button slot="trigger" class="pill" type="button" aria-label=${e.t("overview.sort_button", { sort: e.t(ki[this._sort]) })}><ha-icon aria-hidden="true" icon="mdi:sort"></ha-icon>${e.t(ki[this._sort])}<ha-icon aria-hidden="true" icon="mdi:menu-down"></ha-icon></button>
+          <button slot="trigger" class="pill" type="button" aria-label=${e.t("overview.sort_button", { sort: e.t(zi[this._sort]) })}><ha-icon aria-hidden="true" icon="mdi:sort"></ha-icon>${e.t(zi[this._sort])}<ha-icon aria-hidden="true" icon="mdi:menu-down"></ha-icon></button>
           ${jt.map((t) => v`<ha-dropdown-item value=${t} ?checked=${this._sort === t}>
-            ${this._sort === t ? v`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : v`<ha-icon slot="icon" .icon=${Ai[t]}></ha-icon>`}${e.t(ki[t])}</ha-dropdown-item>`)}
+            ${this._sort === t ? v`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : v`<ha-icon slot="icon" .icon=${Bi[t]}></ha-icon>`}${e.t(zi[t])}</ha-dropdown-item>`)}
         </ha-dropdown>
       </div>
       <div class="countline"><p role="status">${e.t("list.count_filtered", {
 			shown: n.length,
 			total: t.length
-		})}${r ? ` · ${e.t(Oi[this._filter].label)}` : ""}</p>
+		})}${r ? ` · ${e.t(Ri[this._filter].label)}` : ""}</p>
         ${r || this._query ? v`<button type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.clear_filter")}</button>` : y}</div>
       ${n.length ? this._renderList(n) : this._renderNoResults()}
     </div>
     <button type="button" class="fab" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("panel.add_plant")}</button>`;
 	}
 	_renderTile(e, t) {
-		let n = Oi[e];
+		let n = Ri[e];
 		return v`<button type="button" class="tile ${t === 0 ? "zero" : ""}" style="--tone:${n.tone}" aria-pressed=${this._filter === e ? "true" : "false"}
       @click=${() => {
 			this._filter = this._filter === e && e !== "all" ? "all" : e;
@@ -5344,15 +5420,15 @@ var Ei, Di = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 		let e = this.l;
 		return v`<sp-empty-state icon="mdi:sprout" .heading=${e.t("overview.empty_heading")}>${e.t("overview.empty_body")}
       <button slot="actions" type="button" class="filled" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("panel.add_plant")}</button>
-      <a slot="actions" class="text-button" href=${Di} target="_blank" rel="noopener noreferrer">${e.t("overview.how_it_works")}</a></sp-empty-state>`;
+      <a slot="actions" class="text-button" href=${Li} target="_blank" rel="noopener noreferrer">${e.t("overview.how_it_works")}</a></sp-empty-state>`;
 	}
 	_renderNoResults() {
-		let e = this.l, t = this._query.trim() ? e.t("overview.no_match_query", { query: this._query.trim() }) : e.t("overview.no_match_filter", { filter: e.t(Oi[this._filter].label) });
+		let e = this.l, t = this._query.trim() ? e.t("overview.no_match_query", { query: this._query.trim() }) : e.t("overview.no_match_filter", { filter: e.t(Ri[this._filter].label) });
 		return v`<sp-empty-state class="no-results" compact icon="mdi:magnify-remove-outline" .heading=${e.t("overview.no_match_heading")}>${t}
       <button slot="actions" type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.show_all")}</button></sp-empty-state>`;
 	}
 };
-Ei = Q, Ei.styles = [G, o`
+Ii = Q, Ii.styles = [G, o`
     /* White text on the theme's primary colour needs a slightly darker fill to reach 4.5:1. */
     :host { display: block; container-type: inline-size; --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000); }
     :host([hidden]) { display: none; }
@@ -5443,7 +5519,7 @@ Ei = Q, Ei.styles = [G, o`
 })], Q.prototype, "hidden", void 0), K([C()], Q.prototype, "_filter", void 0), K([C()], Q.prototype, "_sort", void 0), K([C()], Q.prototype, "_query", void 0), customElements.get("smart-plants-overview") || customElements.define("smart-plants-overview", Q);
 //#endregion
 //#region src/panel.ts
-var ji, Mi = Object.fromEntries([
+var Vi, Hi = Object.fromEntries([
 	{
 		problemRole: "temperature_stress",
 		configRole: "temperature",
@@ -5564,8 +5640,8 @@ var ji, Mi = Object.fromEntries([
 		validate: (e, t) => dr(e, t),
 		seed: (e) => fr(e)
 	}
-].map((e) => [e.problemRole, e])), Ni = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", Pi = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Fi = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
-function Ii(e) {
+].map((e) => [e.problemRole, e])), Ui = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", Wi = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Gi = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
+function Ki(e) {
 	let t = -e.getTimezoneOffset();
 	return `${new Date(e.getTime() + t * 6e4).toISOString().slice(0, 19)}${t < 0 ? "-" : "+"}${String(Math.floor(Math.abs(t) / 60)).padStart(2, "0")}:${String(Math.abs(t) % 60).padStart(2, "0")}`;
 }
@@ -5680,7 +5756,7 @@ var $ = class e extends x {
 		try {
 			let i = await F.info(r), a = await F.list(r);
 			if (n !== this._request || !this.isConnected) return;
-			if (this._capabilities = i, this._blocked = !1, this._plants = a, this._updateAvailable = yi(e.bundleVersion, i.bundle_version), t && (this._error = ""), this._base) {
+			if (this._capabilities = i, this._blocked = !1, this._plants = a, this._updateAvailable = ki(e.bundleVersion, i.bundle_version), t && (this._error = ""), this._base) {
 				let e = a.find((e) => e.id === this._base?.id);
 				e && e.revision !== this._base.revision && this._setConflict(this._base, e), e || (this._context++, this._formBusy = !1, this._closeDialog(), this._base = null, this._conflict = null, this._edits = null, this._notice = this._l.t("notice.deleted_elsewhere"), this.updateComplete.then(() => this.shadowRoot?.querySelector("h1")?.focus()));
 			}
@@ -5832,7 +5908,7 @@ var $ = class e extends x {
 		this._syncImage(), this._syncThumbnails(), this.updateComplete.then(() => this.shadowRoot?.querySelector("h1")?.focus());
 	}
 	_handleMenuAction(e) {
-		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(Di, "_blank", "noopener,noreferrer");
+		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(Li, "_blank", "noopener,noreferrer");
 		let t = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0;
 		if (!t) return;
 		let n = B(t, this._devices);
@@ -5912,7 +5988,7 @@ var $ = class e extends x {
 		let n = this.hass, r = this._l;
 		this._setWatering(e, !0), this._error = "", this._request++;
 		try {
-			let i = await this._withRevision(e, (t) => F.addWatering(n, e, t, Ii(/* @__PURE__ */ new Date()), null));
+			let i = await this._withRevision(e, (t) => F.addWatering(n, e, t, Ki(/* @__PURE__ */ new Date()), null));
 			this._adopt(i.plant), this._followQuickWrite(i.plant);
 			let a = this._overview[e];
 			a && (this._overview = {
@@ -6251,7 +6327,7 @@ var $ = class e extends x {
 			}
 		}
 		if (c && l && u) {
-			let e = Mi[c];
+			let e = Hi[c];
 			if (e) {
 				let n = e.seed(this._persistedRoleOverrides(e, t)), r = { ...n };
 				for (let t of e.keys) l[t] !== u[t] && (r[t] = l[t]);
@@ -6320,8 +6396,9 @@ var $ = class e extends x {
 		if (!this.hass || this._formBusy || this._blocked) return;
 		let n = this._context;
 		this._formBusy = !0;
+		let r;
 		try {
-			await _i(t, this._l);
+			r = await Di(t, this._l);
 		} catch (e) {
 			n === this._context && (this._error = e.message);
 			return;
@@ -6329,8 +6406,8 @@ var $ = class e extends x {
 			n === this._context && (this._formBusy = !1);
 		}
 		if (n !== this._context || !this.isConnected || this._view.kind !== "detail" || this._view.plantId !== e.id || this._base?.revision !== e.revision) return;
-		let r = this.hass;
-		await this._mutate(() => F.uploadImage(r, e.id, e.revision, t));
+		let i = this.hass;
+		await this._mutate(() => F.uploadImage(i, e.id, e.revision, r));
 	}
 	_renderPhotoRow(e) {
 		let t = this._l, n = this._formBusy || this._blocked || !!this._conflict, r = e.image ? this._imageLoading ? v`<span role="status">${t.t("photo.loading")}</span>` : this._imageError ? v`<span class="error-text" role="alert">${t.t("photo.load_failed", { error: this._imageError })}</span> <button type="button" class="btn text sm" @click=${() => {
@@ -6388,7 +6465,7 @@ var $ = class e extends x {
 		return e === "on" ? t.t("section.advanced_diagnostics_status_problem") : e === "off" ? t.t("section.advanced_diagnostics_status_ok") : e === "unavailable" ? t.t("section.advanced_diagnostics_status_unavailable") : t.t("section.advanced_diagnostics_status_not_configured");
 	}
 	_renderOtherTargets(e) {
-		let t = this._l, n = mr(e, this._entities, this._states, t).filter((e) => e.status !== "not_configured" && Mi[e.role]), r = this._pendingThresholdSwitch, i = this._thresholdRole ? Mi[this._thresholdRole] : null, a = i ? t.t(`problem_phrase.${i.problemRole}`) : "", o = r ? t.t(`problem_phrase.${r.spec.problemRole}`) : "";
+		let t = this._l, n = mr(e, this._entities, this._states, t).filter((e) => e.status !== "not_configured" && Hi[e.role]), r = this._pendingThresholdSwitch, i = this._thresholdRole ? Hi[this._thresholdRole] : null, a = i ? t.t(`problem_phrase.${i.problemRole}`) : "", o = r ? t.t(`problem_phrase.${r.spec.problemRole}`) : "";
 		return v`<p class="small muted">${t.t("other_targets.intro")}</p>
       ${r ? v`<p class="notice threshold-switch-alert" role="alert">${t.t("section.advanced_diagnostics_switch_prompt", {
 			current: a,
@@ -6400,7 +6477,7 @@ var $ = class e extends x {
 		}}>${t.t("section.advanced_diagnostics_switch_keep")}</button>
       </p>` : y}
       ${n.length ? v`<dl class="other-targets">${n.map((n) => {
-			let r = Mi[n.role], i = pr(e, n.role, this._entities, this._states, t), a = this._thresholdRole === n.role && this._thresholdEdits !== null, o = this._thresholdSaved[n.role];
+			let r = Hi[n.role], i = pr(e, n.role, this._entities, this._states, t), a = this._thresholdRole === n.role && this._thresholdEdits !== null, o = this._thresholdSaved[n.role];
 			return v`<dt>${n.label}</dt><dd>${i.length ? v`<ul class="thresholds" aria-label=${t.t("section.effective_thresholds_label", { label: n.label })}>${i.map((e) => v`<li><span class="threshold-label">${e.label}</span>: <span class="threshold-value">${e.value === null ? "—" : `${t.number(e.value)} ${e.unit}`}</span></li>`)}</ul>` : y}
           <button class="threshold-toggle btn outline sm" type="button" aria-expanded=${a ? "true" : "false"} aria-controls=${`${n.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(r, e)}>${a ? t.t("section.advanced_diagnostics_cancel_edit") : t.t("section.advanced_diagnostics_edit_thresholds")}</button>${a ? this._renderThresholdEditor(r, e) : y}${o && !a ? v`<p class="notice" role="status">${o}</p>` : y}</dd>`;
 		})}</dl>` : v`<p>${t.t("other_targets.none")}</p>`}`;
@@ -7027,7 +7104,7 @@ var $ = class e extends x {
 		let f = this._context;
 		if (this._refresh(!1), o && i) {
 			try {
-				if (await _i(n, c), !this.isConnected || this.hass?.connection !== i.connection || this._blocked) return;
+				if (await Ti(n, c), !this.isConnected || this.hass?.connection !== i.connection || this._blocked) return;
 				let e = await F.uploadImage(i, t.id, t.revision, n);
 				if (!this.isConnected || this.hass?.connection !== i.connection) return;
 				f === this._context && this._base?.id === t.id && this._base.revision === t.revision && !this._formBusy && !this._conflict && this._rebaseEdits(this._base, e), this._createdPlantId === t.id && d(c.t("created.photo_uploaded"));
@@ -7048,19 +7125,19 @@ var $ = class e extends x {
 		if (this.hass?.user?.is_admin === !1) return v`<main><div class="panel-content"><p role="alert">${e.t("panel.admin_required")}</p></div></main>`;
 		let t = this.hass?.localize?.("ui.common.menu") || e.t("panel.menu"), n = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0, r = this._formBusy || this._blocked || !!this._conflict;
 		return v`<main><ha-top-app-bar-fixed class="panel-appbar" .narrow=${this.narrow}>
-       ${this._view.kind === "detail" ? v`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Fi} @click=${() => {
+       ${this._view.kind === "detail" ? v`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Gi} @click=${() => {
 			this._formBusy || this._show({ kind: "list" });
 		}}></ha-icon-button>` : y}
        <h1 slot="title" class="page-title" tabindex="-1">${n ? n.name : "Smart Plants"}</h1>
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
-         <ha-icon-button slot="trigger" .label=${t} .path=${Ni}></ha-icon-button>
+         <ha-icon-button slot="trigger" .label=${t} .path=${Ui}></ha-icon-button>
          ${n ? v`
          <ha-dropdown-item value="open-device" ?disabled=${!B(n, this._devices)}>${e.t("detail.menu_open_device")}<ha-icon slot="icon" icon="mdi:open-in-new"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="download-diagnostics">${e.t("detail.menu_download")}<ha-icon slot="icon" icon="mdi:download"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="toggle-monitoring" ?disabled=${r}>${n.lifecycle_state === "active" ? e.t("manage.pause") : e.t("manage.resume")}<ha-icon slot="icon" .icon=${n.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="delete-plant" ?disabled=${r}>${e.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>` : v`
          ${this._view.kind === "list" ? y : v`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${e.t("panel.back_to_overview")}</ha-dropdown-item>`}
-         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${Pi}></ha-svg-icon></ha-dropdown-item>
+         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${Wi}></ha-svg-icon></ha-dropdown-item>
          <ha-dropdown-item value="integration-options">${e.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="documentation">${e.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>`}
        </ha-dropdown>
@@ -7082,11 +7159,11 @@ var $ = class e extends x {
         <p role="status" aria-live="polite">${this._formBusy ? e.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
 	}
 };
-ji = $, ji.styles = [
+Vi = $, Vi.styles = [
 	G,
-	bi,
+	Ai,
 	gi
-], ji.bundleVersion = vi(import.meta.url), K([S({ attribute: !1 })], $.prototype, "hass", void 0), K([S({ attribute: !1 })], $.prototype, "panel", void 0), K([S({
+], Vi.bundleVersion = Oi(import.meta.url), K([S({ attribute: !1 })], $.prototype, "hass", void 0), K([S({ attribute: !1 })], $.prototype, "panel", void 0), K([S({
 	type: Boolean,
 	reflect: !0
 })], $.prototype, "narrow", void 0), K([C()], $.prototype, "_plants", void 0), K([C()], $.prototype, "_loading", void 0), K([C()], $.prototype, "_error", void 0), K([C()], $.prototype, "_notice", void 0), K([C()], $.prototype, "_view", void 0), K([C()], $.prototype, "_detailSection", void 0), K([C()], $.prototype, "_formBusy", void 0), K([C()], $.prototype, "_capabilities", void 0), K([C()], $.prototype, "_updateAvailable", void 0), K([C()], $.prototype, "_blocked", void 0), K([C()], $.prototype, "_areas", void 0), K([C()], $.prototype, "_entities", void 0), K([C()], $.prototype, "_devices", void 0), K([C()], $.prototype, "_states", void 0), K([C()], $.prototype, "_evaluations", void 0), K([C()], $.prototype, "_health", void 0), K([C()], $.prototype, "_healthError", void 0), K([C()], $.prototype, "_careHistory", void 0), K([C()], $.prototype, "_careError", void 0), K([C()], $.prototype, "_careDate", void 0), K([C()], $.prototype, "_careNote", void 0), K([C()], $.prototype, "_careKind", void 0), K([C()], $.prototype, "_careFields", void 0), K([C()], $.prototype, "_careEditingId", void 0), K([C()], $.prototype, "_registryError", void 0), K([C()], $.prototype, "_areaReview", void 0), K([C()], $.prototype, "_overview", void 0), K([C()], $.prototype, "_overviewError", void 0), K([C()], $.prototype, "_thumbnails", void 0), K([C()], $.prototype, "_watering", void 0), K([C()], $.prototype, "_edits", void 0), K([C()], $.prototype, "_conflict", void 0), K([C()], $.prototype, "_allSensors", void 0), K([C()], $.prototype, "_preview", void 0), K([C()], $.prototype, "_provider", void 0), K([C()], $.prototype, "_query", void 0), K([C()], $.prototype, "_results", void 0), K([C()], $.prototype, "_related", void 0), K([C()], $.prototype, "_imageUrl", void 0), K([C()], $.prototype, "_imageLoading", void 0), K([C()], $.prototype, "_imageError", void 0), K([C()], $.prototype, "_dialog", void 0), K([C()], $.prototype, "_wizardStarted", void 0), K([C()], $.prototype, "_creationNotice", void 0), K([C()], $.prototype, "_creationPhoto", void 0), K([C()], $.prototype, "_createdPlantId", void 0), K([C()], $.prototype, "_thresholdRole", void 0), K([C()], $.prototype, "_thresholdEdits", void 0), K([C()], $.prototype, "_thresholdBaseline", void 0), K([C()], $.prototype, "_thresholdError", void 0), K([C()], $.prototype, "_thresholdSaved", void 0), K([C()], $.prototype, "_pendingThresholdSwitch", void 0), K([C()], $.prototype, "_sourceRole", void 0), K([C()], $.prototype, "_sourceEdits", void 0), K([C()], $.prototype, "_sourceBaseline", void 0), K([C()], $.prototype, "_sourceError", void 0), K([C()], $.prototype, "_sourceUnavailable", void 0), K([C()], $.prototype, "_sourceSaved", void 0), K([C()], $.prototype, "_pendingSourceSwitch", void 0), K([C()], $.prototype, "_sourceMode", void 0), K([C()], $.prototype, "_moistureMode", void 0), K([C()], $.prototype, "_expanded", void 0), K([C()], $.prototype, "_settingsOpen", void 0), K([C()], $.prototype, "_careFilter", void 0), K([C()], $.prototype, "_careFormOpen", void 0), K([C()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);

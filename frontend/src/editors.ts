@@ -78,6 +78,9 @@ export function roleSourcesEditor(l: Localizer, spec: RoleSourceSpec, c: RoleSou
   const role = rolePhrase(spec.role, l);
   return sourcesControls(l, c, entities, states, all, setAll, patch, l.t("sources.role_intro", { role }), l.t("sources.add_role_sensor", { role }), `sensor.${spec.role}`, candidates, s => roleSourceWarning(s, entities, states, spec, l), part);
 }
+// Shows the species name, the imported moisture targets and the care notes up
+// front. Provider metadata, per-field sources and the change list are kept in
+// a collapsed section because they matter only when checking where data came from.
 export function snapshotView(l: Localizer, snapshot: SpeciesSnapshot, preview?: SpeciesPreview) {
   const notSupplied = l.t("common.not_supplied");
   const fields: [string, string | null][] = [
@@ -85,10 +88,20 @@ export function snapshotView(l: Localizer, snapshot: SpeciesSnapshot, preview?: 
     [l.t("snapshot.fetched"), l.dateTime(snapshot.fetched_at)], [l.t("snapshot.locale"), snapshot.locale], [l.t("snapshot.status"), snapshot.source_status === "manual" || snapshot.source_status === "provider" ? l.t(`snapshot.status_${snapshot.source_status}`) : snapshot.source_status],
     [l.t("snapshot.confidence"), snapshot.confidence === null ? notSupplied : l.number(snapshot.confidence)], [l.t("snapshot.category"), snapshot.category ?? notSupplied],
   ];
-  return html`<article><h3>${snapshot.common_name ?? snapshot.latin_name ?? l.t("snapshot.species")}</h3><p><i>${snapshot.latin_name}</i></p>
-    <dl>${fields.map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl>
-    <h4>${l.t("snapshot.imported_defaults")}</h4>${keys.map(k => html`<p>${thresholdKeyLabel(l, k)}: ${snapshot.threshold_defaults.moisture?.[k] === undefined ? l.t("snapshot.default_not_supplied") : l.number(snapshot.threshold_defaults.moisture[k])}</p>`)}
-    ${Object.entries(snapshot.care_text).map(([k, v]) => html`<h4>${k}</h4><p class="prose">${v}</p>`)}
-    <details><summary>${l.t("snapshot.field_attribution")}</summary>${Object.entries(snapshot.field_sources).map(([k, v]) => html`<p>${k}: ${v}</p>`)}</details>
-    ${preview ? html`<h4>${l.t("snapshot.proposed_changes")}</h4>${Object.entries(preview.diff).map(([k, v]) => html`<p>${k}: ${JSON.stringify(v.before)} → ${JSON.stringify(v.after)}</p>`)}<p>${l.t("snapshot.preview_read_only")}</p>` : nothing}</article>`;
+  const moisture = snapshot.threshold_defaults.moisture;
+  const care = Object.entries(snapshot.care_text);
+  const shortValue = (value: unknown): string => {
+    const text = value === null || value === undefined ? "—" : typeof value === "string" ? value : JSON.stringify(value);
+    return text.length > 80 ? `${text.slice(0, 79)}…` : text;
+  };
+  return html`<article><h3>${snapshot.common_name ?? snapshot.latin_name ?? l.t("snapshot.species")}</h3>${snapshot.latin_name && snapshot.latin_name !== snapshot.common_name ? html`<p><i>${snapshot.latin_name}</i></p>` : nothing}
+    <p class="snapshot-targets">${l.t("snapshot.imported_defaults")}: ${keys.map(k => `${thresholdKeyLabel(l, k)} ${moisture?.[k] === undefined ? "—" : l.percent(moisture[k])}`).join(" · ")}</p>
+    ${keys.some(k => moisture?.[k] === undefined) ? html`<p class="small muted">${l.t("snapshot.default_not_supplied")}</p>` : nothing}
+    ${care.length ? html`<details><summary>${l.t("snapshot.care_notes")}</summary>${care.map(([k, v]) => html`<h4>${k}</h4><p class="prose">${v}</p>`)}</details>` : nothing}
+    <details><summary>${l.t("snapshot.source_details")}</summary>
+      <dl>${fields.map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl>
+      <h4>${l.t("snapshot.field_attribution")}</h4>${Object.entries(snapshot.field_sources).map(([k, v]) => html`<p>${k}: ${v}</p>`)}
+      ${preview ? html`<h4>${l.t("snapshot.proposed_changes")}</h4>${Object.entries(preview.diff).map(([k, v]) => html`<p>${k}: ${shortValue(v.before)} → ${shortValue(v.after)}</p>`)}` : nothing}
+    </details>
+    ${preview ? html`<p class="small muted">${l.t("snapshot.preview_read_only")}</p>` : nothing}</article>`;
 }

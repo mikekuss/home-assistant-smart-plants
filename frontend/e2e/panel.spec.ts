@@ -459,7 +459,8 @@ test("wizard species search is read-only until explicit preview acceptance and f
   await page.getByLabel("Search OpenPlantBook", { exact: true }).fill("aloe");
   await button(page, "Search").click();
   await button(page, "Aloe vera · Aloe vera").click();
-  await expect(page.getByText("target: Not supplied (built-in default applies)", { exact: true })).toBeVisible();
+  await expect(page.getByText(/target — ·/)).toBeVisible();
+  await expect(page.getByText("Values marked — are not supplied by the species; the built-in default applies.", { exact: true })).toBeVisible();
   expect(await inventory(page)).toHaveLength(0);
   await button(page, "Create plant").click();
   await expect(page.getByRole("alert").filter({ hasText: "Review and explicitly accept the selected species" })).toBeVisible();
@@ -495,7 +496,7 @@ test("existing-plant provider preview, cancel, reviewed apply and refresh preser
   await page.keyboard.press("Shift+Tab");
   await expect(button(page, "Accept and apply reviewed species")).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("dialog").locator("summary")).toBeFocused();
+  await expect(page.getByRole("dialog").locator("summary").first()).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(button(page, "Aloe vera · Aloe vera")).toBeFocused();
   await page.keyboard.press("Enter");
@@ -682,10 +683,8 @@ test("image validation and backend errors remain actionable and sanitized", asyn
   await page.getByLabel("Add photo", { exact: true }).setInputFiles({ name: "broken.png", mimeType: "image/png", buffer: Buffer.from("broken") });
   await expect(page.getByRole("alert")).toBeVisible();
   expect(await page.evaluate(() => window.__smartPlantsHarness.requests)).toHaveLength(0);
-  await photo(page, "Add photo", 2049);
-  await expect(page.getByRole("alert")).toContainText("2048");
-  await page.getByLabel("Add photo", { exact: true }).setInputFiles({ name: "large.png", mimeType: "image/png", buffer: Buffer.alloc(5 * 1024 * 1024 + 1) });
-  await expect(page.getByRole("alert")).toContainText("5 MiB");
+  await page.getByLabel("Add photo", { exact: true }).setInputFiles({ name: "large.png", mimeType: "image/png", buffer: Buffer.alloc(40 * 1024 * 1024 + 1) });
+  await expect(page.getByRole("alert")).toContainText("40 MiB");
   expect(await page.evaluate(() => window.__smartPlantsHarness.requests)).toHaveLength(0);
   await page.evaluate(() => { window.__smartPlantsHarness.imageFailure = "invalid_format"; });
   await photo(page, "Add photo");
@@ -694,6 +693,20 @@ test("image validation and backend errors remain actionable and sanitized", asyn
   await page.evaluate(() => { window.__smartPlantsHarness.imageFailure = null; });
   await photo(page, "Add photo");
   await expect(page.getByAltText("Photo of Office Aloe")).toHaveJSProperty("naturalWidth", 160);
+});
+
+test("large photos are scaled down in the browser before upload", async ({ page }) => {
+  await detail(page);
+  await page.evaluate(() => {
+    const upstream = window.fetch; const w = window as unknown as { uploadedSize?: number[] };
+    window.fetch = async (input, init) => {
+      if (init?.method === "POST" && init.body instanceof Blob) { const bitmap = await createImageBitmap(init.body); w.uploadedSize = [bitmap.width, bitmap.height]; bitmap.close(); }
+      return upstream(input, init);
+    };
+  });
+  await photo(page, "Add photo", 3000);
+  await expect.poll(() => page.evaluate(() => (window as unknown as { uploadedSize?: number[] }).uploadedSize)).toEqual([2048, 82]);
+  await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
 test("late image reads and uploads cannot replace a newer navigation context", async ({ page }) => {
@@ -1163,7 +1176,7 @@ test("axe full-rule audit and screenshots cover overview, every wizard step, det
   await button(page, "Aloe vera · Aloe vera").click();
   await expect(page.getByLabel("I reviewed and accept this species information")).toBeVisible();
   await audit(page, info, "wizard-provider-preview"); await screenshot(page, info, "wizard-provider-preview");
-  await page.locator("smart-plants-wizard .preview summary").click();
+  await page.locator("smart-plants-wizard .preview summary", { hasText: "Source details" }).click();
   await page.getByLabel("I reviewed and accept this species information").click();
   await audit(page, info, "wizard-provider-attribution-expanded");
   await start(page, "Offline Aloe");

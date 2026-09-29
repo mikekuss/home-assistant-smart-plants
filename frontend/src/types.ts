@@ -164,6 +164,8 @@ export interface HomeAssistantLike {
     subscribeEvents?<T>(callback: (event: T) => void, event: string): Promise<() => void>;
   };
   states?: Record<string, HAState>;
+  // Area registry snapshot the frontend keeps for its own pickers.
+  areas?: Record<string, { area_id?: unknown; name?: unknown }>;
   language?: string;
   // Profile language and number/date/time format preferences (HA frontend).
   locale?: HALocale;

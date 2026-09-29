@@ -12,8 +12,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   *Smart Plants was updated* with a **Reload** button, instead of silently staying on the old
   version until the page is reloaded.
 
+### Changed
+
+- Large photos, such as photos taken with a phone, are scaled down in the browser to
+  2048 × 2048 pixels before upload instead of being rejected. Files up to 40 MiB are accepted.
+- The OpenPlantBook species preview is shorter: it shows the species, the imported moisture
+  targets and collapsible care notes. Provider details and the change list are under
+  **Source details**.
+
 ### Fixed
 
+- In the add-plant wizard, an area chosen in the area picker is no longer reported as
+  missing (and shown by its ID) while the panel's area list could not be loaded.
+- The species search field and the other fields in the wizard's collapsible sections no
+  longer touch the section header.
 - The panel no longer refuses every sensor and area when a single Home Assistant registry
   entry has an unexpected shape (for example a numeric unique ID left by an older
   integration). Such entries are skipped, and the remaining sensors and areas load normally.

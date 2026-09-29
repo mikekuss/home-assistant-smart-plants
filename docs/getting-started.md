@@ -178,9 +178,9 @@ entered, giving the soil sensor time to catch up. See
 Add or change a photo in the **Settings** tab under **Photo** (or during creation).
 
 - Formats: JPEG, PNG, or WebP.
-- Maximum file size: 5 MiB.
-- Maximum dimensions: 2048 × 2048 pixels. Larger images are rejected, not resized, so scale
-  them down first.
+- Photos larger than 2048 × 2048 pixels or 5 MiB, such as photos straight from a phone
+  camera, are scaled down in your browser before upload (up to 40 MiB and 64 megapixels).
+  The photo keeps its aspect ratio and orientation.
 
 Smart Plants re-encodes every photo to WebP and strips metadata such as EXIF (including
 location data) before storing it locally. Photos are only served to logged-in administrators.

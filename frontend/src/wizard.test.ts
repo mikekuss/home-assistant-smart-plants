@@ -82,6 +82,14 @@ describe("three-step creation wizard", () => {
     expect(text(el)).not.toContain(draft.draft_token);
   });
 
+  it("accepts an area known to Home Assistant's own area list while the registry request is unavailable", async () => {
+    const h = harness([]); const hass = { ...h.hass, areas: { cellar: { area_id: "cellar", name: "Cellar" } } } as HomeAssistantLike;
+    const el = await mount(hass); el.areas = []; await settle(el);
+    await fill(el, "Plant name", "Cellar Fern"); await fill(el, "Area", "cellar"); await click(el, "Next"); await click(el, "Skip for now");
+    expect(text(el)).toContain("Cellar"); expect(text(el)).not.toContain("missing area");
+    await click(el, "Create plant");
+    expect(h.calls.filter(c => c.type === "smart_plants/wizard/create")[0]).toMatchObject({ area_id: "cellar" });
+  });
   it("creates soil moisture plus two other sensors in one request, each with its main sensor", async () => {
     const h = harness([]); const el = await mount(h.hass);
     await fill(el, "Plant name", "Kitchen Fern"); await fill(el, "Area", "kitchen"); await click(el, "Next");
@@ -165,7 +173,7 @@ describe("three-step creation wizard", () => {
     const h = harness([]); const el = await mount(h.hass);
     await toReview(el, "Aloe"); await open(el, "species");
     await fill(el, "Search OpenPlantBook", "Aloe"); await click(el, "Search"); await click(el, "Aloe · Aloe vera");
-    expect(text(el)).toContain("Not supplied (built-in default applies)");
+    expect(text(el)).toContain("min 20% · target — · max 60%"); expect(text(el)).toContain("not supplied by the species"); expect(text(el)).not.toContain("Proposed changes");
     expect(h.calls.find(c => c.type === "smart_plants/wizard/preview")).toEqual({ type: "smart_plants/wizard/preview", draft_id: draft.draft_id, draft_token: draft.draft_token, expected_revision: 0, provider: "openplantbook", provider_ref: "aloe", locale: "en" });
     await click(el, "Create plant");
     expect(text(el)).toContain("Review and explicitly accept the selected species");
