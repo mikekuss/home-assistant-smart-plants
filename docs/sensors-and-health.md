@@ -6,16 +6,16 @@ indicators, and a health score.
 
 ## Supported roles
 
-| Role | Accepted source units | Valid range | Plant sensor | Problem indicator | Default aggregation |
+| Role | Accepted source units | Valid range | Plant sensor | Problem indicator | Default combination |
 | --- | --- | --- | --- | --- | --- |
-| Soil moisture | `%` | 0–100 % | Soil moisture | Needs water, Too wet, Sensor stale | primary |
-| Air temperature | `°C`, `°F`, `K` | −40 to 80 °C | Temperature | Temperature stress | average |
-| Air humidity | `%` | 0–100 % | Humidity | Humidity stress | average |
-| Illuminance | `lx` | 0–200,000 lx | Illuminance | Low light | primary |
-| Conductivity | `µS/cm` (also `μS/cm`, `uS/cm`) | 0–10,000 µS/cm | Conductivity | Conductivity stress | primary |
-| Soil temperature | `°C`, `°F`, `K` | −20 to 60 °C | Soil temperature | Soil temperature stress | primary |
-| CO₂ | `ppm` | 0–10,000 ppm | CO2 | CO2 stress | average |
-| Battery | `%` | 0–100 % | Battery | Low battery | min |
+| Soil moisture | `%` | 0–100 % | Soil moisture | Needs water, Too wet, Sensor stale | Main sensor only |
+| Air temperature | `°C`, `°F`, `K` | −40 to 80 °C | Temperature | Temperature stress | Average |
+| Air humidity | `%` | 0–100 % | Humidity | Humidity stress | Average |
+| Illuminance | `lx` | 0–200,000 lx | Illuminance | Low light | Main sensor only |
+| Conductivity | `µS/cm` (also `μS/cm`, `uS/cm`) | 0–10,000 µS/cm | Conductivity | Conductivity stress | Main sensor only |
+| Soil temperature | `°C`, `°F`, `K` | −20 to 60 °C | Soil temperature | Soil temperature stress | Main sensor only |
+| CO₂ | `ppm` | 0–10,000 ppm | CO2 | CO2 stress | Average |
+| Battery | `%` | 0–100 % | Battery | Low battery | Lowest |
 
 Notes:
 
@@ -25,28 +25,36 @@ Notes:
 - Temperatures in °F or K are converted to °C. Plant temperature sensors report in °C, and
   Home Assistant displays them in your configured unit system.
 - The panel's sensor picker filters by device class and unit (for example `moisture` for
-  soil moisture, `carbon_dioxide` for CO₂). Use **Show all sensors** if your sensor lacks a
-  device class; the unit must still match.
+  soil moisture, `carbon_dioxide` for CO₂). Use **Show all sensors (metadata fallback)** if
+  your sensor lacks a device class; the unit must still match.
+- In the panel, roles are called readings and some have plainer names: *Temperature*,
+  *Humidity*, *Light* (illuminance), and *Fertilizer level* (conductivity).
 
 ## Multiple sensors per role
 
-Each role accepts up to 32 source sensors. You choose how they are combined:
+Each role accepts up to 32 source sensors. You choose how they are combined with
+**Combine readings** in the plant's **Sensors** tab, under **Several sensors for one
+reading**:
 
-| Aggregation | Result |
+| Combine readings | Result |
 | --- | --- |
-| primary | The value of the sensor you marked as primary. There is no automatic fallback: if the primary sensor is invalid or stale, the plant value is unavailable. |
-| average | Mean of all valid, fresh sources. |
-| min | Lowest valid, fresh source. |
-| max | Highest valid, fresh source. |
+| Main sensor only | The value of the sensor you chose as **Main sensor**. There is no automatic fallback: if the main sensor is invalid or not updating, the plant value is unavailable. |
+| Average | Mean of all valid, fresh sources. |
+| Lowest | Lowest valid, fresh source. |
+| Highest | Highest valid, fresh source. |
 
-With **primary**, you must choose a primary sensor, otherwise the role has no value. With
-average, min, and max, stale or invalid sources are left out; if none remain, the value is
-unavailable.
+With **Main sensor only**, a main sensor must be chosen, otherwise the role has no value.
+Every sensor picked in the add-plant wizard becomes the main sensor for its reading. With
+**Average**, **Lowest**, and **Highest**, sources that are not updating or invalid are left
+out; if none remain, the value is unavailable.
 
 ## Staleness
 
-Each role has a **stale after** window: 6 hours by default, adjustable from 60 seconds to
-7 days. A source is stale when it hasn't delivered a valid reading within that window.
+Each role has a **Not updating after** window: 6 hours by default, adjustable from 60 seconds
+to 7 days (the field takes seconds, 60–604800) in the plant's **Sensors** tab under
+**Several sensors for one reading**. A source is stale when it hasn't delivered a valid reading within that window. The
+panel shows a stale sensor as *not updating*, and a plant whose soil moisture sensor is stale
+as *No recent data*.
 
 - A newly assigned source gets one full window as a grace period before it can be stale.
 - An assigned sensor that no longer exists counts as stale.
@@ -56,7 +64,7 @@ Each role has a **stale after** window: 6 hours by default, adjustable from 60 s
 - Some devices only send an update when their value changes. If such a sensor can stay
   silent longer than the window, increase the window for that role.
 
-For soil moisture, the **Sensor stale** entity turns on while any assigned moisture source is
+For soil moisture, the *Sensor stale* entity turns on while any assigned moisture source is
 stale. For the other roles, the problem indicator becomes unavailable while any of that
 role's sources is stale.
 
@@ -113,7 +121,9 @@ precedence.
 
 ## Health score
 
-Each plant has a **Health score** sensor from 0 to 100.
+Each plant has a **Health score** sensor from 0 to 100. The panel doesn't show it on plant
+cards; open the plant, go to the **Sensors** tab, and expand **Troubleshooting** to see the
+score under **Overall health** with the roles it includes.
 
 **Moisture part.** Moisture is scored continuously: 100 at the target, 50 at the minimum and
 at the maximum, falling to 0 at 0 % and 100 % moisture.
@@ -164,6 +174,6 @@ and creates a **Repairs** issue: "Smart Plants: assigned source missing".
 2. Choose a replacement sensor, or leave the field empty to remove the assignment.
 3. Submit.
 
-If the missing sensor was the primary one, the replacement becomes primary. The issue
-disappears on its own if the sensor comes back or you change the assignment in the panel.
-Disabled plants don't raise these issues.
+If the missing sensor was the main sensor, the replacement becomes the main sensor. The
+issue disappears on its own if the sensor comes back or you change the assignment in the
+panel. Paused plants don't raise these issues.

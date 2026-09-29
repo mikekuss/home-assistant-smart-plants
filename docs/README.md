@@ -14,8 +14,8 @@ sensors, problem indicators, and a health score for your dashboards and automati
 ## Reference
 
 - [Sensors and plant health](sensors-and-health.md) – supported sensor roles and units,
-  aggregation, staleness, problem indicators, built-in thresholds, the health score, and
-  what happens when a sensor disappears.
+  combining several sensors, sensors that stop updating, problem indicators, built-in
+  thresholds, the health score, and what happens when a sensor disappears.
 - [Entities](entities.md) – every entity a plant provides, when it's created, and its
   attributes.
 - [OpenPlantBook](openplantbook.md) – the optional species provider: credentials, search,

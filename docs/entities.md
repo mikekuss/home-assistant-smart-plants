@@ -31,8 +31,8 @@ For a plant called "Monstera" on an English-language system you get IDs like:
 - `number.monstera_moisture_minimum`
 
 Renaming the plant later does not change existing entity IDs. Check the actual IDs on the
-plant's device page (**Open Home Assistant device** in the panel) before using them in
-automations. You can rename entity IDs in Home Assistant like any other entity.
+plant's device page (**Open device** in the plant's **⋮** menu in the panel) before using
+them in automations. You can rename entity IDs in Home Assistant like any other entity.
 
 ## When entities are created
 
@@ -113,10 +113,11 @@ These show the effective moisture thresholds. Setting a value stores it as a per
 override, the same as editing it in the panel. A value that would break
 minimum < target < maximum (with at least 4 points between minimum and maximum) is rejected.
 
-## Disabled plants
+## Paused plants
 
-When you disable a plant in the panel, all of its entities stay registered but become
-unavailable until you re-enable it. Their history is kept.
+When you pause a plant in the panel (**Pause monitoring**), all of its entities stay
+registered but become unavailable until you resume it (**Resume monitoring**). Their history
+is kept.
 
 ## Not exposed as entities
 

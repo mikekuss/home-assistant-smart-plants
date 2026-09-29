@@ -10,7 +10,7 @@ Smart Plants takes a different approach:
 - plants are created and edited in a sidebar panel, without YAML,
 - each plant is a Home Assistant device with separate sensor, problem, and threshold
   entities,
-- each role can use several sensors with a chosen aggregation,
+- each role can use several sensors, combined the way you choose,
 - a combined health score, care history, photos, and optional OpenPlantBook species data.
 
 Pick whichever fits your setup. Both can be installed at the same time; they don't share
@@ -52,8 +52,8 @@ provider. See [backup and restore](installation.md#backup-and-restore).
 ## Can I use several sensors for one plant?
 
 Yes. Each role (soil moisture, temperature, humidity, and so on) accepts up to 32 sensors.
-You choose whether the plant uses a primary sensor or the average, minimum, or maximum of all
-valid sensors. See [Sensors and health](sensors-and-health.md#multiple-sensors-per-role).
+You choose whether the plant uses one main sensor or the average, lowest, or highest value of
+all valid sensors. See [Sensors and health](sensors-and-health.md#multiple-sensors-per-role).
 
 ## Can one sensor be used by several plants?
 
