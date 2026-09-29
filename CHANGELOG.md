@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- The panel no longer refuses every sensor and area when a single Home Assistant registry
+  entry has an unexpected shape (for example a numeric unique ID left by an older
+  integration). Such entries are skipped, and the remaining sensors and areas load normally.
+- Clearer wording for the banner shown when sensors and areas cannot be loaded.
+
 ## [0.5.0] - 2026-09-29
 
 ### Changed

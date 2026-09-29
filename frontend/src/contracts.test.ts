@@ -26,8 +26,15 @@ describe("v1 transport and public Home Assistant wrappers", () => {
     expect(h.calls.map(c => c.type)).toEqual(["config/area_registry/list", "config/device_registry/list", "config/entity_registry/list", "get_states", "search/related"]);
     expect(h.calls.at(-1)).toEqual({ type: "search/related", item_type: "device", item_id: "device-1" });
   });
-  it.each(["areas", "devices", "entities", "states"] as const)("rejects malformed public %s results instead of using guessed IDs", async method => {
-    const h = harness([], () => [{ id: "not-enough" }]); await expect(api[method](h.hass)).rejects.toMatchObject({ code: "invalid_response" });
+  it.each(["areas", "devices", "entities", "states"] as const)("rejects non-list public %s results", async method => {
+    const h = harness([], () => ({ id: "not-a-list" })); await expect(api[method](h.hass)).rejects.toMatchObject({ code: "invalid_response" });
+  });
+  it("skips malformed registry entries instead of using guessed IDs or dropping the whole list", async () => {
+    const good = { id: "reg-1", entity_id: "sensor.mock_moisture", unique_id: "mock-1", platform: "mock", device_id: null };
+    const legacy = { ...good, id: "reg-2", entity_id: "sensor.mock_legacy", unique_id: 42 };
+    const h = harness([], msg => msg.type === "config/entity_registry/list" ? [good, legacy, null, { id: "not-enough" }] : msg.type === "config/device_registry/list" ? [{ id: "dev-1", area_id: null, identifiers: [["mock", "a"]] }, { id: "dev-2", area_id: null, identifiers: [["mock", 7]] }] : undefined);
+    expect(await api.entities(h.hass)).toEqual([good]);
+    expect((await api.devices(h.hass)).map(d => d.id)).toEqual(["dev-1"]);
   });
   it("releases already admitted subscriptions if a later registry subscription fails", async () => {
     const unsubscribe = vi.fn(); let count = 0;

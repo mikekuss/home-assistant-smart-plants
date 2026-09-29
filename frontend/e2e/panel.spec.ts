@@ -1052,9 +1052,9 @@ test("wizard cancel, confirmation and add another start fresh drafts", async ({ 
 
 test("malformed plant, registry, evaluation and API-version responses fail closed and recover", async ({ page }) => {
   await detail(page, "Office Aloe", "Sensors");
-  await page.evaluate(() => { window.__smartPlantsHarness.malformed["config/entity_registry/list"] = [{ entity_id: "sensor.bad" }]; });
+  await page.evaluate(() => { window.__smartPlantsHarness.malformed["config/entity_registry/list"] = { entity_id: "sensor.bad" }; });
   await refreshData(page);
-  await expect(page.getByRole("alert")).toContainText("Registry/state data unavailable");
+  await expect(page.getByRole("alert")).toContainText("Couldn't load sensors and areas");
   await openMoisture(page, "pick");
   await button(page, "Save soil moisture sensors").click();
   expect(await messages(page, "moisture/configure")).toHaveLength(0);
