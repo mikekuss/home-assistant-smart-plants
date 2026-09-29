@@ -253,15 +253,17 @@ async function audit(page: Page, info: TestInfo, name: string) {
   for (const rule of result.incomplete) {
     expect(rule.id).toBe("color-contrast");
     for (const node of rule.nodes) {
-      // Only text inside the open modal dialog may be reported this way.
+      // Only text and buttons inside the open modal dialog may be reported this way.
       const [host, selector] = node.target[0] as unknown as [string, string];
       expect(host).toBe("smart-plants-panel");
       expect(node.any).toHaveLength(1);
       expect(node.any[0]!.data.messageKey).toBe("elmPartiallyObscuring");
-      const evidence = await page.locator(`smart-plants-panel ${selector}`).and(page.locator("smart-plants-panel dialog p")).first().evaluate(el => {
+      const evidence = await page.locator(`smart-plants-panel ${selector}`).and(page.locator("smart-plants-panel dialog p, smart-plants-panel dialog button")).first().evaluate(el => {
         const dialog = el.closest("dialog")!;
         const root = el.getRootNode() as ShadowRoot;
-        const text = getComputedStyle(el), surface = getComputedStyle(dialog);
+        // A filled button is its own text surface; other text sits on the dialog.
+        const filled = el.tagName === "BUTTON" && getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)";
+        const text = getComputedStyle(el), surface = getComputedStyle(filled ? el : dialog);
         const range = document.createRange(); range.selectNodeContents(el);
         const visible = [...range.getClientRects()].every(r => r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth && [r.left + 1, (r.left + r.right) / 2, r.right - 1].every(x => {
           const hit = root.elementFromPoint(x, (r.top + r.bottom) / 2); return hit === el || (hit !== null && el.contains(hit));
@@ -272,12 +274,12 @@ async function audit(page: Page, info: TestInfo, name: string) {
           return channels[0]! * .2126 + channels[1]! * .7152 + channels[2]! * .0722;
         };
         const a = luminance(text.color), b = luminance(surface.backgroundColor);
-        return { foreground: text.color, background: surface.backgroundColor, ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05), visible, modal: dialog.matches(":modal"), opacity: [text.opacity, surface.opacity], backgrounds: [text.backgroundImage, surface.backgroundImage], textBackground: text.backgroundColor };
+        return { foreground: text.color, background: surface.backgroundColor, ratio: (Math.max(a, b) + .05) / (Math.min(a, b) + .05), visible, modal: dialog.matches(":modal"), opacity: [text.opacity, surface.opacity], backgrounds: [text.backgroundImage, surface.backgroundImage], textBackground: filled ? "rgba(0, 0, 0, 0)" : text.backgroundColor };
       });
       expect(evidence).toMatchObject({ visible: true, modal: true, opacity: ["1", "1"], backgrounds: ["none", "none"], textBackground: "rgba(0, 0, 0, 0)" });
       expect(evidence.ratio).toBeGreaterThanOrEqual(4.5);
       await info.attach(`contrast-verification-${name}`, { body: JSON.stringify(evidence, null, 2), contentType: "application/json" });
-      process.stdout.write(`Verified ${info.project.name}/${name} modal text: ${evidence.ratio.toFixed(2)}:1; unobscured text; 0 unresolved checks\n`);
+      process.stdout.write(`Verified ${info.project.name}/${name} modal ${selector}: ${evidence.ratio.toFixed(2)}:1; unobscured text; 0 unresolved checks\n`);
     }
   }
   await noOverflow(page);
