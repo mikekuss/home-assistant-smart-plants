@@ -669,7 +669,8 @@ export class SmartPlantsWizard extends LitElement {
       <h2 tabindex="-1">${l.t("wizard.done_heading", { name: plant.name })}</h2>
       <p>${areaName ? l.t("wizard.done_body_area", { area: areaName }) : l.t("wizard.done_body")}</p>
       <p class="small" role="status">${this.photoStatus}</p>
-      <div class="row"><button type="button" class="btn filled" @click=${() => this.emit("wizard-close")}>${l.t("wizard.back_to_plants")}</button>
+      <div class="row"><button type="button" class="btn filled" @click=${() => this.dispatchEvent(new CustomEvent("wizard-open-plant", { detail: { plantId: plant.id }, bubbles: true, composed: true }))}>${l.t("wizard.open_plant")}</button>
+        <button type="button" class="btn outline" @click=${() => this.emit("wizard-close")}>${l.t("wizard.back_to_plants")}</button>
         <button type="button" class="btn outline" ?disabled=${this.blocked} @click=${() => this.restart()}>${l.t("wizard.add_another_plant")}</button></div>
     </div></div>`;
   }

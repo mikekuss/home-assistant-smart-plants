@@ -80,6 +80,12 @@ export function panelText(panel: { shadowRoot: ShadowRoot | null }): string {
 }
 export async function settle(element: { updateComplete: Promise<unknown> }): Promise<void> { await element.updateComplete; await new Promise(resolve => setTimeout(resolve, 0)); await element.updateComplete; }
 export function button(root: ShadowRoot, name: string): HTMLButtonElement {
+  if (name === "Back to overview" && root.querySelector("ha-icon-button.back")) {
+    const back = root.querySelector<HTMLElement>("ha-icon-button.back")!;
+    const proxy = document.createElement("button");
+    proxy.click = () => back.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
+    return proxy;
+  }
   if (name === "Add plant" || name === "Back to overview") {
     const value = name === "Add plant" ? "add-plant" : "back-to-overview";
     const item = root.querySelector<HTMLElement>(`ha-dropdown-item[value="${value}"]`);
@@ -93,6 +99,16 @@ export function button(root: ShadowRoot, name: string): HTMLButtonElement {
   const overview = root.querySelector("smart-plants-overview");
   const scopes = overview?.shadowRoot && !overview.hidden ? [root, overview.shadowRoot] : [root];
   const result = scopes.flatMap(scope => [...scope.querySelectorAll("button")]).find(b => b.textContent?.trim() === name);
+  if (!result) {
+    // Row and overflow menus: selecting an item reports its value to the menu.
+    const item = [...root.querySelectorAll<HTMLElement>("ha-dropdown-item")].find(i => i.textContent?.trim() === name);
+    if (item) {
+      const proxy = document.createElement("button");
+      proxy.disabled = item.hasAttribute("disabled");
+      proxy.click = () => item.dispatchEvent(new CustomEvent("wa-select", { bubbles: true, composed: true, detail: { item: { value: item.getAttribute("value") } } }));
+      return proxy;
+    }
+  }
   expect(result, `button ${name}`).toBeDefined(); return result!;
 }
 export async function click(element: { shadowRoot: ShadowRoot | null; updateComplete: Promise<unknown> }, name: string): Promise<void> {

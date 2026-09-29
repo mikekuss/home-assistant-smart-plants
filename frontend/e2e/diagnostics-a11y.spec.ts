@@ -29,13 +29,27 @@ const EDITORS: EditorSpec[] = [
   { problemRole: "low_light", displayName: "Low light", firstFieldLabel: "Target (lx)", outOfRangeValue: "999999", otherRole: "temperature_stress", otherFieldLabel: "Cold trigger (°C)" },
 ];
 
+async function expand(page: Page, name: string) {
+  const toggle = page.getByRole("button", { name: new RegExp(`^${name}`) });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}
+// Threshold editors live under Settings, "Other targets".
 async function openDiagnostics(page: Page) {
   await page.goto(`${url}?diagnostics`);
   await expect(button(page, "Menu")).toBeVisible();
   await button(page, "Diagnostics Plant").click();
-  await button(page, "Diagnostics").click();
-  await expect(page.getByRole("heading", { name: "Diagnostics Plant", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Advanced diagnostics", exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Settings", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Diagnostics Plant", level: 2, exact: true })).toBeVisible();
+  await expand(page, "Other targets");
+}
+// Problem checks and the overall health live under Sensors, "Troubleshooting".
+async function openTroubleshooting(page: Page) {
+  await page.goto(`${url}?diagnostics`);
+  await button(page, "Diagnostics Plant").click();
+  await page.getByRole("tab", { name: "Sensors", exact: true }).click();
+  await expand(page, "Troubleshooting");
+  await expect(page.getByRole("heading", { name: "Problem checks", exact: true })).toBeVisible();
 }
 
 async function audit(page: Page, info: TestInfo, name: string) {
@@ -55,7 +69,7 @@ async function audit(page: Page, info: TestInfo, name: string) {
 }
 
 async function toggleEditor(page: Page, roleLabel: string) {
-  const container = page.locator(`smart-plants-panel dl.diagnostics dt:text-is("${roleLabel}") + dd`);
+  const container = page.locator(`smart-plants-panel dl.other-targets dt:text-is("${roleLabel}") + dd`);
   const toggle = container.getByRole("button", { name: "Edit thresholds", exact: true });
   await expect(toggle).toBeVisible();
   await toggle.click();
@@ -64,7 +78,7 @@ async function toggleEditor(page: Page, roleLabel: string) {
 async function closeIfOpen(page: Page, roleLabel: string) {
   // The toggle button becomes labelled "Cancel" while an editor is open;
   // clicking it closes the editor without ambiguity with the actions row.
-  const toggle = page.locator(`smart-plants-panel dl.diagnostics dt:text-is("${roleLabel}") + dd button.threshold-toggle`);
+  const toggle = page.locator(`smart-plants-panel dl.other-targets dt:text-is("${roleLabel}") + dd button.threshold-toggle`);
   if (await toggle.getAttribute("aria-expanded") === "true") await toggle.click();
 }
 
@@ -83,10 +97,19 @@ test.afterEach(async ({ page }) => {
   expect(unexpected).toEqual([]);
 });
 
-test("read-only diagnostics baseline: all seven rows editable-closed pass axe", async ({ page }, info) => {
+test("troubleshooting lists every problem check read-only and passes axe", async ({ page }, info) => {
+  await openTroubleshooting(page);
+  const checks = page.locator("smart-plants-panel dl.diagnostics");
+  for (const spec of EDITORS) await expect(checks.locator(`dt:text-is("${spec.displayName}") + dd`)).toContainText("no problem");
+  await expect(checks.getByRole("button")).toHaveCount(0);
+  await expect(page.locator("smart-plants-panel dl.entity-ids")).toContainText(`Plant ID`);
+  await audit(page, info, "troubleshooting");
+});
+
+test("other targets baseline: all seven rows editable-closed pass axe", async ({ page }, info) => {
   await openDiagnostics(page);
   for (const spec of EDITORS) {
-    const row = page.locator(`smart-plants-panel dl.diagnostics dt:text-is("${spec.displayName}") + dd`);
+    const row = page.locator(`smart-plants-panel dl.other-targets dt:text-is("${spec.displayName}") + dd`);
     await expect(row.getByRole("button", { name: "Edit thresholds", exact: true })).toBeVisible();
     await expect(row.getByRole("group")).toHaveCount(0);
   }
@@ -101,7 +124,7 @@ for (const spec of EDITORS) {
     await expect(editor).toBeVisible();
     await expect(editor).toHaveAttribute("role", "group");
     // Toggle carries aria-expanded=true and controls the editor id.
-    const toggle = page.locator(`smart-plants-panel dl.diagnostics dt:text-is("${spec.displayName}") + dd button.threshold-toggle`);
+    const toggle = page.locator(`smart-plants-panel dl.other-targets dt:text-is("${spec.displayName}") + dd button.threshold-toggle`);
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
     await expect(toggle).toHaveAttribute("aria-controls", `${spec.problemRole}-editor`);
     // Edit a field to a value that fails parse/range and press Save to surface inline error.
@@ -131,7 +154,7 @@ test("cross-editor unsaved-changes alert: keyboard reachable, discard-and-switch
   const firstEditor = page.locator(`smart-plants-panel div#${first.problemRole}-editor`);
   await firstEditor.getByLabel(first.firstFieldLabel, { exact: true }).fill("11.5");
   // Try to open the second editor — the shared alert must appear.
-  const secondToggle = page.locator(`smart-plants-panel dl.diagnostics dt:text-is("${second.displayName}") + dd button.threshold-toggle`);
+  const secondToggle = page.locator(`smart-plants-panel dl.other-targets dt:text-is("${second.displayName}") + dd button.threshold-toggle`);
   await secondToggle.click();
   const alert = page.locator("smart-plants-panel p.threshold-switch-alert");
   await expect(alert).toBeVisible();
@@ -168,7 +191,7 @@ test("cross-editor unsaved-changes alert: keyboard reachable, discard-and-switch
 });
 
 test("overall health composite section renders and passes axe", async ({ page }, info) => {
-  await openDiagnostics(page);
+  await openTroubleshooting(page);
   const heading = page.getByRole("heading", { name: "Overall health", exact: true });
   await expect(heading).toBeVisible();
   const section = page.locator("smart-plants-panel section[aria-labelledby='overall-health-heading']");
@@ -191,7 +214,7 @@ test("overall health composite section renders and passes axe", async ({ page },
 test("toggle button focus and keyboard behavior for every editor row", async ({ page }, info) => {
   await openDiagnostics(page);
   for (const spec of EDITORS) {
-    const toggle = page.locator(`smart-plants-panel dl.diagnostics dt:text-is("${spec.displayName}") + dd button.threshold-toggle`);
+    const toggle = page.locator(`smart-plants-panel dl.other-targets dt:text-is("${spec.displayName}") + dd button.threshold-toggle`);
     await toggle.focus();
     await expect(toggle).toBeFocused();
     await expect(toggle).toHaveAttribute("aria-expanded", "false");

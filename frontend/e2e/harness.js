@@ -298,7 +298,7 @@ window.__smartPlantsHarness = state;
 if (!customElements.get("ha-top-app-bar-fixed")) {
   customElements.define("ha-top-app-bar-fixed", class extends HTMLElement {
     constructor() {
-      super(); this.attachShadow({ mode: "open" }).innerHTML = `<style>:host{display:block;position:relative;height:100vh;overflow:hidden}.top-app-bar{position:absolute;top:0;left:0;right:0;z-index:4;box-sizing:border-box;width:100%;height:var(--header-height,56px);display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:var(--app-header-background-color,#fff);color:var(--app-header-text-color,#212121);border-bottom:1px solid var(--divider-color,#ddd)}.title{display:flex;align-items:center;min-width:0;flex:1}.title h1{font-size:20px;font-weight:400;line-height:56px;margin:0;padding-inline-start:24px}.actions{display:flex;align-items:center;gap:8px}.content{position:absolute;top:var(--header-height,56px);left:0;right:0;bottom:0;overflow:auto}</style><header class="top-app-bar"><div class="title"><slot name="title"></slot></div><div class="actions"><slot name="actionItems"></slot></div></header><div class="content"><slot></slot></div>`;
+      super(); this.attachShadow({ mode: "open" }).innerHTML = `<style>:host{display:block;position:relative;height:100vh;overflow:hidden}.top-app-bar{position:absolute;top:0;left:0;right:0;z-index:4;box-sizing:border-box;width:100%;height:var(--header-height,56px);display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:var(--app-header-background-color,#fff);color:var(--app-header-text-color,#212121);border-bottom:1px solid var(--divider-color,#ddd)}.title{display:flex;align-items:center;min-width:0;flex:1}.title h1{font-size:20px;font-weight:400;line-height:56px;margin:0;padding-inline-start:24px}.actions{display:flex;align-items:center;gap:8px}.content{position:absolute;top:var(--header-height,56px);left:0;right:0;bottom:0;overflow:auto}</style><header class="top-app-bar"><div class="title"><slot name="navigationIcon"></slot><slot name="title"></slot></div><div class="actions"><slot name="actionItems"></slot></div></header><div class="content"><slot></slot></div>`;
   }
   });
 }
@@ -404,6 +404,37 @@ if (!customElements.get("ha-selector")) {
       if (!this.isConnected) return;
       this.shadowRoot.innerHTML = `${fieldStyle}<div class="field"><label for="f">${esc(this._label)}</label><input id="f" type="date" value="${esc(this._value)}"></div>`;
       this.shadowRoot.querySelector("input").addEventListener("change", event => this.dispatchEvent(new CustomEvent("value-changed", { detail: { value: event.target.value || null } })));
+    }
+  });
+}
+// Tabs as Home Assistant renders them: the group owns the tab list, each tab
+// carries role="tab" and the group reports the chosen panel with `wa-tab-show`.
+if (!customElements.get("ha-tab-group")) {
+  customElements.define("ha-tab-group", class extends HTMLElement {
+    constructor() {
+      super(); this.attachShadow({ mode: "open" }).innerHTML = `<style>:host{display:block}.nav{display:flex;gap:4px;border-bottom:2px solid var(--divider-color,#e0e0e0);overflow-x:auto}</style><div class="nav" role="tablist"><slot name="nav"></slot></div><slot></slot>`;
+      this.addEventListener("click", event => { const tab = event.target.closest?.("ha-tab-group-tab"); if (tab) this.show(tab); });
+      this.addEventListener("keydown", event => {
+        const tabs = [...this.querySelectorAll("ha-tab-group-tab")]; const index = tabs.indexOf(event.target.closest?.("ha-tab-group-tab"));
+        if (index < 0) return;
+        const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1;
+        if (next < 0) return;
+        event.preventDefault(); tabs[next].focus(); this.show(tabs[next]);
+      });
+    }
+    show(tab) { this.dispatchEvent(new CustomEvent("wa-tab-show", { bubbles: true, composed: true, detail: { name: tab.panel } })); }
+  });
+}
+if (!customElements.get("ha-tab-group-tab")) {
+  customElements.define("ha-tab-group-tab", class extends HTMLElement {
+    set active(value) { this._active = Boolean(value); this.sync(); }
+    get active() { return Boolean(this._active); }
+    set panel(value) { this._panel = value; }
+    get panel() { return this._panel ?? this.getAttribute("panel"); }
+    connectedCallback() { this.setAttribute("role", "tab"); this.sync(); }
+    sync() {
+      this.setAttribute("aria-selected", this.active ? "true" : "false"); this.tabIndex = this.active ? 0 : -1;
+      Object.assign(this.style, { display: "inline-flex", alignItems: "center", padding: "0 16px", minHeight: "48px", cursor: "pointer", fontWeight: "500", color: this.active ? "color-mix(in srgb, var(--primary-color, #009ac7) 70%, var(--primary-text-color, #212121))" : "var(--secondary-text-color, #5f5f5f)", borderBottom: this.active ? "2px solid var(--primary-color, #009ac7)" : "2px solid transparent", marginBottom: "-2px" });
     }
   });
 }
