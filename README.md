@@ -12,7 +12,7 @@ native Home Assistant automations — no YAML or template sensors required.
 
 ![Smart Plants panel overview with status tiles, search and plant cards](docs/images/overview.png)
 
-> **Status:** early development (0.3). Expect rough edges and make sure your Home Assistant
+> **Status:** early development. Expect rough edges and make sure your Home Assistant
 > backups include Smart Plants data (see [Installation](docs/installation.md#backup-and-restore)).
 
 ## Features

@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-29
+
 ### Changed
 
 - New plant overview in the panel. Summary tiles (All plants, Needs water, Problems, Sensor
@@ -131,7 +133,8 @@ First public release.
 - English and German translations for the integration's entities, setup, and repairs. The
   sidebar panel is English-only.
 
-[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.5.0...HEAD
+[0.5.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.2.0...0.3.0
