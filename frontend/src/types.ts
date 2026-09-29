@@ -204,9 +204,11 @@ export interface WizardCreateInput {
   area_id?: string | null;
   species?: PlantSpecies | null;
   accepted_preview?: { preview_token: string; provider: string; operation: "select" };
+  // Non-moisture roles configured together with the plant, validated like the roles/* commands.
+  roles?: Record<string, { sources: SensorSource[]; primary_entity_id?: string | null; aggregation?: RoleSourceConfig["aggregation"]; stale_after_seconds?: number }>;
 }
 export interface HAArea { area_id: string; name: string }
-export interface HAEntity { id: string; entity_id: string; device_id: string | null; unique_id: string; platform: string }
+export interface HAEntity { id: string; entity_id: string; device_id: string | null; unique_id: string; platform: string; area_id?: string | null }
 export interface HADevice { id: string; area_id: string | null; identifiers: [string, string][]; name_by_user?: string | null }
 export interface HAState { entity_id: string; state: string; attributes: Record<string, unknown>; last_updated: string }
 export interface Evaluation {

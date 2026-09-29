@@ -129,11 +129,20 @@ async function menuAction(page: Page, name: string) {
   await item.press("Enter");
 }
 async function addPlant(page: Page) { await menuAction(page, "Add plant"); }
+// The plant page has a back arrow; the wizard has its own step Back button, so
+// leave the wizard through the menu.
 async function backToOverview(page: Page) {
-  if (await button(page, "Back").count()) await button(page, "Back").click();
+  if (await page.locator("smart-plants-wizard").isVisible()) await menuAction(page, "Back to overview");
+  else if (await button(page, "Back").count()) await button(page, "Back").click();
   else await menuAction(page, "Back to overview");
 }
-const next = (page: Page) => button(page, "Next step").click();
+const next = (page: Page) => button(page, "Next").click();
+const wizard = (page: Page) => page.locator("smart-plants-wizard");
+const done = (page: Page, name: string) => page.getByRole("heading", { name: `${name} is ready`, exact: true });
+// Opens one of the review step's optional sections.
+async function section(page: Page, name: string) {
+  await wizard(page).getByRole("button", { name: new RegExp(`^${name}`) }).click();
+}
 const overview = (page: Page) => page.locator("smart-plants-overview");
 const cards = (page: Page) => overview(page).locator("article.card");
 const tile = (page: Page, name: string) => overview(page).locator("button.tile").filter({ hasText: name });
@@ -201,13 +210,20 @@ async function detail(page: Page, name = "Office Aloe", section = "Settings") {
 async function start(page: Page, name = "Manual Aloe") {
   await open(page, false);
   await overview(page).getByRole("button", { name: "Add plant", exact: true }).click();
-  await expect(button(page, "Next step")).toBeEnabled();
+  await expect(button(page, "Next")).toBeEnabled();
   await page.getByLabel("Plant name", { exact: true }).fill(name);
 }
-async function finishManual(page: Page) {
-  while (!await button(page, "Confirm and create plant").isVisible()) await next(page);
-  await button(page, "Confirm and create plant").click();
-  await expect(tab(page, "Overview")).toHaveAttribute("aria-selected", "true");
+// From the first step to the review without choosing sensors.
+async function toReview(page: Page) {
+  await next(page);
+  await button(page, "Skip for now").click();
+  await expect(page.getByRole("heading", { name: "Check and create", exact: true })).toBeVisible();
+}
+async function finishManual(page: Page, name = "Manual Aloe") {
+  if (await button(page, "Next").isVisible()) await next(page);
+  if (await button(page, "Skip for now").isVisible()) await button(page, "Skip for now").click();
+  await button(page, "Create plant").click();
+  await expect(done(page, name)).toBeVisible();
 }
 async function photo(page: Page, label: string, width = 160) {
   const data = await page.evaluate(width => {
@@ -368,46 +384,54 @@ test("overview prioritizes plant summaries with compact filters and native-style
   expect(registrations).toEqual({ panelUnchanged: true, wizardUnchanged: true });
 });
 
-test("manual creation skips provider preview and retains back navigation", async ({ page }) => {
+test("wizard creates soil moisture and two more sensors in one request and keeps every choice on the way back", async ({ page }) => {
   await start(page);
-  await page.getByLabel("Acquired date", { exact: true }).fill("2026-09-01");
-  await page.getByRole("combobox", { name: "Home Assistant area", exact: true }).selectOption("office");
-  await page.getByRole("combobox", { name: "Placement", exact: true }).selectOption("indoor");
-  await page.getByRole("combobox", { name: "Sun exposure", exact: true }).selectOption("partial_sun");
-  await page.getByRole("combobox", { name: "Container", exact: true }).selectOption("true");
+  await page.getByLabel("Area", { exact: true }).selectOption("office");
   await next(page);
-  await page.getByLabel("Common name", { exact: true }).fill("Aloe");
-  await page.getByLabel("Scientific name", { exact: true }).fill("Aloe vera");
-  await button(page, "Previous step").click();
+  await expect(page.getByRole("heading", { name: "Suggested from Office", exact: true })).toBeVisible();
+  await page.getByLabel("Soil moisture sensor", { exact: true }).selectOption("sensor.soil");
+  await expect(wizard(page).getByText("Soil moisture · now 12%", { exact: true })).toBeVisible();
+  await button(page, "Add Living room temperature").click();
+  await button(page, "Add another sensor").click();
+  await menuItem(page, "Battery").focus(); await menuItem(page, "Battery").press("Enter");
+  await page.getByLabel("Battery sensor", { exact: true }).selectOption("sensor.pot_battery");
+  await expect(wizard(page).getByText("Battery · now 80%", { exact: true })).toBeVisible();
+  await button(page, "Back").click();
   await expect(page.getByLabel("Plant name", { exact: true })).toHaveValue("Manual Aloe");
-  await expect(page.getByRole("combobox", { name: "Home Assistant area", exact: true })).toHaveValue("office");
+  await expect(page.getByLabel("Area", { exact: true })).toHaveValue("office");
   await next(page);
-  await expect(page.getByLabel("Scientific name", { exact: true })).toHaveValue("Aloe vera");
+  for (const name of ["Soil probe", "Living room temperature", "Pot battery"]) await expect(wizard(page).getByText(name, { exact: true })).toBeVisible();
   await next(page);
-  await expect(page.getByRole("heading", { name: "Moisture sensors", exact: true })).toBeVisible();
-  await page.getByRole("combobox", { name: "Add moisture sensor", exact: true }).selectOption("sensor.soil");
-  await page.getByRole("combobox", { name: "Add moisture sensor", exact: true }).selectOption("sensor.backup");
-  await expect(page.getByText("Currently unavailable", { exact: true })).toBeVisible();
-  await page.getByRole("combobox", { name: "Main sensor", exact: true }).selectOption("sensor.soil");
-  await page.getByRole("combobox", { name: "Combine readings", exact: true }).selectOption("average");
-  await page.getByLabel("Not updating after (seconds, 60–604800)", { exact: true }).fill("3600");
-  await next(page);
-  await page.getByText("Advanced threshold overrides", { exact: true }).click();
-  await page.getByLabel("target override (%)", { exact: true }).fill("40");
-  await next(page);
+  await expect(wizard(page).getByText("Living room temperature, Pot battery", { exact: true })).toBeVisible();
+  await section(page, "More details");
+  await page.getByLabel("Date acquired", { exact: true }).fill("2026-09-01");
+  await page.getByLabel("Placement", { exact: true }).selectOption("indoor");
   await page.getByLabel("Category", { exact: true }).fill("Succulent");
-  await page.getByLabel("Tags (comma-separated)", { exact: true }).fill("sunny, office, sunny");
-  await next(page);
-  await expect(page.getByRole("heading", { name: "Review and create", exact: true })).toBeVisible();
+  await page.getByLabel("Tags", { exact: true }).fill("sunny, office, sunny");
+  await section(page, "Species and watering targets");
+  await expect(page.getByLabel("Needs water below", { exact: true })).toHaveValue("15");
+  await page.getByLabel("Ideal", { exact: true }).fill("40");
+  await button(page, "Back").click(); await next(page);
+  await expect(page.getByLabel("Ideal", { exact: true })).toHaveValue("40");
+  await expect(page.getByLabel("Tags", { exact: true })).toHaveValue("sunny, office, sunny");
   expect(await inventory(page)).toHaveLength(0);
   expect(await messages(page, "wizard/create")).toHaveLength(0);
-  await button(page, "Confirm and create plant").click();
-  await expect(page.getByRole("heading", { name: "Manual Aloe", level: 2, exact: true })).toBeVisible();
-  await show(page, "Settings");
+  await button(page, "Create plant").click();
+  await expect(done(page, "Manual Aloe")).toBeVisible();
+  await expect(wizard(page)).toContainText("The plant is now a device in Office.");
   const create = (await messages(page, "wizard/create"))[0]!;
-  expect(create).toMatchObject({ confirmed: true, expected_revision: 0, area_id: "office", tags: ["sunny", "office"], acquired_at: "2026-09-01T00:00:00.000Z", moisture: { sources: [{ entity_id: "sensor.soil", registry_id: id(101) }, { entity_id: "sensor.backup", registry_id: id(102) }], primary_entity_id: "sensor.soil", aggregation: "average", stale_after_seconds: 3600, threshold_overrides: { min: null, target: 40, max: null } } });
+  expect(create).toMatchObject({ confirmed: true, expected_revision: 0, area_id: "office", tags: ["sunny", "office"], category: "Succulent", acquired_at: "2026-09-01T00:00:00.000Z", placement: { mode: "indoor", exposure: null, rain_exposure: null, container: null },
+    moisture: { sources: [{ entity_id: "sensor.soil", registry_id: id(101) }], primary_entity_id: "sensor.soil", aggregation: "primary", stale_after_seconds: 21600, threshold_overrides: { min: null, target: 40, max: null } },
+    roles: { temperature: { sources: [{ entity_id: "sensor.living_temp", registry_id: id(104) }], primary_entity_id: "sensor.living_temp" }, battery: { sources: [{ entity_id: "sensor.pot_battery", registry_id: id(105) }], primary_entity_id: "sensor.pot_battery" } } });
   expect(create).not.toHaveProperty("accepted_preview");
   expect(create.draft_token).toHaveLength(43);
+  expect(await messages(page, "roles/set_sources")).toHaveLength(0);
+  const created = (await inventory(page))[0]!;
+  expect(created.roles!.temperature).toMatchObject({ sources: [{ entity_id: "sensor.living_temp" }], primary_entity_id: "sensor.living_temp", aggregation: "average" });
+  expect(created.roles!.battery).toMatchObject({ sources: [{ entity_id: "sensor.pot_battery" }], primary_entity_id: "sensor.pot_battery", aggregation: "min" });
+  await button(page, "Back to plants").click();
+  await expect(wizard(page)).toHaveCount(0);
+  await button(page, "Manual Aloe").click(); await show(page, "Settings");
   const stableId = (await inventory(page))[0]!.id;
   await page.getByLabel("Name", { exact: true }).fill("Edited Aloe");
   await button(page, "Save name").click();
@@ -429,26 +453,24 @@ test("manual creation skips provider preview and retains back navigation", async
   expect(await messages(page, "species/search")).toHaveLength(0);
 });
 
-test("wizard provider search is read-only until explicit preview acceptance and final confirmation", async ({ page }) => {
-  await start(page, "Provider Aloe"); await next(page);
-  await page.getByRole("button", { name: /Search OpenPlantBook/ }).click();
-  await page.getByLabel("Search OpenPlantBook (at least 3 characters)", { exact: true }).fill("aloe");
-  await button(page, "Search plants").click();
+test("wizard species search is read-only until explicit preview acceptance and final confirmation", async ({ page }) => {
+  await start(page, "Provider Aloe"); await toReview(page);
+  await section(page, "Species and watering targets");
+  await page.getByLabel("Search OpenPlantBook", { exact: true }).fill("aloe");
+  await button(page, "Search").click();
   await button(page, "Aloe vera · Aloe vera").click();
   await expect(page.getByText("target: Not supplied (built-in default applies)", { exact: true })).toBeVisible();
   expect(await inventory(page)).toHaveLength(0);
-  await next(page);
-  await expect(page.getByRole("alert")).toContainText("Explicitly accept");
-  await page.getByLabel("I reviewed and accept this species information").check();
-  await next(page); await next(page);
-  await expect(page.getByText("Current effective range:", { exact: false })).toBeVisible();
-  await page.getByText("Advanced threshold overrides", { exact: true }).click();
-  await expect(page.getByText("Default 20% · effective 20%", { exact: true })).toBeVisible();
-  await page.getByLabel("target override (%)", { exact: true }).fill("42");
-  await next(page); await next(page);
+  await button(page, "Create plant").click();
+  await expect(page.getByRole("alert").filter({ hasText: "Review and explicitly accept the selected species" })).toBeVisible();
+  expect(await messages(page, "wizard/create")).toHaveLength(0);
+  await page.getByLabel("I reviewed and accept this species information").click();
+  await expect(page.getByLabel("Needs water below", { exact: true })).toHaveValue("20");
+  await expect(page.getByLabel("Too wet above", { exact: true })).toHaveValue("60");
+  await page.getByLabel("Ideal", { exact: true }).fill("42");
   expect(await inventory(page)).toHaveLength(0);
-  await button(page, "Confirm and create plant").click();
-  await expect(page.getByRole("heading", { name: "Provider Aloe", level: 2, exact: true })).toBeVisible();
+  await button(page, "Create plant").click();
+  await expect(done(page, "Provider Aloe")).toBeVisible();
   const sent = (await messages(page, "wizard/create"))[0]!;
   expect(sent).toMatchObject({ accepted_preview: { provider: "openplantbook", operation: "select" }, moisture: { threshold_overrides: { target: 42 } } });
   expect(sent).not.toHaveProperty("species");
@@ -502,9 +524,10 @@ test("a newly created plant can assign and save non-moisture sources from backen
   // Regression: new plants persist only roles.moisture. The Sensors section
   // must still open every role editor from the PlantView defaults and save.
   await start(page, "Fresh Basil");
-  await finishManual(page);
+  await finishManual(page, "Fresh Basil");
   const stored = (await inventory(page)).find(p => p.name === "Fresh Basil")!;
   expect(Object.keys(stored.roles!)).toEqual(["moisture"]);
+  await button(page, "Back to plants").click(); await button(page, "Fresh Basil").click();
   await show(page, "Sensors");
   await expand(page, "Several sensors for one reading");
   const row = (label: string) => page.locator(`smart-plants-panel dl.sensors dt:text-is("${label}") + dd`);
@@ -707,36 +730,35 @@ test("late image reads and uploads cannot replace a newer navigation context", a
 });
 
 test("held creation rejects double submission and late provider preview is ignored after disconnect", async ({ page }) => {
-  await start(page); await next(page);
-  await page.getByRole("button", { name: /Search OpenPlantBook/ }).click();
-  await page.getByLabel("Search OpenPlantBook (at least 3 characters)", { exact: true }).fill("aloe");
-  await button(page, "Search plants").click();
+  await start(page); await toReview(page);
+  await section(page, "Species and watering targets");
+  await page.getByLabel("Search OpenPlantBook", { exact: true }).fill("aloe");
+  await button(page, "Search").click();
   await page.evaluate(() => { window.__smartPlantsHarness.holdNext["smart_plants/wizard/preview"] = true; });
   await button(page, "Aloe vera · Aloe vera").click();
   await expect.poll(() => page.evaluate(() => Object.hasOwn(window.__smartPlantsHarness.pending, "smart_plants/wizard/preview"))).toBe(true);
   await page.evaluate(() => window.__smartPlantsHarness.emit("disconnected"));
   await page.evaluate(() => window.__smartPlantsHarness.emit("ready"));
-  await expect(button(page, "Next step")).toBeEnabled();
+  await expect(button(page, "Create plant")).toBeEnabled();
   await page.evaluate(() => window.__smartPlantsHarness.release("smart_plants/wizard/preview"));
   await expect(page.getByLabel("I reviewed and accept this species information")).toHaveCount(0);
-  await button(page, "Enter details manually instead").click();
-  for (let i = 0; i < 4; i++) await next(page);
   await page.evaluate(() => { window.__smartPlantsHarness.holdNext["smart_plants/wizard/create"] = true; });
-  await button(page, "Confirm and create plant").click();
+  await button(page, "Create plant").click();
   await expect(button(page, "Retry same creation request")).toBeDisabled();
   await page.keyboard.press("Enter");
   expect(await messages(page, "wizard/create")).toHaveLength(1);
   await page.evaluate(() => window.__smartPlantsHarness.release("smart_plants/wizard/create"));
-  await expect(page.getByRole("heading", { name: "Manual Aloe", level: 2, exact: true })).toBeVisible();
+  await expect(done(page, "Manual Aloe")).toBeVisible();
   expect(await inventory(page)).toHaveLength(1);
+  expect((await messages(page, "wizard/create"))[0]).toMatchObject({ species: null });
 });
 
 for (const removed of [false, true]) {
   test(`replayed creation preserves a subsequently ${removed ? "removed" : "replaced"} photo`, async ({ page }) => {
-    await start(page, "Replay photo plant"); await photo(page, "Optional local photo");
-    for (let step = 0; step < 5; step++) await next(page);
+    await start(page, "Replay photo plant"); await photo(page, "Add a photo (optional)");
+    await toReview(page);
     await page.evaluate(() => { window.__smartPlantsHarness.loseCreateResponse = true; });
-    await button(page, "Confirm and create plant").click();
+    await button(page, "Create plant").click();
     await expect(button(page, "Retry same creation request")).toBeEnabled();
     await backToOverview(page); await refreshData(page);
     await button(page, "Replay photo plant").click(); await show(page, "Settings");
@@ -748,7 +770,9 @@ for (const removed of [false, true]) {
     const writesBefore = await page.evaluate(() => window.__smartPlantsHarness.requests.filter(r => r.method !== "GET"));
     await backToOverview(page); await addPlant(page);
     await button(page, "Retry same creation request").click();
+    await expect(done(page, "Replay photo plant")).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "original wizard photo was not uploaded" })).toBeVisible();
+    await button(page, "Back to plants").click(); await button(page, "Replay photo plant").click();
     await show(page, "Settings");
     await expect(button(page, "Save name")).toBeEnabled();
     await refreshData(page);
@@ -764,14 +788,14 @@ for (const withPhoto of [false, true]) {
   test(`hidden committed creation preserves another editor and reconciles inventory, photo=${withPhoto}`, async ({ page }, info) => {
   await open(page); await addPlant(page);
     await page.getByLabel("Plant name", { exact: true }).fill("Background plant");
-    if (withPhoto) await photo(page, "Optional local photo");
-    for (let step = 0; step < 5; step++) await next(page);
+    if (withPhoto) await photo(page, "Add a photo (optional)");
+    await toReview(page);
     await page.evaluate(withPhoto => {
       const h = window.__smartPlantsHarness;
       h.holdNext["smart_plants/wizard/create"] = true;
       if (withPhoto) h.holdNext["image/POST"] = true;
     }, withPhoto);
-    await button(page, "Confirm and create plant").click();
+    await button(page, "Create plant").click();
     await expect.poll(() => page.evaluate(() => Object.hasOwn(window.__smartPlantsHarness.pending, "smart_plants/wizard/create"))).toBe(true);
     await backToOverview(page); await button(page, "Office Aloe").click(); await show(page, "Settings");
     await page.getByLabel("Name", { exact: true }).fill("Unsaved Office name");
@@ -943,18 +967,18 @@ test("disconnect blocks mutations, revokes image and preserves edits through rec
 });
 
 test("uncertain committed creation resends identical request after reconnect without duplicates", async ({ page }) => {
-  await start(page);
-  for (let i = 0; i < 5; i++) await next(page);
+  await start(page); await toReview(page);
   await page.evaluate(() => { window.__smartPlantsHarness.loseCreateResponse = true; });
-  await button(page, "Confirm and create plant").click();
+  await button(page, "Create plant").click();
   await expect(button(page, "Retry same creation request")).toBeEnabled();
+  await expect(button(page, "Back")).toBeDisabled();
   expect(await inventory(page)).toHaveLength(1);
   await page.evaluate(() => window.__smartPlantsHarness.emit("disconnected"));
   await expect(button(page, "Retry same creation request")).toBeDisabled();
   await page.evaluate(() => window.__smartPlantsHarness.emit("ready"));
   await expect(button(page, "Retry same creation request")).toBeEnabled();
   await button(page, "Retry same creation request").click();
-  await expect(page.getByRole("heading", { name: "Manual Aloe", level: 2, exact: true })).toBeVisible();
+  await expect(done(page, "Manual Aloe")).toBeVisible();
   const requests = await messages(page, "wizard/create");
   expect(requests).toHaveLength(2); expect(requests[0]).toEqual(requests[1]);
   expect(await inventory(page)).toHaveLength(1);
@@ -962,14 +986,13 @@ test("uncertain committed creation resends identical request after reconnect wit
 
 for (const code of ["provider_disabled", "provider_authentication", "provider_rate_limit", "provider_timeout", "provider_outage", "provider_malformed_response"]) {
   test(`manual creation remains available after ${code}`, async ({ page }) => {
-    await start(page); await next(page);
+    await start(page); await toReview(page);
+    await section(page, "Species and watering targets");
     await page.evaluate(code => { window.__smartPlantsHarness.failures["smart_plants/species/search"] = code; }, code);
-    await page.getByRole("button", { name: /Search OpenPlantBook/ }).click();
-    await page.getByLabel("Search OpenPlantBook (at least 3 characters)", { exact: true }).fill("aloe");
-    await button(page, "Search plants").click();
-    await expect(page.getByRole("alert")).toContainText(code);
-    // The error action and provider form both expose a manual continuation.
-    await page.getByRole("button", { name: "Continue manually", exact: true }).first().click();
+    await page.getByLabel("Search OpenPlantBook", { exact: true }).fill("aloe");
+    await button(page, "Search").click();
+    await expect(page.getByRole("alert").filter({ hasText: code })).toBeVisible();
+    await button(page, "Continue manually").click();
     await page.getByLabel("Common name", { exact: true }).fill("Offline aloe");
     await finishManual(page);
     expect((await inventory(page))[0]!.species?.provider).toBe("manual");
@@ -983,12 +1006,48 @@ test("disabled provider capability supports completely network-free manual creat
   await refreshData(page);
   await overview(page).getByRole("button", { name: "Add plant", exact: true }).click();
   await page.getByLabel("Plant name", { exact: true }).fill("Offline plant");
-  await next(page);
-  await expect(page.getByText("OpenPlantBook is not connected", { exact: true })).toBeVisible();
+  await toReview(page);
+  await section(page, "Species and watering targets");
+  await expect(page.getByText("Species search needs OpenPlantBook.", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Get OpenPlantBook API credentials" })).toHaveAttribute("href", "https://open.plantbook.io/apikey/");
-  await finishManual(page);
+  await expect(page.getByRole("link", { name: "Open integration options" })).toHaveAttribute("href", "/config/integrations/integration/smart_plants");
+  await expect(page.getByLabel("Search OpenPlantBook", { exact: true })).toHaveCount(0);
+  await finishManual(page, "Offline plant");
   expect(await messages(page, "species/search")).toHaveLength(0);
   expect((await inventory(page))[0]!.species).toBeNull();
+});
+
+test("wizard actions stay reachable at the bottom on small screens", async ({ page }, info) => {
+  test.skip(info.project.name !== "mobile", "Sticky actions apply to narrow screens only");
+  await start(page, "Sticky Aloe"); await toReview(page);
+  await section(page, "Species and watering targets");
+  await section(page, "More details");
+  const actions = wizard(page).locator(".actions");
+  await expect(actions).toHaveCSS("position", "sticky");
+  const box = await button(page, "Create plant").boundingBox();
+  const viewport = page.viewportSize()!;
+  expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
+  expect(box!.y).toBeGreaterThan(viewport.height / 2);
+  await audit(page, info, "wizard-sticky-actions"); await screenshot(page, info, "wizard-sticky-actions");
+});
+
+test("wizard cancel, confirmation and add another start fresh drafts", async ({ page }) => {
+  await start(page, "Abandoned Aloe");
+  await button(page, "Cancel").click();
+  await expect(wizard(page)).toHaveCount(0);
+  await overview(page).getByRole("button", { name: "Add plant", exact: true }).click();
+  await expect(page.getByLabel("Plant name", { exact: true })).toHaveValue("");
+  await page.getByLabel("Plant name", { exact: true }).fill("First Aloe");
+  await finishManual(page, "First Aloe");
+  await button(page, "Add another plant").click();
+  await expect(page.getByRole("heading", { name: "Name your plant", exact: true })).toBeFocused();
+  await page.getByLabel("Plant name", { exact: true }).fill("Second Aloe");
+  await finishManual(page, "Second Aloe");
+  const creates = await messages(page, "wizard/create");
+  expect(creates).toHaveLength(2); expect(creates[0]!.draft_id).not.toEqual(creates[1]!.draft_id);
+  expect(await messages(page, "wizard/start")).toHaveLength(3);
+  await button(page, "Back to plants").click();
+  await expect(cards(page)).toHaveCount(2);
 });
 
 test("malformed plant, registry, evaluation and API-version responses fail closed and recover", async ({ page }) => {
@@ -1037,25 +1096,38 @@ test("integration unload and malformed provider preview preserve local state", a
   expect((await inventory(page))[0]!.name).toBe("Office Aloe");
 });
 
-test("axe full-rule audit and screenshots cover overview, all seven steps, detail, dialogs and error", async ({ page }, info) => {
+test("axe full-rule audit and screenshots cover overview, every wizard step, detail, dialogs and error", async ({ page }, info) => {
   test.setTimeout(120000);
   await open(page, false); await audit(page, info, "empty");
   await overview(page).getByRole("button", { name: "Add plant", exact: true }).click();
+  await expect(button(page, "Next")).toBeEnabled();
+  await audit(page, info, "wizard-plant-empty");
   await page.getByLabel("Plant name", { exact: true }).fill("Accessible Aloe");
-  await photo(page, "Optional local photo");
-  const steps = ["basic", "species-manual", "sources", "thresholds", "taxonomy", "review"];
-  for (const [i, name] of steps.entries()) {
-    if (i === 2) { await page.getByRole("combobox", { name: "Add moisture sensor", exact: true }).selectOption("sensor.soil"); await page.getByRole("combobox", { name: "Main sensor", exact: true }).selectOption("sensor.soil"); }
-    if (i === 4) { await page.getByLabel("Category", { exact: true }).fill("Houseplant"); await page.getByLabel("Tags (comma-separated)", { exact: true }).fill("sunny, office"); }
-    await audit(page, info, name);
-    await screenshot(page, info, name);
-    if (i === 3) {
-      await page.getByText("Advanced threshold overrides", { exact: true }).click();
-      await audit(page, info, "thresholds-expanded");
-    }
-    if (i < 5) await next(page);
-  }
-  await button(page, "Confirm and create plant").click();
+  await page.getByLabel("Area", { exact: true }).selectOption("office");
+  await photo(page, "Add a photo (optional)");
+  await expect(wizard(page).getByText("Uploaded when you create the plant", { exact: true })).toBeVisible();
+  await audit(page, info, "wizard-plant"); await screenshot(page, info, "wizard-plant");
+  await next(page);
+  await expect(button(page, "Skip for now")).toBeVisible();
+  await audit(page, info, "wizard-sensors-suggested"); await screenshot(page, info, "wizard-sensors-suggested");
+  await page.getByLabel("Soil moisture sensor", { exact: true }).selectOption("sensor.soil");
+  await button(page, "Add Living room temperature").click();
+  await button(page, "Add another sensor").click();
+  await menuItem(page, "Battery").focus(); await menuItem(page, "Battery").press("Enter");
+  await audit(page, info, "wizard-sensors-adding");
+  await page.getByLabel("Battery sensor", { exact: true }).selectOption("sensor.pot_battery");
+  await audit(page, info, "wizard-sensors"); await screenshot(page, info, "wizard-sensors");
+  await next(page);
+  await audit(page, info, "wizard-review"); await screenshot(page, info, "wizard-review");
+  await section(page, "Species and watering targets");
+  await section(page, "More details");
+  await audit(page, info, "wizard-review-expanded"); await screenshot(page, info, "wizard-review-expanded");
+  await button(page, "Create plant").click();
+  await expect(done(page, "Accessible Aloe")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Selected photo uploaded." })).toBeVisible();
+  await audit(page, info, "wizard-done"); await screenshot(page, info, "wizard-done");
+  await button(page, "Open plant").click();
+  await expect(page.getByRole("heading", { name: "Accessible Aloe", level: 2, exact: true })).toBeVisible();
   await expect(page.getByAltText("Photo of Accessible Aloe")).toHaveJSProperty("naturalWidth", 160);
   await audit(page, info, "detail-photo"); await screenshot(page, info, "detail-photo");
   await show(page, "Settings");
@@ -1081,26 +1153,43 @@ test("axe full-rule audit and screenshots cover overview, all seven steps, detai
   await expect(page.getByRole("heading", { name: "Review changes from another session" })).toBeVisible();
   await audit(page, info, "conflict"); await screenshot(page, info, "conflict");
 
-  await start(page, "Reviewed Aloe"); await next(page);
-  await page.getByRole("button", { name: /Search OpenPlantBook/ }).click();
-  await page.getByLabel("Search OpenPlantBook (at least 3 characters)", { exact: true }).fill("aloe");
-  await button(page, "Search plants").click();
+  await start(page, "Reviewed Aloe"); await toReview(page);
+  await audit(page, info, "wizard-review-no-sensors");
+  await section(page, "Species and watering targets");
+  await page.getByLabel("Search OpenPlantBook", { exact: true }).fill("aloe");
+  await button(page, "Search").click();
   await expect(button(page, "Aloe vera · Aloe vera")).toBeVisible();
   await audit(page, info, "wizard-provider-results"); await screenshot(page, info, "wizard-provider-results");
   await button(page, "Aloe vera · Aloe vera").click();
   await expect(page.getByLabel("I reviewed and accept this species information")).toBeVisible();
   await audit(page, info, "wizard-provider-preview"); await screenshot(page, info, "wizard-provider-preview");
-  await page.locator("smart-plants-wizard summary").click();
-  await page.getByLabel("I reviewed and accept this species information").check();
+  await page.locator("smart-plants-wizard .preview summary").click();
+  await page.getByLabel("I reviewed and accept this species information").click();
   await audit(page, info, "wizard-provider-attribution-expanded");
+  await start(page, "Offline Aloe");
+  await page.evaluate(() => { window.__smartPlantsHarness.providerAvailable = false; });
+  await refreshData(page);
+  await toReview(page);
+  await section(page, "Species and watering targets");
+  await expect(page.getByText("Species search needs OpenPlantBook.", { exact: true })).toBeVisible();
+  await audit(page, info, "wizard-provider-unavailable"); await screenshot(page, info, "wizard-provider-unavailable");
 
   // Synthetic dark HA semantic tokens: verify inheritance rather than relying
   // solely on the browser's light fallback. This is not a live HA theme fetch.
-  await open(page);
-  await page.evaluate(() => {
-    for (const [key, value] of Object.entries({ "primary-text-color": "#eeeeee", "secondary-text-color": "#bdbdbd", "card-background-color": "#252525", "secondary-background-color": "#303030", "divider-color": "#666666", "primary-color": "#64b5f6", "text-primary-color": "#121212", "error-color": "#ff8a80" })) document.documentElement.style.setProperty(`--${key}`, value);
+  const dark = () => page.evaluate(() => {
+    for (const [key, value] of Object.entries({ "primary-text-color": "#eeeeee", "secondary-text-color": "#bdbdbd", "card-background-color": "#252525", "secondary-background-color": "#303030", "divider-color": "#666666", "primary-color": "#64b5f6", "text-primary-color": "#121212", "error-color": "#ff8a80", "primary-background-color": "#111111" })) document.documentElement.style.setProperty(`--${key}`, value);
     document.body.style.background = "#111111";
   });
+  await start(page, "Dark Aloe"); await dark();
+  await page.getByLabel("Area", { exact: true }).selectOption("office");
+  await audit(page, info, "dark-wizard-plant");
+  await next(page); await page.getByLabel("Soil moisture sensor", { exact: true }).selectOption("sensor.soil");
+  await audit(page, info, "dark-wizard-sensors"); await screenshot(page, info, "dark-wizard-sensors");
+  await next(page); await section(page, "Species and watering targets"); await section(page, "More details");
+  await audit(page, info, "dark-wizard-review"); await screenshot(page, info, "dark-wizard-review");
+  await button(page, "Create plant").click(); await expect(done(page, "Dark Aloe")).toBeVisible();
+  await audit(page, info, "dark-wizard-done");
+  await open(page); await dark();
   await page.keyboard.press("Tab");
   await button(page, "Menu").focus();
   expect(await button(page, "Menu").evaluate(el => el.matches(":focus-visible"))).toBe(true);

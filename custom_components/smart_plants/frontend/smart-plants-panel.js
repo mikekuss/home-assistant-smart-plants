@@ -273,12 +273,12 @@ var le = globalThis, ue = (e) => e, de = le.trustedTypes, fe = de ? de.createPol
 	_$litType$: e,
 	strings: t,
 	values: n
-}))(1), De = Symbol.for("lit-noChange"), b = Symbol.for("lit-nothing"), Oe = /* @__PURE__ */ new WeakMap(), ke = _.createTreeWalker(_, 129);
-function Ae(e, t) {
+}))(1), De = Symbol.for("lit-noChange"), b = Symbol.for("lit-nothing"), Oe = /* @__PURE__ */ new WeakMap(), x = _.createTreeWalker(_, 129);
+function ke(e, t) {
 	if (!ve(e) || !e.hasOwnProperty("raw")) throw Error("invalid template strings array");
 	return fe === void 0 ? t : fe.createHTML(t);
 }
-var je = (e, t) => {
+var Ae = (e, t) => {
 	let n = e.length - 1, r = [], i, a = t === 2 ? "<svg>" : t === 3 ? "<math>" : "", o = xe;
 	for (let t = 0; t < n; t++) {
 		let n = e[t], s, c, l = -1, u = 0;
@@ -286,17 +286,17 @@ var je = (e, t) => {
 		let d = o === v && e[t + 1].startsWith("/>") ? " " : "";
 		a += o === xe ? n + he : l >= 0 ? (r.push(s), n.slice(0, l) + pe + n.slice(l) + g + d) : n + g + (l === -2 ? t : d);
 	}
-	return [Ae(e, a + (e[n] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), r];
-}, Me = class e {
+	return [ke(e, a + (e[n] || "<?>") + (t === 2 ? "</svg>" : t === 3 ? "</math>" : "")), r];
+}, je = class e {
 	constructor({ strings: t, _$litType$: n }, r) {
 		let i;
 		this.parts = [];
-		let a = 0, o = 0, s = t.length - 1, c = this.parts, [l, u] = je(t, n);
-		if (this.el = e.createElement(l, r), ke.currentNode = this.el.content, n === 2 || n === 3) {
+		let a = 0, o = 0, s = t.length - 1, c = this.parts, [l, u] = Ae(t, n);
+		if (this.el = e.createElement(l, r), x.currentNode = this.el.content, n === 2 || n === 3) {
 			let e = this.el.content.firstChild;
 			e.replaceWith(...e.childNodes);
 		}
-		for (; (i = ke.nextNode()) !== null && c.length < s;) {
+		for (; (i = x.nextNode()) !== null && c.length < s;) {
 			if (i.nodeType === 1) {
 				if (i.hasAttributes()) for (let e of i.getAttributeNames()) if (e.endsWith(pe)) {
 					let t = u[o++], n = i.getAttribute(e).split(g), r = /([.?@])?(.*)/.exec(t);
@@ -305,7 +305,7 @@ var je = (e, t) => {
 						index: a,
 						name: r[2],
 						strings: n,
-						ctor: r[1] === "." ? Le : r[1] === "?" ? Re : r[1] === "@" ? ze : Ie
+						ctor: r[1] === "." ? Ie : r[1] === "?" ? Le : r[1] === "@" ? Re : Fe
 					}), i.removeAttribute(e);
 				} else e.startsWith(g) && (c.push({
 					type: 6,
@@ -315,7 +315,7 @@ var je = (e, t) => {
 					let e = i.textContent.split(g), t = e.length - 1;
 					if (t > 0) {
 						i.textContent = de ? de.emptyScript : "";
-						for (let n = 0; n < t; n++) i.append(e[n], ge()), ke.nextNode(), c.push({
+						for (let n = 0; n < t; n++) i.append(e[n], ge()), x.nextNode(), c.push({
 							type: 2,
 							index: ++a
 						});
@@ -343,12 +343,12 @@ var je = (e, t) => {
 		return n.innerHTML = e, n;
 	}
 };
-function Ne(e, t, n = e, r) {
+function Me(e, t, n = e, r) {
 	if (t === De) return t;
 	let i = r === void 0 ? n._$Cl : n._$Co?.[r], a = _e(t) ? void 0 : t._$litDirective$;
-	return i?.constructor !== a && (i?._$AO?.(!1), a === void 0 ? i = void 0 : (i = new a(e), i._$AT(e, n, r)), r === void 0 ? n._$Cl = i : (n._$Co ?? (n._$Co = []))[r] = i), i !== void 0 && (t = Ne(e, i._$AS(e, t.values), i, r)), t;
+	return i?.constructor !== a && (i?._$AO?.(!1), a === void 0 ? i = void 0 : (i = new a(e), i._$AT(e, n, r)), r === void 0 ? n._$Cl = i : (n._$Co ?? (n._$Co = []))[r] = i), i !== void 0 && (t = Me(e, i._$AS(e, t.values), i, r)), t;
 }
-var Pe = class {
+var Ne = class {
 	constructor(e, t) {
 		this._$AV = [], this._$AN = void 0, this._$AD = e, this._$AM = t;
 	}
@@ -360,22 +360,22 @@ var Pe = class {
 	}
 	u(e) {
 		let { el: { content: t }, parts: n } = this._$AD, r = (e?.creationScope ?? _).importNode(t, !0);
-		ke.currentNode = r;
-		let i = ke.nextNode(), a = 0, o = 0, s = n[0];
+		x.currentNode = r;
+		let i = x.nextNode(), a = 0, o = 0, s = n[0];
 		for (; s !== void 0;) {
 			if (a === s.index) {
 				let t;
-				s.type === 2 ? t = new Fe(i, i.nextSibling, this, e) : s.type === 1 ? t = new s.ctor(i, s.name, s.strings, this, e) : s.type === 6 && (t = new Be(i, this, e)), this._$AV.push(t), s = n[++o];
+				s.type === 2 ? t = new Pe(i, i.nextSibling, this, e) : s.type === 1 ? t = new s.ctor(i, s.name, s.strings, this, e) : s.type === 6 && (t = new ze(i, this, e)), this._$AV.push(t), s = n[++o];
 			}
-			a !== s?.index && (i = ke.nextNode(), a++);
+			a !== s?.index && (i = x.nextNode(), a++);
 		}
-		return ke.currentNode = _, r;
+		return x.currentNode = _, r;
 	}
 	p(e) {
 		let t = 0;
 		for (let n of this._$AV) n !== void 0 && (n.strings === void 0 ? n._$AI(e[t]) : (n._$AI(e, n, t), t += n.strings.length - 2)), t++;
 	}
-}, Fe = class e {
+}, Pe = class e {
 	get _$AU() {
 		return this._$AM?._$AU ?? this._$Cv;
 	}
@@ -393,7 +393,7 @@ var Pe = class {
 		return this._$AB;
 	}
 	_$AI(e, t = this) {
-		e = Ne(this, e, t), _e(e) ? e === b || e == null || e === "" ? (this._$AH !== b && this._$AR(), this._$AH = b) : e !== this._$AH && e !== De && this._(e) : e._$litType$ === void 0 ? e.nodeType === void 0 ? ye(e) ? this.k(e) : this._(e) : this.T(e) : this.$(e);
+		e = Me(this, e, t), _e(e) ? e === b || e == null || e === "" ? (this._$AH !== b && this._$AR(), this._$AH = b) : e !== this._$AH && e !== De && this._(e) : e._$litType$ === void 0 ? e.nodeType === void 0 ? ye(e) ? this.k(e) : this._(e) : this.T(e) : this.$(e);
 	}
 	O(e) {
 		return this._$AA.parentNode.insertBefore(e, this._$AB);
@@ -405,16 +405,16 @@ var Pe = class {
 		this._$AH !== b && _e(this._$AH) ? this._$AA.nextSibling.data = e : this.T(_.createTextNode(e)), this._$AH = e;
 	}
 	$(e) {
-		let { values: t, _$litType$: n } = e, r = typeof n == "number" ? this._$AC(e) : (n.el === void 0 && (n.el = Me.createElement(Ae(n.h, n.h[0]), this.options)), n);
+		let { values: t, _$litType$: n } = e, r = typeof n == "number" ? this._$AC(e) : (n.el === void 0 && (n.el = je.createElement(ke(n.h, n.h[0]), this.options)), n);
 		if (this._$AH?._$AD === r) this._$AH.p(t);
 		else {
-			let e = new Pe(r, this), n = e.u(this.options);
+			let e = new Ne(r, this), n = e.u(this.options);
 			e.p(t), this.T(n), this._$AH = e;
 		}
 	}
 	_$AC(e) {
 		let t = Oe.get(e.strings);
-		return t === void 0 && Oe.set(e.strings, t = new Me(e)), t;
+		return t === void 0 && Oe.set(e.strings, t = new je(e)), t;
 	}
 	k(t) {
 		ve(this._$AH) || (this._$AH = [], this._$AR());
@@ -431,7 +431,7 @@ var Pe = class {
 	setConnected(e) {
 		this._$AM === void 0 && (this._$Cv = e, this._$AP?.(e));
 	}
-}, Ie = class {
+}, Fe = class {
 	get tagName() {
 		return this.element.tagName;
 	}
@@ -443,43 +443,43 @@ var Pe = class {
 	}
 	_$AI(e, t = this, n, r) {
 		let i = this.strings, a = !1;
-		if (i === void 0) e = Ne(this, e, t, 0), a = !_e(e) || e !== this._$AH && e !== De, a && (this._$AH = e);
+		if (i === void 0) e = Me(this, e, t, 0), a = !_e(e) || e !== this._$AH && e !== De, a && (this._$AH = e);
 		else {
 			let r = e, o, s;
-			for (e = i[0], o = 0; o < i.length - 1; o++) s = Ne(this, r[n + o], t, o), s === De && (s = this._$AH[o]), a || (a = !_e(s) || s !== this._$AH[o]), s === b ? e = b : e !== b && (e += (s ?? "") + i[o + 1]), this._$AH[o] = s;
+			for (e = i[0], o = 0; o < i.length - 1; o++) s = Me(this, r[n + o], t, o), s === De && (s = this._$AH[o]), a || (a = !_e(s) || s !== this._$AH[o]), s === b ? e = b : e !== b && (e += (s ?? "") + i[o + 1]), this._$AH[o] = s;
 		}
 		a && !r && this.j(e);
 	}
 	j(e) {
 		e === b ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, e ?? "");
 	}
-}, Le = class extends Ie {
+}, Ie = class extends Fe {
 	constructor() {
 		super(...arguments), this.type = 3;
 	}
 	j(e) {
 		this.element[this.name] = e === b ? void 0 : e;
 	}
-}, Re = class extends Ie {
+}, Le = class extends Fe {
 	constructor() {
 		super(...arguments), this.type = 4;
 	}
 	j(e) {
 		this.element.toggleAttribute(this.name, !!e && e !== b);
 	}
-}, ze = class extends Ie {
+}, Re = class extends Fe {
 	constructor(e, t, n, r, i) {
 		super(e, t, n, r, i), this.type = 5;
 	}
 	_$AI(e, t = this) {
-		if ((e = Ne(this, e, t, 0) ?? b) === De) return;
+		if ((e = Me(this, e, t, 0) ?? b) === De) return;
 		let n = this._$AH, r = e === b && n !== b || e.capture !== n.capture || e.once !== n.once || e.passive !== n.passive, i = e !== b && (n === b || r);
 		r && this.element.removeEventListener(this.name, this, n), i && this.element.addEventListener(this.name, this, e), this._$AH = e;
 	}
 	handleEvent(e) {
 		typeof this._$AH == "function" ? this._$AH.call(this.options?.host ?? this.element, e) : this._$AH.handleEvent(e);
 	}
-}, Be = class {
+}, ze = class {
 	constructor(e, t, n) {
 		this.element = e, this.type = 6, this._$AN = void 0, this._$AM = t, this.options = n;
 	}
@@ -487,18 +487,18 @@ var Pe = class {
 		return this._$AM._$AU;
 	}
 	_$AI(e) {
-		Ne(this, e);
+		Me(this, e);
 	}
-}, Ve = le.litHtmlPolyfillSupport;
-Ve?.(Me, Fe), (le.litHtmlVersions ?? (le.litHtmlVersions = [])).push("3.3.3");
-var He = (e, t, n) => {
+}, Be = le.litHtmlPolyfillSupport;
+Be?.(je, Pe), (le.litHtmlVersions ?? (le.litHtmlVersions = [])).push("3.3.3");
+var Ve = (e, t, n) => {
 	let r = n?.renderBefore ?? t, i = r._$litPart$;
 	if (i === void 0) {
 		let e = n?.renderBefore ?? null;
-		r._$litPart$ = i = new Fe(t.insertBefore(ge(), e), e, void 0, n ?? {});
+		r._$litPart$ = i = new Pe(t.insertBefore(ge(), e), e, void 0, n ?? {});
 	}
 	return i._$AI(e), i;
-}, Ue = globalThis, x = class extends ce {
+}, He = globalThis, S = class extends ce {
 	constructor() {
 		/**
 		* @license
@@ -514,7 +514,7 @@ var He = (e, t, n) => {
 	}
 	update(e) {
 		let t = this.render();
-		this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(e), this._$Do = He(t, this.renderRoot, this.renderOptions);
+		this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(e), this._$Do = Ve(t, this.renderRoot, this.renderOptions);
 	}
 	connectedCallback() {
 		super.connectedCallback(), this._$Do?.setConnected(!0);
@@ -526,22 +526,22 @@ var He = (e, t, n) => {
 		return De;
 	}
 };
-x._$litElement$ = !0, x.finalized = !0, Ue.litElementHydrateSupport?.({ LitElement: x });
-var We = Ue.litElementPolyfillSupport;
-We?.({ LitElement: x }), (Ue.litElementVersions ?? (Ue.litElementVersions = [])).push("4.2.2");
+S._$litElement$ = !0, S.finalized = !0, He.litElementHydrateSupport?.({ LitElement: S });
+var Ue = He.litElementPolyfillSupport;
+Ue?.({ LitElement: S }), (He.litElementVersions ?? (He.litElementVersions = [])).push("4.2.2");
 //#endregion
 //#region node_modules/@lit/reactive-element/decorators/property.js
 /**
 * @license
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
-*/ var Ge = {
+*/ var We = {
 	attribute: !0,
 	type: String,
 	converter: ae,
 	reflect: !1,
 	hasChanged: oe
-}, Ke = (e = Ge, t, n) => {
+}, Ge = (e = We, t, n) => {
 	let { kind: r, metadata: i } = n, a = globalThis.litPropertyMetadata.get(i);
 	if (a === void 0 && globalThis.litPropertyMetadata.set(i, a = /* @__PURE__ */ new Map()), r === "setter" && ((e = Object.create(e)).wrapped = !0), a.set(n.name, e), r === "accessor") {
 		let { name: r } = n;
@@ -564,8 +564,8 @@ We?.({ LitElement: x }), (Ue.litElementVersions ?? (Ue.litElementVersions = []))
 	}
 	throw Error("Unsupported decorator location: " + r);
 };
-function S(e) {
-	return (t, n) => typeof n == "object" ? Ke(e, t, n) : ((e, t, n) => {
+function C(e) {
+	return (t, n) => typeof n == "object" ? Ge(e, t, n) : ((e, t, n) => {
 		let r = t.hasOwnProperty(n);
 		return t.constructor.createProperty(n, e), r ? Object.getOwnPropertyDescriptor(t, n) : void 0;
 	})(e, t, n);
@@ -576,8 +576,8 @@ function S(e) {
 * @license
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
-*/ function C(e) {
-	return S({
+*/ function w(e) {
+	return C({
 		...e,
 		state: !0,
 		attribute: !1
@@ -585,24 +585,24 @@ function S(e) {
 }
 //#endregion
 //#region src/validation.ts
-var w = (e) => typeof e == "object" && !!e && !Array.isArray(e), T = (e, t = 500) => typeof e == "string" && e.length > 0 && e.length <= t, E = (e, t = 500) => e === null || T(e, t), D = (e, t, n) => typeof e == "number" && Number.isSafeInteger(e) && e >= t && e <= n, O = (e) => T(e, 64) && /^\d{4}-\d\d-\d\dT/.test(e) && Number.isFinite(Date.parse(e)), qe = (e, t) => w(e) && Object.keys(e).length <= 32 && Object.entries(e).every(([e, n]) => T(e, 60) && t(n)), Je = {
-	provider: (e) => T(e, 60),
-	provider_id: (e) => E(e, 200),
-	provider_ref: (e) => E(e, 200),
+var T = (e) => typeof e == "object" && !!e && !Array.isArray(e), E = (e, t = 500) => typeof e == "string" && e.length > 0 && e.length <= t, D = (e, t = 500) => e === null || E(e, t), Ke = (e, t, n) => typeof e == "number" && Number.isSafeInteger(e) && e >= t && e <= n, O = (e) => E(e, 64) && /^\d{4}-\d\d-\d\dT/.test(e) && Number.isFinite(Date.parse(e)), qe = (e, t) => T(e) && Object.keys(e).length <= 32 && Object.entries(e).every(([e, n]) => E(e, 60) && t(n)), Je = {
+	provider: (e) => E(e, 60),
+	provider_id: (e) => D(e, 200),
+	provider_ref: (e) => D(e, 200),
 	fetched_at: O,
 	locale: (e) => typeof e == "string" && /^(und|[a-z]{2}(?:-[A-Z]{2})?)$/.test(e),
 	source_status: (e) => e === "manual" || e === "provider",
-	attribution: (e) => T(e),
-	common_name: E,
-	latin_name: E,
-	category: E,
+	attribution: (e) => E(e),
+	common_name: D,
+	latin_name: D,
+	category: D,
 	confidence: (e) => e === null || typeof e == "number" && Number.isFinite(e) && e >= 0 && e <= 1,
-	care_text: (e) => qe(e, (e) => T(e, 4e3)),
-	field_sources: (e) => qe(e, T),
+	care_text: (e) => qe(e, (e) => E(e, 4e3)),
+	field_sources: (e) => qe(e, E),
 	threshold_defaults: (e) => qe(e, (e) => qe(e, (e) => typeof e == "number" && Number.isSafeInteger(e)))
 };
 function Ye(e) {
-	if (!w(e) || !Object.keys(e).every((e) => Object.hasOwn(Je, e)) || !Object.entries(Je).every(([t, n]) => n(e[t]))) return !1;
+	if (!T(e) || !Object.keys(e).every((e) => Object.hasOwn(Je, e)) || !Object.entries(Je).every(([t, n]) => n(e[t]))) return !1;
 	let t = [
 		"common_name",
 		"latin_name",
@@ -611,23 +611,23 @@ function Ye(e) {
 	].filter((t) => e[t] !== null);
 	t.push(...Object.keys(e.care_text), ...Object.entries(e.threshold_defaults).flatMap(([e, t]) => Object.keys(t).map((t) => `${e}_${t}`)));
 	let n = e.field_sources;
-	return new TextEncoder().encode(JSON.stringify(e)).length <= 32768 && new Set(t).size === Object.keys(n).length && t.every((t) => n[t] === e.attribution) && (e.source_status !== "manual" || e.provider === "manual" && e.provider_ref === null) && (e.source_status !== "provider" || e.provider !== "manual" && T(e.provider_ref, 200));
+	return new TextEncoder().encode(JSON.stringify(e)).length <= 32768 && new Set(t).size === Object.keys(n).length && t.every((t) => n[t] === e.attribution) && (e.source_status !== "manual" || e.provider === "manual" && e.provider_ref === null) && (e.source_status !== "provider" || e.provider !== "manual" && E(e.provider_ref, 200));
 }
 function Xe(e) {
-	if (!w(e)) return !1;
+	if (!T(e)) return !1;
 	let t = e.placement, n = e.species, r = e.image;
-	return T(e.id, 200) && D(e.revision, 1, 2 ** 53 - 1) && T(e.name, 200) && O(e.created_at) && (e.acquired_at === null || O(e.acquired_at)) && ["active", "disabled"].includes(String(e.lifecycle_state)) && E(e.category, 60) && Array.isArray(e.tags) && e.tags.length <= 32 && e.tags.every((e) => T(e, 60)) && new Set(e.tags).size === e.tags.length && (t === null || w(t) && T(t.mode, 60) && E(t.exposure, 60) && E(t.rain_exposure, 60) && (t.container === null || typeof t.container == "boolean")) && (n === null || w(n) && Ye(n.snapshot) && w(n.snapshot) && n.provider === n.snapshot.provider) && (r === null || w(r) && T(r.id, 200) && r.content_type === "image/webp" && D(r.width, 1, 2048) && D(r.height, 1, 2048) && O(r.created_at)) && (e.care_events === void 0 || Array.isArray(e.care_events) && e.care_events.length <= 256 && e.care_events.every(Ze));
+	return E(e.id, 200) && Ke(e.revision, 1, 2 ** 53 - 1) && E(e.name, 200) && O(e.created_at) && (e.acquired_at === null || O(e.acquired_at)) && ["active", "disabled"].includes(String(e.lifecycle_state)) && D(e.category, 60) && Array.isArray(e.tags) && e.tags.length <= 32 && e.tags.every((e) => E(e, 60)) && new Set(e.tags).size === e.tags.length && (t === null || T(t) && E(t.mode, 60) && D(t.exposure, 60) && D(t.rain_exposure, 60) && (t.container === null || typeof t.container == "boolean")) && (n === null || T(n) && Ye(n.snapshot) && T(n.snapshot) && n.provider === n.snapshot.provider) && (r === null || T(r) && E(r.id, 200) && r.content_type === "image/webp" && Ke(r.width, 1, 2048) && Ke(r.height, 1, 2048) && O(r.created_at)) && (e.care_events === void 0 || Array.isArray(e.care_events) && e.care_events.length <= 256 && e.care_events.every(Ze));
 }
 function Ze(e) {
-	if (!w(e) || e.schema_version !== 1 || !T(e.id, 36) || ![
+	if (!T(e) || e.schema_version !== 1 || !E(e.id, 36) || ![
 		"watering",
 		"fertilizing",
 		"pruning",
 		"repotting",
 		"note"
-	].includes(String(e.kind)) || e.provenance !== "manual" || !O(e.occurred_at) || !/(?:Z|[+-]\d\d:\d\d)$/.test(String(e.occurred_at)) || typeof e.local_date != "string" || !/^\d{4}-\d\d-\d\d$/.test(e.local_date) || e.local_date !== String(e.occurred_at).slice(0, 10) || !O(e.created_at) || !O(e.updated_at) || !w(e.payload)) return !1;
-	let t = e.payload, n = (e) => e === null || T(e, 500) && e === e.trim();
-	return e.kind === "watering" ? Object.keys(t).length === 1 && n(t.note) : e.kind === "fertilizing" ? Object.keys(t).length === 4 && (t.product === null || T(t.product, 120) && t.product === t.product.trim()) && (t.amount === null || typeof t.amount == "number" && Number.isFinite(t.amount) && t.amount > 0 && t.amount <= 1e5) && (t.amount === null && t.unit === null || t.amount !== null && ["g", "mL"].includes(String(t.unit))) && n(t.note) : e.kind === "pruning" ? Object.keys(t).length === 2 && (t.part === null || T(t.part, 120) && t.part === t.part.trim()) && n(t.note) : e.kind === "repotting" ? Object.keys(t).length === 3 && (t.container === null || T(t.container, 120) && t.container === t.container.trim()) && (t.medium === null || T(t.medium, 120) && t.medium === t.medium.trim()) && n(t.note) : Object.keys(t).length === 1 && T(t.text, 1e3) && t.text === t.text.trim();
+	].includes(String(e.kind)) || e.provenance !== "manual" || !O(e.occurred_at) || !/(?:Z|[+-]\d\d:\d\d)$/.test(String(e.occurred_at)) || typeof e.local_date != "string" || !/^\d{4}-\d\d-\d\d$/.test(e.local_date) || e.local_date !== String(e.occurred_at).slice(0, 10) || !O(e.created_at) || !O(e.updated_at) || !T(e.payload)) return !1;
+	let t = e.payload, n = (e) => e === null || E(e, 500) && e === e.trim();
+	return e.kind === "watering" ? Object.keys(t).length === 1 && n(t.note) : e.kind === "fertilizing" ? Object.keys(t).length === 4 && (t.product === null || E(t.product, 120) && t.product === t.product.trim()) && (t.amount === null || typeof t.amount == "number" && Number.isFinite(t.amount) && t.amount > 0 && t.amount <= 1e5) && (t.amount === null && t.unit === null || t.amount !== null && ["g", "mL"].includes(String(t.unit))) && n(t.note) : e.kind === "pruning" ? Object.keys(t).length === 2 && (t.part === null || E(t.part, 120) && t.part === t.part.trim()) && n(t.note) : e.kind === "repotting" ? Object.keys(t).length === 3 && (t.container === null || E(t.container, 120) && t.container === t.container.trim()) && (t.medium === null || E(t.medium, 120) && t.medium === t.medium.trim()) && n(t.note) : Object.keys(t).length === 1 && E(t.text, 1e3) && t.text === t.text.trim();
 }
 function Qe(e, t) {
 	let n = (e) => {
@@ -637,19 +637,19 @@ function Qe(e, t) {
 	return i[0] - r[0] || i[1] - r[1] || (String(e.id) < String(t.id) ? -1 : +(String(e.id) > String(t.id)));
 }
 function $e(e) {
-	if (!w(e) || !D(e.revision, 1, 2 ** 53 - 1) || !Array.isArray(e.events) || e.events.length > 256 || !e.events.every(Ze) || !w(e.summary)) return !1;
+	if (!T(e) || !Ke(e.revision, 1, 2 ** 53 - 1) || !Array.isArray(e.events) || e.events.length > 256 || !e.events.every(Ze) || !T(e.summary)) return !1;
 	let t = e.events, n = e.summary, r = t.filter((e) => e.kind === "watering");
 	return new Set(t.map((e) => e.id)).size === t.length && n.watering_count === r.length && t.every((e, n) => n === 0 || Qe(t[n - 1], e) <= 0) && n.last_watered_at === (r[0]?.occurred_at ?? null) && n.last_watered_local_date === (r[0]?.local_date ?? null);
 }
 function et(e, t) {
-	return !w(e) || !T(e.preview_token, 200) || !Ye(e.snapshot) || !w(e.snapshot) || e.provider !== e.snapshot.provider || !w(e.diff) || !Object.entries(e.diff).every(([e, t]) => w(t) && Object.hasOwn(Je, e) && (t.before === null || Je[e](t.before)) && Je[e](t.after)) || t.provider !== void 0 && (e.provider !== t.provider || e.snapshot.provider_ref !== t.provider_ref) ? !1 : e.operation === (t.type === "smart_plants/species/refresh_preview" ? "refresh" : "select") && (t.type !== "smart_plants/wizard/preview" || e.draft_id === t.draft_id && e.revision === 0);
+	return !T(e) || !E(e.preview_token, 200) || !Ye(e.snapshot) || !T(e.snapshot) || e.provider !== e.snapshot.provider || !T(e.diff) || !Object.entries(e.diff).every(([e, t]) => T(t) && Object.hasOwn(Je, e) && (t.before === null || Je[e](t.before)) && Je[e](t.after)) || t.provider !== void 0 && (e.provider !== t.provider || e.snapshot.provider_ref !== t.provider_ref) ? !1 : e.operation === (t.type === "smart_plants/species/refresh_preview" ? "refresh" : "select") && (t.type !== "smart_plants/wizard/preview" || e.draft_id === t.draft_id && e.revision === 0);
 }
 function tt(e) {
-	return w(e) && T(e.entity_id, 255) && typeof e.state == "string" && O(e.last_updated) && w(e.attributes) && [
+	return T(e) && E(e.entity_id, 255) && typeof e.state == "string" && O(e.last_updated) && T(e.attributes) && [
 		"friendly_name",
 		"unit_of_measurement",
 		"device_class"
-	].every((t) => e.attributes && w(e.attributes) && (e.attributes[t] === void 0 || e.attributes[t] === null || typeof e.attributes[t] == "string"));
+	].every((t) => e.attributes && T(e.attributes) && (e.attributes[t] === void 0 || e.attributes[t] === null || typeof e.attributes[t] == "string"));
 }
 var nt = /* @__PURE__ */ new Set([
 	"high",
@@ -658,18 +658,18 @@ var nt = /* @__PURE__ */ new Set([
 	"unknown"
 ]);
 function rt(e) {
-	return !w(e) || typeof e.available != "boolean" || typeof e.confidence != "number" || !Number.isFinite(e.confidence) || e.confidence < 0 || e.confidence > 1 || typeof e.confidence_label != "string" || !nt.has(e.confidence_label) || !Array.isArray(e.contributors) || !e.contributors.every((e) => T(e, 60)) || !Array.isArray(e.configured) || !e.configured.every((e) => T(e, 60)) || !Array.isArray(e.reasons) || !e.reasons.every((e) => T(e, 4e3)) ? !1 : e.available ? D(e.health_score, 0, 100) : e.health_score === null;
+	return !T(e) || typeof e.available != "boolean" || typeof e.confidence != "number" || !Number.isFinite(e.confidence) || e.confidence < 0 || e.confidence > 1 || typeof e.confidence_label != "string" || !nt.has(e.confidence_label) || !Array.isArray(e.contributors) || !e.contributors.every((e) => E(e, 60)) || !Array.isArray(e.configured) || !e.configured.every((e) => E(e, 60)) || !Array.isArray(e.reasons) || !e.reasons.every((e) => E(e, 4e3)) ? !1 : e.available ? Ke(e.health_score, 0, 100) : e.health_score === null;
 }
 function it(e) {
-	return !w(e) || typeof e.computed_available != "boolean" || typeof e.sensor_stale != "boolean" || !Array.isArray(e.reasons) || !e.reasons.every((e) => T(e, 4e3)) ? !1 : e.computed_available ? typeof e.computed_percent == "number" && Number.isFinite(e.computed_percent) && e.computed_percent >= 0 && e.computed_percent <= 100 && D(e.health_score, 0, 100) && typeof e.needs_water == "boolean" && typeof e.too_wet == "boolean" : e.computed_percent === null && e.health_score === null && e.needs_water === null && e.too_wet === null;
+	return !T(e) || typeof e.computed_available != "boolean" || typeof e.sensor_stale != "boolean" || !Array.isArray(e.reasons) || !e.reasons.every((e) => E(e, 4e3)) ? !1 : e.computed_available ? typeof e.computed_percent == "number" && Number.isFinite(e.computed_percent) && e.computed_percent >= 0 && e.computed_percent <= 100 && Ke(e.health_score, 0, 100) && typeof e.needs_water == "boolean" && typeof e.too_wet == "boolean" : e.computed_percent === null && e.health_score === null && e.needs_water === null && e.too_wet === null;
 }
 function at(e, t) {
 	let n = String(e.type);
 	if (!n.startsWith("smart_plants/") || n === "smart_plants/panel/info") return !0;
-	if (!w(t)) return !1;
-	if (n === "smart_plants/wizard/start") return typeof t.draft_id == "string" && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(t.draft_id) && typeof t.draft_token == "string" && /^[A-Za-z0-9_-]{43}$/.test(t.draft_token) && t.revision === 0 && D(t.expires_in, 1, 600);
+	if (!T(t)) return !1;
+	if (n === "smart_plants/wizard/start") return typeof t.draft_id == "string" && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(t.draft_id) && typeof t.draft_token == "string" && /^[A-Za-z0-9_-]{43}$/.test(t.draft_token) && t.revision === 0 && Ke(t.expires_in, 1, 600);
 	if (n.endsWith("/preview") || n.endsWith("/refresh_preview")) return et(t, e);
-	if (n === "smart_plants/species/search") return Array.isArray(t.results) && t.results.length <= 50 && t.results.every((t) => w(t) && t.provider === e.provider && T(t.provider_ref, 100) && T(t.latin_name) && E(t.common_name) && E(t.category) && T(t.attribution));
+	if (n === "smart_plants/species/search") return Array.isArray(t.results) && t.results.length <= 50 && t.results.every((t) => T(t) && t.provider === e.provider && E(t.provider_ref, 100) && E(t.latin_name) && D(t.common_name) && D(t.category) && E(t.attribution));
 	if (n === "smart_plants/moisture/evaluation") return it(t.evaluation);
 	if (n === "smart_plants/plants/health") return rt(t.evaluation);
 	if (n === "smart_plants/care/list") return $e(t);
@@ -678,7 +678,7 @@ function at(e, t) {
 		"smart_plants/care/add",
 		"smart_plants/care/edit"
 	].includes(n)) {
-		if (!Xe(t.plant) || !w(t.plant) || t.plant.id !== e.plant_id || !Ze(t.event) || !w(t.event) || !Array.isArray(t.plant.care_events)) return !1;
+		if (!Xe(t.plant) || !T(t.plant) || t.plant.id !== e.plant_id || !Ze(t.event) || !T(t.event) || !Array.isArray(t.plant.care_events)) return !1;
 		let r = t.plant.care_events, i = t.event;
 		if (!r.some((e) => e.id === i.id && JSON.stringify(e) === JSON.stringify(i))) return !1;
 		let a = n === "smart_plants/care/add_watering" ? "watering" : e.kind, o = n === "smart_plants/care/add_watering" ? { note: e.note } : e.payload;
@@ -688,11 +688,21 @@ function at(e, t) {
 			summary: t.summary
 		});
 	}
-	return n === "smart_plants/care/delete" ? !Xe(t.plant) || !w(t.plant) || t.plant.id !== e.plant_id || !Array.isArray(t.plant.care_events) ? !1 : t.plant.revision === Number(e.expected_revision) + 1 && !t.plant.care_events.some((t) => w(t) && t.id === e.event_id) && $e({
+	if (n === "smart_plants/care/delete") return !Xe(t.plant) || !T(t.plant) || t.plant.id !== e.plant_id || !Array.isArray(t.plant.care_events) ? !1 : t.plant.revision === Number(e.expected_revision) + 1 && !t.plant.care_events.some((t) => T(t) && t.id === e.event_id) && $e({
 		revision: t.plant.revision,
 		events: [...t.plant.care_events].sort((e, t) => Qe(e, t)),
 		summary: t.summary
-	}) : n === "smart_plants/plants/list" ? Array.isArray(t.plants) && t.plants.every(Xe) && new Set(t.plants.map((e) => e.id)).size === t.plants.length : n === "smart_plants/roles/list" ? Array.isArray(t.roles) && t.roles.every((e) => w(e) && T(e.role) && T(e.source_domain) && Array.isArray(e.aggregations) && e.aggregations.every((e) => T(e)) && Array.isArray(e.thresholds) && e.thresholds.every((e) => w(e) && T(e.key) && T(e.entity_role) && T(e.translation_key)) && Array.isArray(e.entities) && e.entities.every((e) => w(e) && T(e.role) && T(e.platform) && T(e.translation_key))) : n === "smart_plants/plants/delete" ? Object.keys(t).length === 0 : n === "smart_plants/plants/overview" ? Array.isArray(t.plants) && t.plants.every(w) && new Set(t.plants.map((e) => e.plant_id)).size === t.plants.length : Xe(t.plant) && w(t.plant) && (e.plant_id === void 0 || t.plant.id === e.plant_id);
+	});
+	if (n === "smart_plants/plants/list") return Array.isArray(t.plants) && t.plants.every(Xe) && new Set(t.plants.map((e) => e.id)).size === t.plants.length;
+	if (n === "smart_plants/roles/list") return Array.isArray(t.roles) && t.roles.every((e) => T(e) && E(e.role) && E(e.source_domain) && Array.isArray(e.aggregations) && e.aggregations.every((e) => E(e)) && Array.isArray(e.thresholds) && e.thresholds.every((e) => T(e) && E(e.key) && E(e.entity_role) && E(e.translation_key)) && Array.isArray(e.entities) && e.entities.every((e) => T(e) && E(e.role) && E(e.platform) && E(e.translation_key)));
+	if (n === "smart_plants/plants/delete") return Object.keys(t).length === 0;
+	if (n === "smart_plants/plants/overview") return Array.isArray(t.plants) && t.plants.every(T) && new Set(t.plants.map((e) => e.plant_id)).size === t.plants.length;
+	if (n === "smart_plants/wizard/create") {
+		if (!Xe(t.plant) || !T(t.plant)) return !1;
+		let n = t.plant.roles;
+		return e.roles === void 0 || T(e.roles) && T(n) && Object.keys(e.roles).every((e) => T(n[e]));
+	}
+	return Xe(t.plant) && T(t.plant) && (e.plant_id === void 0 || t.plant.id === e.plant_id);
 }
 //#endregion
 //#region src/status.ts
@@ -1127,7 +1137,7 @@ var F = {
 		return Lt(await P(e, { type: "config/area_registry/list" }), (e) => typeof e.area_id == "string" && typeof e.name == "string");
 	},
 	async entities(e) {
-		return Lt(await P(e, { type: "config/entity_registry/list" }), (e) => typeof e.id == "string" && typeof e.entity_id == "string" && typeof e.unique_id == "string" && typeof e.platform == "string" && (e.device_id === null || typeof e.device_id == "string"));
+		return Lt(await P(e, { type: "config/entity_registry/list" }), (e) => typeof e.id == "string" && typeof e.entity_id == "string" && typeof e.unique_id == "string" && typeof e.platform == "string" && (e.device_id === null || typeof e.device_id == "string") && (e.area_id === void 0 || e.area_id === null || typeof e.area_id == "string"));
 	},
 	async devices(e) {
 		return Lt(await P(e, { type: "config/device_registry/list" }), (e) => typeof e.id == "string" && (e.area_id === null || typeof e.area_id == "string") && Array.isArray(e.identifiers) && e.identifiers.every((e) => Array.isArray(e) && e.length === 2 && e.every((e) => typeof e == "string")));
@@ -1362,7 +1372,6 @@ var zt = {
 	"format.percent": "{value} %",
 	"format.recorded_date_time": "{datetime} (UTC{offset})",
 	"common.cancel": "Abbrechen",
-	"common.none": "Keine",
 	"common.not_specified": "Nicht angegeben",
 	"common.not_supplied": "Nicht angegeben",
 	"common.no_species_selected": "Keine Art ausgewählt",
@@ -1775,79 +1784,104 @@ var zt = {
 	"threshold_error.soil_temperature_stress": "Die wirksamen Schwellenwerte müssen Kälte-Auslöser < Kälte-Aufhebung < Hitze-Aufhebung < Hitze-Auslöser erfüllen, mit ≥ 0,5 °C Hysterese und einem stabilen Bereich von ≥ 1,0 °C, alles innerhalb von −20,0 bis 60,0 °C.",
 	"threshold_error.low_battery": "Die wirksamen Schwellenwerte müssen Auslöser < Aufhebung mit ≥ 1 % Hysterese erfüllen; beide Werte sind ganze Zahlen von 0 bis 100 %.",
 	"threshold_error.low_light": "Die wirksamen Schwellenwerte müssen Zielwert < Aufhebung mit ≥ 10,0 lx Hysterese erfüllen; beide Werte liegen zwischen 0,0 und 200.000,0 lx.",
-	"wizard.step_basic": "Grunddaten",
-	"wizard.step_species": "Art und Pflege",
-	"wizard.step_review_species": "Art prüfen",
-	"wizard.step_sensors": "Feuchtesensoren",
-	"wizard.step_thresholds": "Feuchte-Schwellenwerte",
-	"wizard.step_taxonomy": "Kategorie und Tags",
-	"wizard.step_review": "Prüfen und erstellen",
-	"wizard.progress": "Fortschritt beim Erstellen",
-	"wizard.saved_after_confirmation": "Deine Pflanze wird erst nach der abschließenden Bestätigung gespeichert. Du kannst zurückgehen, ohne deine Auswahl zu verlieren.",
-	"wizard.retry_draft": "Entwurf erneut starten",
+	"wizard.step_plant": "Pflanze",
+	"wizard.step_sensors": "Sensoren",
+	"wizard.step_review": "Prüfen",
+	"wizard.step_of": "Schritt {step} von {total} · {name}",
+	"wizard.plant_heading": "Benenne deine Pflanze",
+	"wizard.plant_intro": "Nur der Name ist erforderlich. Alles andere kannst du später ändern.",
 	"wizard.plant_name": "Pflanzenname",
-	"wizard.acquired_date": "Anschaffungsdatum",
-	"wizard.photo": "Optionales lokales Foto",
-	"wizard.photo_hint": "JPEG, PNG oder WebP; höchstens 5 MiB und 2048 × 2048. Wird erst nach dem Erstellen hochgeladen.",
-	"wizard.photo_selected": "Ausgewählt: {name} ({bytes} Byte)",
-	"wizard.photo_remove": "Ausgewähltes Foto entfernen",
-	"wizard.species_source": "Quelle der Artdaten",
-	"wizard.manual_title": "Details selbst eingeben",
-	"wizard.manual_description": "Gib einen Artnamen ein oder fahre ohne fort. Funktioniert offline.",
-	"wizard.openplantbook_title": "OpenPlantBook durchsuchen",
-	"wizard.openplantbook_description": "Finde eine Art, prüfe die importierten Informationen und wähle dann aus, was übernommen wird.",
-	"wizard.openplantbook_unavailable_title": "OpenPlantBook ist nicht verbunden",
-	"wizard.openplantbook_unavailable_help": "Smart Plants verbindet sich direkt mit OpenPlantBook. Erstelle ein OpenPlantBook-Konto und API-Client-Zugangsdaten und trage sie in Home Assistant unter Einstellungen → Geräte & Dienste → Smart Plants → Konfigurieren ein. Die separate Home-Assistant-OpenPlantBook-Integration muss nicht installiert werden.",
-	"wizard.openplantbook_credentials_link": "OpenPlantBook-API-Zugangsdaten abrufen",
-	"wizard.species_details": "Artdetails",
-	"wizard.optional": "Optional",
-	"wizard.builtin_defaults": "Die Feuchte-Standardwerte stammen von Smart Plants: {min} Minimum, {target} Zielwert, {max} Maximum. Du kannst sie später prüfen oder anpassen.",
-	"wizard.search_label": "OpenPlantBook durchsuchen (mindestens 3 Zeichen)",
-	"wizard.search_button": "Pflanzen suchen",
-	"wizard.no_matches": "Keine Treffer. Versuche eine andere Suche oder wechsle zur manuellen Eingabe.",
-	"wizard.manual_instead": "Stattdessen Details manuell eingeben",
+	"wizard.area": "Bereich",
+	"wizard.no_area": "Kein Bereich",
+	"wizard.area_helper": "Das Pflanzengerät wird diesem Bereich zugeordnet. Sensoren aus demselben Bereich werden im nächsten Schritt vorgeschlagen.",
+	"wizard.photo_add": "Foto hinzufügen",
+	"wizard.photo_optional": "(optional)",
+	"wizard.photo_label": "Foto hinzufügen (optional)",
+	"wizard.photo_hint": "Bild hierher ziehen oder Datei auswählen · JPEG, PNG oder WebP bis 5 MB",
+	"wizard.photo_checking": "Foto wird geprüft …",
+	"wizard.photo_pending": "Wird beim Erstellen der Pflanze hochgeladen",
+	"wizard.photo_remove": "Entfernen",
+	"wizard.photo_remove_label": "Foto entfernen",
+	"wizard.sensors_heading": "Sensoren auswählen",
+	"wizard.sensors_intro": "Ein Bodenfeuchtesensor sorgt für Gießhinweise. Weitere Sensoren kannst du jetzt oder später hinzufügen.",
+	"wizard.moisture_sensor": "Bodenfeuchtesensor",
+	"wizard.role_sensor": "Sensor für {role}",
+	"wizard.discard_role": "Keinen Sensor für {role} hinzufügen",
+	"wizard.choose_sensor": "Sensor auswählen",
+	"wizard.search_sensors": "Sensoren suchen …",
+	"wizard.no_suitable_sensors": "Keine passenden Sensoren gefunden",
+	"wizard.group_in_area": "In {area}",
+	"wizard.group_other": "Andere Bereiche",
+	"wizard.sensor_reading": "{role} · aktuell {value}",
+	"wizard.sensor_unavailable": "nicht verfügbar",
+	"wizard.remove_sensor": "{name} entfernen",
+	"wizard.suggested": "Vorschläge aus {area}",
+	"wizard.no_suggestions": "Keine weiteren Sensoren in {area} gefunden.",
+	"wizard.add": "Hinzufügen",
+	"wizard.add_label": "{name} hinzufügen",
+	"wizard.add_another": "Weiteren Sensor hinzufügen",
+	"wizard.add_another_hint": "Licht, Batterie, Düngergehalt, CO₂ und mehr",
+	"wizard.review_heading": "Prüfen und erstellen",
+	"wizard.review_intro": "Gespeichert wird erst, wenn du „Pflanze erstellen“ auswählst.",
+	"wizard.with_photo": "mit Foto",
+	"wizard.no_moisture": "Kein Bodenfeuchtesensor",
+	"wizard.no_other_sensors": "Keine weiteren Sensoren",
+	"wizard.edit": "Bearbeiten",
+	"wizard.edit_plant": "Pflanze bearbeiten",
+	"wizard.edit_sensors": "Sensoren bearbeiten",
+	"wizard.no_moisture_warning": "Ohne Bodenfeuchtesensor gibt es keine Gießhinweise. Du kannst später einen hinzufügen.",
+	"wizard.species_section": "Art und Gießziele",
+	"wizard.species_summary_default": "Optional · Standardwerte: braucht Wasser unter {min}, zu nass über {max}",
+	"wizard.species_summary_manual": "{species} · braucht Wasser unter {min}, zu nass über {max}",
+	"wizard.species_summary_accepted": "{species} · Zielwerte von OpenPlantBook",
+	"wizard.species_search": "OpenPlantBook durchsuchen",
+	"wizard.search_button": "Suchen",
+	"wizard.search_hint": "Mindestens 3 Zeichen",
+	"wizard.results": "Suchergebnisse",
+	"wizard.no_matches": "Keine Treffer. Versuche eine andere Suche oder gib selbst einen Namen ein.",
 	"wizard.accept_species": "Ich habe diese Artinformationen geprüft und übernehme sie",
-	"wizard.imported_defaults_hint": "Importierte Feuchte-Standardwerte werden mit ihrer Quelle angezeigt. Fehlende Werte verwenden die Standardwerte von Smart Plants.",
-	"wizard.effective_range": "Aktueller wirksamer Bereich:",
-	"wizard.range_value": "{min}–{max}",
-	"wizard.target_separator": ", Zielwert ",
-	"wizard.inherited_openplantbook": "Übernommene Werte verwenden geprüfte OpenPlantBook-Daten, soweit vorhanden, sonst die Standardwerte von Smart Plants.",
-	"wizard.inherited_builtin": "Übernommene Werte verwenden die integrierten Standardwerte von Smart Plants.",
-	"wizard.overrides_hint": "Lass einen Wert leer, um seinen aktuellen Standardwert zu übernehmen.",
-	"wizard.taxonomy_hint": "Tags und Kategorie gehören zu Smart Plants und sind unabhängig von Home-Assistant-Labels.",
-	"wizard.review_area": "Bereich",
-	"wizard.review_missing_area": "{area} (Bereich fehlt)",
-	"wizard.review_exposure": "Sonne / Regen",
-	"wizard.review_acquired": "Angeschafft",
-	"wizard.review_taxonomy": "Kategorie / Tags",
-	"wizard.review_sources": "Quellen",
-	"wizard.review_primary_aggregation": "Primär / Aggregation",
-	"wizard.review_staleness": "Veraltet nach",
-	"wizard.review_seconds": "{seconds} Sekunden",
-	"wizard.review_thresholds": "Wirksame Schwellenwerte",
-	"wizard.review_threshold": "{key}: {value} ({source})",
-	"wizard.inherited": "übernommen",
-	"wizard.override": "überschrieben",
-	"wizard.review_photo": "Foto",
-	"wizard.review_photo_info": "{format} · {width} × {height} Pixel · {bytes} Byte",
-	"wizard.confirm_hint": "Die Bestätigung erstellt ein Pflanzengerät mit seinen Feuchte-Entitäten. Benachrichtigungen kannst du anschließend in Home Assistant einrichten.",
+	"wizard.remove_species": "Diese Art nicht verwenden",
+	"wizard.manual_species": "Oder gib selbst einen Namen ein",
+	"wizard.provider_unavailable_title": "Die Artsuche braucht OpenPlantBook.",
+	"wizard.provider_unavailable_body": "Trage deine OpenPlantBook-Client-ID in den Optionen der Smart-Plants-Integration ein. Du kannst die Pflanze auch ohne Art hinzufügen.",
+	"wizard.open_options": "Integrationsoptionen öffnen",
+	"wizard.openplantbook_credentials_link": "OpenPlantBook-API-Zugangsdaten abrufen",
+	"wizard.targets_label": "Bodenfeuchte-Zielwerte",
+	"wizard.target_min": "Braucht Wasser unter",
+	"wizard.target_ideal": "Ideal",
+	"wizard.target_max": "Zu nass über",
+	"wizard.targets_default": "Standardwerte von Smart Plants. Eine Art kann passendere Werte vorschlagen.",
+	"wizard.targets_species": "Von OpenPlantBook übernommen. Ändere einen Wert, um ihn für diese Pflanze zu überschreiben.",
+	"wizard.targets_reset": "Auf Standardwerte zurücksetzen",
+	"wizard.details_section": "Weitere Details",
+	"wizard.details_summary": "Optional · Anschaffungsdatum, drinnen oder draußen, Kategorie, Tags",
+	"wizard.acquired_date": "Anschaffungsdatum",
+	"wizard.tags": "Tags",
+	"wizard.tags_hint": "Tags mit Kommas trennen",
+	"wizard.back": "Zurück",
+	"wizard.next": "Weiter",
+	"wizard.skip": "Vorerst überspringen",
+	"wizard.create": "Pflanze erstellen",
+	"wizard.retry_create": "Dieselbe Erstellungsanfrage wiederholen",
+	"wizard.retry_draft": "Entwurf erneut starten",
 	"wizard.final_request_retained": "Die abschließende Anfrage bleibt unverändert erhalten. Wiederhole sie, um ein unsicheres Ergebnis sicher aufzulösen, auch nach einer neuen Verbindung. Starte keinen neuen Entwurf, bevor das Ergebnis geklärt ist.",
 	"wizard.rejected": "Der Server hat die Anfrage als ungültig oder abgelaufen abgelehnt. Du kannst sie mit einem neuen Entwurf korrigieren; Artdaten müssen erneut angezeigt und übernommen werden.",
 	"wizard.start_fresh": "Neuen Entwurf starten und Eingaben behalten",
-	"wizard.previous": "Vorheriger Schritt",
-	"wizard.next": "Nächster Schritt",
-	"wizard.retry_create": "Dieselbe Erstellungsanfrage wiederholen",
-	"wizard.create": "Bestätigen und Pflanze erstellen",
 	"wizard.working": "Wird bearbeitet …",
+	"wizard.open_plant": "Pflanze öffnen",
+	"wizard.done_heading": "{name} ist bereit",
+	"wizard.done_body_area": "Die Pflanze ist jetzt ein Gerät in {area}. Ihre Messwerte und Hinweise erscheinen innerhalb einer Minute hier und in Home Assistant.",
+	"wizard.done_body": "Die Pflanze ist jetzt ein Gerät in Home Assistant. Ihre Messwerte und Hinweise erscheinen innerhalb einer Minute hier und in Home Assistant.",
+	"wizard.back_to_plants": "Zurück zu den Pflanzen",
+	"wizard.add_another_plant": "Weitere Pflanze hinzufügen",
 	"wizard.error_code": "{code}: Anfrage fehlgeschlagen. Prüfe die Eingaben oder versuche es erneut, sobald eine Verbindung besteht. Die Art kann manuell eingegeben werden; abgelaufene Vorschauen müssen erneut geprüft werden.",
 	"wizard.error_generic": "Anfrage fehlgeschlagen. Versuche es erneut, sobald eine Verbindung besteht.",
 	"wizard.error_name": "Gib einen Pflanzennamen ein.",
 	"wizard.error_name_length": "Gib einen Pflanzennamen ein (1–200 Zeichen).",
 	"wizard.error_acquired": "Gib ein gültiges Anschaffungsdatum ein.",
 	"wizard.error_area": "Der ausgewählte Home-Assistant-Bereich existiert nicht mehr. Wähle einen aktuellen Bereich oder „Kein Bereich“.",
-	"wizard.error_accept_preview": "Prüfe die ausgewählte Artvorschau und übernimm sie ausdrücklich, oder fahre manuell fort.",
-	"wizard.error_choose_species": "Wähle ein Suchergebnis oder fahre manuell fort.",
-	"wizard.error_accept": "Übernimm die Vorschau ausdrücklich oder fahre manuell fort.",
+	"wizard.error_accept_preview": "Prüfe die ausgewählte Art und übernimm sie ausdrücklich, oder verwende sie nicht.",
+	"wizard.error_targets": "Prüfe die Gießziele: ganze Zahlen von 1 bis 99, „Braucht Wasser unter“ kleiner als „Ideal“ kleiner als „Zu nass über“, mindestens 4 % Abstand.",
 	"plant_status.needs_water": "Braucht Wasser",
 	"plant_status.too_wet": "Zu nass",
 	"plant_status.problem": "Problem",
@@ -2068,7 +2102,6 @@ var zt = {
 	"format.percent": "{value}%",
 	"format.recorded_date_time": "{datetime} (UTC{offset})",
 	"common.cancel": "Cancel",
-	"common.none": "None",
 	"common.not_specified": "Not specified",
 	"common.not_supplied": "Not supplied",
 	"common.no_species_selected": "No species selected",
@@ -2481,79 +2514,104 @@ var zt = {
 	"threshold_error.soil_temperature_stress": "Effective thresholds must satisfy cold trigger < cold clear < hot clear < hot trigger, with ≥ 0.5 °C hysteresis and a ≥ 1.0 °C stable band, all within −20.0…60.0 °C.",
 	"threshold_error.low_battery": "Effective thresholds must satisfy threshold_percent < clear_percent with ≥ 1 % hysteresis, both integers within 0…100 %.",
 	"threshold_error.low_light": "Effective thresholds must satisfy target_lux < clear_lux with ≥ 10.0 lx hysteresis, both within 0.0…200000.0 lx.",
-	"wizard.step_basic": "Basic info",
-	"wizard.step_species": "Species and care",
-	"wizard.step_review_species": "Review species",
-	"wizard.step_sensors": "Moisture sensors",
-	"wizard.step_thresholds": "Moisture thresholds",
-	"wizard.step_taxonomy": "Category and tags",
-	"wizard.step_review": "Review and create",
-	"wizard.progress": "Creation progress",
-	"wizard.saved_after_confirmation": "Your plant is saved only after the final confirmation. You can go back without losing your choices.",
-	"wizard.retry_draft": "Retry starting draft",
+	"wizard.step_plant": "Plant",
+	"wizard.step_sensors": "Sensors",
+	"wizard.step_review": "Review",
+	"wizard.step_of": "Step {step} of {total} · {name}",
+	"wizard.plant_heading": "Name your plant",
+	"wizard.plant_intro": "Only the name is required. You can change everything later.",
 	"wizard.plant_name": "Plant name",
-	"wizard.acquired_date": "Acquired date",
-	"wizard.photo": "Optional local photo",
-	"wizard.photo_hint": "JPEG, PNG or WebP; 5 MiB, 2048 × 2048 maximum. Uploaded only after creation.",
-	"wizard.photo_selected": "Selected: {name} ({bytes} bytes)",
-	"wizard.photo_remove": "Remove selected photo",
-	"wizard.species_source": "Species source",
-	"wizard.manual_title": "Enter details myself",
-	"wizard.manual_description": "Choose a species name or continue without one. Works offline.",
-	"wizard.openplantbook_title": "Search OpenPlantBook",
-	"wizard.openplantbook_description": "Find a species, review imported information, then choose what to apply.",
-	"wizard.openplantbook_unavailable_title": "OpenPlantBook is not connected",
-	"wizard.openplantbook_unavailable_help": "Smart Plants connects directly to OpenPlantBook. Create an OpenPlantBook account and API client credentials, then add them in Home Assistant under Settings → Devices & services → Smart Plants → Configure. You do not need to install a separate Home Assistant integration.",
-	"wizard.openplantbook_credentials_link": "Get OpenPlantBook API credentials",
-	"wizard.species_details": "Species details",
-	"wizard.optional": "Optional",
-	"wizard.builtin_defaults": "Moisture defaults come from Smart Plants: {min} minimum, {target} target, {max} maximum. You can review or adjust them later.",
-	"wizard.search_label": "Search OpenPlantBook (at least 3 characters)",
-	"wizard.search_button": "Search plants",
-	"wizard.no_matches": "No matches. Try another search or switch to manual entry.",
-	"wizard.manual_instead": "Enter details manually instead",
+	"wizard.area": "Area",
+	"wizard.no_area": "No area",
+	"wizard.area_helper": "The plant device is placed in this area. Sensors from the same area are suggested next.",
+	"wizard.photo_add": "Add a photo",
+	"wizard.photo_optional": "(optional)",
+	"wizard.photo_label": "Add a photo (optional)",
+	"wizard.photo_hint": "Drop an image or choose a file · JPEG, PNG or WebP up to 5 MB",
+	"wizard.photo_checking": "Checking the photo…",
+	"wizard.photo_pending": "Uploaded when you create the plant",
+	"wizard.photo_remove": "Remove",
+	"wizard.photo_remove_label": "Remove photo",
+	"wizard.sensors_heading": "Pick sensors",
+	"wizard.sensors_intro": "A soil moisture sensor gives watering alerts. Add others now or later.",
+	"wizard.moisture_sensor": "Soil moisture sensor",
+	"wizard.role_sensor": "{role} sensor",
+	"wizard.discard_role": "Don’t add a {role} sensor",
+	"wizard.choose_sensor": "Choose a sensor",
+	"wizard.search_sensors": "Search sensors…",
+	"wizard.no_suitable_sensors": "No suitable sensors found",
+	"wizard.group_in_area": "In {area}",
+	"wizard.group_other": "Other areas",
+	"wizard.sensor_reading": "{role} · now {value}",
+	"wizard.sensor_unavailable": "unavailable",
+	"wizard.remove_sensor": "Remove {name}",
+	"wizard.suggested": "Suggested from {area}",
+	"wizard.no_suggestions": "No other sensors found in {area}.",
+	"wizard.add": "Add",
+	"wizard.add_label": "Add {name}",
+	"wizard.add_another": "Add another sensor",
+	"wizard.add_another_hint": "Light, battery, fertilizer level, CO₂ and more",
+	"wizard.review_heading": "Check and create",
+	"wizard.review_intro": "Nothing is saved until you select Create plant.",
+	"wizard.with_photo": "with photo",
+	"wizard.no_moisture": "No soil moisture sensor",
+	"wizard.no_other_sensors": "No other sensors",
+	"wizard.edit": "Edit",
+	"wizard.edit_plant": "Edit plant",
+	"wizard.edit_sensors": "Edit sensors",
+	"wizard.no_moisture_warning": "Without a soil moisture sensor there are no watering alerts. You can add one later.",
+	"wizard.species_section": "Species and watering targets",
+	"wizard.species_summary_default": "Optional · defaults: needs water below {min}, too wet above {max}",
+	"wizard.species_summary_manual": "{species} · needs water below {min}, too wet above {max}",
+	"wizard.species_summary_accepted": "{species} · targets from OpenPlantBook",
+	"wizard.species_search": "Search OpenPlantBook",
+	"wizard.search_button": "Search",
+	"wizard.search_hint": "At least 3 characters",
+	"wizard.results": "Search results",
+	"wizard.no_matches": "No matches. Try another search or enter a name yourself.",
 	"wizard.accept_species": "I reviewed and accept this species information",
-	"wizard.imported_defaults_hint": "Imported moisture defaults will be shown with their source. Missing values use Smart Plants defaults.",
-	"wizard.effective_range": "Current effective range:",
-	"wizard.range_value": "{min}–{max}",
-	"wizard.target_separator": ", target ",
-	"wizard.inherited_openplantbook": "Values shown as inherited use reviewed OpenPlantBook data where supplied, otherwise Smart Plants defaults.",
-	"wizard.inherited_builtin": "Values shown as inherited use Smart Plants built-in defaults.",
-	"wizard.overrides_hint": "Leave a value blank to inherit its current default.",
-	"wizard.taxonomy_hint": "Tags and category belong to Smart Plants, independently of Home Assistant labels.",
-	"wizard.review_area": "Area",
-	"wizard.review_missing_area": "{area} (missing area)",
-	"wizard.review_exposure": "Sun / rain exposure",
-	"wizard.review_acquired": "Acquired",
-	"wizard.review_taxonomy": "Category / tags",
-	"wizard.review_sources": "Sources",
-	"wizard.review_primary_aggregation": "Primary / aggregation",
-	"wizard.review_staleness": "Staleness",
-	"wizard.review_seconds": "{seconds} seconds",
-	"wizard.review_thresholds": "Effective thresholds",
-	"wizard.review_threshold": "{key}: {value} ({source})",
-	"wizard.inherited": "inherited",
-	"wizard.override": "override",
-	"wizard.review_photo": "Photo",
-	"wizard.review_photo_info": "{format} · {width} × {height} pixels · {bytes} bytes",
-	"wizard.confirm_hint": "Confirming creates one plant device and its moisture entities. You can configure notifications in Home Assistant afterwards.",
+	"wizard.remove_species": "Don’t use this species",
+	"wizard.manual_species": "Or enter a name yourself",
+	"wizard.provider_unavailable_title": "Species search needs OpenPlantBook.",
+	"wizard.provider_unavailable_body": "Add your OpenPlantBook client ID in the Smart Plants integration options. You can add the plant without a species.",
+	"wizard.open_options": "Open integration options",
+	"wizard.openplantbook_credentials_link": "Get OpenPlantBook API credentials",
+	"wizard.targets_label": "Soil moisture targets",
+	"wizard.target_min": "Needs water below",
+	"wizard.target_ideal": "Ideal",
+	"wizard.target_max": "Too wet above",
+	"wizard.targets_default": "Smart Plants defaults. A species can suggest better values.",
+	"wizard.targets_species": "Imported from OpenPlantBook. Edit any value to override it for this plant.",
+	"wizard.targets_reset": "Reset to defaults",
+	"wizard.details_section": "More details",
+	"wizard.details_summary": "Optional · date acquired, indoor or outdoor, category, tags",
+	"wizard.acquired_date": "Date acquired",
+	"wizard.tags": "Tags",
+	"wizard.tags_hint": "Separate tags with commas",
+	"wizard.back": "Back",
+	"wizard.next": "Next",
+	"wizard.skip": "Skip for now",
+	"wizard.create": "Create plant",
+	"wizard.retry_create": "Retry same creation request",
+	"wizard.retry_draft": "Retry starting draft",
 	"wizard.final_request_retained": "The final request is retained unchanged. Retry it to resolve an uncertain result safely, including after reconnect. Do not start a replacement draft until the result is resolved.",
 	"wizard.rejected": "The server rejected the request as invalid or expired. You may correct it using a fresh draft; species data must be previewed and accepted again.",
 	"wizard.start_fresh": "Start fresh draft retaining editable fields",
-	"wizard.previous": "Previous step",
-	"wizard.next": "Next step",
-	"wizard.retry_create": "Retry same creation request",
-	"wizard.create": "Confirm and create plant",
 	"wizard.working": "Working…",
+	"wizard.done_heading": "{name} is ready",
+	"wizard.open_plant": "Open plant",
+	"wizard.done_body_area": "The plant is now a device in {area}. Its readings and alerts appear here and in Home Assistant within a minute.",
+	"wizard.done_body": "The plant is now a device in Home Assistant. Its readings and alerts appear here and in Home Assistant within a minute.",
+	"wizard.back_to_plants": "Back to plants",
+	"wizard.add_another_plant": "Add another plant",
 	"wizard.error_code": "{code}: Request failed. Review input or retry when connected. Species can be entered manually; expired previews require a new review.",
 	"wizard.error_generic": "Request failed. Retry when connected.",
 	"wizard.error_name": "Enter a plant name.",
 	"wizard.error_name_length": "Enter a plant name (1–200 characters).",
-	"wizard.error_acquired": "Enter a valid acquired date.",
+	"wizard.error_acquired": "Enter a valid date acquired.",
 	"wizard.error_area": "The selected Home Assistant area no longer exists. Choose a current area or No area.",
-	"wizard.error_accept_preview": "Review and explicitly accept the selected species preview, or continue manually.",
-	"wizard.error_choose_species": "Choose a species result or continue manually.",
-	"wizard.error_accept": "Explicitly accept the preview or continue manually.",
+	"wizard.error_accept_preview": "Review and explicitly accept the selected species, or choose not to use it.",
+	"wizard.error_targets": "Check the watering targets: whole numbers from 1 to 99, “Needs water below” lower than “Ideal” lower than “Too wet above”, at least 4 % apart.",
 	"plant_status.needs_water": "Needs water",
 	"plant_status.too_wet": "Too wet",
 	"plant_status.problem": "Problem",
@@ -3653,45 +3711,45 @@ function Or(e, t, n, r, i = L) {
 	}
 	return s.join(i.t("source_warning.separator"));
 }
-function U(e) {
+function kr(e) {
 	return [...new Set(e.split(",").map((e) => e.trim()).filter(Boolean))];
 }
-function kr(e, t, n = L) {
+function Ar(e, t, n = L) {
 	return e.length > 60 || t.length > 32 || t.some((e) => e.length > 60) ? n.t("validation.taxonomy") : null;
 }
 //#endregion
 //#region src/editors.ts
-var Ar = (e) => e.target.value;
-function W(e, t, n, r = "text", i = 200) {
-	return y`<label>${e}<input type=${r} maxlength=${i} .value=${t} @input=${(e) => n(Ar(e))}></label>`;
+var jr = (e) => e.target.value;
+function U(e, t, n, r = "text", i = 200) {
+	return y`<label>${e}<input type=${r} maxlength=${i} .value=${t} @input=${(e) => n(jr(e))}></label>`;
 }
-function G(e, t, n, r, i) {
-	return y`<label>${t}<select .value=${n} @change=${(e) => i(Ar(e))}>${(n && !r.some((e) => e.value === n) ? [...r, {
+function W(e, t, n, r, i) {
+	return y`<label>${t}<select .value=${n} @change=${(e) => i(jr(e))}>${(n && !r.some((e) => e.value === n) ? [...r, {
 		value: n,
 		label: e.t("editor.current_value", { value: n })
 	}] : r).map((e) => y`<option value=${e.value} ?selected=${e.value === n}>${e.label}</option>`)}</select></label>`;
 }
-function jr(e, t) {
+function Mr(e, t) {
 	let n = `placement.${t}`;
 	return I(n) ? e.t(n) : t.replaceAll("_", " ");
 }
-function Mr(e, t) {
+function Nr(e, t) {
 	let n = `exposure.${t}`;
 	return I(n) ? e.t(n) : t;
 }
-function Nr(e, t) {
+function Pr(e, t) {
 	let n = `rain_exposure.${t}`;
 	return I(n) ? e.t(n) : t;
 }
-function Pr(e, t) {
+function Fr(e, t) {
 	let n = `aggregation.${t}`;
 	return I(n) ? e.t(n) : t;
 }
-function Fr(e, t) {
+function Ir(e, t) {
 	return e.t(`moisture_threshold.${t}`);
 }
-function Ir(e, t, n, r) {
-	return G(e, e.t("area.label"), t, [
+function Lr(e, t, n, r) {
+	return W(e, e.t("area.label"), t, [
 		{
 			value: "",
 			label: e.t("area.none")
@@ -3706,7 +3764,7 @@ function Ir(e, t, n, r) {
 		}))
 	], r);
 }
-function Lr(e, t, n) {
+function Rr(e, t, n) {
 	let r = (e) => n({
 		mode: "indoor",
 		exposure: null,
@@ -3715,32 +3773,32 @@ function Lr(e, t, n) {
 		...t,
 		...e
 	}), i = e.t("common.not_specified");
-	return y`${G(e, e.t("placement.label"), t?.mode ?? "", [{
+	return y`${W(e, e.t("placement.label"), t?.mode ?? "", [{
 		value: "",
 		label: i
 	}, ...Zt.map((t) => ({
 		value: t,
-		label: jr(e, t)
+		label: Mr(e, t)
 	}))], (e) => e ? r({ mode: e }) : n(null))}
-    ${t ? y`${G(e, e.t("exposure.label"), t.exposure ?? "", [
+    ${t ? y`${W(e, e.t("exposure.label"), t.exposure ?? "", [
 		"",
 		"full_sun",
 		"partial_sun",
 		"shade"
 	].map((t) => ({
 		value: t,
-		label: t ? Mr(e, t) : i
+		label: t ? Nr(e, t) : i
 	})), (e) => r({ exposure: e || null }))}
-    ${G(e, e.t("rain_exposure.label"), t.rain_exposure ?? "", [
+    ${W(e, e.t("rain_exposure.label"), t.rain_exposure ?? "", [
 		"",
 		"none",
 		"partial",
 		"full"
 	].map((t) => ({
 		value: t,
-		label: t ? Nr(e, t) : i
+		label: t ? Pr(e, t) : i
 	})), (e) => r({ rain_exposure: e || null }))}
-    ${G(e, e.t("container.label"), t.container === null ? "" : String(t.container), [
+    ${W(e, e.t("container.label"), t.container === null ? "" : String(t.container), [
 		{
 			value: "",
 			label: i
@@ -3755,7 +3813,7 @@ function Lr(e, t, n) {
 		}
 	], (e) => r({ container: e === "" ? null : e === "true" }))}` : b}`;
 }
-function Rr(e, t, n) {
+function zr(e, t, n) {
 	let r = n[t], i = e.t("sources.not_supplied_lower");
 	return e.t("sources.candidate", {
 		name: typeof r?.attributes.friendly_name == "string" ? r.attributes.friendly_name : t,
@@ -3765,34 +3823,34 @@ function Rr(e, t, n) {
 		state: r?.state ?? e.t("sources.unavailable_lower")
 	});
 }
-function zr(e, t, n, r, i, a, o, s, c, l, u, d, f = "all") {
+function Br(e, t, n, r, i, a, o, s, c, l, u, d, f = "all") {
 	let p = e.t("common.not_supplied"), m = y`
-    ${G(e, e.t("sources.primary"), t.primary_entity_id ?? "", [{
+    ${W(e, e.t("sources.primary"), t.primary_entity_id ?? "", [{
 		value: "",
 		label: e.t("sources.primary_none")
 	}, ...t.sources.map((e) => ({
 		value: e.entity_id,
 		label: V(e, n)?.entity_id ?? e.entity_id
 	}))], (e) => o({ primary_entity_id: e || null }))}
-    ${G(e, e.t("sources.aggregation"), t.aggregation, [
+    ${W(e, e.t("sources.aggregation"), t.aggregation, [
 		"primary",
 		"average",
 		"min",
 		"max"
 	].map((t) => ({
 		value: t,
-		label: Pr(e, t)
+		label: Fr(e, t)
 	})), (e) => o({ aggregation: e }))}
-    ${W(e.t("sources.stale_after"), String(t.stale_after_seconds), (e) => o({ stale_after_seconds: Number(e) }), "number")}`;
+    ${U(e.t("sources.stale_after"), String(t.stale_after_seconds), (e) => o({ stale_after_seconds: Number(e) }), "number")}`;
 	return f === "combine" ? m : y`
     <p>${s}</p>
     <label class="check"><input type="checkbox" .checked=${i} @change=${(e) => a(e.target.checked)}>${e.t("sources.show_all")}</label>
-    ${G(e, c, "", [{
+    ${W(e, c, "", [{
 		value: "",
 		label: e.t("sources.choose")
 	}, ...u.map((t) => ({
 		value: t,
-		label: Rr(e, t, r)
+		label: zr(e, t, r)
 	}))], (e) => {
 		e && !t.sources.some((t) => t.entity_id === e) && o({ sources: [...t.sources, {
 			entity_id: e,
@@ -3823,13 +3881,13 @@ function zr(e, t, n, r, i, a, o, s, c, l, u, d, f = "all") {
     ${t.sources.some((e) => e.registry_id && !V(e, n)) ? y`<a href="/config/repairs">${e.t("sources.open_repairs")}</a>` : b}
     ${f === "all" ? m : b}`;
 }
-function Br(e, t, n, r, i, a, o, s, c = "all") {
+function Vr(e, t, n, r, i, a, o, s, c = "all") {
 	let l = (e) => s({
 		...t,
 		...e
 	}), u = [.../* @__PURE__ */ new Set([...r.map((e) => e.entity_id), ...Object.keys(i)])].filter((e) => e.startsWith("sensor.") && (a || i[e]?.attributes.device_class === "moisture")).sort(), d = c === "pick" || c === "combine" ? c : "all";
-	return y`${c === "thresholds" ? b : zr(e, t, r, i, a, o, l, e.t("moisture.sources_intro"), e.t("moisture.add_sensor"), "sensor.soil_moisture", u, (t) => br(t, r, i, e), d)}
-    ${c === "thresholds" || c === "all" ? y`<p>${e.t("moisture.overrides_intro")}</p><div class="grid">${R.map((r) => y`<div>${W(e.t("moisture.override_label", { key: Fr(e, r) }), t.threshold_overrides[r] === null ? "" : String(t.threshold_overrides[r]), (e) => l({ threshold_overrides: {
+	return y`${c === "thresholds" ? b : Br(e, t, r, i, a, o, l, e.t("moisture.sources_intro"), e.t("moisture.add_sensor"), "sensor.soil_moisture", u, (t) => br(t, r, i, e), d)}
+    ${c === "thresholds" || c === "all" ? y`<p>${e.t("moisture.overrides_intro")}</p><div class="grid">${R.map((r) => y`<div>${U(e.t("moisture.override_label", { key: Ir(e, r) }), t.threshold_overrides[r] === null ? "" : String(t.threshold_overrides[r]), (e) => l({ threshold_overrides: {
 		...t.threshold_overrides,
 		[r]: e.trim() === "" ? null : Number(e)
 	} }), "number")}<small>${e.t("moisture.default_effective", {
@@ -3838,16 +3896,16 @@ function Br(e, t, n, r, i, a, o, s, c = "all") {
 	})}</small><button type="button" @click=${() => l({ threshold_overrides: {
 		...t.threshold_overrides,
 		[r]: null
-	} })}>${e.t("moisture.inherit_key", { key: Fr(e, r) })}</button></div>`)}</div>` : b}`;
+	} })}>${e.t("moisture.inherit_key", { key: Ir(e, r) })}</button></div>`)}</div>` : b}`;
 }
-function Vr(e, t, n, r, i, a, o, s, c = "all") {
+function Hr(e, t, n, r, i, a, o, s, c = "all") {
 	let l = (e) => s({
 		...n,
 		...e
 	}), u = [.../* @__PURE__ */ new Set([...r.map((e) => e.entity_id), ...Object.keys(i)])].filter((e) => e.startsWith("sensor.") && (a || i[e]?.attributes.device_class === t.deviceClass && typeof i[e]?.attributes.unit_of_measurement == "string" && t.acceptedUnits.includes(i[e]?.attributes.unit_of_measurement))).sort(), d = wr(t.role, e);
-	return zr(e, n, r, i, a, o, l, e.t("sources.role_intro", { role: d }), e.t("sources.add_role_sensor", { role: d }), `sensor.${t.role}`, u, (n) => Or(n, r, i, t, e), c);
+	return Br(e, n, r, i, a, o, l, e.t("sources.role_intro", { role: d }), e.t("sources.add_role_sensor", { role: d }), `sensor.${t.role}`, u, (n) => Or(n, r, i, t, e), c);
 }
-function Hr(e, t, n) {
+function Ur(e, t, n) {
 	let r = e.t("common.not_supplied"), i = [
 		[e.t("snapshot.provider"), t.provider],
 		[e.t("snapshot.reference"), t.provider_ref],
@@ -3860,14 +3918,14 @@ function Hr(e, t, n) {
 	];
 	return y`<article><h3>${t.common_name ?? t.latin_name ?? e.t("snapshot.species")}</h3><p><i>${t.latin_name}</i></p>
     <dl>${i.map(([e, t]) => y`<dt>${e}</dt><dd>${t}</dd>`)}</dl>
-    <h4>${e.t("snapshot.imported_defaults")}</h4>${R.map((n) => y`<p>${Fr(e, n)}: ${t.threshold_defaults.moisture?.[n] === void 0 ? e.t("snapshot.default_not_supplied") : e.number(t.threshold_defaults.moisture[n])}</p>`)}
+    <h4>${e.t("snapshot.imported_defaults")}</h4>${R.map((n) => y`<p>${Ir(e, n)}: ${t.threshold_defaults.moisture?.[n] === void 0 ? e.t("snapshot.default_not_supplied") : e.number(t.threshold_defaults.moisture[n])}</p>`)}
     ${Object.entries(t.care_text).map(([e, t]) => y`<h4>${e}</h4><p class="prose">${t}</p>`)}
     <details><summary>${e.t("snapshot.field_attribution")}</summary>${Object.entries(t.field_sources).map(([e, t]) => y`<p>${e}: ${t}</p>`)}</details>
     ${n ? y`<h4>${e.t("snapshot.proposed_changes")}</h4>${Object.entries(n.diff).map(([e, t]) => y`<p>${e}: ${JSON.stringify(t.before)} → ${JSON.stringify(t.after)}</p>`)}<p>${e.t("snapshot.preview_read_only")}</p>` : b}</article>`;
 }
 //#endregion
 //#region src/components/shared-styles.ts
-var K = o`
+var G = o`
   :host {
     --sp-success: var(--success-color, #4caf50);
     --sp-warning: var(--warning-color, #ff9800);
@@ -3879,10 +3937,10 @@ var K = o`
     --sp-primary: var(--primary-color, #009ac7);
     --sp-card: var(--card-background-color, #fff);
   }
-`, Ur = o`
+`, Wr = o`
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 `;
-function Wr(e) {
+function Gr(e) {
 	switch (e) {
 		case "--success-color": return "var(--sp-success)";
 		case "--warning-color": return "var(--sp-warning)";
@@ -3893,7 +3951,7 @@ function Wr(e) {
 }
 //#endregion
 //#region \0@oxc-project+runtime@0.151.0/helpers/esm/decorate.js
-function q(e, t, n, r) {
+function K(e, t, n, r) {
 	var i = arguments.length, a = i < 3 ? t : r === null ? r = Object.getOwnPropertyDescriptor(t, n) : r, o;
 	if (typeof Reflect == "object" && typeof Reflect.decorate == "function") a = Reflect.decorate(e, t, n, r);
 	else for (var s = e.length - 1; s >= 0; s--) (o = e[s]) && (a = (i < 3 ? o(a) : i > 3 ? o(t, n, a) : o(t, n)) || a);
@@ -3901,22 +3959,22 @@ function q(e, t, n, r) {
 }
 //#endregion
 //#region src/components/sp-status-chip.ts
-var Gr, Kr = class extends x {
+var Kr, qr = class extends S {
 	constructor(...e) {
 		super(...e), this.status = "healthy", this.label = "", this.more = 0, this.l = L;
 	}
 	willUpdate() {
 		let e = st[this.status]?.color ?? "--disabled-text-color";
-		this.toggleAttribute("muted", e === "--disabled-text-color"), this.style.setProperty("--sp-status", Wr(e));
+		this.toggleAttribute("muted", e === "--disabled-text-color"), this.style.setProperty("--sp-status", Gr(e));
 	}
 	render() {
 		let e = st[this.status] ?? st.healthy, t = this.label || lt(this.l, this.status in st ? this.status : "healthy");
 		return y`<span class="chip" part="chip"><ha-icon aria-hidden="true" .icon=${e.icon}></ha-icon><span class="label">${t}</span>${this.more > 0 ? y`<span aria-hidden="true">${this.l.t("plant_status.more", { count: this.more })}</span><span class="sr-only">${this.l.t("plant_status.more_label", { count: this.more })}</span>` : b}</span>`;
 	}
 };
-Gr = Kr, Gr.styles = [
-	K,
-	Ur,
+Kr = qr, Kr.styles = [
+	G,
+	Wr,
 	o`
     :host { display: inline-flex; max-width: 100%; }
     .chip {
@@ -3929,10 +3987,10 @@ Gr = Kr, Gr.styles = [
     ha-icon { --mdc-icon-size: 17px; flex: none; }
     .label { overflow-wrap: anywhere; hyphens: auto; }
   `
-], q([S({ reflect: !0 })], Kr.prototype, "status", void 0), q([S()], Kr.prototype, "label", void 0), q([S({ type: Number })], Kr.prototype, "more", void 0), q([S({ attribute: !1 })], Kr.prototype, "l", void 0), customElements.get("sp-status-chip") || customElements.define("sp-status-chip", Kr);
+], K([C({ reflect: !0 })], qr.prototype, "status", void 0), K([C()], qr.prototype, "label", void 0), K([C({ type: Number })], qr.prototype, "more", void 0), K([C({ attribute: !1 })], qr.prototype, "l", void 0), customElements.get("sp-status-chip") || customElements.define("sp-status-chip", qr);
 //#endregion
 //#region src/components/sp-moisture-bar.ts
-var qr, Jr = (e) => Math.min(100, Math.max(0, e)), J = class extends x {
+var Jr, Yr = (e) => Math.min(100, Math.max(0, e)), q = class extends S {
 	constructor(...e) {
 		super(...e), this.value = null, this.range = null, this.state = "ok", this.lastReported = null, this.now = void 0, this.l = L;
 	}
@@ -3946,20 +4004,20 @@ var qr, Jr = (e) => Math.min(100, Math.max(0, e)), J = class extends x {
 		let e = this.l, t = this.range, n = this.value, r = pt(e, "moisture", t, "%"), i = n === null ? "—" : j(e, n, "%"), a = n === null ? e.t("moisture_bar.label_no_value") : r ? e.t("moisture_bar.label", {
 			value: i,
 			range: r
-		}) : e.t("moisture_bar.label_no_range", { value: i }), o = this._hasRange(), s = o ? Jr(t.min) : 0, c = o ? Jr(t.max) : 0, l = t?.target ?? null, u = this.state === "stale" && this.lastReported;
+		}) : e.t("moisture_bar.label_no_range", { value: i }), o = this._hasRange(), s = o ? Yr(t.min) : 0, c = o ? Yr(t.max) : 0, l = t?.target ?? null, u = this.state === "stale" && this.lastReported;
 		return y`
       <div class="top"><span class="name"><ha-icon aria-hidden="true" .icon=${k.moisture.icon}></ha-icon>${A(e, "moisture")}</span>
         <span class="value ${this.state}" aria-hidden="true">${i}</span></div>
       <div class="track" role="img" aria-label=${a}>
         ${o ? y`<div class="band" style="left:${s}%;width:${Math.max(0, c - s)}%"></div>` : b}
-        ${l === null ? b : y`<div class="tick" style="left:${Jr(l)}%"></div>`}
+        ${l === null ? b : y`<div class="tick" style="left:${Yr(l)}%"></div>`}
         ${n === null ? b : y`<div class="dot ${this.state}" style="left:${Math.min(98, Math.max(2, n))}%"></div>`}
       </div>
       <div class="scale" aria-hidden="true"><span>${e.t("moisture_bar.dry")}</span>${r ? y`<span>${e.t("moisture_bar.target", { range: r })}</span>` : b}<span>${e.t("moisture_bar.wet")}</span></div>
       ${u ? y`<div class="age"><ha-icon aria-hidden="true" icon="mdi:clock-outline"></ha-icon>${e.t("moisture_bar.last_update", { age: M(e, this.lastReported, this.now) })}</div>` : b}`;
 	}
 };
-qr = J, qr.styles = [K, o`
+Jr = q, Jr.styles = [G, o`
     :host { display: block; font-size: 13px; color: var(--sp-text); }
     .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
     .name { display: inline-flex; align-items: center; gap: 4px; color: var(--sp-text-secondary); }
@@ -3979,10 +4037,10 @@ qr = J, qr.styles = [K, o`
     .scale { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; font-size: 11px; color: var(--sp-text-secondary); font-variant-numeric: tabular-nums; }
     .age { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
     .age ha-icon { --mdc-icon-size: 15px; }
-  `], q([S({ type: Number })], J.prototype, "value", void 0), q([S({ attribute: !1 })], J.prototype, "range", void 0), q([S({ reflect: !0 })], J.prototype, "state", void 0), q([S({ attribute: !1 })], J.prototype, "lastReported", void 0), q([S({ attribute: !1 })], J.prototype, "now", void 0), q([S({ attribute: !1 })], J.prototype, "l", void 0), customElements.get("sp-moisture-bar") || customElements.define("sp-moisture-bar", J);
+  `], K([C({ type: Number })], q.prototype, "value", void 0), K([C({ attribute: !1 })], q.prototype, "range", void 0), K([C({ reflect: !0 })], q.prototype, "state", void 0), K([C({ attribute: !1 })], q.prototype, "lastReported", void 0), K([C({ attribute: !1 })], q.prototype, "now", void 0), K([C({ attribute: !1 })], q.prototype, "l", void 0), customElements.get("sp-moisture-bar") || customElements.define("sp-moisture-bar", q);
 //#endregion
 //#region src/components/sp-reading-chip.ts
-var Yr, Y = class extends x {
+var Xr, J = class extends S {
 	constructor(...e) {
 		super(...e), this.role = "temperature", this.value = null, this.unit = "", this.state = "ok", this.range = null, this.l = L;
 	}
@@ -3996,9 +4054,9 @@ var Yr, Y = class extends x {
     </span>`;
 	}
 };
-Yr = Y, Yr.styles = [
-	K,
-	Ur,
+Xr = J, Xr.styles = [
+	G,
+	Wr,
 	o`
     :host { display: inline-flex; }
     .chip {
@@ -4014,10 +4072,10 @@ Yr = Y, Yr.styles = [
     :host([state="low"]) ha-icon, :host([state="high"]) ha-icon { color: inherit; }
     :host([state="stale"]) .chip, :host([state="unavailable"]) .chip { opacity: .6; }
   `
-], q([S()], Y.prototype, "role", void 0), q([S({ type: Number })], Y.prototype, "value", void 0), q([S()], Y.prototype, "unit", void 0), q([S({ reflect: !0 })], Y.prototype, "state", void 0), q([S({ attribute: !1 })], Y.prototype, "range", void 0), q([S({ attribute: !1 })], Y.prototype, "l", void 0), customElements.get("sp-reading-chip") || customElements.define("sp-reading-chip", Y);
+], K([C()], J.prototype, "role", void 0), K([C({ type: Number })], J.prototype, "value", void 0), K([C()], J.prototype, "unit", void 0), K([C({ reflect: !0 })], J.prototype, "state", void 0), K([C({ attribute: !1 })], J.prototype, "range", void 0), K([C({ attribute: !1 })], J.prototype, "l", void 0), customElements.get("sp-reading-chip") || customElements.define("sp-reading-chip", J);
 //#endregion
 //#region src/components/sp-plant-avatar.ts
-var Xr, Zr = class extends x {
+var Zr, Qr = class extends S {
 	constructor(...e) {
 		super(...e), this.src = null, this.name = "", this.size = "small", this.l = L;
 	}
@@ -4028,7 +4086,7 @@ var Xr, Zr = class extends x {
 		}))}>` : y`<ha-icon aria-hidden="true" icon="mdi:sprout"></ha-icon>`}</div>`;
 	}
 };
-Xr = Zr, Xr.styles = [K, o`
+Zr = Qr, Zr.styles = [G, o`
     :host { --sp-avatar-size: 56px; --sp-avatar-radius: 12px; display: inline-block; flex: none; width: var(--sp-avatar-size); height: var(--sp-avatar-size); max-width: 100%; }
     :host([size="large"]) { --sp-avatar-size: 132px; --sp-avatar-radius: 16px; }
     @media (max-width: 600px) { :host([size="large"]) { --sp-avatar-size: 76px; --sp-avatar-radius: 12px; } }
@@ -4036,10 +4094,10 @@ Xr = Zr, Xr.styles = [K, o`
       background: color-mix(in srgb, var(--sp-primary) 12%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); }
     img { width: 100%; height: 100%; object-fit: cover; display: block; }
     ha-icon { --mdc-icon-size: calc(var(--sp-avatar-size) * .54); }
-  `], q([S({ attribute: !1 })], Zr.prototype, "src", void 0), q([S()], Zr.prototype, "name", void 0), q([S({ reflect: !0 })], Zr.prototype, "size", void 0), q([S({ attribute: !1 })], Zr.prototype, "l", void 0), customElements.get("sp-plant-avatar") || customElements.define("sp-plant-avatar", Zr);
+  `], K([C({ attribute: !1 })], Qr.prototype, "src", void 0), K([C()], Qr.prototype, "name", void 0), K([C({ reflect: !0 })], Qr.prototype, "size", void 0), K([C({ attribute: !1 })], Qr.prototype, "l", void 0), customElements.get("sp-plant-avatar") || customElements.define("sp-plant-avatar", Qr);
 //#endregion
 //#region src/components/sp-empty-state.ts
-var Qr, $r = class extends x {
+var $r, ei = class extends S {
 	constructor(...e) {
 		super(...e), this.icon = "mdi:sprout", this.heading = "", this.compact = !1;
 	}
@@ -4048,7 +4106,7 @@ var Qr, $r = class extends x {
       <h2>${this.heading}</h2><div class="text"><slot></slot></div><div class="actions"><slot name="actions"></slot></div>`;
 	}
 };
-Qr = $r, Qr.styles = [K, o`
+$r = ei, $r.styles = [G, o`
     :host { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 48px 20px; color: var(--sp-text); }
     .art { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center;
       background: color-mix(in srgb, var(--sp-primary) 12%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); }
@@ -4060,13 +4118,13 @@ Qr = $r, Qr.styles = [K, o`
     :host([compact]) h2 { font-size: 18px; }
     .text { max-width: 44ch; color: var(--sp-text-secondary); }
     .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
-  `], q([S()], $r.prototype, "icon", void 0), q([S()], $r.prototype, "heading", void 0), q([S({
+  `], K([C()], ei.prototype, "icon", void 0), K([C()], ei.prototype, "heading", void 0), K([C({
 	type: Boolean,
 	reflect: !0
-})], $r.prototype, "compact", void 0), customElements.get("sp-empty-state") || customElements.define("sp-empty-state", $r);
+})], ei.prototype, "compact", void 0), customElements.get("sp-empty-state") || customElements.define("sp-empty-state", ei);
 //#endregion
 //#region src/ha-elements.ts
-function ei(e, t = customElements) {
+function Y(e, t = customElements) {
 	return t.get(e) !== void 0;
 }
 //#endregion
@@ -4379,36 +4437,39 @@ var vi = o`
    .detail-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 12px;margin:8px 0 16px}.detail-tabs button{flex:0 0 auto;background:var(--secondary-background-color,#f5f5f5);border-color:transparent}.detail-tabs button[aria-current=page]{background:var(--secondary-background-color,#f5f5f5);color:var(--primary-text-color,#212121);border:2px solid var(--primary-color,#007bad);font-weight:600}.plant-overview-card{padding:0;overflow:hidden}.overview-heading{display:flex;align-items:center;gap:20px;padding:24px;background:var(--secondary-background-color,#f5f5f5)}.overview-avatar{width:84px;height:84px;flex:0 0 84px;object-fit:cover;border-radius:16px}.overview-avatar.placeholder{display:grid;place-items:center;background:var(--secondary-background-color,#f5f5f5);color:var(--primary-text-color,#212121);font-size:2rem;font-weight:700;border:1px solid var(--divider-color,#ddd)}.overview-heading h2{font-size:1.8rem;margin:4px 0}.overview-heading>section,.overview-heading>article{padding:0;margin:0;border:0;background:transparent}.eyebrow{font-size:.75rem;font-weight:700;letter-spacing:.08em;color:var(--secondary-text-color,#666);margin:0}.overview-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:20px}.overview-metrics article{display:grid;gap:4px;margin:0;background:var(--secondary-background-color,#f5f5f5);border:0}.overview-metrics article span{color:var(--secondary-text-color,#666)}.overview-metrics article strong{font-size:1.45rem}.overview-sensors,.overview-care{border:0;border-top:1px solid var(--divider-color,#ddd);border-radius:0;margin:0}.overview-sensors h2,.overview-care h2{margin-top:0}.overview-heading button{margin-top:8px}
   .detail-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:4px 2px 8px}.detail-heading h2{font-size:1.5rem;margin:0}.detail-heading p{margin:4px 0;color:var(--secondary-text-color,#666)}.detail-heading a{color:var(--primary-text-color,#212121);text-decoration:underline;text-underline-offset:3px}
   @media(max-width:600px){.panel-content{padding:16px 16px 16px}section,article{padding:16px}.actions button{flex:1 1 auto}header{align-items:flex-start}dl{grid-template-columns:1fr}dd{margin-bottom:8px}.stepper li span:last-child{display:none}.stepper li[aria-current=step] span:last-child{display:inline}.choice-card{min-height:0}.overview-heading{align-items:flex-start;flex-direction:column;padding:18px}.overview-metrics{grid-template-columns:1fr;padding:14px}.detail-tabs button{font-size:.9rem;padding:8px}}
-`, yi, Z = class extends x {
+`, yi, bi = [
+	"ha-area-picker",
+	"ha-entity-picker",
+	"ha-selector",
+	"ha-alert",
+	"ha-expansion-panel",
+	"ha-dropdown",
+	"ha-dropdown-item"
+], xi = dt.filter((e) => e !== "moisture"), Si = "/config/integrations/integration/smart_plants", Ci = "https://open.plantbook.io/apikey/", Z = class extends S {
 	constructor(...e) {
-		super(...e), this.areas = [], this.entities = [], this.states = {}, this.blocked = !1, this.navigationContext = 0, this.step = 0, this.busy = !1, this.error = "", this.name = "", this.acquired = "", this.area = "", this.placement = null, this.category = "", this.tagText = "", this.common = "", this.latin = "", this.provider = "manual", this.query = "", this.results = [], this.searched = !1, this.preview = null, this.accepted = !1, this.moisture = hr(), this.all = !1, this.draft = null, this.finalRequest = null, this.photo = null, this.photoInfo = null, this.rejected = !1, this.generation = 0, this.lifecycle = 0, this.steps = [
-			"wizard.step_basic",
-			"wizard.step_species",
-			"wizard.step_review_species",
-			"wizard.step_sensors",
-			"wizard.step_thresholds",
-			"wizard.step_taxonomy",
-			"wizard.step_review"
-		];
+		super(...e), this.areas = [], this.entities = [], this.devices = [], this.states = {}, this.blocked = !1, this.navigationContext = 0, this.photoStatus = "", this.step = 1, this.busy = !1, this.error = "", this.name = "", this.area = "", this.photo = null, this.photoUrl = null, this.photoError = "", this.photoChecking = !1, this.dragging = !1, this.moisture = hr(), this.extras = [], this.pendingRole = null, this.roleMenu = !1, this.expanded = /* @__PURE__ */ new Set(), this.opened = /* @__PURE__ */ new Set(), this.query = "", this.results = [], this.searched = !1, this.preview = null, this.accepted = !1, this.speciesError = "", this.common = "", this.latin = "", this.acquired = "", this.placement = "", this.category = "", this.tagText = "", this.draft = null, this.finalRequest = null, this.rejected = !1, this.created = null, this.generation = 0, this.lifecycle = 0, this.photoCheck = 0, this.entityById = /* @__PURE__ */ new Map(), this.areaOfEntity = /* @__PURE__ */ new Map();
 	}
 	get l() {
 		return Yt(this.hass);
 	}
-	get visibleSteps() {
-		return this.steps.flatMap((e, t) => t === 2 && this.provider === "manual" ? [] : [{
-			index: t,
-			label: this.l.t(e)
-		}]);
-	}
 	connectedCallback() {
-		super.connectedCallback(), this.draft || this.start();
+		super.connectedCallback();
+		for (let e of bi) Y(e) || customElements.whenDefined(e).then(() => this.requestUpdate());
+		this.photo && !this.photoUrl && (this.photoUrl = URL.createObjectURL(this.photo)), !this.draft && !this.created && this.start();
 	}
 	disconnectedCallback() {
-		this.lifecycle++, this.generation++, this.busy = !1, super.disconnectedCallback();
+		this.lifecycle++, this.generation++, this.busy = !1, this.photoUrl && (URL.revokeObjectURL(this.photoUrl), this.photoUrl = null), super.disconnectedCallback();
 	}
 	willUpdate(e) {
 		let t = e.get("hass");
-		(e.has("blocked") && this.blocked || t && t.connection !== this.hass.connection) && (this.lifecycle++, this.busy = !1, this.generation++, this.finalRequest || (this.preview = null, this.accepted = !1));
+		if ((e.has("blocked") && this.blocked || t && t.connection !== this.hass.connection) && (this.lifecycle++, this.busy = !1, this.generation++, this.finalRequest || (this.preview = null, this.accepted = !1)), e.has("entities") || e.has("devices")) {
+			this.entityById = new Map(this.entities.map((e) => [e.entity_id, e]));
+			let e = new Map(this.devices.map((e) => [e.id, e.area_id]));
+			this.areaOfEntity = new Map(this.entities.flatMap((t) => {
+				let n = t.area_id || (t.device_id ? e.get(t.device_id) : null);
+				return n ? [[t.entity_id, n]] : [];
+			}));
+		}
 	}
 	async start() {
 		if (this.busy || this.blocked) return;
@@ -4423,8 +4484,8 @@ var vi = o`
 			e === this.lifecycle && (this.busy = !1);
 		}
 	}
-	fail(e) {
-		let t = [
+	message(e) {
+		return e instanceof N && [
 			"integration_not_loaded",
 			"unauthorized",
 			"invalid_format",
@@ -4436,9 +4497,18 @@ var vi = o`
 			"provider_outage",
 			"provider_malformed_response",
 			"not_found"
-		];
-		this.error = e instanceof N && t.includes(e.code) ? this.l.t("wizard.error_code", { code: e.code }) : this.l.t("wizard.error_generic"), e instanceof N && ["integration_not_loaded", "unauthorized"].includes(e.code) && this.dispatchEvent(new CustomEvent("backend-unavailable", {
-			detail: this.error,
+		].includes(e.code) ? this.l.t("wizard.error_code", { code: e.code }) : this.l.t("wizard.error_generic");
+	}
+	fail(e, t = !1) {
+		let n = this.message(e);
+		t ? this.speciesError = n : this.error = n, e instanceof N && ["integration_not_loaded", "unauthorized"].includes(e.code) && this.dispatchEvent(new CustomEvent("backend-unavailable", {
+			detail: n,
+			bubbles: !0,
+			composed: !0
+		}));
+	}
+	emit(e) {
+		this.dispatchEvent(new CustomEvent(e, {
 			bubbles: !0,
 			composed: !0
 		}));
@@ -4449,18 +4519,21 @@ var vi = o`
 			...this.accepted ? this.preview?.snapshot.threshold_defaults.moisture : {}
 		};
 	}
+	get providerInfo() {
+		return this.capabilities.providers.find((e) => e.provider === "openplantbook");
+	}
 	manual() {
-		this.generation++, this.provider = "manual", this.preview = null, this.accepted = !1, this.results = [], this.error = "";
+		this.generation++, this.preview = null, this.accepted = !1, this.results = [], this.searched = !1, this.speciesError = "";
 	}
 	async search() {
 		if (this.busy || this.blocked || this.query.trim().length < 3) return;
 		let e = this.lifecycle, t = ++this.generation;
-		this.busy = !0, this.error = "", this.preview = null, this.accepted = !1;
+		this.busy = !0, this.speciesError = "", this.preview = null, this.accepted = !1;
 		try {
-			let e = await F.searchSpecies(this.hass, this.provider, this.query.trim(), this.hass.language ?? "en");
+			let e = await F.searchSpecies(this.hass, "openplantbook", this.query.trim(), this.hass.language ?? "en");
 			t === this.generation && (this.results = e, this.searched = !0);
 		} catch (e) {
-			t === this.generation && this.fail(e);
+			t === this.generation && this.fail(e, !0);
 		} finally {
 			e === this.lifecycle && (this.busy = !1);
 		}
@@ -4468,75 +4541,195 @@ var vi = o`
 	async choose(e) {
 		if (!this.draft || this.busy || this.blocked) return;
 		let t = this.lifecycle, n = ++this.generation;
-		this.busy = !0, this.accepted = !1, this.preview = null, this.error = "";
+		this.busy = !0, this.accepted = !1, this.preview = null, this.speciesError = "";
 		try {
 			let t = await F.previewWizard(this.hass, this.draft, e.provider, e.provider_ref, this.hass.language ?? "en");
-			n === this.generation && (this.preview = t, this.step = 2, await this.focusStep());
+			n === this.generation && (this.preview = t);
 		} catch (e) {
-			n === this.generation && this.fail(e);
+			n === this.generation && this.fail(e, !0);
 		} finally {
 			t === this.lifecycle && (this.busy = !1);
 		}
 	}
-	validate() {
-		return !this.name.trim() || this.name.trim().length > 200 ? this.l.t("wizard.error_name_length") : this.acquired && !Number.isFinite(Date.parse(this.acquired)) ? this.l.t("wizard.error_acquired") : this.area && !this.areas.some((e) => e.area_id === this.area) ? this.l.t("wizard.error_area") : this.provider !== "manual" && (!this.preview || !this.accepted) ? this.l.t("wizard.error_accept_preview") : _r(this.moisture, this.defaults, this.l) ?? kr(this.category, U(this.tagText), this.l);
-	}
-	async next() {
-		if (this.busy || this.blocked || !this.draft || this.step >= 6) return;
-		let e = this.lifecycle;
-		if (this.error = "", this.step === 0 && !this.name.trim() && (this.error = this.l.t("wizard.error_name")), this.step === 0 && this.photo && !this.error) {
-			this.busy = !0;
-			try {
-				let t = await _i(this.photo, this.l);
-				e === this.lifecycle && (this.photoInfo = t);
-			} catch (t) {
-				e === this.lifecycle && (this.error = t.message);
-			} finally {
-				e === this.lifecycle && (this.busy = !1);
-			}
-			if (e !== this.lifecycle || !this.isConnected) return;
-		}
-		this.step === 1 && this.provider !== "manual" && !this.preview && (this.error = this.l.t("wizard.error_choose_species")), this.step === 2 && this.provider !== "manual" && !this.accepted && (this.error = this.l.t("wizard.error_accept")), this.step === 3 && (this.error = _r({
+	setOverride(e, t) {
+		this.moisture = {
 			...this.moisture,
 			threshold_overrides: {
-				min: null,
-				target: null,
-				max: null
+				...this.moisture.threshold_overrides,
+				[e]: t.trim() === "" ? null : Number(t)
 			}
-		}, Xt, this.l) ?? ""), this.step === 4 && (this.error = _r(this.moisture, this.defaults, this.l) ?? ""), this.step === 5 && (this.error = kr(this.category, U(this.tagText), this.l) ?? ""), this.error || (this.step = this.step === 1 && this.provider === "manual" ? 3 : this.step + 1, await this.focusStep());
+		};
 	}
-	async focusStep() {
-		await this.updateComplete, this.shadowRoot?.querySelector("h2")?.focus();
+	stateOf(e) {
+		return this.states[e];
+	}
+	friendly(e) {
+		let t = this.stateOf(e)?.attributes.friendly_name;
+		return typeof t == "string" && t.trim() ? t : e;
+	}
+	valueText(e) {
+		let t = this.stateOf(e);
+		if (!t || [
+			"unknown",
+			"unavailable",
+			""
+		].includes(t.state)) return this.l.t("wizard.sensor_unavailable");
+		let n = typeof t.attributes.unit_of_measurement == "string" ? t.attributes.unit_of_measurement : "", r = Number(t.state);
+		return Number.isFinite(r) ? j(this.l, r, n) : t.state;
+	}
+	fits(e, t) {
+		if (!t.entity_id.startsWith("sensor.") || this.entityById.get(t.entity_id)?.platform === "smart_plants") return !1;
+		let n = t.attributes.device_class, r = t.attributes.unit_of_measurement;
+		if (e === "moisture") return n === "moisture";
+		let i = Sr(e);
+		return !!i && n === i.deviceClass && typeof r == "string" && i.acceptedUnits.includes(r);
+	}
+	roleFor(e) {
+		let t = dt.find((t) => t !== "soil_temperature" && this.fits(t, e)) ?? null;
+		return t === "temperature" && /soil|boden/i.test(`${e.entity_id} ${this.friendly(e.entity_id)}`) ? "soil_temperature" : t;
+	}
+	get assignedIds() {
+		return [...this.moisture.sources.map((e) => e.entity_id), ...this.extras.map((e) => e.entity_id)];
+	}
+	get takenRoles() {
+		return /* @__PURE__ */ new Set([...this.moisture.sources.length ? ["moisture"] : [], ...this.extras.map((e) => e.role)]);
+	}
+	source(e) {
+		return {
+			entity_id: e,
+			registry_id: this.entityById.get(e)?.id ?? null
+		};
+	}
+	assign(e, t) {
+		t && !this.assignedIds.includes(t) && (e === "moisture" ? this.moisture = {
+			...this.moisture,
+			sources: [this.source(t)],
+			primary_entity_id: t
+		} : this.extras = [...this.extras.filter((t) => t.role !== e), {
+			role: e,
+			entity_id: t
+		}], this.pendingRole === e && (this.pendingRole = null));
+	}
+	unassign(e) {
+		e === "moisture" ? this.moisture = {
+			...this.moisture,
+			sources: [],
+			primary_entity_id: null
+		} : this.extras = this.extras.filter((t) => t.role !== e);
+	}
+	suggestions() {
+		if (!this.area) return [];
+		let e = this.takenRoles, t = new Set(this.assignedIds);
+		return Object.values(this.states).flatMap((n) => {
+			if (t.has(n.entity_id) || this.areaOfEntity.get(n.entity_id) !== this.area) return [];
+			let r = this.roleFor(n);
+			return r && !e.has(r) ? [{
+				role: r,
+				entity_id: n.entity_id,
+				name: this.friendly(n.entity_id)
+			}] : [];
+		}).sort((e, t) => dt.indexOf(e.role) - dt.indexOf(t.role) || e.name.localeCompare(t.name));
+	}
+	async pickPhoto(e) {
+		if (this.clearPhoto(), !e) return;
+		let t = ++this.photoCheck;
+		this.photoChecking = !0;
+		try {
+			if (await _i(e, this.l), t !== this.photoCheck) return;
+			this.photo = e, this.photoUrl = URL.createObjectURL(e);
+		} catch (e) {
+			t === this.photoCheck && (this.photoError = e.message);
+		} finally {
+			t === this.photoCheck && (this.photoChecking = !1);
+		}
+	}
+	clearPhoto() {
+		this.photoCheck++, this.photoChecking = !1, this.photoUrl && URL.revokeObjectURL(this.photoUrl), this.photo = null, this.photoUrl = null, this.photoError = "";
+	}
+	async go(e) {
+		this.step = e, this.roleMenu = !1, await this.updateComplete, this.shadowRoot?.querySelector("h2")?.focus();
+	}
+	async next() {
+		if (!(this.busy || this.blocked || !this.draft)) {
+			if (this.error = "", this.step === 1) {
+				if (!this.name.trim()) {
+					this.error = this.l.t("wizard.error_name");
+					return;
+				}
+				if (this.photoChecking) return;
+				await this.go(2);
+			} else this.step === 2 && await this.go(3);
+		}
+	}
+	back() {
+		this.busy || this.finalRequest || (this.error = "", (this.step === 2 || this.step === 3) && this.go(this.step === 3 ? 2 : 1));
+	}
+	toggle(e, t) {
+		t && (this.opened = /* @__PURE__ */ new Set([...this.opened, e]));
+		let n = new Set(this.expanded);
+		t ? n.add(e) : n.delete(e), this.expanded = n;
+	}
+	validate() {
+		let e = this.l;
+		if (!this.name.trim() || this.name.trim().length > 200) return e.t("wizard.error_name_length");
+		if (this.area && !this.areas.some((e) => e.area_id === this.area)) return e.t("wizard.error_area");
+		if (this.preview && !this.accepted) return this.toggle("species", !0), e.t("wizard.error_accept_preview");
+		if (_r(this.moisture, this.defaults, e)) return this.toggle("species", !0), e.t("wizard.error_targets");
+		if (this.acquired && !Number.isFinite(Date.parse(this.acquired))) return this.toggle("details", !0), e.t("wizard.error_acquired");
+		let t = Ar(this.category, kr(this.tagText), e);
+		return t && this.toggle("details", !0), t;
+	}
+	request(e) {
+		let t = Object.fromEntries(this.extras.map(({ role: e, entity_id: t }) => {
+			let n = V(this.source(t), this.entities), r = n ? {
+				entity_id: n.entity_id,
+				registry_id: n.id
+			} : {
+				entity_id: t,
+				registry_id: null
+			};
+			return [e, {
+				sources: [r],
+				primary_entity_id: r.entity_id
+			}];
+		})), n = this.placement ? {
+			mode: this.placement,
+			exposure: null,
+			rain_exposure: null,
+			container: null
+		} : null;
+		return structuredClone({
+			draft_id: e.draft_id,
+			draft_token: e.draft_token,
+			expected_revision: 0,
+			confirmed: !0,
+			name: this.name.trim(),
+			acquired_at: this.acquired ? new Date(this.acquired).toISOString() : null,
+			area_id: this.area || null,
+			placement: n,
+			category: this.category.trim() || null,
+			tags: kr(this.tagText),
+			moisture: yr(this.moisture, this.entities),
+			...this.extras.length ? { roles: t } : {},
+			...this.accepted && this.preview ? { accepted_preview: {
+				preview_token: this.preview.preview_token,
+				provider: this.preview.provider,
+				operation: "select"
+			} } : { species: vr(this.common, this.latin) }
+		});
 	}
 	async create() {
 		if (this.busy || this.blocked || !this.draft) return;
 		if (!this.finalRequest) {
 			if (this.error = this.validate() ?? "", this.error) return;
-			this.finalRequest = structuredClone({
-				draft_id: this.draft.draft_id,
-				draft_token: this.draft.draft_token,
-				expected_revision: 0,
-				confirmed: !0,
-				name: this.name.trim(),
-				acquired_at: this.acquired ? new Date(this.acquired).toISOString() : null,
-				area_id: this.area || null,
-				placement: this.placement,
-				category: this.category.trim() || null,
-				tags: U(this.tagText),
-				moisture: yr(this.moisture, this.entities),
-				...this.accepted && this.preview ? { accepted_preview: {
-					preview_token: this.preview.preview_token,
-					provider: this.preview.provider,
-					operation: "select"
-				} } : { species: vr(this.common, this.latin) }
-			});
+			this.finalRequest = this.request(this.draft);
 		}
 		this.busy = !0, this.error = "";
 		let e = this.lifecycle, t = this.navigationContext;
 		try {
 			let n = await F.createWizard(this.hass, this.finalRequest);
 			if (e !== this.lifecycle || !this.isConnected) return;
-			this.dispatchEvent(new CustomEvent("plant-created", {
+			this.created = n, this.step = 4, this.dispatchEvent(new CustomEvent("plant-created", {
 				detail: {
 					plant: n,
 					photo: this.photo,
@@ -4544,95 +4737,467 @@ var vi = o`
 				},
 				bubbles: !0,
 				composed: !0
-			}));
+			})), await this.updateComplete, this.shadowRoot?.querySelector("h2")?.focus();
 		} catch (t) {
 			e === this.lifecycle && (this.fail(t), this.rejected = t instanceof N && t.code === "invalid_format");
 		} finally {
 			e === this.lifecycle && (this.busy = !1);
 		}
 	}
+	startFresh() {
+		this.finalRequest = null, this.rejected = !1, this.preview = null, this.accepted = !1, this.results = [], this.searched = !1, this.error = "", this.draft = null, this.go(1), this.start();
+	}
+	restart() {
+		this.lifecycle++, this.generation++, this.busy = !1, this.clearPhoto(), Object.assign(this, {
+			name: "",
+			area: "",
+			moisture: hr(),
+			extras: [],
+			pendingRole: null,
+			roleMenu: !1,
+			expanded: /* @__PURE__ */ new Set(),
+			opened: /* @__PURE__ */ new Set(),
+			query: "",
+			results: [],
+			searched: !1,
+			preview: null,
+			accepted: !1,
+			speciesError: "",
+			common: "",
+			latin: "",
+			acquired: "",
+			placement: "",
+			category: "",
+			tagText: "",
+			draft: null,
+			finalRequest: null,
+			rejected: !1,
+			created: null,
+			error: ""
+		}), this.emit("wizard-restart"), this.go(1), this.start();
+	}
 	render() {
-		let e = this.l, t = e.t("common.not_specified"), n = e.t("common.none"), r = (e) => this.moisture.threshold_overrides[e] ?? this.defaults[e];
-		return y`<section class="wizard-card"><nav aria-label=${e.t("wizard.progress")}><ol class="stepper">${this.visibleSteps.map(({ index: t, label: n }, r) => y`<li aria-current=${t === this.step ? "step" : b}><span class="step-number">${e.number(r + 1)}</span><span>${n}</span></li>`)}</ol></nav>
-      <h2 tabindex="-1">${e.t(this.steps[this.step])}</h2><p class="muted">${e.t("wizard.saved_after_confirmation")}</p>
-      ${this.error ? y`<p class="error" role="alert">${this.error}</p>${(this.step === 1 || this.step === 2) && !this.finalRequest ? y`<button type="button" @click=${() => this.manual()}>${e.t("common.continue_manually")}</button>` : b}` : b}
-      ${!this.draft && !this.busy ? y`<button @click=${() => void this.start()}>${e.t("wizard.retry_draft")}</button>` : b}
-      <fieldset ?disabled=${this.busy || this.blocked || !!this.finalRequest}>
-      ${this.step === 0 ? y`${W(e.t("wizard.plant_name"), this.name, (e) => this.name = e)}${W(e.t("wizard.acquired_date"), this.acquired, (e) => this.acquired = e, "date")}${Ir(e, this.area, this.areas, (e) => this.area = e)}${Lr(e, this.placement, (e) => this.placement = e)}<label>${e.t("wizard.photo")}<input type="file" accept="image/jpeg,image/png,image/webp" @change=${(e) => {
-			this.photo = e.target.files?.[0] ?? null, this.photoInfo = null;
-		}}></label><small>${e.t("wizard.photo_hint")}</small>${this.photo ? y`<p>${e.t("wizard.photo_selected", {
-			name: this.photo.name,
-			bytes: this.photo.size
-		})}</p><button @click=${() => {
-			this.photo = null, this.photoInfo = null;
-			let e = this.shadowRoot?.querySelector("input[type=\"file\"]");
-			e && (e.value = "");
-		}}>${e.t("wizard.photo_remove")}</button>` : b}` : b}
-      ${this.step === 1 ? y`<div class="choice-cards" role="radiogroup" aria-label=${e.t("wizard.species_source")}>
-        <button type="button" class=${this.provider === "manual" ? "choice-card selected" : "choice-card"} aria-pressed=${this.provider === "manual"} @click=${() => this.manual()}><strong>${e.t("wizard.manual_title")}</strong><span>${e.t("wizard.manual_description")}</span></button>
-        ${this.capabilities.providers.some((e) => e.provider === "openplantbook") ? y`<button type="button" class=${this.provider === "openplantbook" ? "choice-card selected" : "choice-card"} aria-pressed=${this.provider === "openplantbook"} ?disabled=${!this.capabilities.providers.some((e) => e.provider === "openplantbook" && e.available)} @click=${() => {
-			this.manual(), this.provider = "openplantbook";
-		}}><strong>${e.t("wizard.openplantbook_title")}</strong><span>${e.t("wizard.openplantbook_description")}</span></button>` : b}
+		let e = this.l;
+		if (this.step === 4 && this.created) return this.renderDone();
+		let t = [
+			e.t("wizard.step_plant"),
+			e.t("wizard.step_sensors"),
+			e.t("wizard.step_review")
+		], n = this.busy || this.blocked || !!this.finalRequest, r = this.step === 3 ? y`<button type="button" class="btn filled" ?disabled=${this.busy || this.blocked || !this.draft} @click=${() => void this.create()}><ha-icon aria-hidden="true" icon="mdi:check"></ha-icon>${this.finalRequest ? e.t("wizard.retry_create") : e.t("wizard.create")}</button>` : y`<button type="button" class="btn filled" ?disabled=${this.busy || this.blocked || !this.draft || this.photoChecking} @click=${() => void this.next()}>${this.step === 2 && !this.assignedIds.length ? e.t("wizard.skip") : e.t("wizard.next")}</button>`;
+		return y`<div class="wz" lang=${e.language}>
+      <div class="stepline"><span>${e.t("wizard.step_of", {
+			step: this.step,
+			total: 3,
+			name: t[this.step - 1]
+		})}</span>
+        <span class="all" aria-hidden="true">${t.map((e, t) => y`${t ? " · " : ""}${t + 1 === this.step ? y`<b>${e}</b>` : e}`)}</span></div>
+      <div class="bars" aria-hidden="true">${[
+			1,
+			2,
+			3
+		].map((e) => y`<span class=${e <= this.step ? "on" : ""}></span>`)}</div>
+      <div class="card">
+        <fieldset style="border:0;margin:0;padding:0;min-width:0" ?disabled=${n}>
+          ${this.step === 1 ? this.renderPlant() : this.step === 2 ? this.renderSensors() : this.renderReview()}
+        </fieldset>
+        ${this.error ? y`<p class="error" role="alert" style="margin-top:14px">${this.error}</p>` : b}
+        ${!this.draft && !this.busy ? y`<p style="margin-top:14px"><button type="button" class="btn outline sm" @click=${() => void this.start()}>${e.t("wizard.retry_draft")}</button></p>` : b}
+        ${this.finalRequest ? y`<p class="notice" style="margin-top:14px">${e.t("wizard.final_request_retained")}</p>` : b}
+        ${this.rejected ? y`<p style="margin-top:14px">${e.t("wizard.rejected")}</p><p style="margin-top:8px"><button type="button" class="btn outline sm" ?disabled=${this.busy || this.blocked} @click=${() => this.startFresh()}>${e.t("wizard.start_fresh")}</button></p>` : b}
       </div>
-        ${this.capabilities.providers.some((e) => e.provider === "openplantbook" && !e.available) ? y`<aside class="provider-help"><strong>${e.t("wizard.openplantbook_unavailable_title")}</strong><p>${e.t("wizard.openplantbook_unavailable_help")}</p><a href="https://open.plantbook.io/apikey/" target="_blank" rel="noreferrer">${e.t("wizard.openplantbook_credentials_link")}</a></aside>` : b}
-        ${this.provider === "manual" ? y`<h3>${e.t("wizard.species_details")} <span class="muted">${e.t("wizard.optional")}</span></h3>${W(e.t("species.common_name"), this.common, (e) => this.common = e)}${W(e.t("species.scientific_name"), this.latin, (e) => this.latin = e)}<p class="default-summary">${e.t("wizard.builtin_defaults", {
-			min: e.percent(Xt.min),
-			target: e.percent(Xt.target),
-			max: e.percent(Xt.max)
-		})}</p>` : y`
-        ${W(e.t("wizard.search_label"), this.query, (e) => {
-			this.query = e, this.generation++, this.results = [], this.preview = null, this.accepted = !1;
-		})}<button type="button" class="primary" @click=${() => void this.search()} ?disabled=${this.busy || this.query.trim().length < 3}>${e.t("wizard.search_button")}</button>${this.searched && !this.results.length ? y`<p>${e.t("wizard.no_matches")}</p>` : b}<ul class="result-list">${this.results.map((e) => y`<li><button type="button" @click=${() => void this.choose(e)}>${e.common_name ?? e.latin_name} · ${e.latin_name}</button><small>${e.attribution}</small></li>`)}</ul><button type="button" @click=${() => this.manual()}>${e.t("wizard.manual_instead")}</button>`}` : b}
-      ${this.step === 2 && this.preview ? y`${Hr(e, this.preview.snapshot, this.preview)}<label class="check"><input type="checkbox" .checked=${this.accepted} @change=${(e) => this.accepted = e.target.checked}>${e.t("wizard.accept_species")}</label><p>${e.t("wizard.imported_defaults_hint")}</p><button type="button" @click=${() => this.manual()}>${e.t("wizard.manual_instead")}</button>` : b}
-       ${this.step === 3 ? Br(e, this.moisture, this.defaults, this.entities, this.states, this.all, (e) => this.all = e, (e) => this.moisture = e, "sources") : b}
-       ${this.step === 4 ? y`<p class="default-summary">${e.t("wizard.effective_range")} <strong>${e.t("wizard.range_value", {
-			min: e.percent(r("min")),
-			max: e.percent(r("max"))
-		})}</strong>${e.t("wizard.target_separator")}<strong>${e.percent(r("target"))}</strong>.</p><p>${this.accepted ? e.t("wizard.inherited_openplantbook") : e.t("wizard.inherited_builtin")}</p><details class="advanced-disclosure"><summary>${e.t("moisture.advanced_overrides")}</summary><p>${e.t("wizard.overrides_hint")}</p>${Br(e, this.moisture, this.defaults, this.entities, this.states, this.all, (e) => this.all = e, (e) => this.moisture = e, "thresholds")}</details>` : b}
-      ${this.step === 5 ? y`${W(e.t("taxonomy.category"), this.category, (e) => this.category = e, "text", 60)}${W(e.t("taxonomy.tags"), this.tagText, (e) => this.tagText = e, "text", 2e3)}<p>${e.t("wizard.taxonomy_hint")}</p>` : b}
-      ${this.step === 6 ? y`<h3>${this.name}</h3><dl>
-        <dt>${e.t("wizard.review_area")}</dt><dd>${this.areas.find((e) => e.area_id === this.area)?.name ?? (this.area ? e.t("wizard.review_missing_area", { area: this.area }) : e.t("area.none"))}</dd>
-        <dt>${e.t("placement.label")}</dt><dd>${this.placement?.mode ? jr(e, this.placement.mode) : t}</dd>
-        <dt>${e.t("wizard.review_exposure")}</dt><dd>${this.placement?.exposure ? Mr(e, this.placement.exposure) : t} / ${this.placement?.rain_exposure ? Nr(e, this.placement.rain_exposure) : t}</dd>
-        <dt>${e.t("container.label")}</dt><dd>${this.placement?.container === null || !this.placement ? t : this.placement.container ? e.t("container.in_container") : e.t("container.in_ground")}</dd>
-        <dt>${e.t("wizard.review_acquired")}</dt><dd>${this.acquired ? e.date(this.acquired) : t}</dd>
-        <dt>${e.t("species.heading")}</dt><dd>${this.accepted && this.preview ? [this.preview.snapshot.common_name, this.preview.snapshot.latin_name].filter(Boolean).join(" · ") : [this.common, this.latin].filter(Boolean).join(" · ") || e.t("common.no_species_selected")}</dd>
-        <dt>${e.t("wizard.review_taxonomy")}</dt><dd>${this.category} / ${U(this.tagText).join(", ")}</dd>
-        <dt>${e.t("wizard.review_sources")}</dt><dd>${this.moisture.sources.map((e) => e.entity_id).join(", ") || n}</dd>
-        <dt>${e.t("wizard.review_primary_aggregation")}</dt><dd>${this.moisture.primary_entity_id ?? n} / ${Pr(e, this.moisture.aggregation)}</dd>
-        <dt>${e.t("wizard.review_staleness")}</dt><dd>${e.t("wizard.review_seconds", { seconds: this.moisture.stale_after_seconds })}</dd>
-        <dt>${e.t("wizard.review_thresholds")}</dt><dd>${[
-			"min",
-			"target",
-			"max"
-		].map((t) => e.t("wizard.review_threshold", {
-			key: Fr(e, t),
-			value: e.percent(r(t)),
-			source: this.moisture.threshold_overrides[t] === null ? e.t("wizard.inherited") : e.t("wizard.override")
-		})).join(" · ")}</dd>
-        <dt>${e.t("wizard.review_photo")}</dt><dd>${this.photo?.name ?? n}${this.photoInfo ? y` · ${e.t("wizard.review_photo_info", {
-			format: this.photoInfo.format,
-			width: this.photoInfo.width,
-			height: this.photoInfo.height,
-			bytes: this.photoInfo.bytes
-		})}` : b}</dd>
-        </dl><p>${e.t("wizard.confirm_hint")}</p>` : b}
+      <div class="actions">
+        ${this.step === 1 ? y`<button type="button" class="btn text" ?disabled=${this.busy} @click=${() => this.emit("wizard-close")}>${e.t("common.cancel")}</button>` : y`<button type="button" class="btn text" ?disabled=${this.busy || !!this.finalRequest} @click=${() => this.back()}>${e.t("wizard.back")}</button>`}
+        <span class="end">${r}</span>
+      </div>
+      <p class="status small muted" role="status">${this.busy ? e.t("wizard.working") : ""}</p>
+    </div>`;
+	}
+	renderPlant() {
+		let e = this.l, t = Y("ha-area-picker") && this.hass ? y`<ha-area-picker .hass=${this.hass} .label=${e.t("wizard.area")} .value=${this.area || void 0} .noAdd=${!0} .disabled=${this.busy || this.blocked} @value-changed=${(e) => {
+			this.area = e.detail.value ?? "";
+		}}></ha-area-picker>` : y`<div class="field"><label for="area">${e.t("wizard.area")}</label><select id="area" aria-describedby="area-helper" @change=${(e) => {
+			this.area = e.target.value;
+		}}>
+          <option value="" ?selected=${!this.area}>${e.t("wizard.no_area")}</option>
+          ${this.area && !this.areas.some((e) => e.area_id === this.area) ? y`<option value=${this.area} selected>${e.t("area.missing_option", { area: this.area })}</option>` : b}
+          ${this.areas.map((e) => y`<option value=${e.area_id} ?selected=${e.area_id === this.area}>${e.name}</option>`)}</select><ha-icon class="trail" aria-hidden="true" icon="mdi:menu-down"></ha-icon></div>`;
+		return y`<h2 tabindex="-1">${e.t("wizard.plant_heading")}</h2><p class="intro">${e.t("wizard.plant_intro")}</p>
+      <div class="stack">
+        <label class="field">${e.t("wizard.plant_name")}<input required maxlength="200" autocomplete="off" .value=${this.name} @input=${(e) => {
+			this.name = e.target.value;
+		}} @keydown=${(e) => {
+			e.key === "Enter" && this.next();
+		}}></label>
+        <div>${t}<div class="helper" id="area-helper">${e.t("wizard.area_helper")}</div></div>
+        ${this.renderPhoto()}
+      </div>`;
+	}
+	renderPhoto() {
+		let e = this.l, t = (e, t) => {
+			e.preventDefault(), this.dragging = t;
+		};
+		return y`<div class="drop ${this.photo ? "has" : ""} ${this.dragging ? "over" : ""}" @dragover=${(e) => t(e, !0)} @dragleave=${(e) => t(e, !1)}
+        @drop=${(e) => {
+			t(e, !1), !this.busy && !this.blocked && this.pickPhoto(e.dataTransfer?.files?.[0]);
+		}}>
+      ${this.photo && this.photoUrl ? y`<img src=${this.photoUrl} alt="">
+          <div class="grow"><span>${this.photo.name}</span><span class="small muted">${e.t("wizard.photo_pending")}</span></div>
+          <button type="button" class="btn text sm" aria-label=${e.t("wizard.photo_remove_label")} @click=${() => this.clearPhoto()}>${e.t("wizard.photo_remove")}</button>` : y`<label><ha-icon aria-hidden="true" icon="mdi:camera-plus-outline"></ha-icon>
+          <span class="grow"><span>${e.t("wizard.photo_add")} <span class="muted">${e.t("wizard.photo_optional")}</span></span><span class="small muted" id="photo-hint">${this.photoChecking ? e.t("wizard.photo_checking") : e.t("wizard.photo_hint")}</span></span>
+          <input class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" aria-label=${e.t("wizard.photo_label")} aria-describedby="photo-hint" @change=${(e) => {
+			let t = e.target;
+			this.pickPhoto(t.files?.[0]), t.value = "";
+		}}></label>`}
+      </div>${this.photoError ? y`<p class="error" role="alert">${this.photoError}</p>` : b}`;
+	}
+	sensorPicker(e, t) {
+		let n = this.l, r = this.assignedIds;
+		if (Y("ha-entity-picker") && this.hass) return y`<ha-entity-picker .hass=${this.hass} .label=${t} .placeholder=${n.t("wizard.search_sensors")} .value=${""} .includeDomains=${["sensor"]} .excludeEntities=${r}
+        .entityFilter=${(t) => this.fits(e, t)} @value-changed=${(t) => {
+			t.detail.value && this.assign(e, t.detail.value);
+		}}></ha-entity-picker>`;
+		let i = Object.values(this.states).filter((t) => !r.includes(t.entity_id) && this.fits(e, t)).map((e) => ({
+			id: e.entity_id,
+			text: `${this.friendly(e.entity_id)} · ${this.valueText(e.entity_id)}`,
+			near: !!this.area && this.areaOfEntity.get(e.entity_id) === this.area
+		})).sort((e, t) => e.text.localeCompare(t.text)), a = i.filter((e) => e.near), o = i.filter((e) => !e.near), s = this.areas.find((e) => e.area_id === this.area)?.name, c = (e) => y`<option value=${e.id}>${e.text}</option>`;
+		return y`<div class="field"><label for="sensor-${e}">${t}</label><select id="sensor-${e}" @change=${(t) => this.assign(e, t.target.value)}>
+        <option value="" selected>${i.length ? n.t("wizard.choose_sensor") : n.t("wizard.no_suitable_sensors")}</option>
+        ${a.length && s ? y`<optgroup label=${n.t("wizard.group_in_area", { area: s })}>${a.map(c)}</optgroup><optgroup label=${n.t("wizard.group_other")}>${o.map(c)}</optgroup>` : i.map(c)}
+      </select><ha-icon class="trail" aria-hidden="true" icon="mdi:menu-down"></ha-icon></div>`;
+	}
+	assignedRow(e, t) {
+		let n = this.l, r = this.friendly(t);
+		return y`<div class="item assigned"><span class="ic" aria-hidden="true"><ha-icon .icon=${k[e].icon}></ha-icon></span>
+      <div><div>${r}</div><div class="small muted">${n.t("wizard.sensor_reading", {
+			role: A(n, e),
+			value: this.valueText(t)
+		})}</div></div>
+      <button type="button" class="iconbtn" aria-label=${n.t("wizard.remove_sensor", { name: r })} @click=${() => this.unassign(e)}><ha-icon aria-hidden="true" icon="mdi:close"></ha-icon></button></div>`;
+	}
+	renderSensors() {
+		let e = this.l, t = this.moisture.sources[0]?.entity_id, n = this.areas.find((e) => e.area_id === this.area)?.name, r = this.suggestions(), i = xi.filter((e) => !this.takenRoles.has(e) && e !== this.pendingRole);
+		return y`<h2 tabindex="-1">${e.t("wizard.sensors_heading")}</h2><p class="intro">${e.t("wizard.sensors_intro")}</p>
+      <div class="stack">
+        ${t ? this.assignedRow("moisture", t) : this.sensorPicker("moisture", e.t("wizard.moisture_sensor"))}
+        ${this.extras.length ? y`<div class="rows">${this.extras.map((e) => this.assignedRow(e.role, e.entity_id))}</div>` : b}
+        ${this.pendingRole ? y`<div class="item pending"><div>${this.sensorPicker(this.pendingRole, e.t("wizard.role_sensor", { role: A(e, this.pendingRole) }))}</div>
+          <button type="button" class="iconbtn" aria-label=${e.t("wizard.discard_role", { role: A(e, this.pendingRole) })} @click=${() => {
+			this.pendingRole = null;
+		}}><ha-icon aria-hidden="true" icon="mdi:close"></ha-icon></button></div>` : b}
+        ${n ? y`<h3 class="caption">${e.t("wizard.suggested", { area: n })}</h3>
+          ${r.length ? y`<div class="rows">${r.map((t) => y`<div class="item sugg"><span class="ic" aria-hidden="true"><ha-icon .icon=${k[t.role].icon}></ha-icon></span>
+            <div><div>${t.name}</div><div class="small muted">${e.t("wizard.sensor_reading", {
+			role: A(e, t.role),
+			value: this.valueText(t.entity_id)
+		})}</div></div>
+            <button type="button" class="btn text sm" aria-label=${e.t("wizard.add_label", { name: t.name })} @click=${() => this.assign(t.role, t.entity_id)}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("wizard.add")}</button></div>`)}</div>` : y`<p class="small muted">${e.t("wizard.no_suggestions", { area: n })}</p>`}` : b}
+        ${i.length ? y`<div class="add-another">${this.renderRoleMenu(i)}<span class="small muted">${e.t("wizard.add_another_hint")}</span></div>` : b}
+      </div>`;
+	}
+	renderRoleMenu(e) {
+		let t = this.l, n = (e) => y`<button type="button" class="btn outline sm" slot=${e ? "trigger" : b} aria-expanded=${e ? b : String(this.roleMenu)} @click=${e ? b : () => {
+			this.roleMenu = !this.roleMenu;
+		}}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("wizard.add_another")}</button>`;
+		return Y("ha-dropdown") && Y("ha-dropdown-item") ? y`<ha-dropdown @wa-select=${(e) => {
+			let t = e.detail.item.value;
+			xi.includes(t) && (this.pendingRole = t);
+		}}>
+        ${n(!0)}${e.map((e) => y`<ha-dropdown-item value=${e}><ha-icon slot="icon" .icon=${k[e].icon}></ha-icon>${A(t, e)}</ha-dropdown-item>`)}</ha-dropdown>` : y`${n(!1)}${this.roleMenu ? y`<div class="role-menu">${e.map((e) => y`<button type="button" class="btn outline sm" @click=${() => {
+			this.pendingRole = e, this.roleMenu = !1;
+		}}><ha-icon aria-hidden="true" .icon=${k[e].icon}></ha-icon>${A(t, e)}</button>`)}</div>` : b}`;
+	}
+	alert(e, t, n = "") {
+		return Y("ha-alert") ? y`<ha-alert alert-type=${e} .title=${n}>${t}</ha-alert>` : y`<div class="alert ${e}" role=${e === "warning" ? "alert" : "note"}><ha-icon aria-hidden="true" icon=${e === "warning" ? "mdi:alert-outline" : "mdi:information-outline"}></ha-icon><div>${n ? y`<b>${n}</b> ` : b}${t}</div></div>`;
+	}
+	expander(e, t, n, r, i) {
+		let a = this.expanded.has(e);
+		return Y("ha-expansion-panel") ? y`<ha-expansion-panel class="expander" data-section=${e} outlined .header=${n} .secondary=${r} .expanded=${a}
+        @expanded-will-change=${(t) => {
+			t.target === t.currentTarget && t.detail.expanded && (this.opened = /* @__PURE__ */ new Set([...this.opened, e]));
+		}}
+        @expanded-changed=${(t) => {
+			t.target === t.currentTarget && this.toggle(e, t.detail.expanded);
+		}}>
+        <ha-icon slot="leading-icon" aria-hidden="true" .icon=${t}></ha-icon>
+        ${a || this.opened.has(e) ? y`<div class="expander-body">${i()}</div>` : b}</ha-expansion-panel>` : y`<details class="expander" data-section=${e} ?open=${a} @toggle=${(t) => {
+			let n = t.currentTarget.open;
+			n !== a && this.toggle(e, n);
+		}}>
+      <summary><ha-icon aria-hidden="true" .icon=${t}></ha-icon><span class="summary-text"><span class="summary-title">${n}</span><span class="summary-sub">${r}</span></span><ha-icon aria-hidden="true" icon=${a ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon></summary>
+      ${a ? y`<div class="expander-body">${i()}</div>` : b}</details>`;
+	}
+	renderReview() {
+		let e = this.l, t = this.moisture.sources[0]?.entity_id, n = this.area ? this.areas.find((e) => e.area_id === this.area)?.name ?? e.t("area.missing_option", { area: this.area }) : e.t("wizard.no_area"), r = this.defaults, i = (e) => this.moisture.threshold_overrides[e] ?? r[e], a = this.accepted && this.preview ? this.preview.snapshot.latin_name ?? this.preview.snapshot.common_name : [this.common.trim(), this.latin.trim()].filter(Boolean).join(" · "), o = this.accepted && a ? e.t("wizard.species_summary_accepted", { species: a }) : a ? e.t("wizard.species_summary_manual", {
+			species: a,
+			min: e.percent(i("min")),
+			max: e.percent(i("max"))
+		}) : e.t("wizard.species_summary_default", {
+			min: e.percent(i("min")),
+			max: e.percent(i("max"))
+		});
+		return y`<h2 tabindex="-1">${e.t("wizard.review_heading")}</h2><p class="intro" style="margin-bottom:8px">${e.t("wizard.review_intro")}</p>
+      <div class="review">
+        <div class="li"><span class="ic" aria-hidden="true"><ha-icon icon="mdi:sprout"></ha-icon></span><div><div class="p">${this.name.trim()}</div><div class="s">${n}${this.photo ? ` · ${e.t("wizard.with_photo")}` : ""}</div></div>
+          <button type="button" class="btn text sm" aria-label=${e.t("wizard.edit_plant")} @click=${() => void this.go(1)}>${e.t("wizard.edit")}</button></div>
+        <div class="li"><span class="ic" aria-hidden="true"><ha-icon icon="mdi:access-point"></ha-icon></span><div><div class="p">${t ? this.friendly(t) : e.t("wizard.no_moisture")}</div><div class="s">${this.extras.length ? this.extras.map((e) => this.friendly(e.entity_id)).join(", ") : e.t("wizard.no_other_sensors")}</div></div>
+          <button type="button" class="btn text sm" aria-label=${e.t("wizard.edit_sensors")} @click=${() => void this.go(2)}>${e.t("wizard.edit")}</button></div>
+      </div>
+      ${t ? b : y`<div style="margin-top:6px">${this.alert("warning", e.t("wizard.no_moisture_warning"))}</div>`}
+      <div class="sections">
+        ${this.expander("species", "mdi:leaf", e.t("wizard.species_section"), o, () => this.renderSpecies())}
+        ${this.expander("details", "mdi:tag-outline", e.t("wizard.details_section"), e.t("wizard.details_summary"), () => this.renderDetails())}
+      </div>`;
+	}
+	renderSpecies() {
+		let e = this.l, t = this.providerInfo, n = this.defaults, r = R.some((e) => this.moisture.threshold_overrides[e] !== null), i = {
+			min: e.t("wizard.target_min"),
+			target: e.t("wizard.target_ideal"),
+			max: e.t("wizard.target_max")
+		};
+		return y`${t?.available ? this.accepted && this.preview ? y`<div class="species-chip"><ha-icon aria-hidden="true" icon="mdi:leaf"></ha-icon>
+        <div class="grow"><div><i>${this.preview.snapshot.latin_name}</i>${this.preview.snapshot.common_name && this.preview.snapshot.common_name !== this.preview.snapshot.latin_name ? ` · ${this.preview.snapshot.common_name}` : ""}</div><div class="small muted">${this.preview.snapshot.attribution}</div></div>
+        <button type="button" class="btn text sm" @click=${() => this.manual()}>${e.t("wizard.remove_species")}</button></div>` : y`<div class="search"><label class="field">${e.t("wizard.species_search")}<input type="search" autocomplete="off" aria-describedby="search-hint" .value=${this.query}
+          @input=${(e) => {
+			this.query = e.target.value, this.generation++, this.results = [], this.searched = !1, this.preview = null, this.accepted = !1;
+		}}
+          @keydown=${(e) => {
+			e.key === "Enter" && (e.preventDefault(), this.search());
+		}}></label>
+          <button type="button" class="btn outline" ?disabled=${this.busy || this.query.trim().length < 3} @click=${() => void this.search()}><ha-icon aria-hidden="true" icon="mdi:magnify"></ha-icon>${e.t("wizard.search_button")}</button></div>
+        <span class="helper" id="search-hint" style="padding-top:0;margin-top:-8px">${e.t("wizard.search_hint")}</span>
+        ${this.speciesError ? y`<p class="error" role="alert">${this.speciesError}</p><button type="button" class="btn text sm flush" @click=${() => this.manual()}>${e.t("common.continue_manually")}</button>` : b}
+        ${this.searched && !this.results.length ? y`<p class="small muted">${e.t("wizard.no_matches")}</p>` : b}
+        ${this.results.length && !this.preview ? y`<ul class="results" aria-label=${e.t("wizard.results")}>${this.results.map((e) => y`<li><button type="button" @click=${() => void this.choose(e)}>${e.common_name ?? e.latin_name} · ${e.latin_name}</button><small>${e.attribution}</small></li>`)}</ul>` : b}
+        ${this.preview ? y`<div class="preview">${Ur(e, this.preview.snapshot, this.preview)}</div>
+          <label class="check"><input type="checkbox" .checked=${this.accepted} @change=${(e) => {
+			this.accepted = e.target.checked, this.error = "";
+		}}>${e.t("wizard.accept_species")}</label>
+          <button type="button" class="btn text sm flush" @click=${() => this.manual()}>${e.t("wizard.remove_species")}</button>` : b}` : t ? this.alert("info", y`${e.t("wizard.provider_unavailable_body")}<span class="alert-links"><a href=${Si} @click=${(e) => {
+			e.preventDefault(), history.pushState(null, "", Si), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
+		}}>${e.t("wizard.open_options")}</a><a href=${Ci} target="_blank" rel="noreferrer">${e.t("wizard.openplantbook_credentials_link")}</a></span>`, e.t("wizard.provider_unavailable_title")) : b}
+      ${this.accepted || this.preview ? b : y`<h3>${e.t("wizard.manual_species")}</h3><div class="two">
+        <label class="field">${e.t("species.common_name")}<input maxlength="200" .value=${this.common} @input=${(e) => {
+			this.common = e.target.value;
+		}}></label>
+        <label class="field">${e.t("species.scientific_name")}<input maxlength="200" .value=${this.latin} @input=${(e) => {
+			this.latin = e.target.value;
+		}}></label></div>`}
+      <fieldset class="thr"><legend>${e.t("wizard.targets_label")}</legend>
+        ${R.map((e) => y`<div class="field"><label for="target-${e}">${i[e]}</label><span class="suffix"><input id="target-${e}" type="number" min="1" max="99" step="1" inputmode="numeric" .value=${String(this.moisture.threshold_overrides[e] ?? n[e])}
+          @input=${(t) => this.setOverride(e, t.target.value)}
+          @change=${(t) => {
+			let r = t.target;
+			r.value.trim() || (r.value = String(n[e]));
+		}}><span aria-hidden="true">%</span></span></div>`)}
       </fieldset>
-      ${this.finalRequest ? y`<p class="notice">${e.t("wizard.final_request_retained")}</p>` : b}
-      ${this.rejected ? y`<p>${e.t("wizard.rejected")}</p><button ?disabled=${this.busy || this.blocked} @click=${() => {
-			this.finalRequest = null, this.rejected = !1, this.preview = null, this.accepted = !1, this.step = 0, this.error = "", this.start();
-		}}>${e.t("wizard.start_fresh")}</button>` : b}
-      <div class="actions"><button @click=${() => {
-			this.step = this.step === 3 && this.provider === "manual" ? 1 : this.step - 1, this.focusStep();
-		}} ?disabled=${this.step === 0 || this.busy || !!this.finalRequest}>${e.t("wizard.previous")}</button>
-      ${this.step < 6 ? y`<button class="primary" @click=${() => void this.next()} ?disabled=${this.busy || this.blocked || !this.draft}>${e.t("wizard.next")}</button>` : y`<button class="primary" @click=${() => void this.create()} ?disabled=${this.busy || this.blocked || !this.draft}>${this.finalRequest ? e.t("wizard.retry_create") : e.t("wizard.create")}</button>`}</div>
-      <p role="status">${this.busy ? e.t("wizard.working") : ""}</p></section>`;
+      <p class="helper" style="padding:0">${this.accepted ? e.t("wizard.targets_species") : e.t("wizard.targets_default")}</p>
+      ${r ? y`<button type="button" class="btn text sm flush" @click=${() => {
+			this.moisture = {
+				...this.moisture,
+				threshold_overrides: {
+					min: null,
+					target: null,
+					max: null
+				}
+			};
+		}}>${e.t("wizard.targets_reset")}</button>` : b}`;
+	}
+	renderDetails() {
+		let e = this.l, t = this.hass?.locale?.language ?? this.hass?.language ?? e.language, n = Y("ha-selector") && this.hass ? y`<ha-selector .hass=${this.hass} .selector=${{ date: {} }} .label=${e.t("wizard.acquired_date")} .value=${this.acquired || void 0} .required=${!1} @value-changed=${(e) => {
+			this.acquired = e.detail.value ?? "";
+		}}></ha-selector>` : y`<label class="field">${e.t("wizard.acquired_date")}<input type="date" lang=${t} .value=${this.acquired} @input=${(e) => {
+			this.acquired = e.target.value;
+		}}></label>`, r = (e) => e.charAt(0).toLocaleUpperCase(t) + e.slice(1);
+		return y`<div class="two">
+      ${n}
+      <div class="field"><label for="placement">${e.t("placement.label")}</label><select id="placement" @change=${(e) => {
+			this.placement = e.target.value;
+		}}>
+        <option value="" ?selected=${!this.placement}>${e.t("common.not_specified")}</option>
+        ${Zt.map((t) => y`<option value=${t} ?selected=${t === this.placement}>${r(Mr(e, t))}</option>`)}</select><ha-icon class="trail" aria-hidden="true" icon="mdi:menu-down"></ha-icon></div>
+      <label class="field">${e.t("taxonomy.category")}<input maxlength="60" .value=${this.category} @input=${(e) => {
+			this.category = e.target.value;
+		}}></label>
+      <div><label class="field">${e.t("wizard.tags")}<input maxlength="2000" aria-describedby="tags-hint" .value=${this.tagText} @input=${(e) => {
+			this.tagText = e.target.value;
+		}}></label><div class="helper" id="tags-hint">${e.t("wizard.tags_hint")}</div></div>
+    </div>`;
+	}
+	renderDone() {
+		let e = this.l, t = this.created, n = this.area ? this.areas.find((e) => e.area_id === this.area)?.name : void 0;
+		return y`<div class="wz" lang=${e.language}><div class="card done">
+      <div class="big" aria-hidden="true"><ha-icon icon="mdi:check"></ha-icon></div>
+      <h2 tabindex="-1">${e.t("wizard.done_heading", { name: t.name })}</h2>
+      <p>${n ? e.t("wizard.done_body_area", { area: n }) : e.t("wizard.done_body")}</p>
+      <p class="small" role="status">${this.photoStatus}</p>
+      <div class="row"><button type="button" class="btn filled" @click=${() => this.dispatchEvent(new CustomEvent("wizard-open-plant", {
+			detail: { plantId: t.id },
+			bubbles: !0,
+			composed: !0
+		}))}>${e.t("wizard.open_plant")}</button>
+        <button type="button" class="btn outline" @click=${() => this.emit("wizard-close")}>${e.t("wizard.back_to_plants")}</button>
+        <button type="button" class="btn outline" ?disabled=${this.blocked} @click=${() => this.restart()}>${e.t("wizard.add_another_plant")}</button></div>
+    </div></div>`;
 	}
 };
-yi = Z, yi.styles = vi, q([S({ attribute: !1 })], Z.prototype, "hass", void 0), q([S({ attribute: !1 })], Z.prototype, "capabilities", void 0), q([S({ attribute: !1 })], Z.prototype, "areas", void 0), q([S({ attribute: !1 })], Z.prototype, "entities", void 0), q([S({ attribute: !1 })], Z.prototype, "states", void 0), q([S({ type: Boolean })], Z.prototype, "blocked", void 0), q([S({ type: Number })], Z.prototype, "navigationContext", void 0), q([C()], Z.prototype, "step", void 0), q([C()], Z.prototype, "busy", void 0), q([C()], Z.prototype, "error", void 0), q([C()], Z.prototype, "name", void 0), q([C()], Z.prototype, "acquired", void 0), q([C()], Z.prototype, "area", void 0), q([C()], Z.prototype, "placement", void 0), q([C()], Z.prototype, "category", void 0), q([C()], Z.prototype, "tagText", void 0), q([C()], Z.prototype, "common", void 0), q([C()], Z.prototype, "latin", void 0), q([C()], Z.prototype, "provider", void 0), q([C()], Z.prototype, "query", void 0), q([C()], Z.prototype, "results", void 0), q([C()], Z.prototype, "searched", void 0), q([C()], Z.prototype, "preview", void 0), q([C()], Z.prototype, "accepted", void 0), q([C()], Z.prototype, "moisture", void 0), q([C()], Z.prototype, "all", void 0), q([C()], Z.prototype, "draft", void 0), q([C()], Z.prototype, "finalRequest", void 0), q([C()], Z.prototype, "photo", void 0), q([C()], Z.prototype, "photoInfo", void 0), q([C()], Z.prototype, "rejected", void 0), customElements.get("smart-plants-wizard") || customElements.define("smart-plants-wizard", Z);
+yi = Z, yi.styles = [
+	G,
+	Wr,
+	o`
+    :host { display: block; container-type: inline-size; color: var(--sp-text);
+      --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000);
+      /* Secondary text a little darker than the theme's so it keeps 4.5:1 on tinted rows and filled fields. */
+      --wz-muted: color-mix(in srgb, var(--sp-text-secondary) 78%, var(--sp-text));
+      --wz-divider: var(--divider-color, #e0e0e0);
+      --wz-card: var(--ha-card-background, var(--card-background-color, #fff));
+      --wz-fill: var(--input-fill-color, color-mix(in srgb, var(--sp-text) 5%, var(--wz-card)));
+      --wz-tonal: color-mix(in srgb, var(--sp-primary) 12%, transparent);
+      --wz-tonal-fg: color-mix(in srgb, var(--sp-primary) 65%, var(--sp-text));
+      --wz-off: color-mix(in srgb, var(--sp-text) 7%, transparent); }
+    * { box-sizing: border-box; }
+    button, input, select { font: inherit; color: inherit; }
+    :focus-visible { outline: 2px solid var(--sp-primary); outline-offset: 2px; }
+    h2[tabindex]:focus { outline: none; }
+    ha-icon { --mdc-icon-size: 20px; flex: none; }
+    p { margin: 0; }
+    .wz { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; hyphens: auto; overflow-wrap: anywhere; }
+    .stepline { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--wz-muted); }
+    .stepline b { color: var(--sp-text); font-weight: 500; }
+    .bars { display: flex; gap: 8px; }
+    .bars span { flex: 1; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--sp-text) 10%, transparent); }
+    .bars span.on { background: var(--sp-primary); }
+    .card { background: var(--wz-card); border: 1px solid var(--ha-card-border-color, var(--wz-divider)); border-radius: var(--ha-card-border-radius, 12px); padding: 20px; }
+    h2 { font-size: 22px; font-weight: 400; line-height: 1.25; margin: 0 0 4px; }
+    .intro { color: var(--wz-muted); margin: 0 0 16px; }
+    .stack { display: flex; flex-direction: column; gap: 14px; }
+    .muted { color: var(--wz-muted); }
+    .small { font-size: 12.5px; }
+
+    /* Filled text fields in the style of Home Assistant's inputs. */
+    .field { position: relative; display: block; min-height: 56px; padding: 7px 12px 0; border-radius: 4px 4px 0 0; background: var(--wz-fill);
+      border-bottom: 1px solid var(--input-idle-line-color, #8a8a8a); font-size: 12px; color: var(--wz-muted); cursor: text; }
+    .field:focus-within { border-bottom: 2px solid var(--sp-primary); color: color-mix(in srgb, var(--sp-primary) 70%, var(--sp-text)); }
+    .field input, .field select { display: block; width: 100%; min-height: 32px; margin: 0; padding: 2px 0 6px; border: 0; background: transparent; outline: none; font-size: 16px; color: var(--sp-text); }
+    .field select { appearance: none; padding-inline-end: 28px; cursor: pointer; }
+    .field select option, .field select optgroup { color: var(--sp-text); background: var(--wz-card); }
+    .field .trail { position: absolute; inset-inline-end: 10px; top: 18px; color: var(--wz-muted); pointer-events: none; }
+    .field .suffix { display: flex; align-items: center; gap: 4px; font-size: 16px; color: var(--sp-text); }
+    .field .suffix input { flex: 1; min-width: 0; }
+    .field > label { display: block; cursor: inherit; }
+    .helper { font-size: 12px; color: var(--wz-muted); padding: 4px 12px 0; }
+    ha-area-picker, ha-entity-picker, ha-selector { display: block; }
+
+    .drop { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1.5px dashed var(--wz-divider); border-radius: 12px; }
+    .drop.has { border-style: solid; }
+    .drop.over { border-color: var(--sp-primary); background: var(--wz-tonal); }
+    .drop:focus-within { outline: 2px solid var(--sp-primary); outline-offset: 2px; }
+    .drop label { display: flex; align-items: center; gap: 14px; flex: 1; cursor: pointer; }
+    .drop ha-icon { --mdc-icon-size: 28px; color: var(--wz-tonal-fg); }
+    .drop .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .drop img { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; flex: none; }
+
+    .caption { margin: 6px 0 0; font-size: 12px; font-weight: 400; letter-spacing: .05em; text-transform: uppercase; color: var(--wz-muted); }
+    .rows { display: flex; flex-direction: column; gap: 8px; }
+    .item { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; }
+    .item.sugg { border: 1px solid var(--wz-divider); }
+    .item.assigned { background: var(--wz-tonal); }
+    .item .ic { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--wz-off); color: var(--wz-muted); }
+    .item.assigned .ic { background: var(--wz-card); color: var(--wz-tonal-fg); }
+    .item.pending { grid-template-columns: minmax(0, 1fr) auto; padding: 0; }
+    .add-another { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+    .role-menu { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 18px; border: 0; border-radius: 20px; cursor: pointer;
+      font-size: 14px; font-weight: 500; white-space: nowrap; background: transparent; color: var(--wz-tonal-fg); text-decoration: none; }
+    .btn ha-icon { --mdc-icon-size: 18px; }
+    .btn.filled { background: var(--sp-primary-strong); color: var(--text-primary-color, #fff); }
+    .btn.text { padding: 0 12px; }
+    .btn.text:hover:not(:disabled) { background: color-mix(in srgb, var(--sp-primary) 10%, transparent); }
+    .btn.outline { border: 1px solid var(--wz-divider); }
+    .btn.sm { min-height: 32px; padding: 0 14px; font-size: 13px; }
+    .btn.flush { padding: 0; min-height: 32px; align-self: flex-start; }
+    .btn:disabled { opacity: .5; cursor: default; }
+    .iconbtn { width: 40px; height: 40px; display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: transparent; cursor: pointer; color: var(--sp-text); }
+    .iconbtn:hover { background: color-mix(in srgb, var(--sp-text) 6%, transparent); }
+
+    .actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .actions .end { display: flex; gap: 10px; margin-inline-start: auto; }
+
+    .review { display: flex; flex-direction: column; }
+    .li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; min-height: 60px; }
+    .li + .li { border-top: 1px solid var(--wz-divider); }
+    .li .ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--wz-tonal); color: var(--wz-tonal-fg); }
+    .li .p { font-size: 15px; }
+    .li .s { font-size: 13px; color: var(--wz-muted); }
+    .sections { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+
+    .expander { display: block; border-radius: 12px; background: var(--wz-card); --expansion-panel-summary-padding: 4px 16px; --expansion-panel-content-padding: 0 16px; }
+    ha-expansion-panel.expander .expander-body { padding-bottom: 16px; }
+    details.expander { border: 1px solid var(--wz-divider); }
+    details.expander > summary { display: flex; align-items: center; gap: 14px; padding: 12px 16px; min-height: 56px; cursor: pointer; list-style: none; }
+    details.expander > summary::-webkit-details-marker { display: none; }
+    .summary-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .summary-title { font-weight: 500; }
+    .summary-sub { font-size: 12.5px; color: var(--wz-muted); }
+    details.expander > .expander-body { padding: 0 16px 16px; }
+    .expander-body { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .expander-body h3 { margin: 4px 0 0; font-size: 14px; font-weight: 500; }
+    .thr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; border: 0; margin: 0; padding: 0; min-width: 0; }
+    .thr legend { padding: 0; margin-bottom: 8px; font-size: 14px; font-weight: 500; }
+    .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+    .search { display: flex; gap: 10px; align-items: flex-start; }
+    .search .field { flex: 1; }
+    .search .btn { margin-top: 8px; }
+    .results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .results li { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border: 1px solid var(--wz-divider); border-radius: 10px; }
+    .results li:hover { border-color: var(--sp-primary); }
+    .results button { text-align: start; padding: 0; border: 0; background: transparent; cursor: pointer; font-weight: 500; color: var(--wz-tonal-fg); }
+    .results small { color: var(--wz-muted); font-size: 12px; }
+    .preview { border: 1px solid var(--wz-divider); border-radius: 10px; padding: 12px 14px; }
+    .preview article { display: flex; flex-direction: column; gap: 6px; }
+    .preview h3, .preview h4 { margin: 4px 0 0; font-size: 14px; font-weight: 500; }
+    .preview dl { display: grid; grid-template-columns: minmax(90px, 1fr) 2fr; gap: 2px 12px; margin: 0; font-size: 13px; }
+    .preview dt { color: var(--wz-muted); }
+    .preview dd { margin: 0; }
+    .check { display: flex; align-items: center; gap: 10px; font-weight: 500; cursor: pointer; }
+    .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--sp-primary-strong); }
+    .species-chip { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--wz-tonal); }
+    .species-chip .grow { flex: 1; min-width: 0; }
+
+    ha-alert { display: block; }
+    .alert { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 8px; font-size: 13.5px; color: var(--sp-text); }
+    .alert.warning { background: color-mix(in srgb, var(--sp-warning) 18%, transparent); }
+    .alert.info { background: color-mix(in srgb, var(--sp-info) 14%, transparent); }
+    .alert.warning > ha-icon { color: color-mix(in srgb, var(--sp-warning) 60%, var(--sp-text)); }
+    .alert.info > ha-icon { color: color-mix(in srgb, var(--sp-info) 60%, var(--sp-text)); }
+    .alert b { font-weight: 500; }
+    .alert-links { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; }
+    .alert-links a, a.link { color: var(--wz-tonal-fg); font-weight: 500; }
+    .error { padding: 12px 14px; border-radius: 8px; border-inline-start: 4px solid var(--sp-error); background: color-mix(in srgb, var(--sp-error) 8%, transparent); color: var(--sp-text); }
+    .notice { padding: 12px 14px; border-radius: 8px; border-inline-start: 4px solid var(--sp-warning); background: color-mix(in srgb, var(--sp-warning) 10%, transparent); }
+    .status:empty { display: none; }
+
+    .done { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 36px 20px; text-align: center; }
+    .done .big { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center;
+      background: color-mix(in srgb, var(--sp-success) 16%, transparent); color: color-mix(in srgb, var(--sp-success) 55%, var(--sp-text)); }
+    .done .big ha-icon { --mdc-icon-size: 40px; }
+    .done h2 { margin: 6px 0 0; }
+    .done p { max-width: 46ch; color: var(--wz-muted); }
+    .done .row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 8px; }
+
+    @container (max-width: 600px) {
+      .stepline .all { display: none; }
+      .card { padding: 16px; }
+      .thr, .two { grid-template-columns: minmax(0, 1fr); }
+      /* The action row stays reachable at the bottom of the screen while the step scrolls. */
+      .actions { position: sticky; bottom: 0; z-index: 2; padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--primary-background-color, var(--wz-card)); }
+    }
+  `
+], K([C({ attribute: !1 })], Z.prototype, "hass", void 0), K([C({ attribute: !1 })], Z.prototype, "capabilities", void 0), K([C({ attribute: !1 })], Z.prototype, "areas", void 0), K([C({ attribute: !1 })], Z.prototype, "entities", void 0), K([C({ attribute: !1 })], Z.prototype, "devices", void 0), K([C({ attribute: !1 })], Z.prototype, "states", void 0), K([C({ type: Boolean })], Z.prototype, "blocked", void 0), K([C({ type: Number })], Z.prototype, "navigationContext", void 0), K([C()], Z.prototype, "photoStatus", void 0), K([w()], Z.prototype, "step", void 0), K([w()], Z.prototype, "busy", void 0), K([w()], Z.prototype, "error", void 0), K([w()], Z.prototype, "name", void 0), K([w()], Z.prototype, "area", void 0), K([w()], Z.prototype, "photo", void 0), K([w()], Z.prototype, "photoUrl", void 0), K([w()], Z.prototype, "photoError", void 0), K([w()], Z.prototype, "photoChecking", void 0), K([w()], Z.prototype, "dragging", void 0), K([w()], Z.prototype, "moisture", void 0), K([w()], Z.prototype, "extras", void 0), K([w()], Z.prototype, "pendingRole", void 0), K([w()], Z.prototype, "roleMenu", void 0), K([w()], Z.prototype, "expanded", void 0), K([w()], Z.prototype, "opened", void 0), K([w()], Z.prototype, "query", void 0), K([w()], Z.prototype, "results", void 0), K([w()], Z.prototype, "searched", void 0), K([w()], Z.prototype, "preview", void 0), K([w()], Z.prototype, "accepted", void 0), K([w()], Z.prototype, "speciesError", void 0), K([w()], Z.prototype, "common", void 0), K([w()], Z.prototype, "latin", void 0), K([w()], Z.prototype, "acquired", void 0), K([w()], Z.prototype, "placement", void 0), K([w()], Z.prototype, "category", void 0), K([w()], Z.prototype, "tagText", void 0), K([w()], Z.prototype, "draft", void 0), K([w()], Z.prototype, "finalRequest", void 0), K([w()], Z.prototype, "rejected", void 0), K([w()], Z.prototype, "created", void 0), customElements.get("smart-plants-wizard") || customElements.define("smart-plants-wizard", Z);
 //#endregion
 //#region src/views/overview.ts
-var bi, xi = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", Si = {
+var wi, Ti = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", Ei = {
 	all: {
 		label: "overview.tile_all",
 		icon: "mdi:sprout",
@@ -4653,15 +5218,15 @@ var bi, xi = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 		icon: "mdi:clock-alert-outline",
 		tone: "var(--sp-disabled)"
 	}
-}, Ci = {
+}, Di = {
 	attention: "overview.sort_attention",
 	name: "overview.sort_name",
 	area: "overview.sort_area"
-}, wi = {
+}, Oi = {
 	attention: "mdi:alert-circle-outline",
 	name: "mdi:sort-alphabetical-ascending",
 	area: "mdi:texture-box"
-}, Q = class extends x {
+}, Q = class extends S {
 	constructor(...e) {
 		super(...e), this.l = L, this.plants = [], this.overview = {}, this.areaNames = {}, this.thumbnails = {}, this.watering = /* @__PURE__ */ new Set(), this.loading = !1, this.blocked = !1, this.now = void 0, this.hidden = !1, this._filter = "all", this._sort = "attention", this._query = "";
 	}
@@ -4714,22 +5279,22 @@ var bi, xi = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 			let t = e.detail.item.value;
 			jt.includes(t) && (this._sort = t);
 		}}>
-          <button slot="trigger" class="pill" type="button" aria-label=${e.t("overview.sort_button", { sort: e.t(Ci[this._sort]) })}><ha-icon aria-hidden="true" icon="mdi:sort"></ha-icon>${e.t(Ci[this._sort])}<ha-icon aria-hidden="true" icon="mdi:menu-down"></ha-icon></button>
+          <button slot="trigger" class="pill" type="button" aria-label=${e.t("overview.sort_button", { sort: e.t(Di[this._sort]) })}><ha-icon aria-hidden="true" icon="mdi:sort"></ha-icon>${e.t(Di[this._sort])}<ha-icon aria-hidden="true" icon="mdi:menu-down"></ha-icon></button>
           ${jt.map((t) => y`<ha-dropdown-item value=${t} ?checked=${this._sort === t}>
-            ${this._sort === t ? y`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : y`<ha-icon slot="icon" .icon=${wi[t]}></ha-icon>`}${e.t(Ci[t])}</ha-dropdown-item>`)}
+            ${this._sort === t ? y`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : y`<ha-icon slot="icon" .icon=${Oi[t]}></ha-icon>`}${e.t(Di[t])}</ha-dropdown-item>`)}
         </ha-dropdown>
       </div>
       <div class="countline"><p role="status">${e.t("list.count_filtered", {
 			shown: n.length,
 			total: t.length
-		})}${r ? ` · ${e.t(Si[this._filter].label)}` : ""}</p>
+		})}${r ? ` · ${e.t(Ei[this._filter].label)}` : ""}</p>
         ${r || this._query ? y`<button type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.clear_filter")}</button>` : b}</div>
       ${n.length ? this._renderList(n) : this._renderNoResults()}
     </div>
     <button type="button" class="fab" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("panel.add_plant")}</button>`;
 	}
 	_renderTile(e, t) {
-		let n = Si[e];
+		let n = Ei[e];
 		return y`<button type="button" class="tile ${t === 0 ? "zero" : ""}" style="--tone:${n.tone}" aria-pressed=${this._filter === e ? "true" : "false"}
       @click=${() => {
 			this._filter = this._filter === e && e !== "all" ? "all" : e;
@@ -4763,15 +5328,15 @@ var bi, xi = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 		let e = this.l;
 		return y`<sp-empty-state icon="mdi:sprout" .heading=${e.t("overview.empty_heading")}>${e.t("overview.empty_body")}
       <button slot="actions" type="button" class="filled" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("panel.add_plant")}</button>
-      <a slot="actions" class="text-button" href=${xi} target="_blank" rel="noopener noreferrer">${e.t("overview.how_it_works")}</a></sp-empty-state>`;
+      <a slot="actions" class="text-button" href=${Ti} target="_blank" rel="noopener noreferrer">${e.t("overview.how_it_works")}</a></sp-empty-state>`;
 	}
 	_renderNoResults() {
-		let e = this.l, t = this._query.trim() ? e.t("overview.no_match_query", { query: this._query.trim() }) : e.t("overview.no_match_filter", { filter: e.t(Si[this._filter].label) });
+		let e = this.l, t = this._query.trim() ? e.t("overview.no_match_query", { query: this._query.trim() }) : e.t("overview.no_match_filter", { filter: e.t(Ei[this._filter].label) });
 		return y`<sp-empty-state class="no-results" compact icon="mdi:magnify-remove-outline" .heading=${e.t("overview.no_match_heading")}>${t}
       <button slot="actions" type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.show_all")}</button></sp-empty-state>`;
 	}
 };
-bi = Q, bi.styles = [K, o`
+wi = Q, wi.styles = [G, o`
     /* White text on the theme's primary colour needs a slightly darker fill to reach 4.5:1. */
     :host { display: block; container-type: inline-size; --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000); }
     :host([hidden]) { display: none; }
@@ -4856,13 +5421,13 @@ bi = Q, bi.styles = [K, o`
       .tile .ico { width: 34px; height: 34px; }
       .grid { grid-template-columns: 1fr; }
     }
-  `], q([S({ attribute: !1 })], Q.prototype, "l", void 0), q([S({ attribute: !1 })], Q.prototype, "plants", void 0), q([S({ attribute: !1 })], Q.prototype, "overview", void 0), q([S({ attribute: !1 })], Q.prototype, "areaNames", void 0), q([S({ attribute: !1 })], Q.prototype, "thumbnails", void 0), q([S({ attribute: !1 })], Q.prototype, "watering", void 0), q([S({ type: Boolean })], Q.prototype, "loading", void 0), q([S({ type: Boolean })], Q.prototype, "blocked", void 0), q([S({ attribute: !1 })], Q.prototype, "now", void 0), q([S({
+  `], K([C({ attribute: !1 })], Q.prototype, "l", void 0), K([C({ attribute: !1 })], Q.prototype, "plants", void 0), K([C({ attribute: !1 })], Q.prototype, "overview", void 0), K([C({ attribute: !1 })], Q.prototype, "areaNames", void 0), K([C({ attribute: !1 })], Q.prototype, "thumbnails", void 0), K([C({ attribute: !1 })], Q.prototype, "watering", void 0), K([C({ type: Boolean })], Q.prototype, "loading", void 0), K([C({ type: Boolean })], Q.prototype, "blocked", void 0), K([C({ attribute: !1 })], Q.prototype, "now", void 0), K([C({
 	type: Boolean,
 	reflect: !0
-})], Q.prototype, "hidden", void 0), q([C()], Q.prototype, "_filter", void 0), q([C()], Q.prototype, "_sort", void 0), q([C()], Q.prototype, "_query", void 0), customElements.get("smart-plants-overview") || customElements.define("smart-plants-overview", Q);
+})], Q.prototype, "hidden", void 0), K([w()], Q.prototype, "_filter", void 0), K([w()], Q.prototype, "_sort", void 0), K([w()], Q.prototype, "_query", void 0), customElements.get("smart-plants-overview") || customElements.define("smart-plants-overview", Q);
 //#endregion
 //#region src/panel.ts
-var Ti, Ei = Object.fromEntries([
+var ki, Ai = Object.fromEntries([
 	{
 		problemRole: "temperature_stress",
 		configRole: "temperature",
@@ -4983,14 +5548,14 @@ var Ti, Ei = Object.fromEntries([
 		validate: (e, t) => dr(e, t),
 		seed: (e) => fr(e)
 	}
-].map((e) => [e.problemRole, e])), Di = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", Oi = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", ki = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
-function Ai(e) {
+].map((e) => [e.problemRole, e])), ji = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", Mi = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Ni = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
+function Pi(e) {
 	let t = -e.getTimezoneOffset();
 	return `${new Date(e.getTime() + t * 6e4).toISOString().slice(0, 19)}${t < 0 ? "-" : "+"}${String(Math.floor(Math.abs(t) / 60)).padStart(2, "0")}:${String(Math.abs(t) % 60).padStart(2, "0")}`;
 }
-var $ = class extends x {
+var $ = class extends S {
 	constructor(...e) {
-		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._wizardStarted = !1, this._creationNotice = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ready = () => {
+		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._wizardStarted = !1, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ready = () => {
 			this._refresh();
 		}, this._disconnected = () => {
 			this._context++, this._formBusy = !1, this._blocked = !0, this._request++, this._providerRequest++, this._preview = null, this._clearImage(), this._error = this._l.t("error.disconnected");
@@ -5251,7 +5816,7 @@ var $ = class extends x {
 		this._syncImage(), this._syncThumbnails(), this.updateComplete.then(() => this.shadowRoot?.querySelector("h1")?.focus());
 	}
 	_handleMenuAction(e) {
-		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(xi, "_blank", "noopener,noreferrer");
+		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(Ti, "_blank", "noopener,noreferrer");
 		let t = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0;
 		if (!t) return;
 		let n = B(t, this._devices);
@@ -5331,7 +5896,7 @@ var $ = class extends x {
 		let n = this.hass, r = this._l;
 		this._setWatering(e, !0), this._error = "", this._request++;
 		try {
-			let i = await this._withRevision(e, (t) => F.addWatering(n, e, t, Ai(/* @__PURE__ */ new Date()), null));
+			let i = await this._withRevision(e, (t) => F.addWatering(n, e, t, Pi(/* @__PURE__ */ new Date()), null));
 			this._adopt(i.plant), this._followQuickWrite(i.plant);
 			let a = this._overview[e];
 			a && (this._overview = {
@@ -5548,14 +6113,14 @@ var $ = class extends x {
 			});
 		}
 		if (e === "taxonomy") {
-			let e = kr(n.category, U(n.tagText), this._l);
+			let e = Ar(n.category, kr(n.tagText), this._l);
 			if (e) {
 				this._error = e;
 				return;
 			}
 			Object.assign(i, {
 				category: n.category.trim() || null,
-				tags: U(n.tagText)
+				tags: kr(n.tagText)
 			});
 		}
 		if (e === "species" && (i.species = vr(n.common, n.latin)), e === "moisture") {
@@ -5631,7 +6196,7 @@ var $ = class extends x {
 	_rebaseEdits(e, t, n) {
 		if (!this._edits) return;
 		let r = this._edits, i = this._areaReview, a = this._sourceRole, o = this._sourceEdits, s = this._sourceBaseline, c = this._thresholdRole, l = this._thresholdEdits, u = this._thresholdBaseline, d = {};
-		r.name !== e.name && (d.name = r.name), r.acquired !== (e.acquired_at ?? "") && (d.acquired = r.acquired), JSON.stringify(r.placement) !== JSON.stringify(e.placement) && (d.placement = r.placement), r.category !== (e.category ?? "") && (d.category = r.category), JSON.stringify(U(r.tagText)) !== JSON.stringify(e.tags) && (d.tagText = r.tagText), r.area !== this._baseArea && (d.area = r.area), r.common !== (e.species?.snapshot.common_name ?? "") && (d.common = r.common), r.latin !== (e.species?.snapshot.latin_name ?? "") && (d.latin = r.latin);
+		r.name !== e.name && (d.name = r.name), r.acquired !== (e.acquired_at ?? "") && (d.acquired = r.acquired), JSON.stringify(r.placement) !== JSON.stringify(e.placement) && (d.placement = r.placement), r.category !== (e.category ?? "") && (d.category = r.category), JSON.stringify(kr(r.tagText)) !== JSON.stringify(e.tags) && (d.tagText = r.tagText), r.area !== this._baseArea && (d.area = r.area), r.common !== (e.species?.snapshot.common_name ?? "") && (d.common = r.common), r.latin !== (e.species?.snapshot.latin_name ?? "") && (d.latin = r.latin);
 		let f = z(e), p = z(t);
 		if (r.moisture && f && p) {
 			let e = gr(p);
@@ -5670,7 +6235,7 @@ var $ = class extends x {
 			}
 		}
 		if (c && l && u) {
-			let e = Ei[c];
+			let e = Ai[c];
 			if (e) {
 				let n = e.seed(this._persistedRoleOverrides(e, t)), r = { ...n };
 				for (let t of e.keys) l[t] !== u[t] && (r[t] = l[t]);
@@ -5727,7 +6292,7 @@ var $ = class extends x {
 			let t = [...e.currentTarget.querySelectorAll("button:not([disabled]),a[href],input:not([disabled]),summary")], n = t[0], r = t.at(-1);
 			e.shiftKey && (this.shadowRoot?.activeElement === n || this.shadowRoot?.activeElement?.matches("#dialog-title")) ? (e.preventDefault(), r?.focus()) : !e.shiftKey && this.shadowRoot?.activeElement === r && (e.preventDefault(), n?.focus());
 		}}><h2 id="dialog-title" tabindex="-1">${this._dialog === "delete" ? n.t("dialog.delete_title", { name: e.name }) : n.t("dialog.species_title")}</h2>
-      ${this._dialog === "delete" ? y`<p>${n.t("dialog.delete_body")}</p>` : t ? Hr(n, t.snapshot, t) : y`<p>${n.t("dialog.preview_invalid")}</p>`}
+      ${this._dialog === "delete" ? y`<p>${n.t("dialog.delete_body")}</p>` : t ? Ur(n, t.snapshot, t) : y`<p>${n.t("dialog.preview_invalid")}</p>`}
       <div class="actions"><button @click=${() => this._closeDialog()}>${n.t("common.cancel")}</button><button class="primary" ?disabled=${this._formBusy || this._blocked || !!this._conflict || this._dialog === "species" && !t} @click=${() => {
 			let n = this._dialog;
 			if (this._closeDialog(), !this.hass) return;
@@ -5807,7 +6372,7 @@ var $ = class extends x {
 		return e === "on" ? t.t("section.advanced_diagnostics_status_problem") : e === "off" ? t.t("section.advanced_diagnostics_status_ok") : e === "unavailable" ? t.t("section.advanced_diagnostics_status_unavailable") : t.t("section.advanced_diagnostics_status_not_configured");
 	}
 	_renderOtherTargets(e) {
-		let t = this._l, n = mr(e, this._entities, this._states, t).filter((e) => e.status !== "not_configured" && Ei[e.role]), r = this._pendingThresholdSwitch, i = this._thresholdRole ? Ei[this._thresholdRole] : null, a = i ? t.t(`problem_phrase.${i.problemRole}`) : "", o = r ? t.t(`problem_phrase.${r.spec.problemRole}`) : "";
+		let t = this._l, n = mr(e, this._entities, this._states, t).filter((e) => e.status !== "not_configured" && Ai[e.role]), r = this._pendingThresholdSwitch, i = this._thresholdRole ? Ai[this._thresholdRole] : null, a = i ? t.t(`problem_phrase.${i.problemRole}`) : "", o = r ? t.t(`problem_phrase.${r.spec.problemRole}`) : "";
 		return y`<p class="small muted">${t.t("other_targets.intro")}</p>
       ${r ? y`<p class="notice threshold-switch-alert" role="alert">${t.t("section.advanced_diagnostics_switch_prompt", {
 			current: a,
@@ -5819,7 +6384,7 @@ var $ = class extends x {
 		}}>${t.t("section.advanced_diagnostics_switch_keep")}</button>
       </p>` : b}
       ${n.length ? y`<dl class="other-targets">${n.map((n) => {
-			let r = Ei[n.role], i = pr(e, n.role, this._entities, this._states, t), a = this._thresholdRole === n.role && this._thresholdEdits !== null, o = this._thresholdSaved[n.role];
+			let r = Ai[n.role], i = pr(e, n.role, this._entities, this._states, t), a = this._thresholdRole === n.role && this._thresholdEdits !== null, o = this._thresholdSaved[n.role];
 			return y`<dt>${n.label}</dt><dd>${i.length ? y`<ul class="thresholds" aria-label=${t.t("section.effective_thresholds_label", { label: n.label })}>${i.map((e) => y`<li><span class="threshold-label">${e.label}</span>: <span class="threshold-value">${e.value === null ? "—" : `${t.number(e.value)} ${e.unit}`}</span></li>`)}</ul>` : b}
           <button class="threshold-toggle btn outline sm" type="button" aria-expanded=${a ? "true" : "false"} aria-controls=${`${n.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(r, e)}>${a ? t.t("section.advanced_diagnostics_cancel_edit") : t.t("section.advanced_diagnostics_edit_thresholds")}</button>${a ? this._renderThresholdEditor(r, e) : b}${o && !a ? y`<p class="notice" role="status">${o}</p>` : b}</dd>`;
 		})}</dl>` : y`<p>${t.t("other_targets.none")}</p>`}`;
@@ -5920,7 +6485,7 @@ var $ = class extends x {
 		let n = t === "moisture" ? z(e) : H(e, t), r = this._l;
 		if (!n) return r.t("sensors.summary_unavailable");
 		if (!n.sources.length) return r.t("sensors.summary_empty");
-		let i = [r.tn(n.sources.length, "sensors.source_count_one", "sensors.source_count_other"), Pr(r, n.aggregation)];
+		let i = [r.tn(n.sources.length, "sensors.source_count_one", "sensors.source_count_other"), Fr(r, n.aggregation)];
 		return n.primary_entity_id && n.sources.length > 1 && i.push(r.t("sensors.summary_primary", { name: ii(r, this._states, n.primary_entity_id) })), i.push(r.t("sensors.summary_stale", { duration: pi(r, n.stale_after_seconds) })), i.join(" · ");
 	}
 	_toggleSourceEdit(e, t, n = "combine") {
@@ -6073,7 +6638,7 @@ var $ = class extends x {
 			name: r,
 			age: M(t, n.last_reported)
 		}) : t.t("stale_alert.title_no_age", { name: r });
-		return ei("ha-alert") ? y`<ha-alert class="stale-alert" alert-type="warning" .title=${i}>${t.t("stale_alert.body")}</ha-alert>` : y`<div class="alert-fallback stale-alert" role="alert"><ha-icon aria-hidden="true" icon="mdi:alert-outline"></ha-icon><div><p class="alert-title">${i}</p><p>${t.t("stale_alert.body")}</p></div></div>`;
+		return Y("ha-alert") ? y`<ha-alert class="stale-alert" alert-type="warning" .title=${i}>${t.t("stale_alert.body")}</ha-alert>` : y`<div class="alert-fallback stale-alert" role="alert"><ha-icon aria-hidden="true" icon="mdi:alert-outline"></ha-icon><div><p class="alert-title">${i}</p><p>${t.t("stale_alert.body")}</p></div></div>`;
 	}
 	_renderSensorsTab(e) {
 		let t = this._l, n = this._formBusy || this._blocked || !!this._conflict, r = this._pendingSourceSwitch, i = Sr(this._sourceRole ?? ""), a = this._assignedSensors(e), o = [...z(e)?.sources.length ? [] : ["moisture"], ...xr.filter((t) => !H(e, t.role)?.sources.length).map((e) => e.role)], s = xr.find((t) => this._sourceRefused(e, t.role, "pick"));
@@ -6109,14 +6674,14 @@ var $ = class extends x {
 	}
 	_renderPicker(e, t) {
 		let n = this._l, r = A(n, e), i = this._formBusy || this._blocked || !!this._conflict, a = this._edits, o;
-		return o = e === "moisture" ? a?.moisture ? y`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${i}>${Br(n, a.moisture, this._defaults(t), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "pick")}
+		return o = e === "moisture" ? a?.moisture ? y`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${i}>${Vr(n, a.moisture, this._defaults(t), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "pick")}
         <div class="actions"><button type="button" @click=${() => this._closeMoistureEditor()}>${n.t("common.cancel")}</button><button type="button" class="primary" @click=${() => void this._saveMoistureSensors()}>${n.t("sensors.save_moisture")}</button></div></fieldset></div>` : y`<p class="error" role="alert">${n.t("moisture.incompatible")}</p>` : this._renderSourceEditor(e, t), y`<section class="sp-card picker" aria-labelledby=${`${e}-picker-heading`}><div class="card-h"><h3 id=${`${e}-picker-heading`} tabindex="-1">${n.t("sensors.edit_heading", { role: r })}</h3></div>
       <div class="card-b">${o}</div></section>`;
 	}
 	_renderSourceEditor(e, t) {
 		let n = Sr(e), r = this._sourceEdits, i = this._l;
 		return !n || !r ? b : y`<div id=${`${e}-sources-editor`} class="editor"><fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>
-      ${Vr(i, n, r, this._entities, this._states, this._allSourceSensors, (e) => this._allSourceSensors = e, (e) => this._editSource(e), this._sourceMode)}
+      ${Hr(i, n, r, this._entities, this._states, this._allSourceSensors, (e) => this._allSourceSensors = e, (e) => this._editSource(e), this._sourceMode)}
       ${this._sourceError ? y`<p class="error" role="alert">${this._sourceError}</p>` : b}
       <div class="actions">
         <button type="button" @click=${() => this._closeSourceEditor()}>${i.t("common.cancel")}</button>
@@ -6131,7 +6696,7 @@ var $ = class extends x {
           <button class="source-toggle btn text sm" type="button" aria-expanded=${i ? "true" : "false"} aria-controls="moisture-sources-editor" aria-label=${i ? t.t("common.cancel") : t.t("combine.edit_label", { role: ai(t, "moisture") })} ?disabled=${n || !r?.moisture} @click=${() => {
 			i ? this._closeMoistureEditor() : this._moistureMode = "combine";
 		}}>${i ? t.t("common.cancel") : t.t("sensors.edit")}</button>
-          ${i && r?.moisture ? y`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${n}>${Br(t, r.moisture, this._defaults(e), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "combine")}
+          ${i && r?.moisture ? y`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${n}>${Vr(t, r.moisture, this._defaults(e), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "combine")}
             <div class="actions"><button type="button" @click=${() => this._closeMoistureEditor()}>${t.t("common.cancel")}</button><button type="button" class="primary" @click=${() => void this._saveMoistureSensors()}>${t.t("sensors.save_moisture")}</button></div></fieldset></div>` : b}</dd>
         ${xr.map((r) => {
 			let i = this._sourceRole === r.role && this._sourceEdits !== null && this._sourceMode === "combine", a = this._sourceSaved[r.role], o = A(t, r.role);
@@ -6219,7 +6784,7 @@ var $ = class extends x {
 			secondary: r,
 			content: i,
 			open: this._expanded.has(e),
-			native: ei("ha-expansion-panel"),
+			native: Y("ha-expansion-panel"),
 			toggle: (t) => this._setExpanded(e, t)
 		});
 	}
@@ -6267,7 +6832,7 @@ var $ = class extends x {
 	}
 	_renderTabs() {
 		let e = this._l;
-		return ei("ha-tab-group") ? y`<ha-tab-group class="tabs" @wa-tab-show=${(e) => this._selectSection(e.detail.name)}>
+		return Y("ha-tab-group") ? y`<ha-tab-group class="tabs" @wa-tab-show=${(e) => this._selectSection(e.detail.name)}>
         ${X.map((t) => y`<ha-tab-group-tab slot="nav" .panel=${t} .active=${this._detailSection === t}>${e.t(ti[t])}</ha-tab-group-tab>`)}</ha-tab-group>` : y`<div class="tablist" role="tablist" aria-label=${e.t("detail.sections_label")} @keydown=${(e) => {
 			let t = X.indexOf(this._detailSection), n = e.key === "ArrowRight" ? (t + 1) % X.length : e.key === "ArrowLeft" ? (t + X.length - 1) % X.length : e.key === "Home" ? 0 : e.key === "End" ? X.length - 1 : -1;
 			n < 0 || (e.preventDefault(), this._selectSection(X[n]), this.updateComplete.then(() => this.shadowRoot?.querySelector(`#tab-${X[n]}`)?.focus()));
@@ -6297,7 +6862,7 @@ var $ = class extends x {
             <dt>${t.t("about.species")}</dt><dd>${c ? y`${c.latin_name ? y`<i>${c.latin_name}</i>` : b}${c.common_name && c.common_name !== c.latin_name ? y`${c.latin_name ? " · " : ""}${c.common_name}` : b}
               <div class="small muted">${c.source_status === "provider" ? t.t("about.species_provider", { provider: c.provider === "openplantbook" ? "OpenPlantBook" : c.provider }) : t.t("about.species_manual")}</div>` : y`<button type="button" class="btn text sm" @click=${() => this._openSetting("species")}>${t.t("about.add_species")}</button>`}</dd>
             <dt>${t.t("about.area")}</dt><dd>${o?.area_id ? this._areaName(o.area_id) : t.t("area.none")}</dd>
-            <dt>${t.t("about.placement")}</dt><dd>${e.placement ? l(jr(t, e.placement.mode)) : s}</dd>
+            <dt>${t.t("about.placement")}</dt><dd>${e.placement ? l(Mr(t, e.placement.mode)) : s}</dd>
             <dt>${t.t("about.since")}</dt><dd>${e.acquired_at ? t.date(e.acquired_at.slice(0, 10)) : s}</dd>
             <dt>${t.t("about.category")}</dt><dd>${e.category ?? s}</dd>
             <dt>${t.t("about.tags")}</dt><dd>${e.tags.length ? e.tags.map((e) => y`<span class="tag">${e}</span>`) : s}</dd>
@@ -6327,13 +6892,13 @@ var $ = class extends x {
 		let t = this._l, n = this._edits, r = z(e), i = this._formBusy || this._blocked || !!this._conflict, a = B(e, this._devices), o = e.species?.snapshot, s = o ? o.latin_name ?? o.common_name ?? t.t("snapshot.species") : "", c = o ? y`<i>${s}</i> · ${o.source_status === "provider" ? t.t("settings.species_provider", {
 			provider: o.provider === "openplantbook" ? "OpenPlantBook" : o.provider,
 			date: t.date(o.fetched_at.slice(0, 10))
-		}) : t.t("about.species_manual")}` : t.t("settings.species_none"), l = ei("ha-area-picker") && this.hass ? y`<ha-area-picker .hass=${this.hass} .label=${t.t("area.label")} .value=${n.area || void 0} .noAdd=${!0} .disabled=${i || !!this._registryError || this._areaReview} @value-changed=${(e) => this._edit({ area: e.detail.value ?? "" })}></ha-area-picker>` : y`<fieldset ?disabled=${i || !!this._registryError || this._areaReview}>${Ir(t, n.area, this._areas, (e) => this._edit({ area: e }))}</fieldset>`, u = this._defaults(e), d = r ? R.some((e) => r.threshold_defaults[e].source === "provider") : !1, f = r && R.some((e) => r.threshold_overrides[e] !== null) ? t.t(d ? "targets.custom_species" : "targets.custom_defaults") : t.t(d ? "targets.from_species" : "targets.from_defaults"), p = {
+		}) : t.t("about.species_manual")}` : t.t("settings.species_none"), l = Y("ha-area-picker") && this.hass ? y`<ha-area-picker .hass=${this.hass} .label=${t.t("area.label")} .value=${n.area || void 0} .noAdd=${!0} .disabled=${i || !!this._registryError || this._areaReview} @value-changed=${(e) => this._edit({ area: e.detail.value ?? "" })}></ha-area-picker>` : y`<fieldset ?disabled=${i || !!this._registryError || this._areaReview}>${Lr(t, n.area, this._areas, (e) => this._edit({ area: e }))}</fieldset>`, u = this._defaults(e), d = r ? R.some((e) => r.threshold_defaults[e].source === "provider") : !1, f = r && R.some((e) => r.threshold_overrides[e] !== null) ? t.t(d ? "targets.custom_species" : "targets.custom_defaults") : t.t(d ? "targets.from_species" : "targets.from_defaults"), p = {
 			min: "targets.needs_water",
 			target: "targets.ideal",
 			max: "targets.too_wet"
 		}, m = e.lifecycle_state === "active";
 		return y`<section class="sp-card" aria-labelledby="plant-settings-heading"><div class="card-h"><h3 id="plant-settings-heading">${t.t("settings.plant_heading")}</h3></div>
-        ${this._settingRow("name", t.t("settings.name"), e.name, t.t("settings.rename"), () => y`<fieldset ?disabled=${i}>${W(t.t("detail.name"), n.name, (e) => this._edit({ name: e }))}
+        ${this._settingRow("name", t.t("settings.name"), e.name, t.t("settings.rename"), () => y`<fieldset ?disabled=${i}>${U(t.t("detail.name"), n.name, (e) => this._edit({ name: e }))}
           <div class="actions"><button type="button" @click=${() => {
 			this._edit({ name: e.name }), this._closeSetting("name");
 		}}>${t.t("common.cancel")}</button>${this._saveButton("identity", t.t("settings.save_name"))}</div></fieldset>`)}
@@ -6346,9 +6911,9 @@ var $ = class extends x {
 		}}>${t.t("common.cancel")}</button><button type="button" class="primary" ?disabled=${i || !!this._registryError || this._areaReview} @click=${() => void this._save("area")}>${t.t("detail.save_area")}</button></div>`, this._areaReview)}
         ${this._renderPhotoRow(e)}
         ${this._settingRow("species", t.t("settings.species"), c, o ? t.t("settings.change_species") : t.t("settings.find_species"), () => y`
-          ${e.species ? Hr(t, e.species.snapshot) : b}<fieldset ?disabled=${i}>
+          ${e.species ? Ur(t, e.species.snapshot) : b}<fieldset ?disabled=${i}>
           ${e.species?.snapshot.provider_ref ? y`<button type="button" @click=${() => void this._previewSpecies()}>${t.t("species.preview_refresh")}</button>` : b}
-          ${G(t, t.t("species.provider"), this._provider, [{
+          ${W(t, t.t("species.provider"), this._provider, [{
 			value: "manual",
 			label: t.t("species.manual")
 		}, ...this._capabilities?.providers.filter((e) => e.available && e.search_supported).map((e) => ({
@@ -6357,7 +6922,7 @@ var $ = class extends x {
 		})) ?? []], (e) => {
 			this._providerRequest++, this._provider = e, this._preview = null, this._results = [];
 		})}
-          ${this._provider === "manual" ? y`${W(t.t("species.common_name"), n.common, (e) => this._edit({ common: e }))}${W(t.t("species.scientific_name"), n.latin, (e) => this._edit({ latin: e }))}<p class="small muted">${t.t("species.manual_hint")}</p><div class="actions">${this._saveButton("species", t.t("species.save_manual"))}</div>` : y`${W(t.t("species.search"), this._query, (e) => {
+          ${this._provider === "manual" ? y`${U(t.t("species.common_name"), n.common, (e) => this._edit({ common: e }))}${U(t.t("species.scientific_name"), n.latin, (e) => this._edit({ latin: e }))}<p class="small muted">${t.t("species.manual_hint")}</p><div class="actions">${this._saveButton("species", t.t("species.save_manual"))}</div>` : y`${U(t.t("species.search"), this._query, (e) => {
 			this._query = e, this._providerRequest++, this._results = [], this._preview = null;
 		})}<div class="actions"><button type="button" @click=${() => void this._searchSpecies()}>${t.t("species.search")}</button></div><ul class="result-list">${this._results.map((e) => y`<li><button type="button" @click=${() => void this._previewSpecies(e)}>${e.common_name ?? e.latin_name} · ${e.latin_name}</button><small>${e.attribution}</small></li>`)}</ul><button type="button" @click=${() => {
 			this._provider = "manual", this._providerRequest++, this._preview = null;
@@ -6391,10 +6956,10 @@ var $ = class extends x {
             <button type="button" class="btn filled sm" @click=${() => void this._save("moisture")}>${t.t("targets.save")}</button></div></fieldset>` : y`<p class="error" role="alert">${t.t("moisture.incompatible")}</p>`}</div></section>
       ${this._expander("other_targets", "mdi:tune-variant", t.t("other_targets.heading"), t.t("other_targets.secondary"), () => this._renderOtherTargets(e))}
       ${this._expander("more_details", "mdi:tag-outline", t.t("more_details.heading"), t.t("more_details.secondary"), () => y`
-        <fieldset ?disabled=${i}>${Lr(t, n.placement, (e) => this._edit({ placement: e }))}
+        <fieldset ?disabled=${i}>${Rr(t, n.placement, (e) => this._edit({ placement: e }))}
           <label>${t.t("detail.acquired")}<input type="date" .value=${n.acquired.slice(0, 10)} @input=${(e) => this._edit({ acquired: e.target.value })}></label>
           <div class="actions">${this._saveButton("identity", t.t("more_details.save_identity"))}</div></fieldset>
-        <fieldset ?disabled=${i}>${W(t.t("taxonomy.category"), n.category, (e) => this._edit({ category: e }), "text", 60)}${W(t.t("taxonomy.tags"), n.tagText, (e) => this._edit({ tagText: e }), "text", 2e3)}<p class="small muted">${t.t("taxonomy.hint")}</p>
+        <fieldset ?disabled=${i}>${U(t.t("taxonomy.category"), n.category, (e) => this._edit({ category: e }), "text", 60)}${U(t.t("taxonomy.tags"), n.tagText, (e) => this._edit({ tagText: e }), "text", 2e3)}<p class="small muted">${t.t("taxonomy.hint")}</p>
           <div class="actions">${this._saveButton("taxonomy", t.t("taxonomy.save"))}</div></fieldset>`)}
       <section class="sp-card" aria-labelledby="manage-heading"><div class="card-h"><h3 id="manage-heading">${t.t("manage.heading")}</h3></div>
         <div class="setrow"><div><div class="setrow-h">${m ? t.t("manage.pause") : t.t("manage.resume")}</div><div class="setrow-d">${m ? t.t("manage.pause_hint") : t.t("manage.resume_hint")}</div></div>
@@ -6422,28 +6987,39 @@ var $ = class extends x {
 		}[this._detailSection]()}</div>
       ${this._renderDialog()}</div>`;
 	}
+	_closeWizard() {
+		this._formBusy || (this._clearCreationNotice(), this._wizardStarted = !1, this._show({ kind: "list" }));
+	}
+	_openCreated(e) {
+		!this._formBusy && this._plantById(e) && (this._clearCreationNotice(), this._wizardStarted = !1, this._show({
+			kind: "detail",
+			plantId: e
+		}));
+	}
+	_clearCreationNotice() {
+		this._creationNotice.endsWith(this._l.t("created.uploading")) || (this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null);
+	}
 	async _created(e) {
 		let { plant: t, photo: n, navigationContext: r } = e.detail, i = this.hass, a = this._view.kind === "create" && r === this._context, o = n && t.revision === 1 && t.image === null;
-		this._wizardStarted = !1;
+		a || (this._wizardStarted = !1);
 		let s = this._plantById(t.id);
 		(!s || s.revision <= t.revision) && (this._plants = [...this._plants.filter((e) => e.id !== t.id), t]), this._createdPlantId = t.id;
-		let c = this._l, l = c.t("created.notice", { name: t.name }), u = c.t("created.uploading");
-		this._creationNotice = o ? `${l} ${u}` : n ? `${l} ${c.t("created.photo_skipped")}` : l, a && this._show({
-			kind: "detail",
-			plantId: t.id
-		});
-		let d = this._context;
+		let c = this._l, l = c.t("created.notice", { name: t.name }), u = c.t("created.uploading"), d = (e) => {
+			this._creationPhoto = e, this._creationNotice = e ? `${l} ${e}` : l;
+		};
+		d(o ? u : n ? c.t("created.photo_skipped") : "");
+		let f = this._context;
 		if (this._refresh(!1), o && i) {
 			try {
 				if (await _i(n, c), !this.isConnected || this.hass?.connection !== i.connection || this._blocked) return;
 				let e = await F.uploadImage(i, t.id, t.revision, n);
 				if (!this.isConnected || this.hass?.connection !== i.connection) return;
-				d === this._context && this._base?.id === t.id && this._base.revision === t.revision && !this._formBusy && !this._conflict && this._rebaseEdits(this._base, e), this._createdPlantId === t.id && (this._creationNotice = `${l} ${c.t("created.photo_uploaded")}`);
+				f === this._context && this._base?.id === t.id && this._base.revision === t.revision && !this._formBusy && !this._conflict && this._rebaseEdits(this._base, e), this._createdPlantId === t.id && d(c.t("created.photo_uploaded"));
 			} catch (e) {
 				if (!this.isConnected || this.hass?.connection !== i.connection) return;
-				this._createdPlantId === t.id && (this._creationNotice = `${l} ${c.t("created.photo_failed")} ${this._friendly(e)}`);
+				this._createdPlantId === t.id && d(`${c.t("created.photo_failed")} ${this._friendly(e)}`);
 			} finally {
-				this._createdPlantId === t.id && this._creationNotice.endsWith(u) && (this._creationNotice = `${l} ${c.t("created.photo_interrupted")}`);
+				this._createdPlantId === t.id && this._creationNotice.endsWith(u) && d(c.t("created.photo_interrupted"));
 			}
 			await this._refresh(!1);
 		}
@@ -6453,24 +7029,24 @@ var $ = class extends x {
 		if (this.hass?.user?.is_admin === !1) return y`<main><div class="panel-content"><p role="alert">${e.t("panel.admin_required")}</p></div></main>`;
 		let t = this.hass?.localize?.("ui.common.menu") || e.t("panel.menu"), n = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0, r = this._formBusy || this._blocked || !!this._conflict;
 		return y`<main><ha-top-app-bar-fixed class="panel-appbar" .narrow=${this.narrow}>
-       ${this._view.kind === "detail" ? y`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${ki} @click=${() => {
+       ${this._view.kind === "detail" ? y`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Ni} @click=${() => {
 			this._formBusy || this._show({ kind: "list" });
 		}}></ha-icon-button>` : b}
        <h1 slot="title" class="page-title" tabindex="-1">${n ? n.name : "Smart Plants"}</h1>
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
-         <ha-icon-button slot="trigger" .label=${t} .path=${Di}></ha-icon-button>
+         <ha-icon-button slot="trigger" .label=${t} .path=${ji}></ha-icon-button>
          ${n ? y`
          <ha-dropdown-item value="open-device" ?disabled=${!B(n, this._devices)}>${e.t("detail.menu_open_device")}<ha-icon slot="icon" icon="mdi:open-in-new"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="download-diagnostics">${e.t("detail.menu_download")}<ha-icon slot="icon" icon="mdi:download"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="toggle-monitoring" ?disabled=${r}>${n.lifecycle_state === "active" ? e.t("manage.pause") : e.t("manage.resume")}<ha-icon slot="icon" .icon=${n.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="delete-plant" ?disabled=${r}>${e.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>` : y`
          ${this._view.kind === "list" ? b : y`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${e.t("panel.back_to_overview")}</ha-dropdown-item>`}
-         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${Oi}></ha-svg-icon></ha-dropdown-item>
+         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${Mi}></ha-svg-icon></ha-dropdown-item>
          <ha-dropdown-item value="integration-options">${e.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="documentation">${e.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>`}
        </ha-dropdown>
        <div class="panel-content">${this._error ? y`<p class="error" role="alert">${this._error}</p>` : b}${this._notice ? y`<p class="notice" role="status">${this._notice}</p>` : b}${this._registryError ? y`<p class="notice" role="alert">${e.t("panel.registry_unavailable", { error: this._registryError })}</p>` : b}
-      ${this._creationNotice ? y`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && (this._view.kind !== "detail" || this._view.plantId !== this._createdPlantId) ? y`<button ?disabled=${this._formBusy} @click=${() => {
+      ${this._creationNotice && this._view.kind !== "create" ? y`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && (this._view.kind !== "detail" || this._view.plantId !== this._createdPlantId) ? y`<button ?disabled=${this._formBusy} @click=${() => {
 			this._createdPlantId && this._show({
 				kind: "detail",
 				plantId: this._createdPlantId
@@ -6481,19 +7057,19 @@ var $ = class extends x {
         .thumbnails=${this._thumbnails} .watering=${this._watering} .loading=${this._loading} .blocked=${this._blocked}
         @open-plant=${(e) => this._openFromOverview(e.detail)} @add-plant=${() => this._show({ kind: "create" })} @log-watering=${(e) => void this._logWatering(e.detail.plantId)}></smart-plants-overview>
       ${this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : b}
-      ${this._wizardStarted && this._capabilities ? y`<div ?hidden=${this._view.kind !== "create"}><smart-plants-wizard .hass=${this.hass} .capabilities=${this._capabilities} .areas=${this._areas} .entities=${this._entities} .states=${this._states} .blocked=${this._blocked} .navigationContext=${this._context} @plant-created=${(e) => void this._created(e)} @backend-unavailable=${(e) => {
+      ${this._wizardStarted && this._capabilities ? y`<div ?hidden=${this._view.kind !== "create"}><smart-plants-wizard .hass=${this.hass} .capabilities=${this._capabilities} .areas=${this._areas} .entities=${this._entities} .devices=${this._devices} .states=${this._states} .blocked=${this._blocked} .navigationContext=${this._context} .photoStatus=${this._creationPhoto} @plant-created=${(e) => void this._created(e)} @wizard-close=${() => this._closeWizard()} @wizard-open-plant=${(e) => this._openCreated(e.detail.plantId)} @wizard-restart=${() => this._clearCreationNotice()} @backend-unavailable=${(e) => {
 			this._blocked = !0, this._error = e.detail;
 		}}></smart-plants-wizard></div>` : b}
         <p role="status" aria-live="polite">${this._formBusy ? e.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
 	}
 };
-Ti = $, Ti.styles = [
-	K,
+ki = $, ki.styles = [
+	G,
 	vi,
 	gi
-], q([S({ attribute: !1 })], $.prototype, "hass", void 0), q([S({ attribute: !1 })], $.prototype, "panel", void 0), q([S({
+], K([C({ attribute: !1 })], $.prototype, "hass", void 0), K([C({ attribute: !1 })], $.prototype, "panel", void 0), K([C({
 	type: Boolean,
 	reflect: !0
-})], $.prototype, "narrow", void 0), q([C()], $.prototype, "_plants", void 0), q([C()], $.prototype, "_loading", void 0), q([C()], $.prototype, "_error", void 0), q([C()], $.prototype, "_notice", void 0), q([C()], $.prototype, "_view", void 0), q([C()], $.prototype, "_detailSection", void 0), q([C()], $.prototype, "_formBusy", void 0), q([C()], $.prototype, "_capabilities", void 0), q([C()], $.prototype, "_blocked", void 0), q([C()], $.prototype, "_areas", void 0), q([C()], $.prototype, "_entities", void 0), q([C()], $.prototype, "_devices", void 0), q([C()], $.prototype, "_states", void 0), q([C()], $.prototype, "_evaluations", void 0), q([C()], $.prototype, "_health", void 0), q([C()], $.prototype, "_healthError", void 0), q([C()], $.prototype, "_careHistory", void 0), q([C()], $.prototype, "_careError", void 0), q([C()], $.prototype, "_careDate", void 0), q([C()], $.prototype, "_careNote", void 0), q([C()], $.prototype, "_careKind", void 0), q([C()], $.prototype, "_careFields", void 0), q([C()], $.prototype, "_careEditingId", void 0), q([C()], $.prototype, "_registryError", void 0), q([C()], $.prototype, "_areaReview", void 0), q([C()], $.prototype, "_overview", void 0), q([C()], $.prototype, "_overviewError", void 0), q([C()], $.prototype, "_thumbnails", void 0), q([C()], $.prototype, "_watering", void 0), q([C()], $.prototype, "_edits", void 0), q([C()], $.prototype, "_conflict", void 0), q([C()], $.prototype, "_allSensors", void 0), q([C()], $.prototype, "_preview", void 0), q([C()], $.prototype, "_provider", void 0), q([C()], $.prototype, "_query", void 0), q([C()], $.prototype, "_results", void 0), q([C()], $.prototype, "_related", void 0), q([C()], $.prototype, "_imageUrl", void 0), q([C()], $.prototype, "_imageLoading", void 0), q([C()], $.prototype, "_imageError", void 0), q([C()], $.prototype, "_dialog", void 0), q([C()], $.prototype, "_wizardStarted", void 0), q([C()], $.prototype, "_creationNotice", void 0), q([C()], $.prototype, "_createdPlantId", void 0), q([C()], $.prototype, "_thresholdRole", void 0), q([C()], $.prototype, "_thresholdEdits", void 0), q([C()], $.prototype, "_thresholdBaseline", void 0), q([C()], $.prototype, "_thresholdError", void 0), q([C()], $.prototype, "_thresholdSaved", void 0), q([C()], $.prototype, "_pendingThresholdSwitch", void 0), q([C()], $.prototype, "_sourceRole", void 0), q([C()], $.prototype, "_sourceEdits", void 0), q([C()], $.prototype, "_sourceBaseline", void 0), q([C()], $.prototype, "_sourceError", void 0), q([C()], $.prototype, "_sourceUnavailable", void 0), q([C()], $.prototype, "_sourceSaved", void 0), q([C()], $.prototype, "_pendingSourceSwitch", void 0), q([C()], $.prototype, "_sourceMode", void 0), q([C()], $.prototype, "_moistureMode", void 0), q([C()], $.prototype, "_expanded", void 0), q([C()], $.prototype, "_settingsOpen", void 0), q([C()], $.prototype, "_careFilter", void 0), q([C()], $.prototype, "_careFormOpen", void 0), q([C()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);
+})], $.prototype, "narrow", void 0), K([w()], $.prototype, "_plants", void 0), K([w()], $.prototype, "_loading", void 0), K([w()], $.prototype, "_error", void 0), K([w()], $.prototype, "_notice", void 0), K([w()], $.prototype, "_view", void 0), K([w()], $.prototype, "_detailSection", void 0), K([w()], $.prototype, "_formBusy", void 0), K([w()], $.prototype, "_capabilities", void 0), K([w()], $.prototype, "_blocked", void 0), K([w()], $.prototype, "_areas", void 0), K([w()], $.prototype, "_entities", void 0), K([w()], $.prototype, "_devices", void 0), K([w()], $.prototype, "_states", void 0), K([w()], $.prototype, "_evaluations", void 0), K([w()], $.prototype, "_health", void 0), K([w()], $.prototype, "_healthError", void 0), K([w()], $.prototype, "_careHistory", void 0), K([w()], $.prototype, "_careError", void 0), K([w()], $.prototype, "_careDate", void 0), K([w()], $.prototype, "_careNote", void 0), K([w()], $.prototype, "_careKind", void 0), K([w()], $.prototype, "_careFields", void 0), K([w()], $.prototype, "_careEditingId", void 0), K([w()], $.prototype, "_registryError", void 0), K([w()], $.prototype, "_areaReview", void 0), K([w()], $.prototype, "_overview", void 0), K([w()], $.prototype, "_overviewError", void 0), K([w()], $.prototype, "_thumbnails", void 0), K([w()], $.prototype, "_watering", void 0), K([w()], $.prototype, "_edits", void 0), K([w()], $.prototype, "_conflict", void 0), K([w()], $.prototype, "_allSensors", void 0), K([w()], $.prototype, "_preview", void 0), K([w()], $.prototype, "_provider", void 0), K([w()], $.prototype, "_query", void 0), K([w()], $.prototype, "_results", void 0), K([w()], $.prototype, "_related", void 0), K([w()], $.prototype, "_imageUrl", void 0), K([w()], $.prototype, "_imageLoading", void 0), K([w()], $.prototype, "_imageError", void 0), K([w()], $.prototype, "_dialog", void 0), K([w()], $.prototype, "_wizardStarted", void 0), K([w()], $.prototype, "_creationNotice", void 0), K([w()], $.prototype, "_creationPhoto", void 0), K([w()], $.prototype, "_createdPlantId", void 0), K([w()], $.prototype, "_thresholdRole", void 0), K([w()], $.prototype, "_thresholdEdits", void 0), K([w()], $.prototype, "_thresholdBaseline", void 0), K([w()], $.prototype, "_thresholdError", void 0), K([w()], $.prototype, "_thresholdSaved", void 0), K([w()], $.prototype, "_pendingThresholdSwitch", void 0), K([w()], $.prototype, "_sourceRole", void 0), K([w()], $.prototype, "_sourceEdits", void 0), K([w()], $.prototype, "_sourceBaseline", void 0), K([w()], $.prototype, "_sourceError", void 0), K([w()], $.prototype, "_sourceUnavailable", void 0), K([w()], $.prototype, "_sourceSaved", void 0), K([w()], $.prototype, "_pendingSourceSwitch", void 0), K([w()], $.prototype, "_sourceMode", void 0), K([w()], $.prototype, "_moistureMode", void 0), K([w()], $.prototype, "_expanded", void 0), K([w()], $.prototype, "_settingsOpen", void 0), K([w()], $.prototype, "_careFilter", void 0), K([w()], $.prototype, "_careFormOpen", void 0), K([w()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);
 //#endregion
 export { $ as SmartPlantsPanel };

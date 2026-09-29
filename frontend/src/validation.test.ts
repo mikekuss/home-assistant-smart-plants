@@ -5,6 +5,16 @@ import type { CareEvent, WizardDraft } from "./types.js";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("untrusted runtime responses", () => {
+  it("requires a created plant to report every role it was created with", async () => {
+    const request = { draft_id: draft.draft_id, draft_token: draft.draft_token, expected_revision: 0 as const, confirmed: true as const, name: "Aloe",
+      moisture: { sources: [], primary_entity_id: null, aggregation: "primary" as const, stale_after_seconds: 21600, threshold_overrides: { min: null, target: null, max: null } },
+      roles: { temperature: { sources: [{ entity_id: "sensor.mock_temperature", registry_id: null }], primary_entity_id: "sensor.mock_temperature" } } };
+    const withRole = { ...sample, roles: { ...sample.roles!, temperature: { sources: request.roles.temperature.sources, primary_entity_id: "sensor.mock_temperature", aggregation: "average", stale_after_seconds: 21600 } } };
+    await expect(api.createWizard(harness([], () => ({ plant: withRole })).hass, request)).resolves.toMatchObject({ id: sample.id });
+    await expect(api.createWizard(harness([], () => ({ plant: sample })).hass, request)).rejects.toMatchObject({ code: "invalid_response" });
+    const { roles: _roles, ...withoutRoles } = request;
+    await expect(api.createWizard(harness([], () => ({ plant: sample })).hass, withoutRoles)).resolves.toMatchObject({ id: sample.id });
+  });
   it("accepts a second, newer watering even when the plant stores insertion order", async () => {
     const first: CareEvent = { schema_version: 1, id: "e6e6553a-f34c-4d88-864c-c94a74f97dfa", kind: "watering", provenance: "manual", occurred_at: "2026-01-01T00:30:00+02:00", local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { note: null } };
     const second: CareEvent = { ...first, id: "d4dab649-96a8-4daa-baa1-0a5b310cbfd7", occurred_at: "2026-01-02T12:00:00Z", local_date: "2026-01-02" };

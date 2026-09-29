@@ -24,6 +24,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The former Diagnostics tab is now the collapsed **Troubleshooting** section of the Sensors
   tab. Thresholds of the other checks are edited in Settings under **Other targets**, and plant
   details, photo, species and deleting the plant moved to Settings.
+- Shorter add-plant wizard with three steps: *Plant* (name, area and an optional photo that
+  you can drop in), *Sensors* and *Review*. Species, watering targets, date acquired,
+  placement, category and tags moved into optional sections of the review step. The moisture
+  targets are labelled *Needs water below*, *Ideal* and *Too wet above*. After creating, a
+  confirmation offers *Open plant*, *Back to plants* and *Add another plant*.
+- The wizard uses Home Assistant's own area and sensor pickers, lists sensors by name with
+  their current value, and suggests sensors from the chosen area. Every picked sensor, not
+  only soil moisture, is saved together with the plant and becomes the main sensor for its
+  reading, so values show up right away.
 
 ### Added
 
