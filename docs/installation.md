@@ -80,9 +80,14 @@ never affects your local plants.
 - **Manual:** replace the `custom_components/smart_plants` folder with the new version and
   restart.
 
-Your plant data is stored outside `custom_components/`, so updating never touches it. The
-panel is loaded with a version-specific URL. If the panel still looks outdated after a
-restart, reload the browser page (or clear the app cache in the companion app).
+Your plant data is stored outside `custom_components/`, so updating never touches it.
+
+A browser tab that stays open while Home Assistant restarts keeps running the previous
+version of the panel until the page is reloaded. The panel notices this and shows
+*Smart Plants was updated* with a **Reload** button. Reloading loads the new version; you do
+not need to clear the browser cache. The check runs in the version you are updating from,
+so when updating from 0.5.0 or earlier, reload the page yourself. If the panel still looks
+outdated after reloading, clear the app cache in the companion app.
 
 ## Uninstall
 

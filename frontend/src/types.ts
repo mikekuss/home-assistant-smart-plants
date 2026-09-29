@@ -186,6 +186,8 @@ export interface PanelCapabilities {
   api_version: 1;
   schema_version: 1;
   providers: { provider: string; available: boolean; search_supported: boolean }[];
+  // Identifies the panel bundle Home Assistant currently serves; older backends omit it.
+  bundle_version?: string;
 }
 export interface WizardDraft { draft_id: string; draft_token: string; revision: 0; expires_in: number }
 export interface WizardPreview extends SpeciesPreview { draft_id: string; revision: 0; operation: "select" }

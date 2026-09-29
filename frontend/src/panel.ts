@@ -120,6 +120,7 @@ type SettingRow = "name" | "area" | "species";
 type SensorRole = "moisture" | SourceRole;
 type SourceMode = "pick" | "combine";
 import { validateImage } from "./image.js";
+import { bundleOutdated, loadedBundleVersion } from "./bundle-version.js";
 import { validState } from "./validation.js";
 import { styles } from "./styles.js";
 import "./wizard.js";
@@ -142,6 +143,8 @@ function localTimestamp(date: Date): string {
 
 export class SmartPlantsPanel extends LitElement {
   static styles = [themeFallbacks, styles, plantStyles];
+  // The bundle this document is running, taken from the URL it was loaded from.
+  static bundleVersion: string | null = loadedBundleVersion(import.meta.url);
   @property({ attribute: false }) public hass?: HomeAssistantLike;
   @property({ attribute: false }) public panel?: PanelInfo;
   @property({ type: Boolean, reflect: true }) public narrow = false;
@@ -153,6 +156,8 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _detailSection: DetailSection = "overview";
   @state() private _formBusy = false;
   @state() private _capabilities: PanelCapabilities | null = null;
+  // Home Assistant serves a newer bundle than the one running in this tab.
+  @state() private _updateAvailable = false;
   @state() private _blocked = true;
   @state() private _areas: HAArea[] = [];
   @state() private _entities: HAEntity[] = [];
@@ -348,6 +353,7 @@ export class SmartPlantsPanel extends LitElement {
       const plants = await api.list(hass);
       if (request !== this._request || !this.isConnected) return;
       this._capabilities = info; this._blocked = false; this._plants = plants;
+      this._updateAvailable = bundleOutdated(SmartPlantsPanel.bundleVersion, info.bundle_version);
       if (showLoading) this._error = "";
       if (this._base) {
         const latest = plants.find(p => p.id === this._base?.id);
@@ -1556,6 +1562,7 @@ export class SmartPlantsPanel extends LitElement {
     }
     await this._refresh(false);
   }
+  private _reload(): void { window.location.reload(); }
   protected render() {
     const l = this._l;
     if (this.hass?.user?.is_admin === false) return html`<main><div class="panel-content"><p role="alert">${l.t("panel.admin_required")}</p></div></main>`;
@@ -1577,7 +1584,7 @@ export class SmartPlantsPanel extends LitElement {
          <ha-dropdown-item value="integration-options">${l.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="documentation">${l.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>`}
        </ha-dropdown>
-       <div class="panel-content">${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}${this._notice ? html`<p class="notice" role="status">${this._notice}</p>` : nothing}${this._registryError ? html`<p class="notice" role="alert">${l.t("panel.registry_unavailable")}</p>` : nothing}
+       <div class="panel-content">${this._updateAvailable ? html`<div class="update-banner" role="status"><p>${l.t("panel.update_available")}</p><button type="button" @click=${() => this._reload()}>${l.t("panel.reload")}</button></div>` : nothing}${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}${this._notice ? html`<p class="notice" role="status">${this._notice}</p>` : nothing}${this._registryError ? html`<p class="notice" role="alert">${l.t("panel.registry_unavailable")}</p>` : nothing}
       ${this._creationNotice && this._view.kind !== "create" ? html`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && !(this._view.kind === "detail" && this._view.plantId === this._createdPlantId) ? html`<button ?disabled=${this._formBusy} @click=${() => { if (this._createdPlantId) this._show({ kind: "detail", plantId: this._createdPlantId }); }}>${l.t("panel.open_created")}</button>` : nothing}` : nothing}
       ${this._view.kind === "list" && this._overviewError ? html`<p class="error" role="alert">${l.t("overview.status_unavailable", { error: this._overviewError })}</p>` : nothing}
       <smart-plants-overview ?hidden=${this._view.kind !== "list"} .l=${l} .plants=${this._plants} .overview=${this._overview} .areaNames=${this._plantAreaNames()}

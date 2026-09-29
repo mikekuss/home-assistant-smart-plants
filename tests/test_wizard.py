@@ -16,6 +16,7 @@ from custom_components.smart_plants.manager import (
     SmartPlantsRevisionConflictError,
 )
 from custom_components.smart_plants.models import MoistureConfig, PlantRecord
+from custom_components.smart_plants.panel import PANEL_BUNDLE_VERSION
 from custom_components.smart_plants.provider import (
     ManualSpeciesProvider,
     ProviderRegistry,
@@ -847,6 +848,7 @@ async def test_info_is_explicit_v1_and_never_uses_provider_diagnostics(
             {"provider": "openplantbook", "available": False, "search_supported": True},
             {"provider": "synthetic", "available": True, "search_supported": True},
         ],
+        "bundle_version": PANEL_BUNDLE_VERSION,
     }
 
 

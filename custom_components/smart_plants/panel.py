@@ -46,9 +46,14 @@ _MANIFEST_VERSION = str(
 _BUNDLE_HASH = hashlib.sha256(
     (_FRONTEND_DIR / "smart-plants-panel.js").read_bytes()
 ).hexdigest()[:16]
+# Identifies the bundle this process serves. It is the ``v`` query value of the
+# module URL, so a panel that is still running an older bundle (the browser
+# keeps a custom element definition until the page reloads) can compare its own
+# URL with this value and ask the user to reload.
+PANEL_BUNDLE_VERSION = f"{_MANIFEST_VERSION}-{_BUNDLE_HASH}"
 _MODULE_URL = (
     f"{_STATIC_URL_PREFIX}/smart-plants-panel.js?v="
-    f"{quote(_MANIFEST_VERSION, safe='')}-{_BUNDLE_HASH}"
+    f"{quote(PANEL_BUNDLE_VERSION, safe='')}"
 )
 
 _STATIC_REGISTRATION_FLAG = f"{DOMAIN}_static_registered"

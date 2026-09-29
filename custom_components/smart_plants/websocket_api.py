@@ -14,6 +14,9 @@ Commands (all admin-only):
 * ``smart_plants/plants/set_area`` -> ``{"plant": PlantView}``
 * ``smart_plants/plants/delete`` -> ``{}``
 * ``smart_plants/plants/overview`` -> ``{"plants": [PlantOverview, ...]}``
+* ``smart_plants/panel/info`` -> ``{"api_version", "schema_version",
+  "providers", "bundle_version"}``; ``bundle_version`` identifies the panel
+  bundle this process serves, so an open panel can tell that it is outdated.
 * ``smart_plants/roles/set_sources`` -> ``{"plant": PlantView}``
 * ``smart_plants/roles/set_primary`` -> ``{"plant": PlantView}``
 * ``smart_plants/roles/set_aggregation`` -> ``{"plant": PlantView}``
@@ -101,6 +104,7 @@ from .manager import (
 )
 from .models import PlantPlacement, PlantRecord, PlantSpecies
 from .overview import plant_overview
+from .panel import PANEL_BUNDLE_VERSION
 from .provider import (
     ProviderAuthenticationError,
     ProviderDisabledError,
@@ -1727,7 +1731,7 @@ async def _execute_panel_command(
     if service is None:
         raise SmartPlantsManagerUnavailableError
     if command == "smart_plants/panel/info":
-        return service.panel_info()
+        return {**service.panel_info(), "bundle_version": PANEL_BUNDLE_VERSION}
     if command == "smart_plants/wizard/preview":
         preview = await service.async_wizard_preview(
             msg["draft_id"],
