@@ -1,6 +1,7 @@
 import { expect, vi } from "vitest";
 import { builtin, emptyMoisture, keys } from "./model.js";
 import plantViewRoleDefaults from "../../tests/fixtures/plant_view_role_defaults.json";
+import type { PlantOverview } from "./overview-model.js";
 import type { Evaluation, HealthEvaluation, HomeAssistantLike, MoistureRoleConfig, PanelCapabilities, PlantRecord, SpeciesSnapshot } from "./types.js";
 
 export const capabilities: PanelCapabilities = { api_version: 1, schema_version: 1, providers: [{ provider: "manual", available: true, search_supported: false }, { provider: "openplantbook", available: true, search_supported: true }] };
@@ -34,6 +35,7 @@ export function harness(plants: PlantRecord[] = [structuredClone(sample)], handl
       case "smart_plants/species/search": return { results: [{ provider: "openplantbook", provider_ref: "aloe", common_name: "Aloe", latin_name: "Aloe vera", category: null, attribution: "OpenPlantBook" }] } as never;
       case "smart_plants/wizard/create": return { plant: sample } as never;
       case "smart_plants/moisture/evaluation": return { evaluation } as never;
+      case "smart_plants/plants/overview": return { plants: plants.map(overviewFor) } as never;
       case "smart_plants/plants/health": return { evaluation: healthEvaluation } as never;
       case "smart_plants/care/list": {
         const plant = plants.find(p => p.id === msg.plant_id) ?? sample;
@@ -51,6 +53,31 @@ export function harness(plants: PlantRecord[] = [structuredClone(sample)], handl
   const hass: HomeAssistantLike = { auth: { accessToken: "test-token" }, user: { is_admin: true }, connection: { sendMessagePromise: send, addEventListener: (name, fn) => { events.set(name, fn); }, removeEventListener: name => { events.delete(name); } } };
   return { hass, calls, send, events };
 }
+// Overview entry as the backend reports it for a plant with synthetic readings.
+export function overviewFor(plant: PlantRecord): PlantOverview {
+  const sources = (plant.roles?.moisture as MoistureRoleConfig | undefined)?.sources ?? [];
+  return {
+    plant_id: plant.id, revision: plant.revision, lifecycle_state: plant.lifecycle_state,
+    status: plant.lifecycle_state === "disabled" ? "paused" : sources.length ? "healthy" : "no_sensors",
+    problems: sources.length || plant.lifecycle_state === "disabled" ? [] : [{ role: "moisture", kind: "no_sensors" }],
+    roles: sources.length ? { moisture: { value: 30, unit: "%", state: "ok", range: { min: 20, target: 40, max: 60 }, last_reported: "2026-09-10T00:00:00+00:00", sources: sources.map(s => s.entity_id) } } : {},
+    last_watered_at: plant.care_events?.[0]?.occurred_at ?? null,
+    image: plant.image ? { id: plant.image.id } : null,
+  };
+}
+export function overviewOf(panel: { shadowRoot: ShadowRoot | null }): HTMLElementTagNameMap["smart-plants-overview"] {
+  const overview = panel.shadowRoot?.querySelector("smart-plants-overview");
+  expect(overview, "overview element").toBeTruthy(); return overview!;
+}
+// Text of the panel including nested component shadow roots, skipping hidden views.
+export function panelText(panel: { shadowRoot: ShadowRoot | null }): string {
+  const collect = (root: ShadowRoot | Element): string => [...root.childNodes].map(node => {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
+    if (!(node instanceof Element) || (node as HTMLElement).hidden || node.localName === "style") return "";
+    return `${node.shadowRoot ? collect(node.shadowRoot) : ""}${collect(node)}`;
+  }).join(" ");
+  return panel.shadowRoot ? collect(panel.shadowRoot) : "";
+}
 export async function settle(element: { updateComplete: Promise<unknown> }): Promise<void> { await element.updateComplete; await new Promise(resolve => setTimeout(resolve, 0)); await element.updateComplete; }
 export function button(root: ShadowRoot, name: string): HTMLButtonElement {
   if (name === "Add plant" || name === "Back to overview") {
@@ -62,7 +89,10 @@ export function button(root: ShadowRoot, name: string): HTMLButtonElement {
     proxy.click = () => item!.dispatchEvent(new CustomEvent("wa-select", { bubbles: true, composed: true, detail: { item: { value } } }));
     return proxy;
   }
-  const result = [...root.querySelectorAll("button")].find(b => b.textContent?.trim() === name);
+  // Plant cards live inside the overview element's own shadow root.
+  const overview = root.querySelector("smart-plants-overview");
+  const scopes = overview?.shadowRoot && !overview.hidden ? [root, overview.shadowRoot] : [root];
+  const result = scopes.flatMap(scope => [...scope.querySelectorAll("button")]).find(b => b.textContent?.trim() === name);
   expect(result, `button ${name}`).toBeDefined(); return result!;
 }
 export async function click(element: { shadowRoot: ShadowRoot | null; updateComplete: Promise<unknown> }, name: string): Promise<void> {

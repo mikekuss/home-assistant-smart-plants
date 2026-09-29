@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SmartPlantsPanel } from "./panel.js";
 import type { SmartPlantsWizard } from "./wizard.js";
-import { button, capabilities, click, deferred, evaluation, field, fill, harness, pngFile, preview, role, sample, settle, snapshot } from "./test-helpers.js";
+import { button, capabilities, click, deferred, field, fill, harness, overviewOf, panelText, pngFile, preview, role, sample, settle, snapshot } from "./test-helpers.js";
 import type { HAEntity, HAState, HomeAssistantLike, PlantRecord } from "./types.js";
 
 async function mount(hass: HomeAssistantLike): Promise<SmartPlantsPanel> {
@@ -97,15 +97,10 @@ describe("overview and lifecycle", () => {
     } else expect(fetch).not.toHaveBeenCalled();
     await click(el, "Back to overview"); expect(button(el.shadowRoot!, "Created plant")).toBeDefined();
   });
-  it("combines independent lifecycle and unavailable-sensor filters", async () => {
-    const h = harness([sample, { ...sample, id: "disabled", name: "Disabled", lifecycle_state: "disabled" }], msg => msg.type === "smart_plants/moisture/evaluation" ? { evaluation: { ...evaluation, computed_available: false, computed_percent: null, health_score: null, needs_water: null, too_wet: null } } : undefined);
-    const el = await mount(h.hass); await fill(el, "Lifecycle", "active"); await fill(el, "Sensor condition", "unavailable");
-    expect(el.shadowRoot?.querySelectorAll(".plant")).toHaveLength(1); expect(el.shadowRoot?.querySelector(".plant")?.textContent).toContain("Aloe");
-  });
   it("shows loading, deliberate empty state, and first-plant action", async () => {
     const pending = deferred<unknown>(); const h = harness([], msg => msg.type === "smart_plants/plants/list" ? pending.promise : undefined); const el = await mount(h.hass);
-    expect(el.shadowRoot?.textContent).toContain("Loading plants"); pending.resolve({ plants: [] }); await settle(el);
-    expect(el.shadowRoot?.textContent).toContain("A home for every plant"); expect(button(el.shadowRoot!, "Add your first plant").disabled).toBe(false);
+    expect(panelText(el)).toContain("Loading plants"); pending.resolve({ plants: [] }); await settle(el); await settle(overviewOf(el));
+    expect(panelText(el)).toContain("No plants yet"); expect(overviewOf(el).shadowRoot!.querySelector<HTMLButtonElement>("button.filled")!.disabled).toBe(false);
   });
   it.each(["api_version", "schema_version"])("fails closed on %s mismatch and recovers on refresh", async key => {
     let mismatch = true;
@@ -136,17 +131,6 @@ describe("overview and lifecycle", () => {
     el.hass = harness([sample]).hass; await settle(el); pending.resolve({ plants: [{ ...sample, name: "Stale plant" }] }); await settle(el);
     expect(button(el.shadowRoot!, "Aloe")).toBeDefined(); expect(el.shadowRoot?.textContent).not.toContain("Stale plant");
   });
-  it("combines every overview filter and distinguishes empty results", async () => {
-    const plants = [
-      { ...sample, species: { provider: "openplantbook", snapshot }, category: "succulent", placement: { mode: "indoor", exposure: null, rain_exposure: null, container: true }, tags: ["edible"], roles: { moisture: { ...role, sources: [{ entity_id: "sensor.gone", registry_id: "missing-uuid" }] } } },
-      { ...sample, id: "fern", name: "Fern", lifecycle_state: "disabled" as const, category: "fern", tags: ["shade"] },
-    ];
-    const h = harness(plants, msg => msg.type === "smart_plants/moisture/evaluation" ? { evaluation: { ...evaluation, needs_water: true, sensor_stale: true } } : undefined); const el = await mount(h.hass);
-    await fill(el, "Search plants", "aloe vera"); await fill(el, "Status", "needs water"); await fill(el, "Area", "kitchen"); await fill(el, "Placement", "indoor"); await fill(el, "Species", "Aloe vera"); await fill(el, "Category", "succulent"); await fill(el, "Sensor condition", "missing"); await fill(el, "Tags", "edible");
-    expect(el.shadowRoot?.querySelectorAll(".plant")).toHaveLength(1); expect(el.shadowRoot?.querySelector(".plant")?.textContent).toContain("missing source");
-    await fill(el, "Sensor condition", "stale"); expect(el.shadowRoot?.querySelectorAll(".plant")).toHaveLength(1);
-    await fill(el, "Search plants", "unmatched"); expect(el.shadowRoot?.textContent).toContain("No plants match"); await click(el, "Clear filters"); expect(el.shadowRoot?.querySelectorAll(".plant")).toHaveLength(2);
-  });
 });
 
 describe("detail saves and conflict review", () => {
@@ -155,7 +139,7 @@ describe("detail saves and conflict review", () => {
     const h = harness([sample], msg => msg.type === "smart_plants/plants/update" ? pending.promise : msg.type === "smart_plants/plants/list" ? { plants: deleted ? [] : [sample] } : undefined);
     const el = await detail(h.hass); await fill(el, "Name", "Pending"); await click(el, "Save identity"); deleted = true; h.events.get("ready")!(); await settle(el);
     expect(el.shadowRoot?.textContent).toContain("deleted in another session"); expect(button(el.shadowRoot!, "Back to overview").disabled).toBe(false);
-    pending.resolve({ plant: { ...sample, revision: 2, name: "Late" } }); await settle(el); await click(el, "Back to overview"); expect(el.shadowRoot?.textContent).toContain("A home for every plant");
+    pending.resolve({ plant: { ...sample, revision: 2, name: "Late" } }); await settle(el); await click(el, "Back to overview"); await settle(overviewOf(el)); expect(panelText(el)).toContain("No plants yet");
   });
   it("adopts canonical saved values and provider names while retaining unrelated pending edits", async () => {
     let plant = structuredClone(sample);
@@ -310,7 +294,7 @@ describe("reviewed species and accessible destructive actions", () => {
       if (msg.type === "smart_plants/plants/delete") { deleted = true; return {}; }
       return undefined;
     }); const el = await detail(h.hass); await click(el, "Disable"); await click(el, "Re-enable"); await click(el, "Delete plant"); await click(el, "Permanently delete plant");
-    expect(h.calls.find(c => c.type === "smart_plants/plants/delete")).toMatchObject({ expected_revision: 3 }); expect(el.shadowRoot?.textContent).toContain("A home for every plant");
+    expect(h.calls.find(c => c.type === "smart_plants/plants/delete")).toMatchObject({ expected_revision: 3 }); await settle(overviewOf(el)); expect(panelText(el)).toContain("No plants yet");
   });
   it("invalidates a species preview on revision change and never applies a stale token", async () => {
     let plant = { ...sample, species: { provider: "openplantbook", snapshot } };

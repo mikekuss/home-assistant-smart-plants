@@ -3,7 +3,7 @@ import { property, state } from "lit/decorators.js";
 import type { PropertyValues } from "lit";
 import { api, ApiError } from "./api.js";
 import type { UpdatePlantInput } from "./api.js";
-import { aggregationLabel, areaEditor, moistureEditor, placementEditor, placementLabel, roleSourcesEditor, selectField, snapshotView, textField, thresholdKeyLabel } from "./editors.js";
+import { aggregationLabel, areaEditor, moistureEditor, placementEditor, roleSourcesEditor, selectField, snapshotView, textField, thresholdKeyLabel } from "./editors.js";
 import { createLocalizer, isMessageKey } from "./localize.js";
 import type { Localizer, MessageKey } from "./localize.js";
 import { CO2_STRESS_BUILTIN_DEFAULTS, CO2_STRESS_KEYS, CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, CONDUCTIVITY_STRESS_KEYS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_KEYS, LOW_BATTERY_STRESS_BUILTIN_DEFAULTS, LOW_BATTERY_STRESS_KEYS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_KEYS, SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, SOIL_TEMPERATURE_STRESS_KEYS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_KEYS, builtin, canonicalMoisture, co2StressInput, conductivityStressInput, confidenceGloss, confidenceLabel, contributorLabel, effectiveThresholds, humidityStressInput, keys, lowBatteryInput, lowLightInput, manualSpecies, moistureInput, moistureRole, plantDevice, problemBinaries, resolveSource, roleLabel, rolePhrase, roleSourceConfig, roleSourceInput, roleSourceSpec, ROLE_SOURCE_SPECS, canonicalRoleSources, validateRoleSources, soilTemperatureStressInput, tags, temperatureStressInput, validateCo2StressOverrides, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowBatteryOverrides, validateLowLightOverrides, validateMoisture, validateSoilTemperatureStressOverrides, validateTaxonomy, validateTemperatureStressOverrides } from "./model.js";
@@ -110,6 +110,9 @@ import { validateImage } from "./image.js";
 import { validState } from "./validation.js";
 import { styles } from "./styles.js";
 import "./wizard.js";
+import { DOCUMENTATION_URL } from "./views/overview.js";
+import type { OpenPlantDetail } from "./views/overview.js";
+import type { PlantOverview } from "./overview-model.js";
 import type { CareEvent, CareHistory, Evaluation, HAArea, HADevice, HAEntity, HAState, HealthEvaluation, HomeAssistantLike, MoistureInput, PanelCapabilities, PanelInfo, PlantPlacement, PlantRecord, RoleSourceInput, SpeciesPreview, SpeciesSearchResult } from "./types.js";
 
 type View = { kind: "list" } | { kind: "create" } | { kind: "detail"; plantId: string };
@@ -117,6 +120,13 @@ type DetailSection = "overview" | "sensors" | "care" | "details" | "diagnostics"
 interface Edits { name: string; acquired: string; placement: PlantPlacement | null; category: string; tagText: string; area: string; common: string; latin: string; moisture: MoistureInput | null }
 type SaveKind = "identity" | "taxonomy" | "area" | "moisture" | "species";
 interface Conflict { before: PlantRecord; after: PlantRecord; changes: string[] }
+
+// Local wall-clock time with its UTC offset, as care events are recorded.
+function localTimestamp(date: Date): string {
+  const offset = -date.getTimezoneOffset();
+  const local = new Date(date.getTime() + offset * 60000).toISOString().slice(0, 19);
+  return `${local}${offset < 0 ? "-" : "+"}${String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0")}:${String(Math.abs(offset) % 60).padStart(2, "0")}`;
+}
 
 export class SmartPlantsPanel extends LitElement {
   static styles = styles;
@@ -148,7 +158,11 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _careEditingId: string | null = null;
   @state() private _registryError = "";
   @state() private _areaReview = false;
-  @state() private _filters: Record<string, string> = {};
+  @state() private _overview: Record<string, PlantOverview> = {};
+  // Kept apart from `_error` so a failed status read never blocks an edit.
+  @state() private _overviewError = "";
+  @state() private _thumbnails: Record<string, string> = {};
+  @state() private _watering: ReadonlySet<string> = new Set();
   @state() private _edits: Edits | null = null;
   @state() private _conflict: Conflict | null = null;
   @state() private _allSensors = false;
@@ -184,6 +198,9 @@ export class SmartPlantsPanel extends LitElement {
   private _imageKey: string | null = null;
   private _imageRequest = 0;
   private _imageAbort: AbortController | undefined;
+  // Card thumbnails: object URL key per plant and in-flight fetches.
+  private _thumbnailKeys: Record<string, string> = {};
+  private _thumbnailAborts = new Map<string, AbortController>();
   private _request = 0;
   private _careRequest = 0;
   private _providerRequest = 0;
@@ -219,7 +236,7 @@ export class SmartPlantsPanel extends LitElement {
     this._timer = setInterval(() => { if (!this._formBusy && !this._loading && this.isConnected) void this._refresh(false); }, 30000);
   }
   disconnectedCallback(): void {
-    this._context++; this._formBusy = false; this._request++; this._providerRequest++; this._clearImage(); this._unbind(); clearInterval(this._timer); super.disconnectedCallback();
+    this._context++; this._formBusy = false; this._request++; this._providerRequest++; this._clearImage(); this._clearThumbnails(); this._unbind(); clearInterval(this._timer); super.disconnectedCallback();
   }
   private _bind(): void {
     if (!this.hass || this.hass.user?.is_admin === false || this._connection) return;
@@ -232,10 +249,45 @@ export class SmartPlantsPanel extends LitElement {
   }
   private _unbind(): void {
     this._context++; this._formBusy = false;
-    this._request++; this._providerRequest++; this._preview = null; this._blocked = true; this._clearImage();
+    this._request++; this._providerRequest++; this._preview = null; this._blocked = true; this._clearImage(); this._clearThumbnails();
     this._subscriptionGeneration++;
     this._unsubscribe?.(); this._unsubscribe = undefined;
     this._connection?.removeEventListener?.("ready", this._ready); this._connection?.removeEventListener?.("disconnected", this._disconnected); this._connection = undefined;
+  }
+  private _clearThumbnails(): void {
+    for (const abort of this._thumbnailAborts.values()) abort.abort();
+    this._thumbnailAborts.clear();
+    for (const url of Object.values(this._thumbnails)) URL.revokeObjectURL(url);
+    this._thumbnails = {}; this._thumbnailKeys = {};
+  }
+  // Loads photos for the overview cards; unchanged photos keep their object URL.
+  private _syncThumbnails(): void {
+    if (this._blocked || !this.hass || this.hass.user?.is_admin === false || !this.isConnected) { this._clearThumbnails(); return; }
+    // Only the overview shows thumbnails; returning to it loads any that changed.
+    if (this._view.kind !== "list") return;
+    const hass = this.hass; const token = hass.auth?.accessToken ?? "";
+    const wanted = new Map(this._plants.filter(p => p.image).map(p => [p.id, `${token}:${p.id}:${p.image!.id}`]));
+    const next = { ...this._thumbnails };
+    for (const id of Object.keys(this._thumbnailKeys)) {
+      if (wanted.get(id) === this._thumbnailKeys[id]) continue;
+      this._thumbnailAborts.get(id)?.abort(); this._thumbnailAborts.delete(id);
+      if (next[id]) URL.revokeObjectURL(next[id]!);
+      delete next[id]; delete this._thumbnailKeys[id];
+    }
+    this._thumbnails = next;
+    for (const [id, key] of wanted) {
+      if (this._thumbnailKeys[id] === key) continue;
+      this._thumbnailKeys[id] = key;
+      const abort = new AbortController(); this._thumbnailAborts.set(id, abort);
+      void api.fetchImage(hass, id, abort.signal).then(blob => {
+        if (abort.signal.aborted || this._thumbnailKeys[id] !== key) return;
+        this._thumbnailAborts.delete(id);
+        this._thumbnails = { ...this._thumbnails, [id]: URL.createObjectURL(blob) };
+      }).catch(() => {
+        // A missing photo falls back to the plant icon; the plant page shows photo errors.
+        if (this._thumbnailKeys[id] === key) { this._thumbnailAborts.delete(id); delete this._thumbnailKeys[id]; }
+      });
+    }
   }
   private _clearImage(): void {
     this._imageRequest++; this._imageAbort?.abort(); this._imageAbort = undefined; this._imageKey = null;
@@ -291,12 +343,20 @@ export class SmartPlantsPanel extends LitElement {
           }
         }
       } catch (e) { if (request === this._request) this._registryError = this._friendly(e); }
-      // Evaluation is authoritative: do not reconstruct hysteresis or restart grace from state timestamps.
-      const entries = await Promise.all(plants.map(async p => {
-        try { return [p.id, await api.evaluation(hass, p.id)] as const; }
-        catch { return null; }
-      }));
-      if (request === this._request) this._evaluations = Object.fromEntries(entries.filter((v): v is NonNullable<typeof v> => v !== null));
+      // Status and readings come from the backend in one call; the panel never
+      // reconstructs hysteresis or grace from state timestamps.
+      try {
+        const overview = await api.overview(hass);
+        if (request === this._request) { this._overview = Object.fromEntries(overview.map(entry => [entry.plant_id, entry])); this._overviewError = ""; }
+      } catch (e) { if (request === this._request) { this._overview = {}; this._overviewError = this._friendly(e); } }
+      if (request === this._request) this._syncThumbnails();
+      if (this._view.kind === "detail") {
+        const targetId = this._view.plantId;
+        try {
+          const evaluation = await api.evaluation(hass, targetId);
+          if (request === this._request) this._evaluations = { ...this._evaluations, [targetId]: evaluation };
+        } catch { if (request === this._request) { const next = { ...this._evaluations }; delete next[targetId]; this._evaluations = next; } }
+      }
       // Composite multi-role health is computed by the backend and shown
       // read-only. Fetched only for the currently-viewed
       // plant to keep list scrolling cheap.
@@ -318,6 +378,9 @@ export class SmartPlantsPanel extends LitElement {
     return this._l.t(isMessageKey(key) ? key : "api_error.unknown");
   }
   private _plantById(id: string): PlantRecord | undefined { return this._plants.find(p => p.id === id); }
+  private _plantAreaNames(): Record<string, string | null> {
+    return Object.fromEntries(this._plants.map(p => { const area = plantDevice(p, this._devices)?.area_id; return [p.id, area ? this._areaName(area) : null]; }));
+  }
   private _areaName(id: string): string { return this._areas.find(a => a.area_id === id)?.name ?? (id || this._l.t("area.none")); }
   private _setConflict(before: PlantRecord, after: PlantRecord): void {
     const fields = ["name", "acquired_at", "placement", "category", "tags", "species", "image", "lifecycle_state", "roles", "care_events"] as const;
@@ -344,17 +407,87 @@ export class SmartPlantsPanel extends LitElement {
       const targetId = view.plantId; const hass = this.hass; const context = this._context;
       if (hass && !this._blocked) {
         void this._loadCare(targetId, context);
+        void api.evaluation(hass, targetId)
+          .then(evaluation => { if (context === this._context) this._evaluations = { ...this._evaluations, [targetId]: evaluation }; })
+          .catch(() => undefined);
         void api.plantHealth(hass, targetId)
           .then(composite => { if (context === this._context) { this._health = { ...this._health, [targetId]: composite }; this._healthError = ""; } })
           .catch((e: unknown) => { if (context === this._context) { const next = { ...this._health }; delete next[targetId]; this._health = next; this._healthError = this._friendly(e); } });
       }
     }
     else { this._base = null; this._edits = null; this._conflict = null; }
-    this._syncImage(); void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("h1")?.focus());
+    this._syncImage(); this._syncThumbnails(); void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("h1")?.focus());
   }
   private _handleMenuAction(event: CustomEvent<{ item: { value: string } }>): void {
     if (event.detail.item.value === "add-plant") this._show({ kind: "create" });
     if (event.detail.item.value === "back-to-overview") this._show({ kind: "list" });
+    if (event.detail.item.value === "integration-options") this._navigate("/config/integrations/integration/smart_plants");
+    if (event.detail.item.value === "documentation") window.open(DOCUMENTATION_URL, "_blank", "noopener,noreferrer");
+  }
+  // Home Assistant's own client-side navigation.
+  private _navigate(path: string): void {
+    history.pushState(null, "", path);
+    window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
+  }
+  // Shows Home Assistant's toast, with an optional action such as Undo.
+  private _toast(message: string, action?: { text: string; action: () => void }): void {
+    this.dispatchEvent(new CustomEvent("hass-notification", { bubbles: true, composed: true, detail: { message, duration: action ? 8000 : 4000, ...(action ? { action } : {}) } }));
+  }
+  private _openFromOverview(detail: OpenPlantDetail): void {
+    this._show({ kind: "detail", plantId: detail.plantId });
+    if (detail.section) this._detailSection = detail.section;
+  }
+  // Retries once after a revision conflict, with the refreshed plant revision.
+  private async _withRevision<T>(plantId: string, operation: (revision: number) => Promise<T>): Promise<T> {
+    const current = this._plantById(plantId);
+    if (!current) throw new ApiError("not_found", "Plant not found.");
+    try { return await operation(current.revision); }
+    catch (e) {
+      if (!(e instanceof ApiError && e.code === "revision_conflict")) throw e;
+      await this._refresh(false);
+      const latest = this._plantById(plantId);
+      if (!latest) throw e;
+      return await operation(latest.revision);
+    }
+  }
+  private _setWatering(plantId: string, busy: boolean): void {
+    const next = new Set(this._watering); if (busy) next.add(plantId); else next.delete(plantId); this._watering = next;
+  }
+  private _adopt(plant: PlantRecord): void {
+    const latest = this._plantById(plant.id);
+    if (!latest || latest.revision <= plant.revision) this._plants = this._plants.map(p => p.id === plant.id ? plant : p);
+    const entry = this._overview[plant.id];
+    if (entry && entry.revision < plant.revision) this._overview = { ...this._overview, [plant.id]: { ...entry, revision: plant.revision } };
+  }
+  private async _logWatering(plantId: string): Promise<void> {
+    const plant = this._plantById(plantId);
+    if (!this.hass || !plant || this._blocked || this._watering.has(plantId)) return;
+    const hass = this.hass; const l = this._l;
+    this._setWatering(plantId, true); this._error = ""; this._request++;
+    try {
+      const result = await this._withRevision(plantId, revision => api.addWatering(hass, plantId, revision, localTimestamp(new Date()), null));
+      this._adopt(result.plant);
+      const entry = this._overview[plantId];
+      if (entry) this._overview = { ...this._overview, [plantId]: { ...entry, last_watered_at: result.event.occurred_at } };
+      this._toast(l.t("watering.logged", { name: plant.name }), { text: l.t("watering.undo"), action: () => void this._undoWatering(plantId, plant.name, result.event.id) });
+    } catch (e) {
+      this._error = this._friendly(e);
+    } finally {
+      this._setWatering(plantId, false);
+      void this._refresh(false);
+    }
+  }
+  private async _undoWatering(plantId: string, name: string, eventId: string): Promise<void> {
+    if (!this.hass || this._blocked) return;
+    const hass = this.hass; this._request++;
+    try {
+      const result = await this._withRevision(plantId, revision => api.deleteCareEvent(hass, plantId, revision, eventId));
+      this._adopt(result.plant);
+      const entry = this._overview[plantId];
+      if (entry) this._overview = { ...this._overview, [plantId]: { ...entry, last_watered_at: result.summary.last_watered_at } };
+      this._toast(this._l.t("watering.removed", { name }));
+    } catch (e) { this._error = this._friendly(e); }
+    finally { void this._refresh(false); }
   }
   private async _loadCare(plantId: string, context: number, request?: number): Promise<void> {
     if (!this.hass) return;
@@ -467,46 +600,6 @@ export class SmartPlantsPanel extends LitElement {
   private _statusLabel(status: string): string {
     const keys: Record<string, MessageKey> = { healthy: "status.healthy", "needs water": "status.needs_water", "too wet": "status.too_wet", stale: "status.stale", unavailable: "status.unavailable", disabled: "status.disabled", problems: "status.problems" };
     return keys[status] ? this._l.t(keys[status]) : status;
-  }
-  private _missing(p: PlantRecord): boolean { return !!moistureRole(p)?.sources.some(s => s.registry_id && !resolveSource(s, this._entities)); }
-  private _matches(p: PlantRecord): boolean {
-    const f = this._filters; const status = this._status(p); const e = this._evaluations[p.id];
-    const haystack = [p.name, p.species?.snapshot.common_name, p.species?.snapshot.latin_name, p.category, ...p.tags].join(" ").toLocaleLowerCase();
-    return (!f.search || haystack.includes(f.search.toLocaleLowerCase())) &&
-      (!f.status || (f.status === "problems" ? ["needs water", "too wet", "stale", "unavailable"].includes(status) || this._missing(p) : status === f.status)) &&
-      (!f.area || (plantDevice(p, this._devices)?.area_id ?? "none") === f.area) &&
-      (!f.placement || (p.placement?.mode ?? "none") === f.placement) &&
-      (!f.lifecycle || p.lifecycle_state === f.lifecycle) &&
-      (!f.species || (p.species?.snapshot.latin_name ?? p.species?.snapshot.common_name ?? "none") === f.species) &&
-      (!f.category || (p.category ?? "none") === f.category) && (!f.tag || p.tags.includes(f.tag)) &&
-      (!f.sensor || (f.sensor === "missing" ? this._missing(p) : f.sensor === "stale" ? !!e?.sensor_stale : f.sensor === "unavailable" ? !e?.computed_available : this._missing(p) || !!e?.sensor_stale));
-  }
-  private _filter(key: "status" | "lifecycle" | "area" | "placement" | "species" | "category" | "sensor" | "tag", options: string[], display: (v: string) => string = v => v === "none" ? this._l.t("filter.none") : v) {
-    const l = this._l;
-    const optionLabel = key === "area" ? (v: string) => this._areaName(v === "none" ? "" : v) : display;
-    return selectField(l, l.t(`filter.${key}`), this._filters[key] ?? "", [{ value: "", label: l.t(`filter.all_${key}`) }, ...[...new Set(options)].sort().map(v => ({ value: v, label: optionLabel(v) }))], v => this._filters = { ...this._filters, [key]: v });
-  }
-  private _renderList() {
-    const l = this._l;
-    if (this._loading) return html`<p role="status">${l.t("list.loading")}</p>`;
-    const plants = this._plants.filter(p => this._matches(p));
-    const needsWater = this._plants.filter(p => this._status(p) === "needs water").length;
-    const problems = this._plants.filter(p => p.lifecycle_state !== "disabled" && (this._missing(p) || ["too wet", "stale", "unavailable"].includes(this._status(p)))).length;
-    const activeFilters = Object.values(this._filters).filter(Boolean).length;
-    const sensorLabels: Record<string, MessageKey> = { missing: "filter.sensor_missing", stale: "filter.sensor_stale", unavailable: "filter.sensor_unavailable", "missing or stale": "filter.sensor_missing_or_stale" };
-    const lifecycleLabels: Record<string, MessageKey> = { active: "lifecycle.active", disabled: "lifecycle.disabled" };
-    const metric = (value: number | null | undefined, format: (v: number) => string) => value === null || value === undefined ? "—" : format(value);
-    return html`<section class="inventory-summary" aria-label=${l.t("list.summary_label")}><article><span>${l.t("list.total")}</span><strong>${l.number(this._plants.length)}</strong></article><article><span>${l.t("list.needs_water")}</span><strong>${l.number(needsWater)}</strong></article><article><span>${l.t("list.problems")}</span><strong>${l.number(problems)}</strong></article></section>
-      <details class="filter-disclosure"><summary role="button">${l.t("filter.heading")}${activeFilters ? l.t("filter.active_suffix", { count: activeFilters }) : ""}</summary><section><div class="grid">${textField(l.t("filter.search"), this._filters.search ?? "", v => this._filters = { ...this._filters, search: v })}
-      ${this._filter("status", ["healthy", "needs water", "too wet", "stale", "unavailable", "disabled", "problems"], v => this._statusLabel(v))}
-      ${this._filter("lifecycle", ["active", "disabled"], v => lifecycleLabels[v] ? l.t(lifecycleLabels[v]) : v)}
-      ${this._filter("area", ["none", ...this._areas.map(a => a.area_id)])}
-      ${this._filter("placement", this._plants.map(p => p.placement?.mode ?? "none"), v => v === "none" ? l.t("list.no_placement") : placementLabel(l, v))}
-      ${this._filter("species", this._plants.map(p => p.species?.snapshot.latin_name ?? p.species?.snapshot.common_name ?? "none"))}
-      ${this._filter("category", this._plants.map(p => p.category ?? "none"))}
-      ${this._filter("sensor", ["missing", "stale", "unavailable", "missing or stale"], v => sensorLabels[v] ? l.t(sensorLabels[v]) : v)}
-      ${this._filter("tag", this._plants.flatMap(p => p.tags))}</div><button @click=${() => this._filters = {}}>${l.t("filter.clear")}</button></section></details>
-      ${!this._plants.length ? html`<section class="empty"><h2>${l.t("list.empty_heading")}</h2><p>${l.t("list.empty_body")}</p><button class="primary" ?disabled=${this._blocked} @click=${() => this._show({ kind: "create" })}>${l.t("list.add_first")}</button></section>` : !plants.length ? html`<p role="status">${l.t("list.no_matches")}</p>` : html`<p class="plant-count" role="status">${plants.length === this._plants.length ? l.tn(plants.length, "list.count_one", "list.count_other") : l.t("list.count_filtered", { shown: plants.length, total: this._plants.length })}</p><ul class="plants">${plants.map(p => html`<li class="plant plant-card"><div class="plant-card-heading"><span class="plant-avatar" aria-hidden="true">${(p.name.trim()[0] ?? "?").toLocaleUpperCase()}</span><div><button class="name" @click=${() => this._show({ kind: "detail", plantId: p.id })}>${p.name}</button><span class="plant-status">${this._statusLabel(this._status(p))}${this._missing(p) ? l.t("list.missing_source_suffix") : ""}</span></div></div><div class="plant-card-metrics"><div><small>${l.t("metric.soil_moisture")}</small><strong>${metric(this._evaluations[p.id]?.computed_percent, v => l.number(v))}<small>%</small></strong></div><div><small>${l.t("metric.moisture_health")}</small><strong>${metric(this._evaluations[p.id]?.health_score, v => l.number(v))}<small>/100</small></strong></div></div><small class="plant-meta">${this._areaName(plantDevice(p, this._devices)?.area_id ?? "")} · ${p.placement?.mode ? placementLabel(l, p.placement.mode) : l.t("list.no_placement")}<br>${p.species?.snapshot.common_name ?? p.species?.snapshot.latin_name ?? l.t("list.manual_plant")} · ${p.category ?? l.t("list.uncategorized")}${p.tags.length ? html`<br>${p.tags.join(" · ")}` : nothing}</small></li>`)}</ul>`}`;
   }
   private async _save(kind: SaveKind): Promise<void> {
     const base = this._base; const edit = this._edits;
@@ -1041,10 +1134,16 @@ export class SmartPlantsPanel extends LitElement {
          <ha-icon-button slot="trigger" .label=${menuLabel} .path=${MENU_ICON_PATH}></ha-icon-button>
          ${this._view.kind !== "list" ? html`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${l.t("panel.back_to_overview")}</ha-dropdown-item>` : nothing}
          <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${l.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${ADD_ICON_PATH}></ha-svg-icon></ha-dropdown-item>
+         <ha-dropdown-item value="integration-options">${l.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
+         <ha-dropdown-item value="documentation">${l.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>
        </ha-dropdown>
        <div class="panel-content">${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}${this._notice ? html`<p class="notice" role="status">${this._notice}</p>` : nothing}${this._registryError ? html`<p class="notice" role="alert">${l.t("panel.registry_unavailable", { error: this._registryError })}</p>` : nothing}
       ${this._creationNotice ? html`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && !(this._view.kind === "detail" && this._view.plantId === this._createdPlantId) ? html`<button ?disabled=${this._formBusy} @click=${() => { if (this._createdPlantId) this._show({ kind: "detail", plantId: this._createdPlantId }); }}>${l.t("panel.open_created")}</button>` : nothing}` : nothing}
-      ${this._view.kind === "list" ? this._renderList() : this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : nothing}
+      ${this._view.kind === "list" && this._overviewError ? html`<p class="error" role="alert">${l.t("overview.status_unavailable", { error: this._overviewError })}</p>` : nothing}
+      <smart-plants-overview ?hidden=${this._view.kind !== "list"} .l=${l} .plants=${this._plants} .overview=${this._overview} .areaNames=${this._plantAreaNames()}
+        .thumbnails=${this._thumbnails} .watering=${this._watering} .loading=${this._loading} .blocked=${this._blocked}
+        @open-plant=${(e: CustomEvent<OpenPlantDetail>) => this._openFromOverview(e.detail)} @add-plant=${() => this._show({ kind: "create" })} @log-watering=${(e: CustomEvent<{ plantId: string }>) => void this._logWatering(e.detail.plantId)}></smart-plants-overview>
+      ${this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : nothing}
       ${this._wizardStarted && this._capabilities ? html`<div ?hidden=${this._view.kind !== "create"}><smart-plants-wizard .hass=${this.hass} .capabilities=${this._capabilities} .areas=${this._areas} .entities=${this._entities} .states=${this._states} .blocked=${this._blocked} .navigationContext=${this._context} @plant-created=${(e: CustomEvent<{ plant: PlantRecord; photo: File | null; navigationContext: number }>) => void this._created(e)} @backend-unavailable=${(e: CustomEvent<string>) => { this._blocked = true; this._error = e.detail; }}></smart-plants-wizard></div>` : nothing}
         <p role="status" aria-live="polite">${this._formBusy ? l.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
   }

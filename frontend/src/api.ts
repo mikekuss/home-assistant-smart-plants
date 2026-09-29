@@ -14,6 +14,8 @@ import type {
   CareHistory, CareEvent,
 } from "./types.js";
 import { validPlant, validResponse, validState } from "./validation.js";
+import { parseOverview } from "./overview-model.js";
+import type { PlantOverview } from "./overview-model.js";
 
 export class ApiError extends Error {
   public readonly code: string;
@@ -248,6 +250,14 @@ export const api = {
   },
   async setRoleStaleAfter(hass: HomeAssistantLike, plantId: string, expectedRevision: number, role: string, staleAfterSeconds: number): Promise<PlantRecord> {
     return (await send<{ plant: PlantRecord }>(hass, { type: "smart_plants/roles/set_stale_after", plant_id: plantId, expected_revision: expectedRevision, role, stale_after_seconds: staleAfterSeconds })).plant;
+  },
+
+  // Status, readings and last watering for every plant in one call. Malformed
+  // entries are dropped so the overview never renders guessed values.
+  async overview(hass: HomeAssistantLike): Promise<PlantOverview[]> {
+    const result = await send<{ plants?: unknown }>(hass, { type: "smart_plants/plants/overview" });
+    if (!Array.isArray(result?.plants)) throw new ApiError("invalid_response", "Invalid plant overview response.");
+    return result.plants.map(parseOverview).filter((entry): entry is PlantOverview => entry !== null);
   },
 
   async list(hass: HomeAssistantLike): Promise<PlantRecord[]> {

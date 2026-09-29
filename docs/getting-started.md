@@ -9,17 +9,31 @@ After you [add the integration](installation.md#add-the-integration), **Smart Pl
 appears in the Home Assistant sidebar (sprout icon). The panel is available to
 **administrator** accounts only; non-admin users don't see it.
 
-![Panel overview with summary cards, filters, and one card per plant](images/overview.png)
+![Smart Plants panel overview](images/overview.png)
 
 The overview shows:
 
-- summary cards for total plants, plants that need water, and plants with problems,
-- a **Filter plants** section (search, status, lifecycle, area, placement, species,
-  category, sensor condition, tags),
-- one card per plant with its current soil moisture and status.
+- four summary tiles: **All plants**, **Needs water**, **Problems** (too wet, or another
+  reading outside its target such as too little light or a low sensor battery) and
+  **Sensor issues** (no recent data, or no soil moisture sensor assigned). Select a tile to
+  show only those plants; select it again to show all plants.
+- a search field that matches plant name, area, species, category and tags, and a sort menu:
+  **Needs attention first** (the default), **Name**, or **Group by area**.
+- one card per plant with its photo, area and species, a status label with a short
+  explanation (for example *Soil moisture 34% is below the minimum of 60%*), the soil
+  moisture on a bar with its target range, the current value of every other assigned
+  sensor, and when the plant was last watered.
 
-Use **⋮ → Add plant** in the top bar (or **Add your first plant** on an empty panel) to
-start the creation wizard. Select a plant's name to open its detail view.
+Each plant has one status, most urgent first: *Needs water*, *Too wet*, a named problem
+(such as *Too little light* or *Battery low*), *No recent data*, *No sensors*, *Healthy*.
+Paused plants show *Paused*.
+
+Select **Watered** on a card to log a watering right now. A message confirms it and offers
+**Undo** for a few seconds.
+
+Use **Add plant** at the bottom right (or **⋮ → Add plant** in the top bar) to start the
+creation wizard. Select a plant's name to open its detail view. The **⋮** menu also links to
+the integration options and this documentation.
 
 ## Create your first plant
 

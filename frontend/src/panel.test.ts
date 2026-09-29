@@ -39,12 +39,15 @@ async function openDetail(
   plants: PlantRecord[],
 ): Promise<HTMLElementTagNameMap["smart-plants-panel"]> {
   const element = document.createElement("smart-plants-panel");
+  // These tests cover the plant page photo; overview thumbnails have their own tests.
+  (element as unknown as { _syncThumbnails(): void })._syncThumbnails = () => undefined;
   element.hass = hassFor(plants);
   document.body.append(element);
+  const cardName = () => element.shadowRoot?.querySelector("smart-plants-overview")?.shadowRoot?.querySelector<HTMLElement>(".name");
   await vi.waitFor(() => {
-    expect(element.shadowRoot?.querySelector(".name")).not.toBeNull();
+    expect(cardName()).toBeTruthy();
   });
-  (element.shadowRoot?.querySelector(".name") as HTMLElement).click();
+  cardName()!.click();
   await element.updateComplete;
   await click(element, "Plant details");
   return element;

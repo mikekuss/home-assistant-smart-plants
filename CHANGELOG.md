@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- New plant overview in the panel. Summary tiles (All plants, Needs water, Problems, Sensor
+  issues) now filter the list, and a search field and a sort menu (needs attention first,
+  name, group by area) replace the *Filter plants* form. Each card shows the plant's photo,
+  one status with a colour, icon and short explanation, soil moisture against its target
+  range, the values of all other assigned sensors, and when it was last watered.
+- The overview loads the status of all plants with a single request instead of several
+  requests per plant, and uses the same status as the plant's entities.
+
+### Added
+
+- **Watered** button on each plant card to log a watering in one tap, with **Undo**.
+
 ## [0.4.0] - 2026-09-28
 
 ### Changed

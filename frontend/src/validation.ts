@@ -129,5 +129,7 @@ export function validResponse(msg: Record<string, unknown>, v: unknown): boolean
   if (command === "smart_plants/plants/list") return Array.isArray(v.plants) && v.plants.every(validPlant) && new Set(v.plants.map(p => (p as Record<string, unknown>).id)).size === v.plants.length;
   if (command === "smart_plants/roles/list") return Array.isArray(v.roles) && v.roles.every(r => object(r) && text(r.role) && text(r.source_domain) && Array.isArray(r.aggregations) && r.aggregations.every(a => text(a)) && Array.isArray(r.thresholds) && r.thresholds.every(t => object(t) && text(t.key) && text(t.entity_role) && text(t.translation_key)) && Array.isArray(r.entities) && r.entities.every(e => object(e) && text(e.role) && text(e.platform) && text(e.translation_key)));
   if (command === "smart_plants/plants/delete") return Object.keys(v).length === 0;
+  // Entries are validated one by one when parsed; malformed entries are dropped.
+  if (command === "smart_plants/plants/overview") return Array.isArray(v.plants) && v.plants.every(object) && new Set(v.plants.map(p => (p as Record<string, unknown>).plant_id)).size === v.plants.length;
   return validPlant(v.plant) && object(v.plant) && (msg.plant_id === undefined || v.plant.id === msg.plant_id);
 }
