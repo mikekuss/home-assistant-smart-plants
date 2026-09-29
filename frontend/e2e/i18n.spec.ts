@@ -39,35 +39,53 @@ test("German inventory, detail tabs and sensors use the German catalog", async (
   await audit(page, info, "german-inventory");
 
   await button(page, "Office Aloe").click();
-  const tabs = page.getByRole("navigation", { name: "Pflanzenbereiche" });
-  for (const name of ["Übersicht", "Sensoren", "Pflegeverlauf", "Pflanzendetails", "Diagnose"]) await expect(tabs.getByRole("button", { name, exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Zugewiesene Sensoren", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab")).toHaveText(["Übersicht", "Sensoren", "Pflege", "Einstellungen"]);
+  await expect(page.locator("smart-plants-panel .header-card sp-status-chip")).toContainText("Braucht Wasser");
+  await expect(page.locator("smart-plants-panel .header-card")).toContainText("Bodenfeuchte 12 % liegt unter dem Minimum von 20 %");
+  await expect(page.getByRole("heading", { name: "Messwerte", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Gegossen", exact: true })).toBeVisible();
+  await audit(page, info, "german-overview");
 
-  await button(page, "Sensoren").click();
-  await expect(page.getByRole("heading", { name: "Feuchtekonfiguration", exact: true })).toBeVisible();
-  await expect(page.getByText("Wirksame Schwellenwerte: Minimum 20 %", { exact: false })).toBeVisible();
+  await page.getByRole("tab", { name: "Sensoren", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Zugewiesene Sensoren", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /^Mehrere Sensoren für einen Messwert/ }).click();
   const sensors = page.locator("smart-plants-panel dl.sensors");
-  await expect(sensors.locator("dt").first()).toHaveText("Lufttemperatur");
-  await sensors.getByRole("button", { name: "Quellen bearbeiten" }).first().click();
-  await expect(button(page, "Quellen für Lufttemperatur speichern")).toBeVisible();
+  await expect(sensors.locator("dt").first()).toHaveText("Bodenfeuchte");
+  await page.getByRole("button", { name: "Kombination der Sensoren für Temperatur ändern", exact: true }).click();
+  await expect(page.getByRole("combobox", { name: "Messwerte kombinieren", exact: true })).toBeVisible();
+  await expect(button(page, "Sensoren für Temperatur speichern")).toBeVisible();
+  await page.getByRole("button", { name: /^Fehlerbehebung/ }).click();
   await audit(page, info, "german-sensors");
 
-  await button(page, "Pflegeverlauf").click();
+  await page.getByRole("tab", { name: "Pflege", exact: true }).click();
   await expect(page.getByText("Noch keine Pflege erfasst.")).toBeVisible();
+  await button(page, "Pflege eintragen").last().click();
   await expect(page.getByRole("combobox", { name: "Pflegeart" })).toContainText("Gießen");
+  await audit(page, info, "german-care");
+
+  await page.getByRole("tab", { name: "Einstellungen", exact: true }).click();
+  for (const label of ["Braucht Wasser unter", "Ideal", "Zu nass über"]) await expect(page.getByLabel(label, { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /^Weitere Details/ }).click();
+  await expect(page.getByRole("tabpanel").getByText("Überwachung pausieren", { exact: true })).toBeVisible();
+  await expect(button(page, "Pausieren")).toBeVisible();
+  await audit(page, info, "german-settings");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
 test("German diagnostics format thresholds and composite health", async ({ page }, info) => {
   await page.goto(`${url}?diagnostics&lang=de`);
   await button(page, "Diagnostics Plant").click();
-  await button(page, "Diagnose").click();
+  await page.getByRole("tab", { name: "Sensoren", exact: true }).click();
+  await page.getByRole("button", { name: /^Fehlerbehebung/ }).click();
   await expect(page.getByRole("heading", { name: "Gesamtzustand", exact: true })).toBeVisible();
   await expect(page.getByText("78 von 100")).toBeVisible();
   await expect(page.locator("smart-plants-panel dl.overall-health")).toContainText("mittel — mindestens die Hälfte der konfigurierten Rollen ist derzeit verfügbar.");
-  await expect(page.getByRole("heading", { name: "Erweiterte Diagnose", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Problemprüfungen", exact: true })).toBeVisible();
   await expect(page.getByText("Keine aktiven Probleme.")).toBeVisible();
-  const temperature = page.locator('smart-plants-panel dl.diagnostics dt:text-is("Temperaturstress") + dd');
-  await expect(temperature).toContainText("kein Problem");
+  await expect(page.locator('smart-plants-panel dl.diagnostics dt:text-is("Temperaturstress") + dd')).toContainText("kein Problem");
+  await page.getByRole("tab", { name: "Einstellungen", exact: true }).click();
+  await page.getByRole("button", { name: /^Weitere Zielwerte/ }).click();
+  const temperature = page.locator('smart-plants-panel dl.other-targets dt:text-is("Temperaturstress") + dd');
   await expect(temperature.getByRole("list", { name: "Wirksame Schwellenwerte für Temperaturstress" })).toContainText("Kälte-Auslöser: 10 °C");
   await temperature.getByRole("button", { name: "Schwellenwerte bearbeiten" }).click();
   const editor = page.getByRole("group", { name: "Schwellenwerte für Temperaturstress" });

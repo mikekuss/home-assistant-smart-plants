@@ -103,6 +103,12 @@ describe("sp-plant-avatar", () => {
     expect(img.getAttribute("src")).toBe("blob:photo");
     expect(img.getAttribute("alt")).toBe("Photo of Basil");
   });
+  it("reports a photo that cannot be displayed", async () => {
+    const avatar = await mount("sp-plant-avatar", { src: "blob:broken", name: "Basil" });
+    let fired = 0; document.body.addEventListener("photo-error", () => fired++);
+    avatar.shadowRoot!.querySelector("img")!.dispatchEvent(new Event("error"));
+    expect(fired).toBe(1);
+  });
   it("falls back to a decorative plant icon", async () => {
     const avatar = await mount("sp-plant-avatar", { name: "Aloe", size: "large" });
     expect(avatar.shadowRoot!.querySelector("img")).toBeNull();

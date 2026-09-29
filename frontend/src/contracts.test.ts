@@ -44,7 +44,7 @@ describe("moisture runtime and identity boundaries", () => {
     expect(moistureRole({ ...sample, roles: { moisture: role, future: { arbitrary: "data" } } })).toEqual(role);
   });
   it.each([59, 604801, 60.5, Number.NaN])("rejects invalid staleness %s", seconds => {
-    expect(validateMoisture({ ...emptyMoisture(), stale_after_seconds: seconds }, builtin)).toContain("Staleness");
+    expect(validateMoisture({ ...emptyMoisture(), stale_after_seconds: seconds }, builtin)).toContain("Not updating after");
   });
   it("validates effective inherited/provider values including missing provider targets", () => {
     expect(validateMoisture(emptyMoisture(), { min: 40, target: 35, max: 60 })).toContain("Effective");
@@ -54,7 +54,7 @@ describe("moisture runtime and identity boundaries", () => {
   it("never recovers a removed UUID using a reused entity ID; canonicalizes genuine renames", () => {
     const entity: HAEntity = { id: "replacement", entity_id: "sensor.old", device_id: null, unique_id: "source", platform: "test" };
     const source = { entity_id: "sensor.old", registry_id: "original" };
-    expect(resolveSource(source, [entity])).toBeUndefined(); expect(sourceWarning(source, [entity], {})).toContain("Missing registered source");
+    expect(resolveSource(source, [entity])).toBeUndefined(); expect(sourceWarning(source, [entity], {})).toContain("Missing registered sensor");
     const renamed = { ...entity, id: "original", entity_id: "sensor.renamed" };
     expect(canonicalMoisture({ ...emptyMoisture(), sources: [source], primary_entity_id: source.entity_id }, [entity, renamed])).toMatchObject({ sources: [{ entity_id: "sensor.renamed", registry_id: "original" }], primary_entity_id: "sensor.renamed" });
     expect(canonicalMoisture({ ...emptyMoisture(), sources: [source] }, [entity]).sources).toEqual([source]);

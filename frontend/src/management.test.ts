@@ -7,13 +7,31 @@ import type { HAEntity, HAState, HomeAssistantLike, PlantRecord } from "./types.
 async function mount(hass: HomeAssistantLike): Promise<SmartPlantsPanel> {
   const el = new SmartPlantsPanel(); el.hass = hass; document.body.append(el); await settle(el); return el;
 }
-async function detail(hass: HomeAssistantLike, section = "Plant details"): Promise<SmartPlantsPanel> {
+// Opens the plant's Settings tab with the name, area and species editors open.
+async function detail(hass: HomeAssistantLike, section = "Settings"): Promise<SmartPlantsPanel> {
   const el = await mount(hass); await click(el, "Aloe"); await click(el, section);
-  if (section === "Sensors") {
-    const advanced = [...el.shadowRoot!.querySelectorAll("summary")].find(item => item.textContent?.trim() === "Advanced threshold overrides");
-    advanced?.click(); await settle(el);
+  if (section === "Settings") {
+    for (const name of ["Rename", "Change area", "Find species", "Change species"]) {
+      const target = [...el.shadowRoot!.querySelectorAll("button")].find(b => b.textContent?.trim() === name);
+      if (target) { target.click(); await settle(el); }
+    }
   }
   return el;
+}
+// The dialog's Cancel button; the Settings rows have their own Cancel buttons.
+function dialogCancel(el: SmartPlantsPanel): HTMLButtonElement { return el.shadowRoot!.querySelector<HTMLButtonElement>("dialog .actions button")!; }
+async function cancelDialog(el: SmartPlantsPanel): Promise<void> { dialogCancel(el).click(); await settle(el); }
+// Opens the soil moisture sensor list (pick) or how its sensors combine.
+async function openMoisture(el: SmartPlantsPanel, mode: "pick" | "combine"): Promise<void> {
+  if (mode === "combine") {
+    if (el.shadowRoot!.querySelector("dl.sensors #moisture-sources-editor")) return;
+    const toggle = [...el.shadowRoot!.querySelectorAll("dl.sensors dt")].find(d => d.textContent === "Soil moisture")!.nextElementSibling!.querySelector<HTMLButtonElement>("button.source-toggle")!;
+    toggle.click(); await settle(el); return;
+  }
+  const add = el.shadowRoot!.querySelector("ha-dropdown.add-sensor");
+  if (add && [...add.querySelectorAll("ha-dropdown-item")].some(i => i.getAttribute("value") === "moisture")) {
+    add.dispatchEvent(new CustomEvent("wa-select", { bubbles: true, composed: true, detail: { item: { value: "moisture" } } })); await settle(el);
+  } else await click(el, "Change soil moisture sensors");
 }
 const entity: HAEntity = { id: "uuid-1", entity_id: "sensor.soil", device_id: "source-device", unique_id: "soil", platform: "test" };
 const sourceState: HAState = { entity_id: "sensor.soil", state: "28", attributes: { device_class: "moisture", unit_of_measurement: "%", friendly_name: "Soil probe" }, last_updated: "2026-09-10T00:00:00Z" };
@@ -57,8 +75,9 @@ describe("overview and lifecycle", () => {
     expect(fetch.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
     expect(el.shadowRoot!.textContent).toContain("original wizard photo was not uploaded");
     expect(el.shadowRoot!.textContent).toContain("explicitly upload a photo if wanted");
-    if (removed) expect(el.shadowRoot!.querySelector(".overview-avatar.placeholder")).not.toBeNull();
-    else expect(el.shadowRoot!.querySelector("img")?.getAttribute("src")).toBe("blob:stored-photo");
+    const avatar = el.shadowRoot!.querySelector("sp-plant-avatar")!; await settle(avatar as unknown as SmartPlantsPanel);
+    if (removed) expect(avatar.shadowRoot!.querySelector("img")).toBeNull();
+    else expect(avatar.shadowRoot!.querySelector("img")?.getAttribute("src")).toBe("blob:stored-photo");
   });
   it.each([false, true])("hidden committed wizard completion preserves another editor, photo=%s", async withPhoto => {
     const pending = deferred<unknown>(); const upload = deferred<Response>();
@@ -80,7 +99,7 @@ describe("overview and lifecycle", () => {
     }
     for (let step = 0; step < 5; step++) await click(wizard, "Next step");
     await click(wizard, "Confirm and create plant");
-    await click(el, "Back to overview"); await click(el, "Aloe"); await click(el, "Plant details");
+    await click(el, "Back to overview"); await click(el, "Aloe"); await click(el, "Settings"); await click(el, "Rename");
     await fill(el, "Name", "Unsaved name"); await fill(el, "Category", "Unsaved category");
     field(el.shadowRoot!, "Name").focus();
     plants = [...plants, created]; pending.resolve({ plant: created }); await settle(wizard); await settle(el);
@@ -123,8 +142,8 @@ describe("overview and lifecycle", () => {
   });
   it("shows unload errors and blocks all writes until refresh succeeds", async () => {
     let unloaded = false; const h = harness([sample], msg => { if (unloaded && msg.type === "smart_plants/panel/info") throw { code: "integration_not_loaded", message: "unloaded" }; }); const el = await detail(h.hass);
-    unloaded = true; await click(el, "Refresh"); expect(el.shadowRoot?.textContent).toContain("not loaded"); expect(button(el.shadowRoot!, "Save identity").closest("fieldset")?.disabled).toBe(true);
-    unloaded = false; await click(el, "Refresh"); expect(button(el.shadowRoot!, "Save identity").closest("fieldset")?.disabled).toBe(false);
+    unloaded = true; await click(el, "Refresh"); expect(el.shadowRoot?.textContent).toContain("not loaded"); expect(button(el.shadowRoot!, "Save name").closest("fieldset")?.disabled).toBe(true);
+    unloaded = false; await click(el, "Refresh"); expect(button(el.shadowRoot!, "Save name").closest("fieldset")?.disabled).toBe(false);
   });
   it("ignores stale refresh results after a connection replacement", async () => {
     const pending = deferred<unknown>(); const old = harness([], msg => msg.type === "smart_plants/plants/list" ? pending.promise : undefined); const el = await mount(old.hass);
@@ -137,7 +156,7 @@ describe("detail saves and conflict review", () => {
   it("releases a pending editor when the plant is deleted elsewhere and ignores its late save", async () => {
     const pending = deferred<unknown>(); let deleted = false;
     const h = harness([sample], msg => msg.type === "smart_plants/plants/update" ? pending.promise : msg.type === "smart_plants/plants/list" ? { plants: deleted ? [] : [sample] } : undefined);
-    const el = await detail(h.hass); await fill(el, "Name", "Pending"); await click(el, "Save identity"); deleted = true; h.events.get("ready")!(); await settle(el);
+    const el = await detail(h.hass); await fill(el, "Name", "Pending"); await click(el, "Save name"); deleted = true; h.events.get("ready")!(); await settle(el);
     expect(el.shadowRoot?.textContent).toContain("deleted in another session"); expect(button(el.shadowRoot!, "Back to overview").disabled).toBe(false);
     pending.resolve({ plant: { ...sample, revision: 2, name: "Late" } }); await settle(el); await click(el, "Back to overview"); await settle(overviewOf(el)); expect(panelText(el)).toContain("No plants yet");
   });
@@ -149,7 +168,7 @@ describe("detail saves and conflict review", () => {
       if (msg.type === "smart_plants/species/apply") { plant = { ...plant, revision: 3, species: { provider: "openplantbook", snapshot } }; return { plant }; }
       return undefined;
     });
-    const el = await detail(h.hass); await fill(el, "Name", "  Trimmed  "); await fill(el, "Category", "pending category"); await click(el, "Save identity");
+    const el = await detail(h.hass); await fill(el, "Name", "  Trimmed  "); await fill(el, "Category", "pending category"); await click(el, "Save name");
     expect(field(el.shadowRoot!, "Name").value).toBe("Trimmed"); expect(field(el.shadowRoot!, "Category").value).toBe("pending category");
     await fill(el, "Species provider", "openplantbook"); await fill(el, "Search species", "Aloe"); await click(el, "Search species"); await click(el, "Aloe · Aloe vera"); await click(el, "Accept and apply reviewed species");
     expect(field(el.shadowRoot!, "Common name").value).toBe("Aloe"); expect(field(el.shadowRoot!, "Scientific name").value).toBe("Aloe vera"); expect(field(el.shadowRoot!, "Category").value).toBe("pending category");
@@ -159,7 +178,7 @@ describe("detail saves and conflict review", () => {
     const h = harness([sample], msg => msg.type === "config/device_registry/list" ? [{ id: "device", area_id: area, identifiers: [["smart_plants", sample.id]] }] : undefined);
     const el = await detail(h.hass); area = "garden"; await click(el, "Refresh"); expect(field(el.shadowRoot!, "Home Assistant area").value).toBe("garden");
     await fill(el, "Home Assistant area", ""); area = "kitchen"; await click(el, "Refresh"); expect(field(el.shadowRoot!, "Home Assistant area").value).toBe("");
-    expect(button(el.shadowRoot!, "Save area").closest("fieldset")?.disabled).toBe(true); await click(el, "Use current native area"); expect(field(el.shadowRoot!, "Home Assistant area").value).toBe("kitchen");
+    expect(button(el.shadowRoot!, "Save area").disabled).toBe(true); await click(el, "Use current native area"); expect(field(el.shadowRoot!, "Home Assistant area").value).toBe("kitchen");
   });
   it("saves thresholds and staleness retaining the exact missing UUID pair despite entity ID reuse", async () => {
     const missing = { entity_id: "sensor.soil", registry_id: "gone" };
@@ -177,32 +196,36 @@ describe("detail saves and conflict review", () => {
       return undefined;
     });
     const el = await detail(h.hass, "Sensors");
-    await fill(el, "target override (%)", "40"); await fill(el, "Stale after (seconds, 60–604800)", "3600"); await click(el, "Save complete moisture configuration");
+    await openMoisture(el, "combine"); await fill(el, "Not updating after (seconds, 60–604800)", "3600");
+    await click(el, "Settings"); await fill(el, "Ideal", "40"); await click(el, "Save targets");
     expect(h.calls.filter(c => c.type === "smart_plants/moisture/configure")).toHaveLength(1);
     expect(plant.roles.moisture.sources).toEqual([missing]); expect(plant.revision).toBe(2);
     expect(el.shadowRoot?.textContent).toContain("Saved."); expect(el.shadowRoot?.querySelector('[role="alert"]')).toBeNull();
     await click(el, "Refresh");
-    expect(field(el.shadowRoot!, "target override (%)").value).toBe("40"); expect(field(el.shadowRoot!, "Stale after (seconds, 60–604800)").value).toBe("3600");
-    expect(el.shadowRoot?.textContent).toContain("Missing registered source");
-    await click(el, "Overview");
-    expect(el.shadowRoot?.textContent).toContain("No current reading");
-    expect(el.shadowRoot?.textContent).not.toContain("99 %");
-    await click(el, "Sensors");
+    expect(field(el.shadowRoot!, "Ideal").value).toBe("40");
+    await click(el, "Sensors"); await openMoisture(el, "combine");
+    expect(field(el.shadowRoot!, "Not updating after (seconds, 60–604800)").value).toBe("3600");
+    await openMoisture(el, "pick");
+    expect(el.shadowRoot?.textContent).toContain("Missing registered sensor");
     expect(el.shadowRoot?.querySelector('a[href="/config/repairs"]')).not.toBeNull();
+    // Troubleshooting shows the evaluation that found no current reading.
+    expect(el.shadowRoot?.querySelector("dl.moisture-evaluation")?.textContent).toContain("Assigned registered source is missing.");
+    await click(el, "Overview");
+    expect(el.shadowRoot?.textContent).not.toContain("99 %");
   });
   it("ignores old mutation results after reconnect and preserves the newer conflict for review", async () => {
     const pending = deferred<unknown>(); let current = sample;
     const h = harness([sample], msg => msg.type === "smart_plants/plants/update" ? pending.promise : msg.type === "smart_plants/plants/list" ? { plants: [current] } : undefined);
-    const el = await detail(h.hass); await fill(el, "Name", "Pending"); await click(el, "Save identity");
+    const el = await detail(h.hass); await fill(el, "Name", "Pending"); await click(el, "Save name");
     h.events.get("disconnected")!(); current = { ...sample, revision: 3, name: "Newest" }; h.events.get("ready")!(); await settle(el);
     pending.resolve({ plant: { ...sample, revision: 2, name: "Old response" } }); await settle(el);
     expect(el.shadowRoot?.textContent).toContain("Newest"); expect(el.shadowRoot?.textContent).not.toContain("Old response"); expect(field(el.shadowRoot!, "Name").value).toBe("Pending");
   });
   it("saves identity, taxonomy and native area independently with revisions", async () => {
     const h = harness(); const el = await detail(h.hass);
-    await fill(el, "Name", "Renamed"); await fill(el, "Placement", "balcony"); await click(el, "Save identity");
+    await fill(el, "Name", "Renamed"); await fill(el, "Placement", "balcony"); await click(el, "Save placement and date");
     expect(h.calls.find(c => c.type === "smart_plants/plants/update")).toEqual({ type: "smart_plants/plants/update", plant_id: sample.id, expected_revision: 1, name: "Renamed", acquired_at: null, placement: { mode: "balcony", exposure: null, rain_exposure: null, container: null } });
-    await fill(el, "Category", "succulent"); await fill(el, "Tags (comma-separated)", "pot, pot, terrace"); await click(el, "Save taxonomy");
+    await fill(el, "Category", "succulent"); await fill(el, "Tags (comma-separated)", "pot, pot, terrace"); await click(el, "Save category and tags");
     expect(h.calls.filter(c => c.type === "smart_plants/plants/update").at(-1)).toEqual({ type: "smart_plants/plants/update", plant_id: sample.id, expected_revision: 1, category: "succulent", tags: ["pot", "terrace"] });
     await fill(el, "Home Assistant area", "garden"); await click(el, "Save area");
     expect(h.calls.find(c => c.type === "smart_plants/plants/set_area")).toEqual({ type: "smart_plants/plants/set_area", plant_id: sample.id, expected_revision: 1, area_id: "garden" });
@@ -214,24 +237,27 @@ describe("detail saves and conflict review", () => {
       if (msg.type === "smart_plants/plants/list") return { plants: [plant] };
       if (msg.type === "smart_plants/plants/update") { writes.push(msg); if (conflict) { plant = { ...plant, revision: 2, name: "Other name", category: "Other category" }; throw { code: "revision_conflict", message: "stale" }; } plant = { ...plant, revision: 3, name: String(msg.name) }; return { plant }; }
       return undefined;
-    }); const el = await detail(h.hass); await fill(el, "Name", "My edited name"); await click(el, "Save identity");
+    }); const el = await detail(h.hass); await fill(el, "Name", "My edited name"); await click(el, "Save name");
     expect(el.shadowRoot?.textContent).toContain("Other name"); expect(el.shadowRoot?.textContent).toContain("Other category");
     expect(field(el.shadowRoot!, "Name").value).toBe("My edited name"); expect(writes).toHaveLength(1);
-    expect(button(el.shadowRoot!, "Save identity").closest("fieldset")?.disabled).toBe(true);
+    expect(button(el.shadowRoot!, "Save name").closest("fieldset")?.disabled).toBe(true);
     await click(el, "I reviewed changes; retain my edits for reapply"); expect(writes).toHaveLength(1);
     expect(field(el.shadowRoot!, "Name").value).toBe("My edited name"); expect(field(el.shadowRoot!, "Category").value).toBe("Other category");
-    conflict = false; await click(el, "Save identity"); expect(writes[1]).toMatchObject({ expected_revision: 2, name: "My edited name" });
+    conflict = false; await click(el, "Save name"); expect(writes[1]).toMatchObject({ expected_revision: 2, name: "My edited name" });
   });
   it("surfaces native registry area changes without writing them back", async () => {
     let area = "kitchen";
     const h = harness([sample], msg => msg.type === "config/device_registry/list" ? [{ id: "device", area_id: area, identifiers: [["smart_plants", sample.id]] }] : undefined); const el = await detail(h.hass);
     expect(field(el.shadowRoot!, "Home Assistant area").value).toBe("kitchen"); area = "garden"; await click(el, "Refresh");
-    expect(el.shadowRoot?.textContent).toContain("Current: Garden"); expect(el.shadowRoot?.textContent).toContain("area changed"); expect(h.calls.some(c => c.type === "smart_plants/plants/set_area")).toBe(false);
+    expect(el.shadowRoot?.textContent).toContain("Garden · also sets the device area"); expect(el.shadowRoot?.textContent).toContain("area changed"); expect(h.calls.some(c => c.type === "smart_plants/plants/set_area")).toBe(false);
   });
   it("fails closed for absent or malformed optional moisture roles", async () => {
     for (const roles of [undefined, { moisture: null }, { moisture: { ...role, threshold_overrides: { min: false, target: null, max: null } } }]) {
-      const plant = { ...sample, roles } as unknown as PlantRecord; const el = await detail(harness([plant]).hass, "Sensors");
-      expect(el.shadowRoot?.textContent).toContain("missing or incompatible"); expect([...el.shadowRoot!.querySelectorAll("button")].some(b => b.textContent?.includes("Save complete"))).toBe(false); el.remove();
+      const plant = { ...sample, roles } as unknown as PlantRecord; const el = await detail(harness([plant]).hass);
+      expect(el.shadowRoot?.textContent).toContain("missing or incompatible"); expect([...el.shadowRoot!.querySelectorAll("button")].some(b => b.textContent?.includes("Save targets"))).toBe(false);
+      await click(el, "Sensors");
+      const toggle = [...el.shadowRoot!.querySelectorAll("dl.sensors dt")].find(d => d.textContent === "Soil moisture")!.nextElementSibling!.querySelector<HTMLButtonElement>("button.source-toggle")!;
+      expect(toggle.disabled).toBe(true); el.remove();
     }
   });
   it("provides filtered/all sensor selection, metadata warnings, explicit primary and an atomic payload", async () => {
@@ -239,25 +265,28 @@ describe("detail saves and conflict review", () => {
       if (msg.type === "config/entity_registry/list") return [entity, { ...entity, id: "uuid-2", entity_id: "sensor.odd", unique_id: "odd" }];
       if (msg.type === "get_states") return [sourceState, { ...sourceState, entity_id: "sensor.odd", state: "unavailable", attributes: {} }];
       return undefined;
-    }); const el = await detail(h.hass, "Sensors");
+    }); const el = await detail(h.hass, "Sensors"); await openMoisture(el, "pick");
     const options = () => [...(field(el.shadowRoot!, "Add moisture sensor") as HTMLSelectElement).options].map(o => o.value);
     expect(options()).toContain("sensor.soil"); expect(options()).not.toContain("sensor.odd");
     const all = field(el.shadowRoot!, "Show all sensors (metadata fallback)") as HTMLInputElement; all.checked = true; all.dispatchEvent(new Event("change")); await settle(el); expect(options()).toContain("sensor.odd");
-    await fill(el, "Add moisture sensor", "sensor.odd"); expect(el.shadowRoot?.textContent).toContain("Unexpected metadata"); expect(field(el.shadowRoot!, "Primary sensor").value).toBe("");
-    await fill(el, "Add moisture sensor", "sensor.soil"); await fill(el, "Primary sensor", "sensor.soil"); await fill(el, "Aggregation", "average"); await fill(el, "Stale after (seconds, 60–604800)", "3600"); await fill(el, "target override (%)", "40"); await click(el, "Save complete moisture configuration");
+    await fill(el, "Add moisture sensor", "sensor.odd"); expect(el.shadowRoot?.textContent).toContain("Unexpected metadata");
+    await fill(el, "Add moisture sensor", "sensor.soil");
+    await openMoisture(el, "combine"); expect(field(el.shadowRoot!, "Main sensor").value).toBe("");
+    await fill(el, "Main sensor", "sensor.soil"); await fill(el, "Combine readings", "average"); await fill(el, "Not updating after (seconds, 60–604800)", "3600");
+    await click(el, "Settings"); await fill(el, "Ideal", "40"); await click(el, "Save targets");
     expect(h.calls.find(c => c.type === "smart_plants/moisture/configure")).toEqual({ type: "smart_plants/moisture/configure", plant_id: sample.id, expected_revision: 1, moisture: { sources: [{ entity_id: "sensor.odd", registry_id: "uuid-2" }, { entity_id: "sensor.soil", registry_id: "uuid-1" }], primary_entity_id: "sensor.soil", aggregation: "average", stale_after_seconds: 3600, threshold_overrides: { min: null, target: 40, max: null } } });
   });
   it("preserves removed UUID identity despite reused entity ID and links repairs; renames resolve by UUID", async () => {
     const plant = { ...sample, roles: { moisture: { ...role, sources: [{ entity_id: "sensor.soil", registry_id: "gone" }, { entity_id: "sensor.old", registry_id: "uuid-renamed" }], primary_entity_id: "sensor.old" } } };
-    const h = harness([plant], msg => msg.type === "config/entity_registry/list" ? [entity, { ...entity, id: "uuid-renamed", entity_id: "sensor.renamed" }] : undefined); const el = await detail(h.hass, "Sensors");
-    expect(el.shadowRoot?.textContent).toContain("Missing registered source"); expect(el.shadowRoot?.querySelector('a[href="/config/repairs"]')).not.toBeNull(); expect(el.shadowRoot?.textContent).toContain("sensor.renamed");
-    await click(el, "Remove sensor.soil"); await click(el, "Save complete moisture configuration");
+    const h = harness([plant], msg => msg.type === "config/entity_registry/list" ? [entity, { ...entity, id: "uuid-renamed", entity_id: "sensor.renamed" }] : undefined); const el = await detail(h.hass, "Sensors"); await openMoisture(el, "pick");
+    expect(el.shadowRoot?.textContent).toContain("Missing registered sensor"); expect(el.shadowRoot?.querySelector('a[href="/config/repairs"]')).not.toBeNull(); expect(el.shadowRoot?.textContent).toContain("sensor.renamed");
+    await click(el, "Remove sensor.soil"); await click(el, "Save soil moisture sensors");
     expect(h.calls.find(c => c.type === "smart_plants/moisture/configure")).toMatchObject({ moisture: { sources: [{ entity_id: "sensor.renamed", registry_id: "uuid-renamed" }], primary_entity_id: "sensor.renamed" } });
   });
   it("validates atomic threshold edits and explicit null inheritance", async () => {
-    const h = harness(); const el = await detail(h.hass, "Sensors");
-    await fill(el, "min override (%)", "40"); await click(el, "Save complete moisture configuration"); expect(el.shadowRoot?.textContent).toContain("Effective moisture thresholds"); expect(h.calls.some(c => c.type === "smart_plants/moisture/configure")).toBe(false);
-    await click(el, "Inherit min"); await click(el, "Save complete moisture configuration"); expect(h.calls.find(c => c.type === "smart_plants/moisture/configure")).toMatchObject({ moisture: { threshold_overrides: { min: null, target: null, max: null } } });
+    const h = harness(); const el = await detail(h.hass);
+    await fill(el, "Needs water below", "40"); await click(el, "Save targets"); expect(el.shadowRoot?.textContent).toContain("Effective moisture thresholds"); expect(h.calls.some(c => c.type === "smart_plants/moisture/configure")).toBe(false);
+    await click(el, "Reset to defaults"); expect(field(el.shadowRoot!, "Needs water below").value).toBe(""); await click(el, "Save targets"); expect(h.calls.find(c => c.type === "smart_plants/moisture/configure")).toMatchObject({ moisture: { threshold_overrides: { min: null, target: null, max: null } } });
   });
 });
 
@@ -267,9 +296,9 @@ describe("reviewed species and accessible destructive actions", () => {
     const h = harness([plant], msg => msg.type === "smart_plants/plants/list" ? { plants: [plant] } : undefined);
     const el = await detail(h.hass); const trigger = button(el.shadowRoot!, "Preview species refresh"); trigger.focus(); await click(el, "Preview species refresh");
     button(el.shadowRoot!, "Accept and apply reviewed species").focus(); plant = { ...plant, revision: 2 }; h.events.get("ready")!(); await settle(el);
-    expect(el.shadowRoot?.activeElement).toBe(button(el.shadowRoot!, "Cancel")); await click(el, "Cancel");
+    expect(el.shadowRoot?.activeElement).toBe(dialogCancel(el)); await cancelDialog(el);
     // Conflict disables the original trigger, so a subsequent review is required.
-    await click(el, "I reviewed changes; retain my edits for reapply"); trigger.focus(); await click(el, "Preview species refresh"); await click(el, "Cancel"); expect(el.shadowRoot?.activeElement).toBe(trigger);
+    await click(el, "I reviewed changes; retain my edits for reapply"); trigger.focus(); await click(el, "Preview species refresh"); await cancelDialog(el); expect(el.shadowRoot?.activeElement).toBe(trigger);
   });
   it("shows durable attribution offline and previews refresh nonmutating before explicit apply", async () => {
     const h = harness([{ ...sample, species: { provider: "openplantbook", snapshot } }]); const el = await detail(h.hass);
@@ -279,8 +308,8 @@ describe("reviewed species and accessible destructive actions", () => {
     expect(h.calls.find(c => c.type === "smart_plants/species/apply")).toEqual({ type: "smart_plants/species/apply", plant_id: sample.id, expected_revision: 1, preview_token: preview.preview_token, provider: "openplantbook", operation: "refresh", confirmed: true });
   });
   it("contains dialog keyboard focus, handles Escape/cancel and restores the trigger", async () => {
-    const h = harness(); const el = await detail(h.hass); const trigger = button(el.shadowRoot!, "Delete plant"); trigger.focus(); await click(el, "Delete plant");
-    const dialog = el.shadowRoot!.querySelector("dialog")!; const cancel = button(el.shadowRoot!, "Cancel"); const confirm = button(el.shadowRoot!, "Permanently delete plant");
+    const h = harness(); const el = await detail(h.hass); const trigger = button(el.shadowRoot!, "Delete"); trigger.focus(); await click(el, "Delete");
+    const dialog = el.shadowRoot!.querySelector("dialog")!; const cancel = dialogCancel(el); const confirm = button(el.shadowRoot!, "Permanently delete plant");
     expect(el.shadowRoot?.activeElement).toBe(cancel); cancel.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true, cancelable: true })); expect(el.shadowRoot?.activeElement).toBe(confirm);
     confirm.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true })); expect(el.shadowRoot?.activeElement).toBe(cancel);
     dialog.dispatchEvent(new Event("cancel", { cancelable: true })); await settle(el); expect(el.shadowRoot?.querySelector("dialog")).toBeNull(); expect(el.shadowRoot?.activeElement).toBe(trigger); expect(h.calls.some(c => c.type === "smart_plants/plants/delete")).toBe(false);
@@ -293,7 +322,7 @@ describe("reviewed species and accessible destructive actions", () => {
       if (msg.type === "smart_plants/plants/reenable") { plant = { ...plant, revision: 3, lifecycle_state: "active" }; return { plant }; }
       if (msg.type === "smart_plants/plants/delete") { deleted = true; return {}; }
       return undefined;
-    }); const el = await detail(h.hass); await click(el, "Disable"); await click(el, "Re-enable"); await click(el, "Delete plant"); await click(el, "Permanently delete plant");
+    }); const el = await detail(h.hass); await click(el, "Pause"); await click(el, "Resume"); await click(el, "Delete plant"); await click(el, "Permanently delete plant");
     expect(h.calls.find(c => c.type === "smart_plants/plants/delete")).toMatchObject({ expected_revision: 3 }); await settle(overviewOf(el)); expect(panelText(el)).toContain("No plants yet");
   });
   it("invalidates a species preview on revision change and never applies a stale token", async () => {

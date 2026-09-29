@@ -50,7 +50,7 @@ async function mountDetailWith(entities: HAEntity[], states: Record<string, HASt
   document.body.append(el);
   await settle(el);
   await click(el, "Aloe");
-  await click(el, "Diagnostics");
+  await click(el, "Sensors");
   return el;
 }
 
@@ -129,7 +129,7 @@ describe("problemBinaries model helper", () => {
   });
 });
 
-describe("Advanced diagnostics section", () => {
+describe("Problem checks in Troubleshooting", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["x"], { type: "image/webp" }))));
   });
@@ -142,9 +142,9 @@ describe("Advanced diagnostics section", () => {
   it("renders the heading, description, and one row per role", async () => {
     const el = await mountDetailWith(buildRegistry(), {});
     const heading = el.shadowRoot!.querySelector("#diagnostics-heading");
-    expect(heading?.textContent).toContain("Advanced diagnostics");
+    expect(heading?.textContent).toContain("Problem checks");
     const section = heading!.closest("section")!;
-    expect(section.textContent).toContain("Status of the problem indicators");
+    expect(section.textContent).toContain("Current state of each check");
     const dts = section.querySelectorAll("dt");
     expect(dts.length).toBe(PROBLEM_BINARY_ROLES.length);
     expect([...dts].map(n => n.textContent)).toContain("Temperature stress");
@@ -323,7 +323,7 @@ describe("Overall health section", () => {
     document.body.append(el);
     await settle(el);
     await click(el, "Aloe");
-    await click(el, "Diagnostics");
+    await click(el, "Sensors");
     await settle(el); await settle(el);
     return el;
   }
@@ -377,7 +377,7 @@ describe("Overall health section", () => {
     document.body.append(el);
     await settle(el);
     await click(el, "Aloe");
-    await click(el, "Diagnostics");
+    await click(el, "Sensors");
     await settle(el); await settle(el);
     expect(seen).toContain("smart_plants/plants/health");
     // Mutation commands the panel could issue elsewhere are not triggered by this section.
@@ -427,7 +427,7 @@ describe("Panel string catalog", () => {
     document.body.append(el);
     await settle(el);
     await click(el, "Aloe");
-    await click(el, createLocalizer(h.hass).t("detail.tab_diagnostics"));
+    await click(el, createLocalizer(h.hass).t("detail.tab_sensors"));
     await settle(el); await settle(el);
     return { el, seenKeys };
   }
@@ -442,8 +442,8 @@ describe("Panel string catalog", () => {
     expect(overall.textContent).toContain("every configured role is currently available.");
     expect(overall.textContent).toContain("Moisture");
     expect(overall.textContent).toContain("Temperature");
-    expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Advanced diagnostics");
-    expect(diagnostics.textContent).toContain("Status of the problem indicators");
+    expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Problem checks");
+    expect(diagnostics.textContent).toContain("Current state of each check");
     expect(diagnostics.textContent).toContain("1 active problem.");
     expect(diagnostics.textContent).toContain("problem detected");
   });
@@ -457,15 +457,15 @@ describe("Panel string catalog", () => {
     expect(overall.textContent).toContain("hoch — jede konfigurierte Rolle ist derzeit verfügbar.");
     expect(overall.textContent).toContain("Bodenfeuchte");
     expect(overall.textContent).toContain("Temperatur");
-    expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Erweiterte Diagnose");
+    expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Problemprüfungen");
     expect(diagnostics.textContent).toContain("1 aktives Problem.");
     expect(diagnostics.querySelector("dt")?.textContent).toBe("Temperaturstress");
     const dd = diagnostics.querySelector("dd.status-on");
     expect(dd?.hasAttribute("aria-label")).toBe(false);
     expect(dd?.textContent?.trim().startsWith("Problem erkannt")).toBe(true);
-    const tabs = el.shadowRoot!.querySelector("nav.detail-tabs");
+    const tabs = el.shadowRoot!.querySelector("[role=tablist]");
     expect(tabs?.getAttribute("aria-label")).toBe("Pflanzenbereiche");
-    expect([...tabs!.querySelectorAll("button")].map(b => b.textContent)).toEqual(["Übersicht", "Sensoren", "Pflegeverlauf", "Pflanzendetails", "Diagnose"]);
+    expect([...tabs!.querySelectorAll("[role=tab]")].map(b => b.textContent)).toEqual(["Übersicht", "Sensoren", "Pflege", "Einstellungen"]);
   });
 
   it.each([["en", "hot_stress", "too hot"], ["de", "hot_stress", "zu heiß"], ["de", "future_reason", "future_reason"]])("renders the %s text for reason code %s", async (language, reason, expected) => {
@@ -482,30 +482,30 @@ describe("Panel string catalog", () => {
     document.body.append(el);
     await settle(el);
     await click(el, "Aloe");
-    await click(el, createLocalizer(h.hass).t("detail.tab_diagnostics"));
+    await click(el, createLocalizer(h.hass).t("detail.tab_sensors"));
     expect(el.shadowRoot!.querySelector("dl.diagnostics dd.status-on")?.textContent).toContain(` — ${expected}`);
   });
 
   it("prefers hass.locale.language over hass.language", async () => {
     const german = await mountWith(undefined, { language: "en", locale: { language: "de" } });
-    expect(german.el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Erweiterte Diagnose");
+    expect(german.el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Problemprüfungen");
     document.body.replaceChildren();
     const fallback = await mountWith(undefined, { language: "de", locale: { language: "fr" } });
-    expect(fallback.el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Advanced diagnostics");
+    expect(fallback.el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Problem checks");
   });
 
   it("does not consult hass.localize for panel strings", async () => {
     const { el, seenKeys } = await mountWith(() => "Replaced");
     expect(seenKeys.filter(key => key.startsWith("component.smart_plants"))).toEqual([]);
     expect(el.shadowRoot!.querySelector("#overall-health-heading")?.textContent).toBe("Overall health");
-    expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Advanced diagnostics");
+    expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Problem checks");
   });
 
   it("renders English when localize returns an empty or whitespace string", async () => {
     const localize = (_key: string, ..._args: unknown[]) => "  ";
     const { el } = await mountWith(localize);
     expect(el.shadowRoot!.querySelector("#overall-health-heading")?.textContent).toBe("Overall health");
-    expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Advanced diagnostics");
+    expect(el.shadowRoot!.querySelector("#diagnostics-heading")?.textContent).toBe("Problem checks");
     const overall = el.shadowRoot!.querySelector("#overall-health-heading")!.closest("section")!;
     expect(overall.textContent).toContain("Moisture");
     expect(overall.textContent).toContain("every configured role is currently available.");

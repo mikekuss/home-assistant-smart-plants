@@ -19,8 +19,12 @@ It does **not** contain plant names, entity IDs, care history, or photos. Still,
 at the file before attaching it publicly.
 
 > [!NOTE]
-> The **Diagnostics** tab inside the Smart Plants panel is different: it shows a plant's
-> health, problem indicators, and thresholds and is not a file you can download.
+> Each plant also has its own diagnostics in the panel: open the plant, go to the **Sensors**
+> tab and expand **Troubleshooting**. It shows the sensor entity IDs, the soil moisture
+> evaluation, the overall health score, the state of every problem check, and the automations
+> that use the plant. **Download diagnostics** there (or in the plant's **⋮** menu) saves a
+> JSON file with the plant's configuration, sensor entity IDs and current evaluation. It
+> contains no plant name, notes, photo, or credentials.
 
 ## Enable debug logging
 
@@ -121,7 +125,7 @@ saving again.
 
 ### "Care history is full"
 
-Each plant keeps up to 256 care entries. Delete old entries in the **Care history** tab to
+Each plant keeps up to 256 care entries. Delete old entries in the plant's **Care** tab to
 make room.
 
 ## Report a bug

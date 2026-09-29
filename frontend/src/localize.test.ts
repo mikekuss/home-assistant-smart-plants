@@ -48,7 +48,7 @@ describe("panel translation", () => {
     const partial: Record<"en" | "de", Partial<Catalog>> = { en, de: { "section.overall_health": "Gesamtzustand" } };
     const l = createLocalizer({ language: "de" }, partial);
     expect(l.t("section.overall_health")).toBe("Gesamtzustand");
-    expect(l.t("section.advanced_diagnostics")).toBe("Advanced diagnostics");
+    expect(l.t("section.advanced_diagnostics")).toBe("Problem checks");
   });
 
   it("leaves unknown placeholders intact and formats numeric arguments", () => {
@@ -57,8 +57,8 @@ describe("panel translation", () => {
   });
 
   it("selects singular and plural forms", () => {
-    expect(ENGLISH.tn(1, "list.count_one", "list.count_other")).toBe("1 plant");
-    expect(ENGLISH.tn(0, "list.count_one", "list.count_other")).toBe("0 plants");
+    expect(ENGLISH.tn(1, "sensors.source_count_one", "sensors.source_count_other")).toBe("1 sensor");
+    expect(ENGLISH.tn(0, "sensors.source_count_one", "sensors.source_count_other")).toBe("0 sensors");
     const l = createLocalizer({ language: "de" });
     expect(l.tn(1, "care.watering_count_one", "care.watering_count_other")).toBe("1 Gießvorgang.");
     expect(l.tn(3, "care.watering_count_one", "care.watering_count_other")).toBe("3 Gießvorgänge.");

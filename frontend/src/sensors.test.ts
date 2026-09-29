@@ -42,8 +42,20 @@ async function mountDetail(plant: PlantRecord, entities: HAEntity[], states: HAS
   return { el, calls: h.calls };
 }
 
+// The Sensors tab panel.
 function sensorsSection(el: SmartPlantsPanel): HTMLElement {
-  return el.shadowRoot!.querySelector("#sensors-heading")!.closest("section")! as HTMLElement;
+  return el.shadowRoot!.querySelector("#detail-panel")! as HTMLElement;
+}
+// Row of a reading in "Several sensors for one reading".
+function row(el: SmartPlantsPanel, label: string): HTMLElement {
+  return [...sensorsSection(el).querySelectorAll("dl.sensors dt")].find(d => d.textContent === label)!.nextElementSibling! as HTMLElement;
+}
+async function openCombine(el: SmartPlantsPanel, label: string) {
+  (row(el, label).querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
+}
+// "Add sensor" menu: opens the sensor list of a reading without sensors.
+async function addSensor(el: SmartPlantsPanel, role: string) {
+  sensorsSection(el).querySelector("ha-dropdown.add-sensor")!.dispatchEvent(new CustomEvent("wa-select", { bubbles: true, composed: true, detail: { item: { value: role } } })); await settle(el);
 }
 async function setTemperatureStale(el: SmartPlantsPanel, seconds: string) {
   const input = sensorsSection(el).querySelector<HTMLInputElement>('#temperature-sources-editor input[type="number"]')!;
@@ -56,9 +68,11 @@ describe("Sensors section", () => {
   it("renders a row per role with an empty-source summary", async () => {
     const { el } = await mountDetail(withRoles(), [], []);
     const section = sensorsSection(el);
-    const dts = [...section.querySelectorAll("dt")].map(d => d.textContent);
-    expect(dts).toEqual(["Air temperature", "Air humidity", "Illuminance", "Battery", "Conductivity", "Soil temperature", "CO₂"]);
-    expect(section.textContent).toContain("no sources — this role has no computed entity yet");
+    const dts = [...section.querySelectorAll("dl.sensors dt")].map(d => d.textContent);
+    expect(dts).toEqual(["Soil moisture", "Temperature", "Humidity", "Light", "Battery", "Fertilizer level", "Soil temperature", "CO₂"]);
+    expect(row(el, "Temperature").textContent).toContain("No sensors");
+    expect(section.textContent).toContain("No sensors yet.");
+    expect(section.querySelector("ha-dropdown.add-sensor")!.textContent).toContain("Fertilizer level");
   });
 
   it("shows role-unavailable message when a role config is malformed", async () => {
@@ -66,8 +80,7 @@ describe("Sensors section", () => {
     // temperature is present but malformed (bad aggregation) → roleSourceConfig null
     const plant = { ...clone, roles: { ...clone.roles, temperature: { sources: [], primary_entity_id: null, aggregation: "median", stale_after_seconds: 21600 } } as NonNullable<PlantRecord["roles"]> };
     const { el } = await mountDetail(plant, [], []);
-    const section = sensorsSection(el);
-    expect(section.textContent).toContain("role data unavailable");
+    expect(row(el, "Temperature").textContent).toContain("Sensor settings could not be read");
   });
 
   it("shows the fail-closed refusal in the affected role row when Edit sources is clicked", async () => {
@@ -76,27 +89,26 @@ describe("Sensors section", () => {
     const h = harness([plant], msg => msg.type === "smart_plants/plants/list" ? { plants: [current] } : undefined);
     const el = new SmartPlantsPanel(); el.hass = h.hass; document.body.append(el);
     await settle(el); await click(el, "Aloe"); await click(el, "Sensors");
-    const row = (label: string) => [...sensorsSection(el).querySelectorAll("dt")].find(d => d.textContent === label)!.nextElementSibling!;
-    (row("Air temperature").querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
-    const alert = row("Air temperature").querySelector('[role="alert"]')!;
-    expect(alert.textContent).toContain("Air temperature source data is missing or incompatible");
+    (row(el, "Temperature").querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
+    const alert = row(el, "Temperature").querySelector('[role="alert"]')!;
+    expect(alert.textContent).toContain("Temperature sensor settings are missing or incompatible");
     expect(alert.textContent).toContain("defaults will not be guessed");
     // Fail closed: no editor, and the refusal does not bleed into other rows.
     expect(sensorsSection(el).querySelector("#temperature-sources-editor")).toBeNull();
-    expect(row("Air temperature").querySelector("button.source-toggle")!.getAttribute("aria-expanded")).toBe("false");
+    expect(row(el, "Temperature").querySelector("button.source-toggle")!.getAttribute("aria-expanded")).toBe("false");
     expect(sensorsSection(el).querySelectorAll('[role="alert"]')).toHaveLength(1);
     // Opening another role's editor successfully clears the refusal.
-    (row("Air humidity").querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
+    (row(el, "Humidity").querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
     expect(sensorsSection(el).querySelector("#humidity-sources-editor")).not.toBeNull();
     expect(sensorsSection(el).querySelectorAll('[role="alert"]')).toHaveLength(0);
     // Refused again, then the plant data changes: the stale refusal disappears.
-    (row("Air humidity").querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
-    (row("Air temperature").querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
-    expect(row("Air temperature").querySelector('[role="alert"]')).not.toBeNull();
+    (row(el, "Humidity").querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
+    (row(el, "Temperature").querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
+    expect(row(el, "Temperature").querySelector('[role="alert"]')).not.toBeNull();
     current = { ...plant, revision: 2 };
     h.events.get("ready")!(); await settle(el); await settle(el);
-    expect(row("Air temperature").textContent).toContain("role data unavailable");
-    expect(row("Air temperature").querySelector('[role="alert"]')).toBeNull();
+    expect(row(el, "Temperature").textContent).toContain("Sensor settings could not be read");
+    expect(row(el, "Temperature").querySelector('[role="alert"]')).toBeNull();
   });
 
   it("accepts the backend PlantView default for every source role and still fails closed when absent", () => {
@@ -114,28 +126,26 @@ describe("Sensors section", () => {
       return undefined;
     });
     const section = sensorsSection(el);
-    expect(section.textContent).not.toContain("role data unavailable");
-    (([...section.querySelectorAll("button")].find(b => b.textContent === "Edit sources")) as HTMLButtonElement).click();
-    await settle(el);
-    const editor = sensorsSection(el).querySelector("#temperature-sources-editor")!;
-    expect(editor).not.toBeNull();
-    const aggregation = [...editor.querySelectorAll("label")].find(l => l.textContent?.trim().startsWith("Aggregation"))!.querySelector("select")!;
+    expect(section.textContent).not.toContain("Sensor settings could not be read");
+    await openCombine(el, "Temperature");
+    const combine = sensorsSection(el).querySelector("#temperature-sources-editor")!;
+    const aggregation = [...combine.querySelectorAll("label")].find(l => l.textContent?.trim().startsWith("Combine readings"))!.querySelector("select")!;
     expect(aggregation.value).toBe("average");
+    await addSensor(el, "temperature");
+    const editor = sensorsSection(el).querySelector("#temperature-sources-editor")!;
     const picker = [...editor.querySelectorAll("select")].find(sel => [...sel.options].some(o => o.textContent?.includes("Choose a sensor")))!;
     picker.value = "sensor.living_temp"; picker.dispatchEvent(new Event("change", { bubbles: true })); await settle(el);
-    [...sensorsSection(el).querySelectorAll("button")].find(b => b.textContent?.startsWith("Save"))!.click(); await settle(el);
+    [...sensorsSection(el).querySelectorAll<HTMLButtonElement>("#temperature-sources-editor button")].find(b => b.textContent?.startsWith("Save"))!.click(); await settle(el);
     expect(calls.filter(c => typeof c.type === "string" && c.type.startsWith("smart_plants/roles/set_"))).toEqual([
       { type: "smart_plants/roles/set_sources", plant_id: newPlantView.id, expected_revision: 1, role: "temperature", sources: [{ entity_id: "sensor.living_temp", registry_id: "reg-temp" }] },
     ]);
-    expect(sensorsSection(el).textContent).not.toContain("source data is missing or incompatible");
+    expect(sensorsSection(el).textContent).not.toContain("sensor settings are missing or incompatible");
     expect(sensorsSection(el).querySelectorAll('[role="alert"]')).toHaveLength(0);
   });
 
   it("filters the picker by device class and unit, with a show-all fallback", async () => {
     const { el } = await mountDetail(withRoles(), [tempEntity()], [tempState(), moistureState()]);
-    const section = sensorsSection(el);
-    const editBtn = [...section.querySelectorAll("button")].find(b => b.textContent === "Edit sources")!;
-    editBtn.click(); await settle(el);
+    await addSensor(el, "temperature");
     const picker = () => [...sensorsSection(el).querySelectorAll("select")].find(s => [...s.options].some(o => o.textContent?.includes("Choose a sensor")))!;
     const options = () => [...picker().options].map(o => o.value);
     // Only the temperature sensor matches temperature device_class + °C.
@@ -152,23 +162,21 @@ describe("Sensors section", () => {
     const states = entities.map((entity, i) => ({ ...tempState(), entity_id: entity.entity_id, attributes: { ...tempState().attributes, unit_of_measurement: ["°C", "°F", "K", "°R"][i] } }));
     const plant = withRoles({ [role]: { ...emptyRole(), sources: entities.map(e => ({ entity_id: e.entity_id, registry_id: e.id })) } });
     const { el } = await mountDetail(plant, entities, states);
-    const row = [...sensorsSection(el).querySelectorAll("dt")].find(d => d.textContent === (role === "temperature" ? "Air temperature" : "Soil temperature"))!.nextElementSibling!;
-    (row.querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
-    const picker = row.querySelector("select")!;
+    await click(el, role === "temperature" ? "Change temperature sensors" : "Change soil temperature sensors");
+    const editor = sensorsSection(el).querySelector(`#${role}-sources-editor`)!;
+    const picker = editor.querySelector("select")!;
     expect([...picker.options].map(o => o.value)).toEqual(["", ...entities.slice(0, 3).map(e => e.entity_id)]);
-    expect(row.textContent).toContain("Unexpected metadata");
-    expect(row.textContent).toContain("°C / °F / K");
-    expect(row.textContent!.match(/Unexpected metadata/g)).toHaveLength(1);
+    expect(editor.textContent).toContain("Unexpected metadata");
+    expect(editor.textContent).toContain("°C / °F / K");
+    expect(editor.textContent!.match(/Unexpected metadata/g)).toHaveLength(1);
   });
 
   it("warns about metadata mismatches on an assigned source", async () => {
     // conductivity role already has a temperature sensor assigned (wrong metadata)
     const plant = withRoles({ conductivity: { sources: [{ entity_id: "sensor.living_temp", registry_id: "reg-temp" }], primary_entity_id: null, aggregation: "primary", stale_after_seconds: 21600 } });
     const { el } = await mountDetail(plant, [tempEntity()], [tempState()]);
-    const section = sensorsSection(el);
-    const condDd = [...section.querySelectorAll("dt")].find(d => d.textContent === "Conductivity")!.nextElementSibling!;
-    (condDd.querySelector("button.source-toggle") as HTMLButtonElement).click(); await settle(el);
-    expect(sensorsSection(el).textContent).toContain("Unexpected metadata");
+    await click(el, "Change fertilizer level sensors");
+    expect(sensorsSection(el).querySelector("#conductivity-sources-editor")!.textContent).toContain("Unexpected metadata");
   });
 
   it("saves via the granular role commands, only for changed fields", async () => {
@@ -178,13 +186,11 @@ describe("Sensors section", () => {
       }
       return undefined;
     });
-    const section = sensorsSection(el);
-    (([...section.querySelectorAll("button")].find(b => b.textContent === "Edit sources")) as HTMLButtonElement).click();
-    await settle(el);
+    await addSensor(el, "temperature");
     // Add the temperature sensor via the picker.
     const picker = [...sensorsSection(el).querySelectorAll("select")].find(s => [...s.options].some(o => o.textContent?.includes("Choose a sensor")))!;
     picker.value = "sensor.living_temp"; picker.dispatchEvent(new Event("change", { bubbles: true })); await settle(el);
-    const save = [...sensorsSection(el).querySelectorAll("button")].find(b => b.textContent?.startsWith("Save"))!;
+    const save = [...sensorsSection(el).querySelectorAll<HTMLButtonElement>("#temperature-sources-editor button")].find(b => b.textContent?.startsWith("Save"))!;
     save.click(); await settle(el);
     const sourceCall = calls.find(c => c.type === "smart_plants/roles/set_sources");
     expect(sourceCall).toBeDefined();
@@ -197,16 +203,18 @@ describe("Sensors section", () => {
 
   it("guards a single active editor with a switch confirmation", async () => {
     const { el } = await mountDetail(withRoles(), [tempEntity()], [tempState()]);
-    const section = sensorsSection(el);
     // Open temperature editor and make a change (stale after).
-    (([...section.querySelectorAll("button")].find(b => b.textContent === "Edit sources")) as HTMLButtonElement).click();
-    await settle(el);
-    const stale = [...sensorsSection(el).querySelectorAll("input")].find(i => i.getAttribute("type") === "number")!;
-    stale.value = "3600"; stale.dispatchEvent(new Event("input", { bubbles: true })); await settle(el);
+    await openCombine(el, "Temperature");
+    await setTemperatureStale(el, "3600");
     // Try to open a second role editor → should prompt, not switch.
-    const editButtons = [...sensorsSection(el).querySelectorAll("button")].filter(b => b.textContent === "Edit sources");
-    editButtons[0].click(); await settle(el);
+    await openCombine(el, "Humidity");
     expect(sensorsSection(el).textContent).toContain("Discard and switch");
+    expect(sensorsSection(el).querySelector("#humidity-sources-editor")).toBeNull();
+    // The sensor list of the same role keeps the draft.
+    await addSensor(el, "temperature");
+    expect(sensorsSection(el).querySelector("#temperature-sources-editor select")).not.toBeNull();
+    await openCombine(el, "Temperature");
+    expect(sensorsSection(el).querySelector<HTMLInputElement>('#temperature-sources-editor input[type="number"]')!.value).toBe("3600");
   });
 
   it("keeps local sources and staleness through review, then retries on the new revision", async () => {
@@ -229,26 +237,28 @@ describe("Sensors section", () => {
     });
     const el = new SmartPlantsPanel(); el.hass = h.hass; document.body.append(el);
     await settle(el); await click(el, "Aloe"); await click(el, "Sensors");
-    await click(el, "Edit sources");
+    await openCombine(el, "Temperature");
     await setTemperatureStale(el, "3600");
-    const picker = sensorsSection(el).querySelector("select")!;
+    await addSensor(el, "temperature");
+    const picker = sensorsSection(el).querySelector<HTMLSelectElement>("#temperature-sources-editor select")!;
     picker.value = "sensor.living_temp"; picker.dispatchEvent(new Event("change", { bubbles: true })); await settle(el);
-    await click(el, "Save air temperature sources");
+    await click(el, "Save temperature sensors");
     expect(el.shadowRoot!.textContent).toContain("Review changes from another session");
     expect(el.shadowRoot!.textContent).toContain("Both sessions changed these source fields: stale_after_seconds");
     expect(sensorsSection(el).textContent).toContain("sensor.living_temp");
     expect(h.calls.filter(c => String(c.type).startsWith("smart_plants/roles/set_"))).toHaveLength(1);
     await click(el, "I reviewed changes; retain my edits for reapply");
     expect(el.shadowRoot!.textContent).toContain("Saving will replace the refreshed values for those fields");
-    expect(sensorsSection(el).querySelector<HTMLInputElement>('#temperature-sources-editor input[type="number"]')!.value).toBe("3600");
     expect(sensorsSection(el).textContent).toContain("sensor.living_temp");
-    await click(el, "Save air temperature sources");
+    await openCombine(el, "Temperature");
+    expect(sensorsSection(el).querySelector<HTMLInputElement>('#temperature-sources-editor input[type="number"]')!.value).toBe("3600");
+    await click(el, "Save temperature sensors");
     const writes = h.calls.filter(c => String(c.type).startsWith("smart_plants/roles/set_"));
     expect(writes.map(c => [c.type, c.expected_revision])).toEqual([
       ["smart_plants/roles/set_sources", 1], ["smart_plants/roles/set_sources", 2], ["smart_plants/roles/set_stale_after", 3],
     ]);
     expect(current.roles!.temperature).toMatchObject({ aggregation: "average", stale_after_seconds: 3600, sources: [{ entity_id: "sensor.living_temp" }] });
-    expect(sensorsSection(el).textContent).toContain("Air temperature sources saved.");
+    expect(sensorsSection(el).textContent).toContain("Temperature sensors saved.");
   });
 
   it("retains the draft after a mid-chain conflict without replaying completed commands", async () => {
@@ -272,16 +282,17 @@ describe("Sensors section", () => {
       return undefined;
     });
     const el = new SmartPlantsPanel(); el.hass = h.hass; document.body.append(el);
-    await settle(el); await click(el, "Aloe"); await click(el, "Sensors"); await click(el, "Edit sources");
-    const picker = sensorsSection(el).querySelector("select")!;
+    await settle(el); await click(el, "Aloe"); await click(el, "Sensors"); await addSensor(el, "temperature");
+    const picker = sensorsSection(el).querySelector<HTMLSelectElement>("#temperature-sources-editor select")!;
     picker.value = "sensor.living_temp"; picker.dispatchEvent(new Event("change", { bubbles: true })); await settle(el);
+    await openCombine(el, "Temperature");
     await setTemperatureStale(el, "3600");
-    await click(el, "Save air temperature sources");
+    await click(el, "Save temperature sensors");
     expect(el.shadowRoot!.textContent).toContain("Review changes from another session");
     expect(sensorsSection(el).querySelector<HTMLInputElement>('#temperature-sources-editor input[type="number"]')!.value).toBe("3600");
     await click(el, "I reviewed changes; retain my edits for reapply");
     expect(h.calls.filter(c => String(c.type).startsWith("smart_plants/roles/set_"))).toHaveLength(2);
-    await click(el, "Save air temperature sources");
+    await click(el, "Save temperature sensors");
     expect(h.calls.filter(c => String(c.type).startsWith("smart_plants/roles/set_")).map(c => [c.type, c.expected_revision])).toEqual([
       ["smart_plants/roles/set_sources", 1], ["smart_plants/roles/set_stale_after", 2], ["smart_plants/roles/set_stale_after", 3],
     ]);
@@ -301,19 +312,19 @@ describe("Sensors section", () => {
       return undefined;
     });
     const el = new SmartPlantsPanel(); el.hass = h.hass; document.body.append(el);
-    await settle(el); await click(el, "Aloe"); await click(el, "Sensors"); await click(el, "Edit sources");
+    await settle(el); await click(el, "Aloe"); await click(el, "Sensors"); await openCombine(el, "Temperature");
     await setTemperatureStale(el, "3600");
-    await click(el, "Diagnostics");
+    await click(el, "Settings");
     await click(el, "Edit thresholds");
     const threshold = el.shadowRoot!.querySelector<HTMLInputElement>('#temperature_stress-editor input[type="number"]')!;
     threshold.value = "8"; threshold.dispatchEvent(new Event("input", { bubbles: true })); await settle(el);
-    await click(el, "Plant details");
+    await click(el, "Rename");
     const name = [...el.shadowRoot!.querySelectorAll("label")].find(label => label.textContent === "Name")!.querySelector("input")!;
     name.value = "New Aloe"; name.dispatchEvent(new Event("input", { bubbles: true })); await settle(el);
-    await click(el, "Save identity");
+    await click(el, "Save name");
     await click(el, "Sensors");
     expect(sensorsSection(el).querySelector<HTMLInputElement>('#temperature-sources-editor input[type="number"]')!.value).toBe("3600");
-    await click(el, "Diagnostics");
+    await click(el, "Settings");
     expect(el.shadowRoot!.querySelector<HTMLInputElement>('#temperature_stress-editor input[type="number"]')!.value).toBe("8");
   });
 });
