@@ -105,7 +105,9 @@ export async function click(element: { shadowRoot: ShadowRoot | null; updateComp
 }
 export function field(root: ShadowRoot, label: string): HTMLInputElement | HTMLSelectElement {
   const node = [...root.querySelectorAll("label")].find(l => [...l.childNodes].filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent).join("").trim() === label);
-  expect(node, `field ${label}`).toBeDefined(); return node!.querySelector("input,select")!;
+  expect(node, `field ${label}`).toBeDefined();
+  // A label either wraps its control or names it with `for`.
+  return node!.querySelector("input,select") ?? (node!.getRootNode() as ShadowRoot).getElementById(node!.htmlFor) as HTMLInputElement | HTMLSelectElement;
 }
 export async function fill(element: { shadowRoot: ShadowRoot | null; updateComplete: Promise<unknown> }, label: string, value: string): Promise<void> {
   const input = field(element.shadowRoot!, label); input.value = value; input.dispatchEvent(new Event(input.tagName === "SELECT" ? "change" : "input", { bubbles: true })); await settle(element);

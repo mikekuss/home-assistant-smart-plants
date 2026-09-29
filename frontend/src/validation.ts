@@ -131,5 +131,12 @@ export function validResponse(msg: Record<string, unknown>, v: unknown): boolean
   if (command === "smart_plants/plants/delete") return Object.keys(v).length === 0;
   // Entries are validated one by one when parsed; malformed entries are dropped.
   if (command === "smart_plants/plants/overview") return Array.isArray(v.plants) && v.plants.every(object) && new Set(v.plants.map(p => (p as Record<string, unknown>).plant_id)).size === v.plants.length;
+  // A created plant reports every role it was created with. A replayed request
+  // returns the plant as it is now, so only the roles' presence is checked.
+  if (command === "smart_plants/wizard/create") {
+    if (!validPlant(v.plant) || !object(v.plant)) return false;
+    const roles = v.plant.roles;
+    return msg.roles === undefined || (object(msg.roles) && object(roles) && Object.keys(msg.roles).every(role => object(roles[role])));
+  }
   return validPlant(v.plant) && object(v.plant) && (msg.plant_id === undefined || v.plant.id === msg.plant_id);
 }

@@ -15,6 +15,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   range, the values of all other assigned sensors, and when it was last watered.
 - The overview loads the status of all plants with a single request instead of several
   requests per plant, and uses the same status as the plant's entities.
+- Shorter add-plant wizard with three steps: *Plant* (name, area and an optional photo that
+  you can drop in), *Sensors* and *Review*. Species, watering targets, date acquired,
+  placement, category and tags moved into optional sections of the review step. The moisture
+  targets are labelled *Needs water below*, *Ideal* and *Too wet above*. After creating, a
+  confirmation offers *Back to plants* and *Add another plant* instead of opening the plant.
+- The wizard uses Home Assistant's own area and sensor pickers, lists sensors by name with
+  their current value, and suggests sensors from the chosen area. Every picked sensor, not
+  only soil moisture, is saved together with the plant and becomes the main sensor for its
+  reading, so values show up right away.
 
 ### Added
 

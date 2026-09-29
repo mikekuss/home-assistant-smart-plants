@@ -129,7 +129,7 @@ export const api = {
     return registryList(await send<unknown>(hass, { type: "config/area_registry/list" }), v => typeof v.area_id === "string" && typeof v.name === "string");
   },
   async entities(hass: HomeAssistantLike): Promise<HAEntity[]> {
-    return registryList(await send<unknown>(hass, { type: "config/entity_registry/list" }), v => typeof v.id === "string" && typeof v.entity_id === "string" && typeof v.unique_id === "string" && typeof v.platform === "string" && (v.device_id === null || typeof v.device_id === "string"));
+    return registryList(await send<unknown>(hass, { type: "config/entity_registry/list" }), v => typeof v.id === "string" && typeof v.entity_id === "string" && typeof v.unique_id === "string" && typeof v.platform === "string" && (v.device_id === null || typeof v.device_id === "string") && (v.area_id === undefined || v.area_id === null || typeof v.area_id === "string"));
   },
   async devices(hass: HomeAssistantLike): Promise<HADevice[]> {
     return registryList(await send<unknown>(hass, { type: "config/device_registry/list" }), v => typeof v.id === "string" && (v.area_id === null || typeof v.area_id === "string") && Array.isArray(v.identifiers) && v.identifiers.every(i => Array.isArray(i) && i.length === 2 && i.every(x => typeof x === "string")));

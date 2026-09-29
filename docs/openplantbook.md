@@ -39,7 +39,8 @@ secret.
 
 With the provider enabled, you can search OpenPlantBook in two places:
 
-- In the creation wizard, choose **Search OpenPlantBook** in the *Species and care* step.
+- In the creation wizard, open **Species and watering targets** on the review step and use
+  **Search OpenPlantBook**.
 - For an existing plant, in the **Plant details** tab under **Species**, choose
   *openplantbook* as the species provider and search.
 

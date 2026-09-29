@@ -37,38 +37,46 @@ the integration options and this documentation.
 
 ## Create your first plant
 
-The wizard saves nothing until you confirm on the last step. You can move back and forth
-without losing your entries.
+The wizard has three steps. It saves nothing until you select **Create plant**, and you can
+go back at any time without losing your entries. Only the name is required.
 
-![Creation wizard, step 1: basic info](images/create-wizard.png)
+![Add-plant wizard, first step](images/create-wizard.png)
 
-1. **Basic info** – Enter a name (required). Optionally add an acquired date, a Home
-   Assistant area, a placement (indoor, outdoor, balcony, greenhouse, covered outdoor, or
-   dormant storage, with optional sun exposure, rain exposure, and container), and a photo.
-2. **Species and care** – Choose how to describe the species:
-   - **Enter details myself**: optionally type a common and scientific name. Works offline.
-   - **Search OpenPlantBook**: only available when you have
-     [set up OpenPlantBook](openplantbook.md). Type at least three characters, search, and
-     pick a result.
-3. **Review species** (OpenPlantBook only) – Check the imported information and tick
-   **I reviewed and accept this species information**. Nothing is applied without this.
-4. **Moisture sensors** – Add one or more soil moisture sensors, choose a **primary** sensor,
-   an **aggregation**, and the **stale after** window. You can skip this and add sensors later.
-5. **Moisture thresholds** – Review the effective minimum, target, and maximum. Open
-   **Advanced threshold overrides** to change them.
-6. **Category and tags** – Optional labels for filtering. They belong to Smart Plants and are
-   separate from Home Assistant labels.
-7. **Review and create** – Check the summary and select **Confirm and create plant**.
+1. **Plant** – Enter a name and optionally choose a Home Assistant **Area**. The plant's
+   device is placed in that area, and sensors from the same area are suggested in the next
+   step. You can also add a photo: drop an image on the photo field or choose a file (JPEG,
+   PNG, or WebP up to 5 MB). It is uploaded right after the plant is created.
+2. **Sensors** – Pick a **Soil moisture sensor**; it gives the plant its watering alerts. The
+   list only shows moisture sensors, with their current values. Under **Suggested from**
+   *area*, other sensors from the chosen area are listed with what they measure and their
+   current value; select **Add** to use one. **Add another sensor** lets you pick a sensor for
+   temperature, humidity, light, fertilizer level, soil temperature, CO₂, or battery. The
+   button reads **Skip for now** until you choose a sensor; you can add sensors later.
+3. **Review** – Check the summary and use **Edit** to change a step. Without a soil moisture
+   sensor, a warning reminds you that there are no watering alerts. Two optional sections
+   hold everything else:
+   - **Species and watering targets** – Search [OpenPlantBook](openplantbook.md) (at least
+     three characters), pick a result, check the imported information, and tick
+     **I reviewed and accept this species information**. Nothing is applied without this.
+     If OpenPlantBook is not set up, the section explains where to add its credentials. You
+     can also type a common and scientific name yourself. The soil moisture targets
+     **Needs water below**, **Ideal**, and **Too wet above** show the Smart Plants defaults,
+     or the species values once accepted; change a value to override it for this plant.
+   - **More details** – Date acquired, placement (indoor, outdoor, balcony, greenhouse,
+     covered outdoor, or dormant storage), category, and tags. Sun exposure, rain exposure,
+     and container can be set later in the plant's details.
+
+   Select **Create plant**.
 
 Smart Plants creates one Home Assistant device for the plant, with its moisture and health
-entities. If you selected a photo, it is uploaded right after the plant is created.
+entities and every sensor you picked, in a single step. Each picked sensor becomes the main
+sensor for its reading, so values show up right away. The confirmation offers **Back to
+plants** and **Add another plant**.
+
+If the connection drops while the plant is being created, the wizard keeps the request and
+offers **Retry same creation request**. Retrying never creates a second plant.
 
 ![Plant detail view with the Overview tab, current soil moisture, moisture health, and assigned sensors](images/plant-detail.png)
-
-> [!TIP]
-> The default moisture aggregation is **primary**. With that setting, the plant only gets a
-> moisture reading once you pick a primary sensor. If you don't want to pick one, switch the
-> aggregation to average, min, or max.
 
 ## Assign sensors
 

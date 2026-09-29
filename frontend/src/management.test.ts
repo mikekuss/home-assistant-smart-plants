@@ -43,9 +43,9 @@ describe("overview and lifecycle", () => {
     const wizard = el.shadowRoot!.querySelector<SmartPlantsWizard>("smart-plants-wizard")!; await settle(wizard);
     await fill(wizard, "Plant name", "Replayed plant");
     const input = wizard.shadowRoot!.querySelector<HTMLInputElement>('input[type="file"]')!;
-    Object.defineProperty(input, "files", { value: [pngFile()] }); input.dispatchEvent(new Event("change")); await settle(wizard);
-    for (let step = 0; step < 5; step++) await click(wizard, "Next step");
-    await click(wizard, "Confirm and create plant"); await click(el, "Back to overview");
+    Object.defineProperty(input, "files", { value: [pngFile()] }); input.dispatchEvent(new Event("change")); await settle(wizard); await settle(wizard);
+    await click(wizard, "Next"); await click(wizard, "Skip for now");
+    await click(wizard, "Create plant"); await click(el, "Back to overview");
     // Another admin replaces the photo, then optionally removes it. A null
     // image at revision 3 must not be mistaken for a pristine new plant.
     created = { ...structuredClone(sample), id: "replayed", name: "Replayed plant", revision: removed ? 3 : 2, image: removed ? null : { id: "newer-photo", content_type: "image/webp", width: 1, height: 1, created_at: sample.created_at } };
@@ -55,8 +55,11 @@ describe("overview and lifecycle", () => {
     const requests = h.calls.filter(c => c.type === "smart_plants/wizard/create"); expect(requests).toHaveLength(2); expect(requests[1]).toEqual(requests[0]);
     expect(created).toEqual(before);
     expect(fetch.mock.calls.every(([, init]) => init.method === "GET")).toBe(true);
-    expect(el.shadowRoot!.textContent).toContain("original wizard photo was not uploaded");
-    expect(el.shadowRoot!.textContent).toContain("explicitly upload a photo if wanted");
+    // The confirmation reports that the original photo was deliberately skipped.
+    expect(panelText(el)).toContain("Replayed plant is ready");
+    expect(panelText(el)).toContain("original wizard photo was not uploaded");
+    expect(panelText(el)).toContain("explicitly upload a photo if wanted");
+    await click(wizard, "Back to plants"); await click(el, "Replayed plant");
     if (removed) expect(el.shadowRoot!.querySelector(".overview-avatar.placeholder")).not.toBeNull();
     else expect(el.shadowRoot!.querySelector("img")?.getAttribute("src")).toBe("blob:stored-photo");
   });
@@ -76,10 +79,10 @@ describe("overview and lifecycle", () => {
     await fill(wizard, "Plant name", "Created plant");
     if (withPhoto) {
       const input = wizard.shadowRoot!.querySelector<HTMLInputElement>('input[type="file"]')!;
-      Object.defineProperty(input, "files", { value: [pngFile()] }); input.dispatchEvent(new Event("change")); await settle(wizard);
+      Object.defineProperty(input, "files", { value: [pngFile()] }); input.dispatchEvent(new Event("change")); await settle(wizard); await settle(wizard);
     }
-    for (let step = 0; step < 5; step++) await click(wizard, "Next step");
-    await click(wizard, "Confirm and create plant");
+    await click(wizard, "Next"); await click(wizard, "Skip for now");
+    await click(wizard, "Create plant");
     await click(el, "Back to overview"); await click(el, "Aloe"); await click(el, "Plant details");
     await fill(el, "Name", "Unsaved name"); await fill(el, "Category", "Unsaved category");
     field(el.shadowRoot!, "Name").focus();
@@ -120,6 +123,33 @@ describe("overview and lifecycle", () => {
     expect(field(wizard.shadowRoot!, "Plant name").value).toBe("Retained Aloe");
     await click(el, "Back to overview"); await click(el, "Add plant");
     expect(el.shadowRoot!.querySelector("smart-plants-wizard")).toBe(wizard); expect(h.calls.filter(c => c.type === "smart_plants/wizard/start")).toHaveLength(1);
+  });
+  it("confirms a foreground creation in the wizard, then starts over with a fresh draft", async () => {
+    const created = { ...structuredClone(sample), id: "created-plant", name: "Created plant" };
+    let plants = [structuredClone(sample)];
+    const h = harness(plants, msg => {
+      if (msg.type === "smart_plants/plants/list") return { plants };
+      if (msg.type === "smart_plants/wizard/create") { plants = [...plants, created]; return { plant: created }; }
+      return undefined;
+    });
+    const el = await mount(h.hass); await click(el, "Add plant");
+    const wizard = el.shadowRoot!.querySelector<SmartPlantsWizard>("smart-plants-wizard")!; await settle(wizard);
+    await fill(wizard, "Plant name", "Created plant"); await click(wizard, "Next"); await click(wizard, "Skip for now"); await click(wizard, "Create plant"); await settle(el);
+    expect(panelText(el)).toContain("Created plant is ready");
+    expect(el.shadowRoot!.querySelector("smart-plants-wizard")).toBe(wizard);
+    // The panel's own creation notice stays out of the confirmation.
+    expect(el.shadowRoot!.querySelector(".notice")).toBeNull();
+    await click(wizard, "Back to plants");
+    expect(el.shadowRoot!.querySelector("smart-plants-wizard")).toBeNull();
+    expect(button(el.shadowRoot!, "Created plant")).toBeDefined();
+    expect(panelText(el)).not.toContain("Created plant created.");
+    await click(el, "Add plant");
+    const next = el.shadowRoot!.querySelector<SmartPlantsWizard>("smart-plants-wizard")!; await settle(next);
+    expect(next).not.toBe(wizard); expect(field(next.shadowRoot!, "Plant name").value).toBe("");
+    await fill(next, "Plant name", "Abandoned"); await click(next, "Cancel");
+    expect(el.shadowRoot!.querySelector("smart-plants-wizard")).toBeNull();
+    expect(h.calls.filter(c => c.type === "smart_plants/wizard/start")).toHaveLength(2);
+    expect(h.calls.filter(c => c.type === "smart_plants/wizard/create")).toHaveLength(1);
   });
   it("shows unload errors and blocks all writes until refresh succeeds", async () => {
     let unloaded = false; const h = harness([sample], msg => { if (unloaded && msg.type === "smart_plants/panel/info") throw { code: "integration_not_loaded", message: "unloaded" }; }); const el = await detail(h.hass);

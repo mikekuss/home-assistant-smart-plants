@@ -39,9 +39,10 @@ const unavailable = { computed_percent: null, health_score: null, needs_water: n
 const state = {
   plants: [], messages: [], requests: [], unexpected: [],
   areas: [{ area_id: "office", name: "Office" }, { area_id: "garden", name: "Garden" }],
-  entities: [entity(101, "sensor.soil"), entity(102, "sensor.backup"), entity(103, "sensor.metadata_free"), entity(104, "sensor.living_temp")],
+  // Office sensors carry their own area, as Home Assistant's entity registry reports it.
+  entities: [{ ...entity(101, "sensor.soil"), area_id: "office" }, entity(102, "sensor.backup"), entity(103, "sensor.metadata_free"), { ...entity(104, "sensor.living_temp"), area_id: "office" }, entity(105, "sensor.pot_battery")],
   devices: [],
-  states: [sensor("sensor.soil", "12", { friendly_name: "Soil probe", unit_of_measurement: "%", device_class: "moisture" }), sensor("sensor.backup", "unavailable", { friendly_name: "Backup probe", unit_of_measurement: "%", device_class: "moisture" }), sensor("sensor.metadata_free", "42", { friendly_name: "Metadata-free probe" }), sensor("sensor.living_temp", "21.5", { friendly_name: "Living room temperature", unit_of_measurement: "°C", device_class: "temperature" })],
+  states: [sensor("sensor.soil", "12", { friendly_name: "Soil probe", unit_of_measurement: "%", device_class: "moisture" }), sensor("sensor.backup", "unavailable", { friendly_name: "Backup probe", unit_of_measurement: "%", device_class: "moisture" }), sensor("sensor.metadata_free", "42", { friendly_name: "Metadata-free probe" }), sensor("sensor.living_temp", "21.5", { friendly_name: "Living room temperature", unit_of_measurement: "°C", device_class: "temperature" }), sensor("sensor.pot_battery", "80", { friendly_name: "Pot battery", unit_of_measurement: "%", device_class: "battery" })],
   evaluations: {}, health: {}, failures: {}, malformed: {}, providerAvailable: true,
   conflictNext: false, loseCreateResponse: false, imageFailure: null,
   blobsCreated: [], blobsRevoked: [], imageSerial: 0,
@@ -218,6 +219,11 @@ async function respond(message) {
       const created = plant(1000 + drafts.size, message.name, Object.fromEntries(["acquired_at", "placement", "tags", "category"].filter(k => Object.hasOwn(message, k)).map(k => [k, copy(message[k])])));
       created.species = accepted ? { provider: accepted.provider, snapshot: copy(accepted.snapshot) } : copy(message.species ?? null);
       created.roles.moisture = { ...copy(message.moisture), threshold_defaults: defaults(!!accepted) };
+      // Other roles are validated like the roles/* commands and stored with the plant.
+      for (const [role, config] of Object.entries(message.roles ?? {})) {
+        if (!Object.hasOwn(roleDefaults, role) || !Array.isArray(config.sources) || (config.primary_entity_id != null && !config.sources.some(s => s.entity_id === config.primary_entity_id))) reject("invalid_format");
+        created.roles[role] = { ...copy(roleDefaults[role]), ...copy(config) };
+      }
       state.plants.push(created); state.devices.push(deviceFor(created, message.area_id ?? null)); draft.plant = created.id;
       if (state.loseCreateResponse) { state.loseCreateResponse = false; reject("unknown_error"); }
       return hold(message.type, { plant: copy(created) });
@@ -350,6 +356,83 @@ if (!customElements.get("ha-icon")) {
     set icon(value) { this.setAttribute("icon", value ?? ""); }
     get icon() { return this.getAttribute("icon"); }
     connectedCallback() { this.style.display = "inline-block"; this.style.width = this.style.height = "var(--mdc-icon-size, 24px)"; }
+  });
+}
+const esc = value => String(value ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const fieldStyle = `<style>:host{display:block}.field{display:grid;gap:2px;padding:7px 12px 6px;border-radius:4px 4px 0 0;background:#f5f5f5;border-bottom:1px solid #8a8a8a;font-size:12px;color:#5f5f5f}select,input{font:inherit;font-size:16px;border:0;background:transparent;color:#212121;min-height:28px}</style>`;
+// Pickers behave like Home Assistant's: a labelled field that reports the
+// chosen ID with `value-changed`. They read the fixture's registries directly.
+if (!customElements.get("ha-area-picker")) {
+  customElements.define("ha-area-picker", class extends HTMLElement {
+    constructor() { super(); this.attachShadow({ mode: "open" }); }
+    set label(value) { this._label = value; this.render(); }
+    set value(value) { this._value = value ?? ""; this.render(); }
+    set disabled(value) { this._disabled = Boolean(value); this.render(); }
+    connectedCallback() { this.render(); }
+    render() {
+      if (!this.isConnected) return;
+      this.shadowRoot.innerHTML = `${fieldStyle}<div class="field"><label for="f">${esc(this._label)}</label><select id="f" ${this._disabled ? "disabled" : ""}><option value="">No area</option>${state.areas.map(a => `<option value="${esc(a.area_id)}" ${a.area_id === this._value ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select></div>`;
+      this.shadowRoot.querySelector("select").addEventListener("change", event => this.dispatchEvent(new CustomEvent("value-changed", { detail: { value: event.target.value || undefined } })));
+    }
+  });
+}
+if (!customElements.get("ha-entity-picker")) {
+  customElements.define("ha-entity-picker", class extends HTMLElement {
+    constructor() { super(); this.attachShadow({ mode: "open" }); }
+    set label(value) { this._label = value; this.render(); }
+    set placeholder(value) { this._placeholder = value; this.render(); }
+    set entityFilter(value) { this._filter = value; this.render(); }
+    set excludeEntities(value) { this._exclude = value ?? []; this.render(); }
+    set includeDomains(value) { this._domains = value; this.render(); }
+    connectedCallback() { this.render(); }
+    render() {
+      if (!this.isConnected) return;
+      const options = state.states.filter(s => (!this._domains || this._domains.includes(s.entity_id.split(".")[0])) && !(this._exclude ?? []).includes(s.entity_id) && (!this._filter || this._filter(s)));
+      this.shadowRoot.innerHTML = `${fieldStyle}<div class="field"><label for="f">${esc(this._label)}</label><select id="f"><option value="">${esc(this._placeholder)}</option>${options.map(s => `<option value="${esc(s.entity_id)}">${esc(s.attributes.friendly_name ?? s.entity_id)}</option>`).join("")}</select></div>`;
+      this.shadowRoot.querySelector("select").addEventListener("change", event => this.dispatchEvent(new CustomEvent("value-changed", { detail: { value: event.target.value } })));
+    }
+  });
+}
+// Only the date selector is used; Home Assistant loads its date input on demand.
+if (!customElements.get("ha-selector")) {
+  customElements.define("ha-selector", class extends HTMLElement {
+    constructor() { super(); this.attachShadow({ mode: "open" }); }
+    set label(value) { this._label = value; this.render(); }
+    set value(value) { this._value = value ?? ""; this.render(); }
+    connectedCallback() { this.render(); }
+    render() {
+      if (!this.isConnected) return;
+      this.shadowRoot.innerHTML = `${fieldStyle}<div class="field"><label for="f">${esc(this._label)}</label><input id="f" type="date" value="${esc(this._value)}"></div>`;
+      this.shadowRoot.querySelector("input").addEventListener("change", event => this.dispatchEvent(new CustomEvent("value-changed", { detail: { value: event.target.value || null } })));
+    }
+  });
+}
+// Content is only shown while expanded, like Home Assistant's panel.
+if (!customElements.get("ha-expansion-panel")) {
+  customElements.define("ha-expansion-panel", class extends HTMLElement {
+    constructor() {
+      super(); this.attachShadow({ mode: "open" }).innerHTML = `<style>:host{display:block;border:1px solid var(--divider-color,#e0e0e0);border-radius:12px}#summary{display:flex;align-items:center;gap:14px;padding:12px 16px;min-height:48px;cursor:pointer}.text{display:flex;flex-direction:column;flex:1}.secondary{font-size:13px;color:var(--secondary-text-color,#6f6f6f)}.container{padding:0 16px 16px}.container[hidden]{display:none}</style><div id="summary" role="button" tabindex="0" aria-expanded="false" aria-controls="sect1"><slot name="leading-icon"></slot><div class="text"><span class="header"></span><span class="secondary"></span></div></div><div class="container" id="sect1" role="region" aria-labelledby="summary" hidden><slot></slot></div>`;
+      const summary = this.shadowRoot.querySelector("#summary");
+      summary.addEventListener("click", () => this.toggle());
+      summary.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); this.toggle(); } });
+    }
+    set header(value) { this._header = value; this.render(); }
+    set secondary(value) { this._secondary = value; this.render(); }
+    set expanded(value) { this._expanded = Boolean(value); this.render(); }
+    get expanded() { return Boolean(this._expanded); }
+    toggle() { this.expanded = !this.expanded; this.dispatchEvent(new CustomEvent("expanded-changed", { detail: { expanded: this.expanded } })); }
+    render() {
+      this.shadowRoot.querySelector(".header").textContent = this._header ?? "";
+      this.shadowRoot.querySelector(".secondary").textContent = this._secondary ?? "";
+      this.shadowRoot.querySelector("#summary").setAttribute("aria-expanded", String(this.expanded));
+      this.shadowRoot.querySelector(".container").hidden = !this.expanded;
+    }
+  });
+}
+if (!customElements.get("ha-alert")) {
+  customElements.define("ha-alert", class extends HTMLElement {
+    constructor() { super(); this.attachShadow({ mode: "open" }).innerHTML = `<style>:host{display:block}.alert{display:flex;gap:12px;padding:12px 14px;border-radius:8px;background:#fdf1dc;color:#212121}.title{font-weight:500}</style><div class="alert" role="alert"><div><div class="title"></div><slot></slot></div></div>`; }
+    set title(value) { this.shadowRoot.querySelector(".title").textContent = value ?? ""; }
   });
 }
 await import("/custom_components/smart_plants/frontend/smart-plants-panel.js");

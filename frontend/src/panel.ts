@@ -177,6 +177,8 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _dialog: "delete" | "species" | null = null;
   @state() private _wizardStarted = false;
   @state() private _creationNotice = "";
+  // Photo part of the creation notice, shown on the wizard's confirmation.
+  @state() private _creationPhoto = "";
   @state() private _createdPlantId: string | null = null;
   @state() private _thresholdRole: string | null = null;
   @state() private _thresholdEdits: Record<string, string> | null = null;
@@ -1084,20 +1086,34 @@ export class SmartPlantsPanel extends LitElement {
        ${this._detailSection === "diagnostics" ? html`<section><h2>${l.t("automations.heading")}</h2><p>${l.t("automations.description")}</p><a href="/config/automation/dashboard">${l.t("automations.open_editor")}</a><ul>${this._related.map(id => html`<li>${id}</li>`)}</ul></section>${this._renderOverallHealth(plant)}${this._renderDiagnostics(plant)}` : nothing}
        ${this._renderDialog()}`;
   }
+  // Leaving the wizard with Cancel or from its confirmation discards it, so
+  // the next "Add plant" starts with a fresh draft.
+  private _closeWizard(): void {
+    if (this._formBusy) return;
+    this._clearCreationNotice();
+    this._wizardStarted = false;
+    this._show({ kind: "list" });
+  }
+  // A finished creation notice is no longer needed once the confirmation was
+  // seen; an upload in progress keeps reporting until it ends.
+  private _clearCreationNotice(): void {
+    if (this._creationNotice.endsWith(this._l.t("created.uploading"))) return;
+    this._creationNotice = ""; this._creationPhoto = ""; this._createdPlantId = null;
+  }
   private async _created(e: CustomEvent<{ plant: PlantRecord; photo: File | null; navigationContext: number }>): Promise<void> {
     const { plant, photo, navigationContext } = e.detail;
     const hass = this.hass;
     const foreground = this._view.kind === "create" && navigationContext === this._context;
     const initialPhoto = photo && plant.revision === 1 && plant.image === null;
-    this._wizardStarted = false;
+    // The visible wizard shows its confirmation; a hidden one is discarded.
+    if (!foreground) this._wizardStarted = false;
     // A committed result belongs in inventory even when its wizard is hidden.
-    // Only the navigation context that submitted it may open its detail editor.
     const latest = this._plantById(plant.id);
     if (!latest || latest.revision <= plant.revision) this._plants = [...this._plants.filter(p => p.id !== plant.id), plant];
     this._createdPlantId = plant.id;
     const l = this._l; const created = l.t("created.notice", { name: plant.name }); const uploading = l.t("created.uploading");
-    this._creationNotice = initialPhoto ? `${created} ${uploading}` : photo ? `${created} ${l.t("created.photo_skipped")}` : created;
-    if (foreground) this._show({ kind: "detail", plantId: plant.id });
+    const note = (photoText: string) => { this._creationPhoto = photoText; this._creationNotice = photoText ? `${created} ${photoText}` : created; };
+    note(initialPhoto ? uploading : photo ? l.t("created.photo_skipped") : "");
     const photoContext = this._context;
     // Reconcile through reads without rebasing or clearing unrelated pending
     // edits. Invalidate reads admitted before the creation result as usual.
@@ -1115,12 +1131,12 @@ export class SmartPlantsPanel extends LitElement {
       // The still-current created-plant editor can adopt its own photo revision
       // while retaining dirty fields. Other contexts reconcile only via refresh.
       if (photoContext === this._context && this._base?.id === plant.id && this._base.revision === plant.revision && !this._formBusy && !this._conflict) this._rebaseEdits(this._base, uploaded);
-      if (this._createdPlantId === plant.id) this._creationNotice = `${created} ${l.t("created.photo_uploaded")}`;
+      if (this._createdPlantId === plant.id) note(l.t("created.photo_uploaded"));
     } catch (error) {
       if (!this.isConnected || this.hass?.connection !== hass.connection) return;
-      if (this._createdPlantId === plant.id) this._creationNotice = `${created} ${l.t("created.photo_failed")} ${this._friendly(error)}`;
+      if (this._createdPlantId === plant.id) note(`${l.t("created.photo_failed")} ${this._friendly(error)}`);
     } finally {
-      if (this._createdPlantId === plant.id && this._creationNotice.endsWith(uploading)) this._creationNotice = `${created} ${l.t("created.photo_interrupted")}`;
+      if (this._createdPlantId === plant.id && this._creationNotice.endsWith(uploading)) note(l.t("created.photo_interrupted"));
     }
     await this._refresh(false);
   }
@@ -1138,13 +1154,13 @@ export class SmartPlantsPanel extends LitElement {
          <ha-dropdown-item value="documentation">${l.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>
        </ha-dropdown>
        <div class="panel-content">${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}${this._notice ? html`<p class="notice" role="status">${this._notice}</p>` : nothing}${this._registryError ? html`<p class="notice" role="alert">${l.t("panel.registry_unavailable", { error: this._registryError })}</p>` : nothing}
-      ${this._creationNotice ? html`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && !(this._view.kind === "detail" && this._view.plantId === this._createdPlantId) ? html`<button ?disabled=${this._formBusy} @click=${() => { if (this._createdPlantId) this._show({ kind: "detail", plantId: this._createdPlantId }); }}>${l.t("panel.open_created")}</button>` : nothing}` : nothing}
+      ${this._creationNotice && this._view.kind !== "create" ? html`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && !(this._view.kind === "detail" && this._view.plantId === this._createdPlantId) ? html`<button ?disabled=${this._formBusy} @click=${() => { if (this._createdPlantId) this._show({ kind: "detail", plantId: this._createdPlantId }); }}>${l.t("panel.open_created")}</button>` : nothing}` : nothing}
       ${this._view.kind === "list" && this._overviewError ? html`<p class="error" role="alert">${l.t("overview.status_unavailable", { error: this._overviewError })}</p>` : nothing}
       <smart-plants-overview ?hidden=${this._view.kind !== "list"} .l=${l} .plants=${this._plants} .overview=${this._overview} .areaNames=${this._plantAreaNames()}
         .thumbnails=${this._thumbnails} .watering=${this._watering} .loading=${this._loading} .blocked=${this._blocked}
         @open-plant=${(e: CustomEvent<OpenPlantDetail>) => this._openFromOverview(e.detail)} @add-plant=${() => this._show({ kind: "create" })} @log-watering=${(e: CustomEvent<{ plantId: string }>) => void this._logWatering(e.detail.plantId)}></smart-plants-overview>
       ${this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : nothing}
-      ${this._wizardStarted && this._capabilities ? html`<div ?hidden=${this._view.kind !== "create"}><smart-plants-wizard .hass=${this.hass} .capabilities=${this._capabilities} .areas=${this._areas} .entities=${this._entities} .states=${this._states} .blocked=${this._blocked} .navigationContext=${this._context} @plant-created=${(e: CustomEvent<{ plant: PlantRecord; photo: File | null; navigationContext: number }>) => void this._created(e)} @backend-unavailable=${(e: CustomEvent<string>) => { this._blocked = true; this._error = e.detail; }}></smart-plants-wizard></div>` : nothing}
+      ${this._wizardStarted && this._capabilities ? html`<div ?hidden=${this._view.kind !== "create"}><smart-plants-wizard .hass=${this.hass} .capabilities=${this._capabilities} .areas=${this._areas} .entities=${this._entities} .devices=${this._devices} .states=${this._states} .blocked=${this._blocked} .navigationContext=${this._context} .photoStatus=${this._creationPhoto} @plant-created=${(e: CustomEvent<{ plant: PlantRecord; photo: File | null; navigationContext: number }>) => void this._created(e)} @wizard-close=${() => this._closeWizard()} @wizard-restart=${() => this._clearCreationNotice()} @backend-unavailable=${(e: CustomEvent<string>) => { this._blocked = true; this._error = e.detail; }}></smart-plants-wizard></div>` : nothing}
         <p role="status" aria-live="polite">${this._formBusy ? l.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
   }
 }
