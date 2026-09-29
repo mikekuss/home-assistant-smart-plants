@@ -16,7 +16,7 @@ export const de: Catalog = {
   "panel.menu": "Menü",
   "panel.back_to_overview": "Zurück zur Übersicht",
   "panel.add_plant": "Pflanze hinzufügen",
-  "panel.registry_unavailable": "Registrierungs- oder Zustandsdaten nicht verfügbar: {error}. Stelle die Verbindung wieder her, bevor du registrierte Sensoren oder Bereiche zuweist.",
+  "panel.registry_unavailable": "Sensoren und Bereiche konnten nicht aus Home Assistant geladen werden. Lade die Seite neu, um es erneut zu versuchen; bis dahin kannst du keine Sensoren oder Bereiche zuweisen.",
   "panel.open_created": "Erstellte Pflanze öffnen",
   "panel.busy": "Speichern oder Vorschau wird geladen …",
 

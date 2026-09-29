@@ -15,7 +15,7 @@ export const en = {
   "panel.menu": "Menu",
   "panel.back_to_overview": "Back to overview",
   "panel.add_plant": "Add plant",
-  "panel.registry_unavailable": "Registry/state data unavailable: {error}. Reconnect before assigning registered sensors or areas.",
+  "panel.registry_unavailable": "Couldn't load sensors and areas from Home Assistant. Reload the page to try again; until then you can't assign sensors or areas.",
   "panel.open_created": "Open created plant",
   "panel.busy": "Saving or loading preview…",
 

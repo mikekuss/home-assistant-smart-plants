@@ -406,11 +406,15 @@ export const api = {
   },
 };
 
+// Real registries carry entries written by older or third-party integrations
+// (numeric unique IDs, legacy identifier tuples). Skip entries the panel cannot
+// use rather than refusing every sensor and area because of one of them; only
+// a response that is not a list at all fails closed.
 function registryList<T>(value: unknown, valid: (entry: Record<string, unknown>) => boolean): T[] {
-  if (!Array.isArray(value) || !value.every(v => typeof v === "object" && v !== null && valid(v as Record<string, unknown>))) {
+  if (!Array.isArray(value)) {
     throw new ApiError("invalid_response", "Home Assistant registry/state response is incompatible. Reload and retry.");
   }
-  return value as T[];
+  return value.filter(v => typeof v === "object" && v !== null && !Array.isArray(v) && valid(v as Record<string, unknown>)) as T[];
 }
 
 interface HttpArgs {

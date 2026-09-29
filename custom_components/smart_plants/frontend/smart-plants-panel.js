@@ -1334,8 +1334,8 @@ var F = {
 	}
 };
 function Lt(e, t) {
-	if (!Array.isArray(e) || !e.every((e) => typeof e == "object" && !!e && t(e))) throw new N("invalid_response", "Home Assistant registry/state response is incompatible. Reload and retry.");
-	return e;
+	if (!Array.isArray(e)) throw new N("invalid_response", "Home Assistant registry/state response is incompatible. Reload and retry.");
+	return e.filter((e) => typeof e == "object" && !!e && !Array.isArray(e) && t(e));
 }
 async function Rt(e, t, n) {
 	let r = {};
@@ -1380,7 +1380,7 @@ var zt = {
 	"panel.menu": "Menü",
 	"panel.back_to_overview": "Zurück zur Übersicht",
 	"panel.add_plant": "Pflanze hinzufügen",
-	"panel.registry_unavailable": "Registrierungs- oder Zustandsdaten nicht verfügbar: {error}. Stelle die Verbindung wieder her, bevor du registrierte Sensoren oder Bereiche zuweist.",
+	"panel.registry_unavailable": "Sensoren und Bereiche konnten nicht aus Home Assistant geladen werden. Lade die Seite neu, um es erneut zu versuchen; bis dahin kannst du keine Sensoren oder Bereiche zuweisen.",
 	"panel.open_created": "Erstellte Pflanze öffnen",
 	"panel.busy": "Speichern oder Vorschau wird geladen …",
 	"api_error.unknown": "Anfrage fehlgeschlagen. Aktualisiere die Seite und versuche es erneut, sobald eine Verbindung besteht.",
@@ -2110,7 +2110,7 @@ var zt = {
 	"panel.menu": "Menu",
 	"panel.back_to_overview": "Back to overview",
 	"panel.add_plant": "Add plant",
-	"panel.registry_unavailable": "Registry/state data unavailable: {error}. Reconnect before assigning registered sensors or areas.",
+	"panel.registry_unavailable": "Couldn't load sensors and areas from Home Assistant. Reload the page to try again; until then you can't assign sensors or areas.",
 	"panel.open_created": "Open created plant",
 	"panel.busy": "Saving or loading preview…",
 	"api_error.unknown": "Request failed. Refresh and retry when connected.",
@@ -7045,7 +7045,7 @@ var $ = class extends S {
          <ha-dropdown-item value="integration-options">${e.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="documentation">${e.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>`}
        </ha-dropdown>
-       <div class="panel-content">${this._error ? y`<p class="error" role="alert">${this._error}</p>` : b}${this._notice ? y`<p class="notice" role="status">${this._notice}</p>` : b}${this._registryError ? y`<p class="notice" role="alert">${e.t("panel.registry_unavailable", { error: this._registryError })}</p>` : b}
+       <div class="panel-content">${this._error ? y`<p class="error" role="alert">${this._error}</p>` : b}${this._notice ? y`<p class="notice" role="status">${this._notice}</p>` : b}${this._registryError ? y`<p class="notice" role="alert">${e.t("panel.registry_unavailable")}</p>` : b}
       ${this._creationNotice && this._view.kind !== "create" ? y`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && (this._view.kind !== "detail" || this._view.plantId !== this._createdPlantId) ? y`<button ?disabled=${this._formBusy} @click=${() => {
 			this._createdPlantId && this._show({
 				kind: "detail",
