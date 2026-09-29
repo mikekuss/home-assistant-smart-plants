@@ -267,7 +267,7 @@ export const de: Catalog = {
   "care.no_amount": "Keine gemessene Menge",
   "care.save_changes": "Pflegeänderungen speichern",
   "care.cancel_editing": "Bearbeitung abbrechen",
-  "care.no_irrigation": "Pflegeeinträge steuern keine Bewässerung und ändern keine Feuchtewarnungen.",
+  "care.no_irrigation": "Pflegeeinträge steuern nie eine Bewässerung. Nach einer eingetragenen Bewässerung bleibt „Braucht Wasser“ 24 Stunden aus.",
   "care.confirm_delete": "Diesen Eintrag „{kind}“ löschen? Dies kann nicht rückgängig gemacht werden.",
   "care.error_refresh_save": "Aktualisiere den Pflegeverlauf vor dem Speichern. Dein Entwurf bleibt erhalten.",
   "care.error_refresh_delete": "Aktualisiere den Pflegeverlauf vor dem Löschen.",

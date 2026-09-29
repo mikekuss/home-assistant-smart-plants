@@ -266,7 +266,7 @@ export const en = {
   "care.no_amount": "No measured amount",
   "care.save_changes": "Save care changes",
   "care.cancel_editing": "Cancel editing",
-  "care.no_irrigation": "Care records do not operate irrigation or change moisture alerts.",
+  "care.no_irrigation": "Care records never operate irrigation. After a logged watering, Needs water stays off for 24 hours.",
   "care.confirm_delete": "Delete this {kind} record? This cannot be undone.",
   "care.error_refresh_save": "Refresh care history before saving. Your draft is retained.",
   "care.error_refresh_delete": "Refresh care history before deleting.",

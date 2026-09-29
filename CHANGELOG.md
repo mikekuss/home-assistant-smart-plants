@@ -42,6 +42,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   and to a new automation for it, and **Download diagnostics** for bug reports (no plant name,
   notes, photo or credentials).
 
+### Fixed
+
+- The note in the care form said care records never change moisture alerts. It now says
+  that logging a watering keeps *Needs water* off for 24 hours, which is what happens.
+
 ## [0.4.0] - 2026-09-28
 
 ### Changed

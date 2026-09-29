@@ -22,7 +22,8 @@ The overview shows:
 - one card per plant with its photo, area and species, a status label with a short
   explanation (for example *Soil moisture 34% is below the minimum of 60%*), the soil
   moisture on a bar with its target range, the current value of every other assigned
-  sensor, and when the plant was last watered.
+  sensor, and when the plant was last watered. A plant without sensors shows **Assign**,
+  which opens its **Sensors** tab.
 
 Each plant has one status, most urgent first: *Needs water*, *Too wet*, a named problem
 (such as *Too little light* or *Battery low*), *No recent data*, *No sensors*, *Healthy*.
@@ -32,8 +33,8 @@ Select **Watered** on a card to log a watering right now. A message confirms it 
 **Undo** for a few seconds.
 
 Use **Add plant** at the bottom right (or **⋮ → Add plant** in the top bar) to start the
-creation wizard. Select a plant's name to open its detail view. The **⋮** menu also links to
-the integration options and this documentation.
+creation wizard. Select a plant's name to open its page. The **⋮** menu also links to the
+integration options and this documentation.
 
 ## Create your first plant
 
@@ -115,17 +116,19 @@ Open the plant and go to the **Sensors** tab.
 - **Add sensor** lists the readings that have no sensor yet: soil moisture, temperature,
   humidity, light, battery, fertilizer level (conductivity), soil temperature and CO₂. Pick
   one, add one or more sensors and save.
-- **Several sensors for one reading** (collapsed) sets, per reading, which value counts when
-  more than one sensor is assigned (**Main sensor only**, **Average**, **Lowest** or
-  **Highest**), which sensor is the **Main sensor**, and after how many seconds without an
-  update a sensor counts as **not updating**.
+- **Several sensors for one reading** (collapsed) lists every reading with a short summary.
+  Select **Change** to set **Combine readings** (which value counts when more than one sensor
+  is assigned: **Main sensor only**, **Average**, **Lowest** or **Highest**), which sensor is
+  the **Main sensor**, and **Not updating after**: how many seconds without an update make a
+  sensor count as not updating.
 
 When the soil moisture sensor stops reporting, a warning at the top of the tab names the
 sensor and when it last reported.
 
 The sensor picker is filtered by device class and unit for each reading. Tick
-**Show all sensors** to pick anything else, or type an entity ID and press Enter to assign a
-sensor that is currently unavailable. Each reading accepts up to 32 sensors.
+**Show all sensors (metadata fallback)** to pick anything else, or type an entity ID and press
+Enter to assign a sensor that is currently unavailable. Each reading accepts up to 32
+sensors.
 
 A reading's sensor and problem entities appear the first time you assign a sensor to it. See
 [Sensors and health](sensors-and-health.md) for accepted units and how values are combined.

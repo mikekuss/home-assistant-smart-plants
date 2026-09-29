@@ -11,9 +11,9 @@ The file is designed to be safe to share. It contains:
   client ID and secret themselves are never included),
 - whether "Preserve inventory when the integration is removed" is on,
 - OpenPlantBook connection status, such as whether a token and cached results exist,
-- inventory counts: number of plants, active vs. disabled plants, species sources, assigned
-  sensor sources (in total and per role, for example moisture, temperature, or battery),
-  photos, and internal pending operations.
+- inventory counts: number of plants, active vs. paused (`disabled`) plants, species
+  sources, assigned sensor sources (in total and per role, for example moisture,
+  temperature, or battery), photos, and internal pending operations.
 
 It does **not** contain plant names, entity IDs, care history, or photos. Still, have a look
 at the file before attaching it publicly.
@@ -60,22 +60,26 @@ in with an administrator account.
 ### A plant shows no moisture reading
 
 - Check that at least one moisture sensor is assigned in the plant's **Sensors** tab.
-- With the **primary** aggregation (the default), a primary sensor must be selected. Either
-  pick one or switch to average, min, or max.
+- With **Main sensor only** (the default), a main sensor must be selected. In the
+  **Sensors** tab, open **Several sensors for one reading**, select **Change** next to the
+  reading, and either pick a **Main sensor** or set **Combine readings** to **Average**,
+  **Lowest**, or **Highest**.
 - The source must report a numeric value with the unit `%`, between 0 and 100. Sensors with a
   different or missing unit are ignored. Check the source in **Developer tools → States**.
-- A source that is stale is excluded. With **primary**, a stale primary sensor makes the plant
-  reading unavailable (there's no automatic fallback).
+- A source that is not updating (stale) is excluded. With **Main sensor only**, a stale main
+  sensor makes the plant reading unavailable (there's no automatic fallback).
 
 The same applies to the other roles with their own units; see
 [Sensors and health](sensors-and-health.md#supported-roles).
 
 ### Sensor stale is on, but the sensor works
 
-A source is considered stale when its state or attributes haven't changed in Home Assistant
-within the **stale after** window (6 hours by default). Some sensors only report when the
-value changes, and a very stable reading can look stale. Increase **Stale after** for that
-role in the plant's **Sensors** tab, or check whether the device has stopped reporting.
+A source is considered stale when it hasn't reported a valid reading to Home Assistant within
+the **Not updating after** window (6 hours by default). The panel shows such a sensor as
+*not updating* and the plant as *No recent data*. Some sensors only report when the value
+changes, and a very stable reading can look stale. Increase **Not updating after** for that
+reading in the plant's **Sensors** tab under **Several sensors for one reading**, or check
+whether the device has stopped reporting.
 
 ### A problem indicator is unavailable
 
@@ -86,7 +90,7 @@ Unavailable means Smart Plants has no trustworthy value, which is deliberately d
   offline),
 - a source for that role is stale,
 - for *Low light*: fewer than two daytime readings in the last two hours,
-- the plant is disabled.
+- the plant is paused (**Pause monitoring**).
 
 ### "Smart Plants: assigned source missing" in Repairs
 
@@ -105,8 +109,8 @@ entity registry", pick a different entity from the `sensor` domain.
 | "OpenPlantBook rejected these credentials." | Check the client ID and secret on the [OpenPlantBook API key page](https://open.plantbook.io/apikey/) and enter them again. |
 | "OpenPlantBook could not be reached." | Check your internet connection and try later, or disable the provider for now. |
 | A reauthentication prompt appears under **Settings → Devices & services** | The stored credentials stopped working. Open the prompt and enter valid credentials. |
-| Search offers no OpenPlantBook option, or it's greyed out | Enable the provider and add credentials in the integration options. See [OpenPlantBook](openplantbook.md). |
-| Applying species data fails | The imported moisture range conflicts with your current thresholds. Adjust the moisture overrides and try again. |
+| The wizard says "Species search needs OpenPlantBook.", or the plant's **Species provider** list offers only **Manual species** | Enable the provider and add credentials in the integration options. See [OpenPlantBook](openplantbook.md). |
+| Applying species data fails | The imported moisture range conflicts with your current thresholds. Adjust the **Soil moisture targets** and try again. |
 | A reviewed species can't be applied after a while | Previews are valid for 10 minutes. Request a new preview. |
 
 OpenPlantBook problems never affect your existing plants or their entities.

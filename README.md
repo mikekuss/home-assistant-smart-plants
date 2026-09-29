@@ -10,7 +10,7 @@ Manage your plants as first-class Home Assistant objects. Create plants from a g
 pick a species, link the sensors you already have, log care, and use each plant's health in
 native Home Assistant automations — no YAML or template sensors required.
 
-![Smart Plants panel overview with summary cards and plant cards](docs/images/overview.png)
+![Smart Plants panel overview with status tiles, search and plant cards](docs/images/overview.png)
 
 > **Status:** early development (0.3). Expect rough edges and make sure your Home Assistant
 > backups include Smart Plants data (see [Installation](docs/installation.md#backup-and-restore)).
@@ -20,19 +20,23 @@ native Home Assistant automations — no YAML or template sensors required.
 - **Plants as stable devices.** Each plant is a long-lived Home Assistant device with its own
   area, photo, and entities. Sensors are replaceable inputs, so a plant keeps its history when
   you swap hardware.
-- **Guided panel.** A sidebar panel for creating, filtering, editing, disabling, and deleting
-  plants.
+- **Guided panel.** A sidebar panel with an overview of all plants (status tiles, search,
+  and sorting by what needs attention first), a three-step wizard for adding plants, and a
+  page per plant for its readings, sensors, care, and settings. Plants can be paused and
+  deleted from the panel.
 - **Sensor roles.** Assign existing sensors for soil moisture, temperature, humidity,
   illuminance, conductivity, soil temperature, CO2, and battery.
-- **Health evaluation.** A composite health score plus problem binary sensors such as
-  *Needs water*, *Too wet*, *Low light*, *Sensor stale*, and per-role stress, with editable
-  thresholds.
-- **Care history.** Log watering, fertilizing, pruning, repotting, and notes.
+- **Health evaluation.** Each plant gets one clear status (for example *Needs water* or
+  *Healthy*) with a short explanation, problem binary sensors such as *Needs water*,
+  *Too wet*, *Low light*, *Sensor stale*, and per-role stress, and a composite health score
+  sensor. Thresholds are editable per plant.
+- **Care history.** Log watering, fertilizing, pruning, repotting, and notes. A **Watered**
+  button on each plant logs a watering in one tap.
 - **Optional species data.** Search [OpenPlantBook](https://open.plantbook.io/) and review
   suggested values before applying them. Smart Plants works fully without it.
 - **Native Home Assistant integration.** Entities work in any automation, dashboard, or
   notification. Repairs issues guide you when an assigned sensor disappears, and diagnostics
-  help with bug reports.
+  for the integration and for each plant help with bug reports.
 - **Safe by design.** Smart Plants detects plant needs but never switches valves or pumps
   itself. You decide how to act in your own automations.
 - Setup, entity names, repairs, and the sidebar panel are available in English and German.

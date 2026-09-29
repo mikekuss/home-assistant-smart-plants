@@ -58,7 +58,8 @@ has expired, request a new one.
 
 ## Apply reviewed data
 
-- **In the wizard:** tick **I reviewed and accept this species information**, then continue.
+- **In the wizard:** tick **I reviewed and accept this species information**, then select
+  **Create plant**.
 - **For an existing plant:** review the changes and select
   **Accept and apply reviewed species**.
 
@@ -72,8 +73,8 @@ What applying does:
   uses your override, field by field. Applying species data only changes defaults.
 - If the imported values can't be combined with your current settings (for example, the
   imported minimum is above the current target), the apply is refused. In the wizard you'll
-  be asked to fix the thresholds; for an existing plant, set a matching override first and
-  apply again.
+  be asked to check the **Soil moisture targets**; for an existing plant, set matching
+  **Soil moisture targets** in the **Settings** tab first and apply again.
 
 For a plant that already has OpenPlantBook data, **Preview species refresh** fetches the
 latest data and shows what would change. You can also switch back to manual species details
@@ -104,7 +105,8 @@ available while authentication is broken; only species search is affected.
 
 Go to **Settings → Devices & services → Smart Plants → Configure** and untick
 **Enable direct OpenPlantBook provider**. Species data you already applied stays on your
-plants. The wizard will then only offer manual species details.
+plants. The wizard then explains that species search needs OpenPlantBook and only offers
+entering a name yourself.
 
 ## Attribution and licensing
 
