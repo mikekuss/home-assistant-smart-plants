@@ -19,6 +19,8 @@ export const de: Catalog = {
   "panel.registry_unavailable": "Sensoren und Bereiche konnten nicht aus Home Assistant geladen werden. Lade die Seite neu, um es erneut zu versuchen; bis dahin kannst du keine Sensoren oder Bereiche zuweisen.",
   "panel.open_created": "Erstellte Pflanze öffnen",
   "panel.busy": "Speichern oder Vorschau wird geladen …",
+  "panel.update_available": "Smart Plants wurde aktualisiert. Lade die Seite neu, um die neue Version zu verwenden.",
+  "panel.reload": "Neu laden",
 
   "api_error.unknown": "Anfrage fehlgeschlagen. Aktualisiere die Seite und versuche es erneut, sobald eine Verbindung besteht.",
   "api_error.integration_not_loaded": "Smart Plants ist nicht geladen. Öffne Einstellungen → Geräte & Dienste und aktualisiere die Seite, nachdem die Integration geladen wurde.",

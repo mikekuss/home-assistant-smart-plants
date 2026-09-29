@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- After an update, an open panel that is still running the previous version shows
+  *Smart Plants was updated* with a **Reload** button, instead of silently staying on the old
+  version until the page is reloaded.
+
 ### Fixed
 
 - The panel no longer refuses every sensor and area when a single Home Assistant registry

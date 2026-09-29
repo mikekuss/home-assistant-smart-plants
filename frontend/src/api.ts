@@ -102,7 +102,8 @@ export const api = {
   async info(hass: HomeAssistantLike): Promise<PanelCapabilities> {
     const result = await send<PanelCapabilities>(hass, { type: "smart_plants/panel/info" });
     if (!result || result.api_version !== 1 || result.schema_version !== 1 || !Array.isArray(result.providers) ||
-        !result.providers.every(p => p && typeof p.provider === "string" && typeof p.available === "boolean" && typeof p.search_supported === "boolean")) {
+        !result.providers.every(p => p && typeof p.provider === "string" && typeof p.available === "boolean" && typeof p.search_supported === "boolean") ||
+        (result.bundle_version !== undefined && (typeof result.bundle_version !== "string" || result.bundle_version.length > 100))) {
       throw new ApiError("version_mismatch", "Panel/API version mismatch. Restart Home Assistant and fully reload the frontend after upgrading.");
     }
     return result;

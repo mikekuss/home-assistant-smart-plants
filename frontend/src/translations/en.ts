@@ -18,6 +18,8 @@ export const en = {
   "panel.registry_unavailable": "Couldn't load sensors and areas from Home Assistant. Reload the page to try again; until then you can't assign sensors or areas.",
   "panel.open_created": "Open created plant",
   "panel.busy": "Saving or loading preview…",
+  "panel.update_available": "Smart Plants was updated. Reload the page to use the new version.",
+  "panel.reload": "Reload",
 
   "api_error.unknown": "Request failed. Refresh and retry when connected.",
   "api_error.integration_not_loaded": "Smart Plants is not loaded. Open Settings → Devices & Services, then refresh after loading the integration.",
