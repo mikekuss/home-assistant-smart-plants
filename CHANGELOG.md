@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-30
+
 ### Added
 
 - The plant page has a **History** card on the Overview tab: a chart of one reading over the
@@ -168,7 +170,8 @@ First public release.
 - English and German translations for the integration's entities, setup, and repairs. The
   sidebar panel is English-only.
 
-[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.5.1...HEAD
+[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.6.0...HEAD
+[0.6.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.5.1...0.6.0
 [0.5.1]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.3.1...0.4.0
