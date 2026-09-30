@@ -12,9 +12,12 @@ import "./components/index.js";
 import { themeFallbacks } from "./components/shared-styles.js";
 import { isDefined } from "./ha-elements.js";
 import { chipText } from "./overview-model.js";
-import { ROLE_META, formatValue, readingLabel, relativeTime } from "./status.js";
-import { CARE_ICONS, CARE_KINDS, DETAIL_SECTIONS, SECTION_LABELS, careDetails, expander, formatDuration, friendlyName, headerReason, readingPhrase, plantStyles, readingsInOrder, renderKeyReadings, renderReadingRow } from "./views/plant.js";
-import type { DetailSection } from "./views/plant.js";
+import { READING_ROLES, ROLE_META, formatValue, isReadingRole, readingLabel, relativeTime } from "./status.js";
+import type { ReadingRole } from "./status.js";
+import { RANGE_SPECS, isHistoryRange } from "./history-model.js";
+import type { HistoryPoint, HistoryRange } from "./history-model.js";
+import { CARE_ICONS, CARE_KINDS, DETAIL_SECTIONS, SECTION_LABELS, careDetails, expander, formatDuration, friendlyName, headerReason, readingPhrase, plantStyles, readingsInOrder, renderHistoryCard, renderKeyReadings, renderReadingRow } from "./views/plant.js";
+import type { DetailSection, HistoryStatus } from "./views/plant.js";
 
 // Per-role editable-threshold configuration. Adding a role here + wiring
 // _persistedOverrides + validator + seeder registers a reviewed editor.
@@ -141,6 +144,14 @@ function localTimestamp(date: Date): string {
   return `${local}${offset < 0 ? "-" : "+"}${String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0")}:${String(Math.abs(offset) % 60).padStart(2, "0")}`;
 }
 
+// The chart's reading and time range are a per-browser preference. Storage can
+// be unavailable (private windows, blocked site data), so every access is guarded.
+const HISTORY_ROLE_KEY = "smart_plants.history_role";
+const HISTORY_RANGE_KEY = "smart_plants.history_range";
+const HISTORY_REFRESH_MS = 5 * 60_000;
+function stored(key: string): string | null { try { return localStorage.getItem(key); } catch { return null; } }
+function store(key: string, value: string): void { try { localStorage.setItem(key, value); } catch { /* not persisted */ } }
+
 export class SmartPlantsPanel extends LitElement {
   static styles = [themeFallbacks, styles, plantStyles];
   // The bundle this document is running, taken from the URL it was loaded from.
@@ -167,6 +178,10 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _health: Record<string, HealthEvaluation> = {};
   @state() private _healthError = "";
   @state() private _careHistory: CareHistory | null = null;
+  @state() private _historyRole: ReadingRole = (role => isReadingRole(role) ? role : "moisture")(stored(HISTORY_ROLE_KEY));
+  @state() private _historyRange: HistoryRange = (range => isHistoryRange(range) ? range : "7d")(stored(HISTORY_RANGE_KEY));
+  // Recorded values of one plant sensor for one time range, keyed by both.
+  @state() private _history: { key: string; status: HistoryStatus; points: HistoryPoint[] } | null = null;
   @state() private _careError = "";
   @state() private _careDate = "";
   @state() private _careNote = "";
@@ -230,6 +245,8 @@ export class SmartPlantsPanel extends LitElement {
   private _thumbnailAborts = new Map<string, AbortController>();
   private _request = 0;
   private _careRequest = 0;
+  private _historyRequest = 0;
+  private _historyLoadedAt = 0;
   private _providerRequest = 0;
   private _context = 0;
   private _unsubscribe: (() => void) | undefined;
@@ -246,6 +263,7 @@ export class SmartPlantsPanel extends LitElement {
       if (this.hass?.states) this._states = Object.fromEntries(Object.entries(this.hass.states).filter(([id, s]) => validState(s) && s.entity_id === id));
       this._syncImage();
     }
+    this._syncHistory();
   }
   protected updated(changed: PropertyValues): void {
     if (changed.has("hass")) {
@@ -562,6 +580,64 @@ export class SmartPlantsPanel extends LitElement {
     } catch (error) {
       if (careRequest === this._careRequest && context === this._context && (request === undefined || request === this._request)) { this._careHistory = null; this._careError = this._friendly(error); }
     }
+  }
+  // ---- History chart ----
+  // The plant's own sensor for a role. Its statistics survive a swap of the
+  // physical sensor, so the chart follows the plant rather than the hardware.
+  private _historyEntity(plant: PlantRecord, role: ReadingRole): string | undefined {
+    const uniqueId = `smart_plants:${plant.id}:${role}`;
+    return this._entities.find(e => e.platform === "smart_plants" && e.unique_id === uniqueId && e.entity_id.startsWith("sensor."))?.entity_id;
+  }
+  // Roles with assigned sensors and a registered plant sensor, soil moisture first.
+  private _historyRoles(plant: PlantRecord): ReadingRole[] {
+    return READING_ROLES.filter(role => ((role === "moisture" ? moistureRole(plant) : roleSourceConfig(plant, role))?.sources.length ?? 0) > 0 && this._historyEntity(plant, role) !== undefined);
+  }
+  private _historyTarget(plant: PlantRecord): { role: ReadingRole; roles: ReadingRole[]; entityId: string; key: string } | null {
+    const roles = this._historyRoles(plant);
+    const role = roles.includes(this._historyRole) ? this._historyRole : roles[0];
+    const entityId = role ? this._historyEntity(plant, role) : undefined;
+    return role && entityId ? { role, roles, entityId, key: `${entityId}|${this._historyRange}` } : null;
+  }
+  // Loads the chart's data when the shown sensor or range changes, and again
+  // every few minutes while the chart stays open.
+  private _syncHistory(force = false): void {
+    const plant = this._view.kind === "detail" && this._detailSection === "overview" ? this._plantById(this._view.plantId) : undefined;
+    if (!plant || !this.hass || this._blocked || !this.isConnected) return;
+    const target = this._historyTarget(plant);
+    if (!target) return;
+    const { key, entityId, role } = target;
+    const sameKey = this._history?.key === key;
+    if (sameKey && !force && Date.now() - this._historyLoadedAt < HISTORY_REFRESH_MS) return;
+    const request = ++this._historyRequest; this._historyLoadedAt = Date.now();
+    // A refresh keeps the drawn chart until the new values arrive.
+    if (!sameKey || this._history?.status !== "ready") this._history = { key, status: "loading", points: [] };
+    const spec = RANGE_SPECS[this._historyRange];
+    const units = role === "temperature" || role === "soil_temperature" ? { temperature: "°C" } : undefined;
+    void api.statistics(this.hass, entityId, new Date(Date.now() - spec.spanMs), spec.period, units).then(points => {
+      if (request === this._historyRequest) this._history = { key, status: "ready", points };
+    }).catch((e: unknown) => {
+      // Without the recorder Home Assistant does not know the command at all.
+      if (request === this._historyRequest) this._history = { key, status: e instanceof ApiError && e.code === "unknown_command" ? "unavailable" : "error", points: [] };
+    });
+  }
+  private _renderHistory(plant: PlantRecord) {
+    const target = this._historyTarget(plant);
+    if (!target) return nothing;
+    const l = this._l; const o = this._overview[plant.id];
+    const data = this._history?.key === target.key ? this._history : null;
+    const markerKind = target.role === "moisture" ? "watering" : target.role === "conductivity" ? "fertilizing" : null;
+    const markers = markerKind ? (this._careHistory?.events ?? []).filter(event => event.kind === markerKind).map(event => Date.parse(event.occurred_at)).filter(Number.isFinite) : [];
+    const lastWatered = o?.last_watered_at ? Date.parse(o.last_watered_at) : NaN;
+    return renderHistoryCard(l, {
+      roles: target.roles, role: target.role, range: this._historyRange, status: data?.status ?? "loading", points: data?.points ?? [],
+      reading: o?.roles[target.role], markers, markerLabel: markerKind ? l.t(`history.legend_${markerKind}`) : "",
+      lastWatered: Number.isFinite(lastWatered) ? lastWatered : null, now: Date.now(),
+      onRole: role => { this._historyRole = role; store(HISTORY_ROLE_KEY, role); },
+      onRange: range => { this._historyRange = range; store(HISTORY_RANGE_KEY, range); },
+      // Home Assistant's own dialog for the sensor, with its chart and the link to History.
+      onOpen: () => { this.dispatchEvent(new CustomEvent("hass-more-info", { bubbles: true, composed: true, detail: { entityId: target.entityId } })); },
+      onRetry: () => this._syncHistory(true),
+    });
   }
   private _carePayload(): CareEvent["payload"] {
     const note = this._careNote.trim() || null;
@@ -1388,6 +1464,7 @@ export class SmartPlantsPanel extends LitElement {
           ${readings.length ? html`<ul class="list">${readings.map(([role, reading]) => renderReadingRow(l, role, reading, this._states))}</ul>`
             : html`<div class="card-b"><div class="empty-box"><span>${o?.status === "paused" ? l.t("readings.paused") : l.t("readings.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._selectSection("sensors")}>${l.t("readings.assign")}</button></div></div>`}
         </section>
+        ${this._renderHistory(plant)}
         <section class="sp-card" aria-labelledby="recent-heading"><div class="card-h"><h3 id="recent-heading">${l.t("recent.heading")}</h3>
           ${history?.events.length ? html`<button type="button" class="btn text sm" @click=${() => this._selectSection("care")}>${l.t("recent.show_all")}</button>` : nothing}</div>
           ${!history ? html`<p class="card-b muted">${l.t("care.loading")}</p>` : recent.length ? html`<ul class="list">${recent.map(event => html`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${CARE_ICONS[event.kind]}></ha-icon></span>

@@ -43,7 +43,7 @@ const state = {
   entities: [{ ...entity(101, "sensor.soil"), area_id: "office" }, entity(102, "sensor.backup"), entity(103, "sensor.metadata_free"), { ...entity(104, "sensor.living_temp"), area_id: "office" }, entity(105, "sensor.pot_battery")],
   devices: [],
   states: [sensor("sensor.soil", "12", { friendly_name: "Soil probe", unit_of_measurement: "%", device_class: "moisture" }), sensor("sensor.backup", "unavailable", { friendly_name: "Backup probe", unit_of_measurement: "%", device_class: "moisture" }), sensor("sensor.metadata_free", "42", { friendly_name: "Metadata-free probe" }), sensor("sensor.living_temp", "21.5", { friendly_name: "Living room temperature", unit_of_measurement: "°C", device_class: "temperature" }), sensor("sensor.pot_battery", "80", { friendly_name: "Pot battery", unit_of_measurement: "%", device_class: "battery" })],
-  evaluations: {}, health: {}, failures: {}, malformed: {}, providerAvailable: true,
+  evaluations: {}, health: {}, statistics: {}, failures: {}, malformed: {}, providerAvailable: true,
   conflictNext: false, loseCreateResponse: false, imageFailure: null,
   blobsCreated: [], blobsRevoked: [], imageSerial: 0,
   holdNext: {}, pending: {}, roleDefaults: copy(roleDefaults),
@@ -75,6 +75,21 @@ state.seed = () => {
   state.devices = state.plants.map((p, i) => deviceFor(p, i === 0 ? "office" : "garden"));
   state.evaluations[uuid(1)] = { computed_percent: 12, health_score: 30, needs_water: true, too_wet: false, sensor_stale: false, computed_available: true, reasons: ["Primary moisture is below the minimum."] };
   state.evaluations[uuid(2)] = { ...unavailable, sensor_stale: true, reasons: ["Assigned registered source is missing."] };
+};
+// Opt-in recorder history for the first plant: its own moisture sensor and a
+// week of hourly statistics ending now, with a watering 150 hours ago followed
+// by a steady drop to the current 40 %.
+state.seedHistory = () => {
+  const p = state.plants[0], entityId = "sensor.office_aloe_soil_moisture", hour = 3600000, end = Date.now();
+  state.entities.push({ id: uuid(600), entity_id: entityId, device_id: `device-${p.id}`, unique_id: `smart_plants:${p.id}:moisture`, platform: "smart_plants" });
+  state.states.push(sensor(entityId, "12", { friendly_name: "Office Aloe Soil moisture", unit_of_measurement: "%", device_class: "moisture" }));
+  state.evaluations[p.id] = { computed_percent: 40, health_score: 90, needs_water: false, too_wet: false, sensor_stale: false, computed_available: true, reasons: [] };
+  state.statistics[entityId] = period => period !== "hour" ? [] : Array.from({ length: 168 }, (_, i) => {
+    const ago = 168 - i, mean = ago > 150 ? 24 - (168 - ago) * 0.2 : 58 - (150 - ago) * 0.12;
+    return { start: end - ago * hour, end: end - (ago - 1) * hour, mean, min: mean - 0.6, max: mean + 0.6 };
+  });
+  const occurred = new Date(end - 150.5 * hour).toISOString().replace(/\.\d+Z$/, "+00:00");
+  p.care_events.push({ schema_version: 1, id: uuid(950), kind: "watering", provenance: "manual", occurred_at: occurred, local_date: occurred.slice(0, 10), created_at: now, updated_at: now, payload: { note: null } });
 };
 // Register the seven non-moisture problem binaries against one dedicated
 // diagnostics plant. Attribute keys mirror the backend diagnostics attributes
@@ -126,6 +141,7 @@ function overviewOf(p) {
 const params = new URLSearchParams(location.search);
 if (params.has("seed") || params.has("diagnostics")) state.seed();
 if (params.has("diagnostics")) state.seedDiagnostics();
+if (params.has("history")) state.seedHistory();
 const drafts = new Map();
 const previews = new Map();
 function preview(message) {
@@ -162,6 +178,8 @@ async function respond(message) {
     case "config/device_registry/list": return copy(state.devices);
     case "get_states": return copy(state.states);
     case "search/related": return { automation: ["automation.plant_reminder"] };
+    // Home Assistant's recorder: statistics rows per requested entity.
+    case "recorder/statistics_during_period": return Object.fromEntries(message.statistic_ids.filter(id => state.statistics[id]).map(id => [id, state.statistics[id](message.period)]));
     case "smart_plants/moisture/evaluation": return { evaluation: copy(p?.lifecycle_state === "disabled" ? unavailable : state.evaluations[message.plant_id] ?? unavailable) };
     case "smart_plants/plants/health": {
       const composite = state.health[message.plant_id];

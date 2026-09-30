@@ -96,7 +96,8 @@ the overview.
 The page has four tabs:
 
 - **Overview** – *Readings* (each assigned reading with its sensor, whether it is in range,
-  too low, too high or not updating, and its target), *Recent care* (the last three entries),
+  too low, too high or not updating, and its target), *History* (a chart of one reading over
+  time, see [History](#history)), *Recent care* (the last three entries),
   *About this plant* (species, area, placement, date acquired, category and tags) and
   *Automations* (links to the device page and to a new automation for this device).
 - **Sensors** – the sensors in use, the settings for readings with several sensors, and
@@ -104,6 +105,32 @@ The page has four tabs:
 - **Care** – the care log.
 - **Settings** – name, area, photo, species, soil moisture targets, other targets, more
   details, and pausing or deleting the plant.
+
+### History
+
+The *History* card on the **Overview** tab charts one reading of the plant over time. It
+appears as soon as the plant has at least one assigned sensor.
+
+- Pick the reading with the buttons above the chart (shown when the plant has more than one)
+  and the time range with **24 h**, **7 days**, **30 days** or **1 year**. Your choice is
+  remembered in the browser.
+- The line is the average value. The light area around it is the lowest to highest value of
+  each hour or day. The green band is the target range; a dashed line marks the ideal soil
+  moisture.
+- A dotted vertical line marks each logged watering on the soil moisture chart, and each
+  logged fertilizing on the fertilizer level chart.
+- Point at the chart to read the value at that time. With the keyboard, focus the chart and
+  use the arrow keys.
+- For soil moisture, the line below the chart says how fast the value is dropping since the
+  last watering (or since it last rose), for example *Dropping about 5.5% per day*, and
+  estimates when it reaches the minimum at that rate. The estimate needs at least twelve hours
+  of readings after the last rise and is not shown for the **1 year** range.
+- **Open in Home Assistant** opens Home Assistant's own dialog for the plant's sensor, with its
+  chart and the link to the History page.
+
+The chart shows the plant's own sensor entity (for example *Monstera Soil moisture*), so it
+continues across a sensor replacement. The data comes from Home Assistant's long-term
+statistics; see the [FAQ](faq.md#how-far-back-does-the-history-chart-go).
 
 ## Assign sensors
 

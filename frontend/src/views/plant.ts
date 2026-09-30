@@ -8,6 +8,8 @@ import type { PlantOverview, RoleReading } from "../overview-model.js";
 import { ROLE_META, formatRange, formatValue, readingLabel, relativeTime } from "../status.js";
 import type { ReadingRole } from "../status.js";
 import type { CareEvent, HAState } from "../types.js";
+import { HISTORY_RANGES, RANGE_SPECS, chartBand, dryingEstimate, dryingText, historySummary, withLiveValue } from "../history-model.js";
+import type { HistoryPoint, HistoryRange } from "../history-model.js";
 
 export type DetailSection = "overview" | "sensors" | "care" | "settings";
 export const DETAIL_SECTIONS: readonly DetailSection[] = ["overview", "sensors", "care", "settings"];
@@ -106,6 +108,59 @@ export function renderReadingRow(l: Localizer, role: ReadingRole, reading: RoleR
     <span class="li-main"><span class="li-title">${readingLabel(l, role)}</span>
       <span class="li-sub">${names ? html`${names} · ` : nothing}<span class="state tone-${tone}">${readingStateText(l, reading, now)}</span></span></span>
     <span class="li-end"><span class="li-value">${readingValue(l, reading)}</span>${range ? html`<span class="li-sub">${range}</span>` : nothing}</span></li>`;
+}
+
+// Units of the plant's own sensors, for a plant that has no current reading.
+const ROLE_UNITS: Record<ReadingRole, string> = { moisture: "%", temperature: "°C", humidity: "%", illuminance: "lx", conductivity: "µS/cm", soil_temperature: "°C", co2: "ppm", battery: "%" };
+const RANGE_LABELS: Record<HistoryRange, MessageKey> = { "24h": "history.range_24h", "7d": "history.range_7d", "30d": "history.range_30d", "1y": "history.range_1y" };
+
+export type HistoryStatus = "loading" | "ready" | "unavailable" | "error";
+export interface HistoryCard {
+  // Roles that can be charted, and the one shown.
+  roles: readonly ReadingRole[];
+  role: ReadingRole;
+  range: HistoryRange;
+  status: HistoryStatus;
+  points: readonly HistoryPoint[];
+  reading: RoleReading | undefined;
+  // Times of logged care to mark on the chart.
+  markers: number[];
+  markerLabel: string;
+  lastWatered: number | null;
+  now: number;
+  onRole: (role: ReadingRole) => void;
+  onRange: (range: HistoryRange) => void;
+  onOpen: () => void;
+  onRetry: () => void;
+}
+
+// The History card: one reading over a chosen time range, with its target
+// range, logged care and, for soil moisture, how fast it is dropping.
+export function renderHistoryCard(l: Localizer, card: HistoryCard) {
+  const { role, range, reading } = card;
+  const spec = RANGE_SPECS[range];
+  const unit = reading?.unit || ROLE_UNITS[role];
+  const live = reading && reading.state !== "stale" && reading.state !== "unavailable" ? reading.value : null;
+  const points = card.status === "ready" ? withLiveValue(card.points, live, card.now) : [];
+  const band = chartBand(role, reading?.range);
+  const target = formatRange(l, role, reading?.range, unit);
+  const estimate = role === "moisture" && points.length ? dryingEstimate(points, { periodMs: spec.periodMs, wateredAt: card.lastWatered, min: band.min }) : null;
+  const drying = estimate ? dryingText(l, estimate, band.min) : null;
+  const message = card.status === "loading" ? l.t("history.loading") : card.status === "unavailable" ? l.t("history.unavailable") : card.status === "ready" && !points.length ? l.t("history.empty") : "";
+  return html`<section class="sp-card history-card" aria-labelledby="history-heading"><div class="card-h"><h3 id="history-heading">${l.t("history.heading")}</h3>
+      ${card.status !== "unavailable" ? html`<button type="button" class="btn text sm" @click=${card.onOpen}>${l.t("history.open_native")}</button>` : nothing}</div>
+    <div class="card-b">
+      <div class="history-bar">
+        ${card.roles.length > 1 ? html`<div class="row" role="group" aria-label=${l.t("history.role_label")}>${card.roles.map(r => html`<button type="button" class="fchip" aria-pressed=${r === role ? "true" : "false"} @click=${() => card.onRole(r)}>${readingLabel(l, r)}</button>`)}</div>` : nothing}
+        <span class="spacer"></span>
+        <div class="seg" role="group" aria-label=${l.t("history.range_label")}>${HISTORY_RANGES.map(r => html`<button type="button" aria-pressed=${r === range ? "true" : "false"} @click=${() => card.onRange(r)}>${l.t(RANGE_LABELS[r])}</button>`)}</div>
+      </div>
+      ${card.status === "error" ? html`<div class="row"><span class="error-text" role="alert">${l.t("history.error")}</span><button type="button" class="btn text sm" @click=${card.onRetry}>${l.t("history.retry")}</button></div>`
+        : message ? html`<p class="muted history-message" role="status">${message}</p>`
+        : html`<sp-history-chart .points=${points} .start=${card.now - spec.spanMs} .end=${card.now} .periodMs=${spec.periodMs} .unit=${unit} .band=${band} .markers=${card.markers}
+            .summary=${historySummary(l, readingLabel(l, role), range, points, unit)} .bandLabel=${target ? l.t("history.legend_target", { range: target }) : ""} .markerLabel=${card.markerLabel} .l=${l}></sp-history-chart>`}
+      ${drying ? html`<p class="small history-rate"><strong>${drying.rate}</strong>${drying.forecast ? html` <span class="muted">${drying.forecast}</span>` : nothing}</p>` : nothing}
+    </div></section>`;
 }
 
 // "6 h", "30 min" or "90 s" for the not-updating window.
@@ -270,6 +325,17 @@ export const plantStyles = css`
   .pd button.fchip { min-height: 32px; height: auto; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--divider-color, #bdbdbd); background: var(--ha-card-background, var(--sp-card)); font-size: 13px; color: var(--sp-text); cursor: pointer; }
   .pd button.fchip[aria-pressed="true"] { background: color-mix(in srgb, var(--sp-primary) 14%, transparent); border-color: transparent; color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); font-weight: 500; }
   .care-form label { margin: 8px 0; }
+
+  /* History */
+  .history-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .history-bar .spacer { flex: 1; }
+  .pd .seg { display: inline-flex; border: 1px solid var(--divider-color, #bdbdbd); border-radius: 8px; overflow: hidden; }
+  .pd .seg button { min-height: 32px; height: auto; margin: 0; padding: 4px 12px; border: 0; border-radius: 0; background: transparent; font: inherit; font-size: 13px; color: var(--sp-text-secondary); cursor: pointer; white-space: nowrap; }
+  .pd .seg button + button { border-inline-start: 1px solid var(--divider-color, #bdbdbd); }
+  .pd .seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--sp-primary) 14%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); font-weight: 500; }
+  .pd .seg button:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: -2px; }
+  .history-message { min-height: 120px; display: grid; place-items: center; text-align: center; }
+  .history-rate strong { font-weight: 500; }
 
   ha-alert { display: block; }
   .alert-fallback { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 8px; background: color-mix(in srgb, var(--sp-warning) 14%, transparent); }
