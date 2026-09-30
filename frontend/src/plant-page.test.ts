@@ -4,7 +4,7 @@ import { createLocalizer, ENGLISH } from "./localize.js";
 import { formatDuration, friendlyName, headerReason, readingPhrase, readingStateText } from "./views/plant.js";
 import type { PlantOverview } from "./overview-model.js";
 import type { CareEvent, HAState, PlantRecord } from "./types.js";
-import { button, click, harness, overviewFor, panelText, role, sample, settle } from "./test-helpers.js";
+import { button, click, deferred, harness, overviewFor, panelText, role, sample, settle } from "./test-helpers.js";
 
 const NOW = "2026-09-28T12:00:00+00:00";
 const soil: HAState = { entity_id: "sensor.mock_soil", state: "12", attributes: { friendly_name: "Kitchen Soil Probe", unit_of_measurement: "%", device_class: "moisture" }, last_updated: NOW };
@@ -33,7 +33,7 @@ async function mount(plant: PlantRecord, overview?: (p: PlantRecord) => PlantOve
 const root = (el: SmartPlantsPanel) => el.shadowRoot!;
 const tabPanel = (el: SmartPlantsPanel) => root(el).querySelector<HTMLElement>("#detail-panel")!;
 
-afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); vi.unstubAllGlobals(); localStorage.clear(); });
 
 describe("plant page helpers", () => {
   it("formats the not-updating window and sentence phrases", () => {
@@ -167,5 +167,98 @@ describe("plant page", () => {
     expect(text).not.toContain("Private Name");
     await click(el, "Pause monitoring");
     expect(h.calls.find(c => c.type === "smart_plants/plants/disable")).toMatchObject({ plant_id: plant.id, expected_revision: 1 });
+  });
+});
+
+describe("plant history", () => {
+  const HOUR = 3_600_000;
+  const moistureId = "sensor.mock_aloe_soil_moisture";
+  const registry = (plant: PlantRecord, roles: string[] = ["moisture"]) => roles.map((r, i) => ({ id: `entry-${i}`, entity_id: r === "moisture" ? moistureId : `sensor.mock_aloe_${r}`, device_id: `device-${plant.id}`, unique_id: `smart_plants:${plant.id}:${r}`, platform: "smart_plants" }));
+  // Hourly statistics ending now: a watering 60 hours ago, then a steady drop of 6 points per day.
+  const statistics = (id: string) => {
+    const now = Date.now();
+    const rows = Array.from({ length: 96 }, (_, i) => {
+      const hoursAgo = 96 - i; const mean = hoursAgo > 60 ? 35 - (96 - hoursAgo) * 0.1 : 70 - ((60 - hoursAgo) * 6) / 24;
+      return { start: now - hoursAgo * HOUR, end: now - (hoursAgo - 1) * HOUR, mean, min: mean - 0.5, max: mean + 0.5 };
+    });
+    return { [id]: rows };
+  };
+  const wateredOverview = (p: PlantRecord): PlantOverview => ({ ...overviewFor(p), roles: { moisture: { value: 55, unit: "%", state: "ok", range: { min: 20, target: 40, max: 60 }, last_reported: NOW, sources: ["sensor.mock_soil"] } }, last_watered_at: new Date(Date.now() - 61 * HOUR).toISOString() });
+  const history = (el: SmartPlantsPanel) => root(el).querySelector<HTMLElement>(".history-card");
+  const requests = (h: { calls: Record<string, unknown>[] }) => h.calls.filter(c => c.type === "recorder/statistics_during_period");
+
+  it("is left out while the plant has no sensor of its own to chart", async () => {
+    const { el, h } = await mount(plantWithSensors());
+    expect(history(el)).toBeNull();
+    expect(requests(h)).toHaveLength(0);
+  });
+  it("charts the plant's own moisture sensor with the target range and the drying rate", async () => {
+    const plant = plantWithSensors();
+    const { el, h } = await mount(plant, wateredOverview, msg => msg.type === "config/entity_registry/list" ? registry(plant) : msg.type === "recorder/statistics_during_period" ? statistics(moistureId) : undefined);
+    await settle(el);
+    expect(requests(h)).toHaveLength(1);
+    expect(requests(h)[0]).toMatchObject({ statistic_ids: [moistureId], period: "hour", types: ["mean", "min", "max"] });
+    expect(requests(h)[0]).not.toHaveProperty("units");
+    expect(Date.now() - Date.parse(String(requests(h)[0]!.start_time))).toBeGreaterThan(6.9 * 24 * HOUR);
+    const chart = history(el)!.querySelector("sp-history-chart")!;
+    await chart.updateComplete;
+    // The current reading closes the gap between the last statistics period and now.
+    expect(chart.points).toHaveLength(97);
+    expect(chart.points.at(-1)!.mean).toBe(55);
+    expect(chart.band).toEqual({ min: 20, max: 60, target: 40 });
+    expect(chart.summary).toMatch(/^Soil moisture, last 7 days: from /);
+    expect(chart.bandLabel).toBe("Target: 20–60%");
+    expect(history(el)!.querySelector(".history-rate")!.textContent).toMatch(/Dropping about 6(\.\d)?% per day since the last watering\. At this rate it reaches the minimum of 20% in about 6 days\./);
+    // One sensor: no reading chips, but the range switch.
+    expect(history(el)!.querySelector("[aria-label='Reading']")).toBeNull();
+    expect([...history(el)!.querySelectorAll(".seg button")].map(b => b.getAttribute("aria-pressed"))).toEqual(["false", "true", "false", "false"]);
+  });
+  it("switches range and reading, remembers both and opens the sensor in Home Assistant", async () => {
+    const base = plantWithSensors();
+    const plant: PlantRecord = { ...base, roles: { ...base.roles!, temperature: { sources: [{ entity_id: "sensor.mock_temp", registry_id: null }], primary_entity_id: null, aggregation: "average", stale_after_seconds: 21600 } } };
+    const { el, h } = await mount(plant, wateredOverview, msg => msg.type === "config/entity_registry/list" ? registry(plant, ["moisture", "temperature", "needs_water"]) : msg.type === "recorder/statistics_during_period" ? statistics((msg.statistic_ids as string[])[0]!) : undefined);
+    await settle(el);
+    expect([...history(el)!.querySelectorAll("[aria-label='Reading'] button")].map(b => b.textContent)).toEqual(["Soil moisture", "Temperature"]);
+    await click(el, "1 year"); await settle(el);
+    expect(requests(h).at(-1)).toMatchObject({ statistic_ids: [moistureId], period: "day" });
+    expect(localStorage.getItem("smart_plants.history_range")).toBe("1y");
+    await click(el, "Temperature"); await settle(el);
+    expect(requests(h).at(-1)).toMatchObject({ statistic_ids: ["sensor.mock_aloe_temperature"], period: "day", units: { temperature: "°C" } });
+    expect(localStorage.getItem("smart_plants.history_role")).toBe("temperature");
+    expect(history(el)!.querySelector(".history-rate")).toBeNull();
+    const opened: unknown[] = []; el.addEventListener("hass-more-info", e => opened.push((e as CustomEvent).detail));
+    await click(el, "Open in Home Assistant");
+    expect(opened).toEqual([{ entityId: "sensor.mock_aloe_temperature" }]);
+  });
+  it("explains missing data, a missing recorder and a failed request", async () => {
+    const plant = plantWithSensors();
+    let reply: () => unknown = () => ({});
+    const noReading = (p: PlantRecord): PlantOverview => ({ ...overviewFor(p), roles: { moisture: { ...overviewFor(p).roles.moisture!, value: null, state: "unavailable" } } });
+    const { el, h } = await mount(plant, noReading, msg => msg.type === "config/entity_registry/list" ? registry(plant) : msg.type === "recorder/statistics_during_period" ? reply() : undefined);
+    await settle(el);
+    expect(history(el)!.textContent).toContain("Home Assistant has not recorded any values for this period yet.");
+    reply = () => Promise.reject({ code: "unknown_command" });
+    await click(el, "24 h"); await settle(el);
+    expect(history(el)!.textContent).toContain("History is not available because Home Assistant's Recorder is not running.");
+    expect(history(el)!.textContent).not.toContain("Open in Home Assistant");
+    reply = () => Promise.reject({ code: "home_assistant_error" });
+    await click(el, "30 days"); await settle(el);
+    expect(history(el)!.querySelector("[role=alert]")!.textContent).toBe("The history could not be loaded.");
+    reply = () => statistics(moistureId);
+    const before = requests(h).length;
+    await click(el, "Try again"); await settle(el);
+    expect(requests(h)).toHaveLength(before + 1);
+    expect(history(el)!.querySelector("sp-history-chart")).not.toBeNull();
+  });
+  it("ignores a slow reply for a range that is no longer shown", async () => {
+    const plant = plantWithSensors();
+    const slow = deferred<unknown>();
+    const { el } = await mount(plant, wateredOverview, msg => msg.type === "config/entity_registry/list" ? registry(plant) : msg.type === "recorder/statistics_during_period" ? (msg.period === "hour" ? slow.promise : { [moistureId]: [] }) : undefined);
+    await settle(el);
+    expect(history(el)!.textContent).toContain("Loading history…");
+    await click(el, "1 year"); await settle(el);
+    slow.resolve(statistics(moistureId)); await settle(el);
+    // Only the current reading: the late hourly statistics were dropped.
+    expect(history(el)!.querySelector("sp-history-chart")!.points).toHaveLength(1);
   });
 });

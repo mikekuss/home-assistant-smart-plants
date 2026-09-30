@@ -16,6 +16,8 @@ import type {
 import { validPlant, validResponse, validState } from "./validation.js";
 import { parseOverview } from "./overview-model.js";
 import type { PlantOverview } from "./overview-model.js";
+import { parseStatistics } from "./history-model.js";
+import type { HistoryPoint, StatisticsPeriod } from "./history-model.js";
 
 export class ApiError extends Error {
   public readonly code: string;
@@ -141,6 +143,15 @@ export const api = {
   async related(hass: HomeAssistantLike, deviceId: string): Promise<string[]> {
     const result = await send<{ automation?: unknown }>(hass, { type: "search/related", item_type: "device", item_id: deviceId });
     return Array.isArray(result.automation) ? result.automation.filter((v): v is string => typeof v === "string") : [];
+  },
+  // Mean, lowest and highest value per period from Home Assistant's recorder.
+  // `units` pins a unit class (for example temperature to °C) so the values
+  // match the plant's thresholds whatever unit system the user displays.
+  async statistics(hass: HomeAssistantLike, entityId: string, start: Date, period: StatisticsPeriod, units?: Record<string, string>): Promise<HistoryPoint[]> {
+    const result = await send<unknown>(hass, { type: "recorder/statistics_during_period", start_time: start.toISOString(), statistic_ids: [entityId], period, types: ["mean", "min", "max"], ...(units ? { units } : {}) });
+    const points = parseStatistics(result, entityId);
+    if (!points) throw new ApiError("invalid_response", "The statistics response is incompatible. Refresh and retry.");
+    return points;
   },
   async subscribeRegistry(hass: HomeAssistantLike, callback: () => void): Promise<() => void> {
     const unsubscribers: (() => void)[] = [];

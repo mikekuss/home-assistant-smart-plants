@@ -156,3 +156,50 @@ test("the overflow menu opens the device, downloads diagnostics and pauses monit
   await menu(page, "Open device");
   await expect.poll(() => page.evaluate(() => location.pathname)).toBe(`/config/devices/device/device-${id(1)}`);
 });
+
+test("the history card charts soil moisture with its target range, waterings and drying rate", async ({ page }, info) => {
+  await openPlant(page, "Office Aloe", "?seed&history");
+  const card = page.locator("smart-plants-panel .history-card");
+  await expect(card.getByRole("heading", { name: "History" })).toBeVisible();
+  await expect(card.getByRole("img", { name: /^Soil moisture, last 7 days: from 24% to 40%, lowest / })).toBeVisible();
+  await expect(card).toContainText("Target: 20–60%");
+  await expect(card).toContainText("Watering logged");
+  await expect(card.locator("sp-history-chart line.marker")).toHaveCount(1);
+  await expect(card.locator(".history-rate")).toHaveText(/Dropping about 2\.9% per day since the last watering\. At this rate it reaches the minimum of 20% in about 7 days\./);
+  await expect(card.getByRole("group", { name: "Reading" })).toHaveCount(0);
+  await audit(page, info, "history-chart");
+
+  const slider = card.getByRole("slider", { name: "Point in time" });
+  await slider.focus();
+  await page.keyboard.press("Home");
+  await expect(slider).toHaveAttribute("aria-valuetext", /: 24% \(23\.4–24\.6%\)$/);
+  await expect(card.locator("sp-history-chart .readout")).toHaveText(/: 24% \(23\.4–24\.6%\)$/);
+  await expect(card.locator("sp-history-chart .cursor")).toHaveCount(1);
+  await audit(page, info, "history-chart-readout");
+
+  await card.getByRole("button", { name: "1 year", exact: true }).click();
+  await expect(card.getByRole("button", { name: "1 year", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(card.getByRole("img", { name: /^Soil moisture, last year: from 40% to 40%/ })).toBeVisible();
+  await expect(card.locator(".history-rate")).toHaveCount(0);
+  const requests = await page.evaluate(() => (window as unknown as HarnessWindow).__smartPlantsHarness.messages.filter(m => m.type === "recorder/statistics_during_period"));
+  expect(requests.map(m => [m.statistic_ids, m.period])).toEqual([[["sensor.office_aloe_soil_moisture"], "hour"], [["sensor.office_aloe_soil_moisture"], "day"]]);
+
+  await page.evaluate(() => {
+    const w = window as unknown as { __moreInfo: unknown[] }; w.__moreInfo = [];
+    document.addEventListener("hass-more-info", e => w.__moreInfo.push((e as CustomEvent).detail));
+  });
+  await card.getByRole("button", { name: "Open in Home Assistant", exact: true }).click();
+  expect(await page.evaluate(() => (window as unknown as { __moreInfo: unknown[] }).__moreInfo)).toEqual([{ entityId: "sensor.office_aloe_soil_moisture" }]);
+});
+
+test("the history card explains a missing recorder and stays out of plants without a sensor of their own", async ({ page }, info) => {
+  await openPlant(page, "Office Aloe");
+  await expect(page.locator("smart-plants-panel .history-card")).toHaveCount(0);
+  await page.goto(`${url}?seed&history`);
+  await page.evaluate(() => { (window as unknown as { __smartPlantsHarness: { failures: Record<string, string> } }).__smartPlantsHarness.failures["recorder/statistics_during_period"] = "unknown_command"; });
+  await button(page, "Office Aloe").click();
+  const card = page.locator("smart-plants-panel .history-card");
+  await expect(card).toContainText("History is not available because Home Assistant's Recorder is not running.");
+  await expect(card.getByRole("button", { name: "Open in Home Assistant" })).toHaveCount(0);
+  await audit(page, info, "history-unavailable");
+});

@@ -49,6 +49,18 @@ Locally, in your Home Assistant configuration directory:
 Nothing is sent to a cloud service, except OpenPlantBook searches if you enable that
 provider. See [backup and restore](installation.md#backup-and-restore).
 
+## How far back does the history chart go?
+
+The chart on the plant page reads Home Assistant's own statistics for the plant's sensor
+entities, so it needs the Recorder integration (part of the default configuration). The
+**24 h** range uses five-minute statistics, which Home Assistant keeps as long as the recorder
+keeps states (10 days by default). The **7 days** and **30 days** ranges use hourly and
+**1 year** uses daily statistics, which Home Assistant keeps without a time limit.
+
+A new plant starts with an empty chart: the first values appear within a few minutes on the
+**24 h** range and after the first full hour on the longer ranges. If you exclude a plant's
+sensor entity from the recorder, its chart stays empty.
+
 ## Can I use several sensors for one plant?
 
 Yes. Each role (soil moisture, temperature, humidity, and so on) accepts up to 32 sensors.

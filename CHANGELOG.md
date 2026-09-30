@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- The plant page has a **History** card on the Overview tab: a chart of one reading over the
+  last 24 hours, 7 days, 30 days or year, with the target range, logged waterings and, for
+  soil moisture, how fast the value is dropping and roughly when it reaches the minimum.
+  The data comes from Home Assistant's long-term statistics of the plant's own sensors, and
+  **Open in Home Assistant** opens the sensor's native history dialog.
+
 ## [0.5.1] - 2026-09-29
 
 ### Added
