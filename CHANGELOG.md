@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- The integration manifest no longer lists Pillow as a requirement. Home Assistant ships it
+  already, and current Home Assistant validation rejects custom integrations that repeat core
+  dependencies.
+
 ## [0.6.0] - 2026-09-30
 
 ### Added
