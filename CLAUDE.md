@@ -98,9 +98,10 @@ CI runs the same checks plus hassfest and the HACS action.
   `smart-plants-panel.js` must be committed in the same commit. CI fails on a stale bundle.
 - Adding or upgrading a bundled runtime dependency requires updating `THIRD_PARTY_LICENSES.txt`
   with its full license text. Ask before adding a new runtime dependency.
-- `manifest.json` requirements must be packages Home Assistant core already ships, with a lower
-  bound only (`>=`). An exact pin breaks setup as soon as Home Assistant moves to a newer
-  version. `tests/test_manifest.py` enforces this.
+- `manifest.json` must not list packages Home Assistant core already ships (such as Pillow);
+  hassfest rejects them and core guarantees they are installed. Any other requirement uses a
+  lower bound only (`>=`), because an exact pin breaks setup as soon as Home Assistant moves to
+  a newer version. `tests/test_manifest.py` enforces this.
 - `manifest.json` `version` equals the release tag, without a `v` prefix (for example `0.1.1`).
   Do not bump versions unless the task is a release.
 - User-visible strings go into `strings.json`; keep `translations/en.json` identical in content
