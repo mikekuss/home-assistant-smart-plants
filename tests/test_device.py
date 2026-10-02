@@ -105,7 +105,7 @@ async def test_reconciler_creates_a_single_device_for_a_plant(
     assert device.name == "Aloe"
     assert device.manufacturer == "Smart Plants"
     assert device.entry_type is dr.DeviceEntryType.SERVICE
-    assert entry.entry_id in device.config_entries
+    assert device.config_entry_id == entry.entry_id
 
 
 async def test_new_device_without_species_uses_generic_model(
