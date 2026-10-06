@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-06
+
 ### Changed
 
 - The integration manifest no longer lists Pillow as a requirement. Home Assistant ships it
@@ -176,7 +178,8 @@ First public release.
 - English and German translations for the integration's entities, setup, and repairs. The
   sidebar panel is English-only.
 
-[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.6.0...HEAD
+[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.6.1...HEAD
+[0.6.1]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.6.0...0.6.1
 [0.6.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.5.1...0.6.0
 [0.5.1]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.4.0...0.5.0
