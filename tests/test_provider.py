@@ -188,6 +188,117 @@ async def test_missing_nullable_profile_fields_remain_missing() -> None:
     assert "common_name" not in snapshot.field_sources
 
 
+async def test_temperatures_and_common_names_are_kept() -> None:
+    client, _session = _client(
+        [
+            _token(),
+            FakeResponse(
+                200,
+                _detail(
+                    min_temp=10,
+                    max_temp=32.5,
+                    min_temp_survival=-2,
+                    common_names={
+                        "en": ["Aloe", " Medicinal aloe ", "Aloe", ""],
+                        "de": ["Echte Aloe"],
+                        "fr": ["Aloès"],
+                    },
+                ),
+            ),
+        ]
+    )
+    snapshot = (await client.async_get_species("aloe vera", "en")).snapshot
+    assert snapshot.min_temperature == 10.0
+    assert isinstance(snapshot.min_temperature, float)
+    assert snapshot.max_temperature == 32.5
+    assert snapshot.survival_min_temperature == -2
+    assert snapshot.common_names == {
+        "en": ("Aloe", "Medicinal aloe"),
+        "de": ("Echte Aloe",),
+    }
+    stored = snapshot.as_storage()
+    assert stored["common_names"] == {
+        "en": ["Aloe", "Medicinal aloe"],
+        "de": ["Echte Aloe"],
+    }
+    for key in (
+        "min_temperature",
+        "max_temperature",
+        "survival_min_temperature",
+        "common_names",
+    ):
+        assert snapshot.field_sources[key] == ATTRIBUTION
+    assert SpeciesSnapshot.from_storage(stored) == snapshot
+
+
+async def test_common_names_are_limited_per_language() -> None:
+    names = [f"Name {index}" for index in range(8)]
+    client, _session = _client(
+        [
+            _token(),
+            FakeResponse(
+                200, _detail(common_names={"en": names, "de": ["x" * 101, "Aloe"]})
+            ),
+        ]
+    )
+    snapshot = (await client.async_get_species("aloe vera", "en")).snapshot
+    assert snapshot.common_names == {"en": tuple(names[:5]), "de": ("Aloe",)}
+
+
+async def test_missing_temperatures_and_common_names_stay_empty() -> None:
+    client, _session = _client([_token(), FakeResponse(200, _detail())])
+    snapshot = (await client.async_get_species("aloe vera", "en")).snapshot
+    assert snapshot.min_temperature is None
+    assert snapshot.max_temperature is None
+    assert snapshot.survival_min_temperature is None
+    assert snapshot.common_names == {}
+    stored = snapshot.as_storage()
+    assert stored["common_names"] == {}
+    assert not {
+        "min_temperature",
+        "max_temperature",
+        "survival_min_temperature",
+        "common_names",
+    } & set(snapshot.field_sources)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"min_temp": "10", "max_temp": True, "min_temp_survival": 1.5},
+        {"min_temp": float("nan"), "max_temp": 500, "min_temp_survival": False},
+        {"min_temp": None, "max_temp": None, "min_temp_survival": "-2"},
+        {"min_temp": -101, "max_temp": float("inf"), "min_temp_survival": 101},
+        {"min_temp": 30, "max_temp": 10, "min_temp_survival": None},
+        {"common_names": ["Aloe"]},
+        {"common_names": "Aloe"},
+        {"common_names": {"en": "Aloe", "de": [1, None, {"name": "Aloe"}]}},
+        {"common_names": {"fr": ["Aloès"]}},
+    ],
+)
+async def test_invalid_temperatures_and_common_names_are_ignored(
+    changes: dict[str, Any],
+) -> None:
+    client, _session = _client([_token(), FakeResponse(200, _detail(**changes))])
+    snapshot = (await client.async_get_species("aloe vera", "en")).snapshot
+    assert snapshot.min_temperature is None
+    assert snapshot.max_temperature is None
+    assert snapshot.survival_min_temperature is None
+    assert snapshot.common_names == {}
+    # Everything else from the same response is still accepted.
+    assert snapshot.common_name == "Aloe"
+    assert snapshot.threshold_defaults == {"moisture": {"min": 15, "max": 55}}
+
+
+async def test_one_invalid_temperature_keeps_the_other() -> None:
+    client, _session = _client(
+        [_token(), FakeResponse(200, _detail(min_temp="cold", max_temp=28))]
+    )
+    snapshot = (await client.async_get_species("aloe vera", "en")).snapshot
+    assert snapshot.min_temperature is None
+    assert snapshot.max_temperature == 28.0
+
+
 async def test_cache_hit_expiry_max_and_invalidation() -> None:
     clock = [0.0]
     client, session = _client(
@@ -547,6 +658,72 @@ def test_snapshot_requires_canonical_locale_and_coherent_attribution() -> None:
     snapshot["field_sources"]["common_name"] = "another source"
     with pytest.raises(ValueError, match="snapshot attribution"):
         SpeciesSnapshot.from_storage(snapshot)
+
+
+def test_snapshot_without_care_range_keys_uses_defaults() -> None:
+    stored = ManualSpeciesProvider.profile(
+        common_name="Aloe", latin_name="Aloe vera", category=None
+    ).snapshot.as_storage()
+    for key in (
+        "min_temperature",
+        "max_temperature",
+        "survival_min_temperature",
+        "common_names",
+    ):
+        del stored[key]
+    snapshot = SpeciesSnapshot.from_storage(stored)
+    assert snapshot.min_temperature is None
+    assert snapshot.survival_min_temperature is None
+    assert snapshot.common_names == {}
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"min_temperature": "10"}, "min_temperature"),
+        ({"max_temperature": True}, "max_temperature"),
+        ({"max_temperature": float("nan")}, "max_temperature"),
+        ({"min_temperature": -101}, "min_temperature"),
+        ({"min_temperature": 30, "max_temperature": 10}, "inverted"),
+        ({"survival_min_temperature": 1.5}, "survival_min_temperature"),
+        ({"survival_min_temperature": True}, "survival_min_temperature"),
+        ({"common_names": ["Aloe"]}, "common_names"),
+        ({"common_names": {"fr": ["Aloès"]}}, "common_names"),
+        ({"common_names": {"en": []}}, "common_names"),
+        ({"common_names": {"en": ["Aloe", "Aloe"]}}, "common_names"),
+        ({"common_names": {"en": [" Aloe"]}}, "common_names"),
+        ({"common_names": {"en": ["x" * 101]}}, "common_names"),
+        ({"common_names": {"en": [f"Aloe {n}" for n in range(6)]}}, "common_names"),
+        ({"common_names": {"en": [{"name": "Aloe"}]}}, "common_names"),
+    ],
+)
+def test_snapshot_rejects_malformed_care_ranges(
+    changes: dict[str, Any], message: str
+) -> None:
+    stored = ManualSpeciesProvider.profile(
+        common_name="Aloe", latin_name="Aloe vera", category=None
+    ).snapshot.as_storage()
+    stored.update(changes)
+    for key, value in changes.items():
+        if value is not None:
+            stored["field_sources"][key] = stored["attribution"]
+    with pytest.raises(ValueError, match=message):
+        SpeciesSnapshot.from_storage(stored)
+
+
+def test_snapshot_care_ranges_require_attribution() -> None:
+    stored = ManualSpeciesProvider.profile(
+        common_name="Aloe", latin_name="Aloe vera", category=None
+    ).snapshot.as_storage()
+    stored["min_temperature"] = 12
+    with pytest.raises(ValueError, match="attribute every populated field"):
+        SpeciesSnapshot.from_storage(stored)
+    stored["field_sources"]["min_temperature"] = stored["attribution"]
+    stored["field_sources"]["common_names"] = stored["attribution"]
+    with pytest.raises(ValueError, match="attribute every populated field"):
+        SpeciesSnapshot.from_storage(stored)
+    stored["common_names"] = {"de": ["Echte Aloe"]}
+    assert SpeciesSnapshot.from_storage(stored).min_temperature == 12.0
 
 
 async def test_preview_binding_failure_retains_token_and_success_is_one_time(

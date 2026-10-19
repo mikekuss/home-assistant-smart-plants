@@ -105,6 +105,29 @@ describe("untrusted runtime responses", () => {
       await expect(api.previewWizard(harness([], () => ({ ...preview, snapshot: modified })).hass, draft as WizardDraft, "openplantbook", "aloe", "en")).rejects.toMatchObject({ code: "invalid_response" });
     }
   });
+  it("accepts species temperatures and common names, present or absent", async () => {
+    const ranges = { min_temperature: 10, max_temperature: 32.5, survival_min_temperature: -2, common_names: { en: ["Aloe", "Medicinal aloe"], de: ["Echte Aloe"] } };
+    const sources = { ...snapshot.field_sources, min_temperature: "OpenPlantBook", max_temperature: "OpenPlantBook", survival_min_temperature: "OpenPlantBook", common_names: "OpenPlantBook" };
+    const empty = { ...snapshot, min_temperature: null, max_temperature: null, survival_min_temperature: null, common_names: {} };
+    for (const modified of [snapshot, empty, { ...snapshot, ...ranges, field_sources: sources }]) {
+      await expect(api.previewWizard(harness([], () => ({ ...preview, snapshot: modified })).hass, draft as WizardDraft, "openplantbook", "aloe", "en")).resolves.toMatchObject({ snapshot: modified });
+    }
+    const diff = { min_temperature: { before: null, after: 10 }, common_names: { before: {}, after: ranges.common_names } };
+    await expect(api.previewWizard(harness([], () => ({ ...preview, snapshot: { ...snapshot, ...ranges, field_sources: sources }, diff })).hass, draft as WizardDraft, "openplantbook", "aloe", "en")).resolves.toMatchObject({ diff });
+  });
+  it.each([
+    { min_temperature: "10" }, { max_temperature: Infinity }, { min_temperature: -101 }, { survival_min_temperature: 1.5 }, { survival_min_temperature: true },
+    { common_names: ["Aloe"] }, { common_names: { fr: ["Aloès"] } }, { common_names: { en: [] } }, { common_names: { en: ["Aloe", "Aloe"] } },
+    { common_names: { en: [" Aloe"] } }, { common_names: { en: ["x".repeat(101)] } }, { common_names: { en: ["1", "2", "3", "4", "5", "6"] } }, { common_names: { en: [7] } },
+  ])("rejects malformed species temperatures or common names %#", async change => {
+    const field_sources = { ...snapshot.field_sources, ...Object.fromEntries(Object.keys(change).map(key => [key, "OpenPlantBook"])) };
+    await expect(api.previewWizard(harness([], () => ({ ...preview, snapshot: { ...snapshot, ...change, field_sources } })).hass, draft as WizardDraft, "openplantbook", "aloe", "en")).rejects.toMatchObject({ code: "invalid_response" });
+  });
+  it("requires attribution for populated species temperatures and common names", async () => {
+    for (const modified of [{ ...snapshot, min_temperature: 10 }, { ...snapshot, common_names: { de: ["Echte Aloe"] } }, { ...snapshot, common_names: {}, field_sources: { ...snapshot.field_sources, common_names: "OpenPlantBook" } }]) {
+      await expect(api.previewWizard(harness([], () => ({ ...preview, snapshot: modified })).hass, draft as WizardDraft, "openplantbook", "aloe", "en")).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
   it.each([{ ...draft, revision: false }, { ...draft, expires_in: 0 }, { ...draft, draft_token: null }])("rejects malformed draft capability %#", async result => {
     await expect(api.startWizard(harness([], () => result).hass)).rejects.toMatchObject({ code: "invalid_response" });
   });

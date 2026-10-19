@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
@@ -30,6 +31,11 @@ SPECIES_TEXT_MAX_LEN: Final = 500
 SPECIES_CARE_TEXT_MAX_LEN: Final = 4_000
 SPECIES_ATTRIBUTION_MAX_LEN: Final = 500
 SPECIES_MAP_MAX_COUNT: Final = 32
+SPECIES_TEMPERATURE_MIN: Final = -100
+SPECIES_TEMPERATURE_MAX: Final = 100
+SPECIES_COMMON_NAME_LANGUAGES: Final = frozenset({"en", "de"})
+SPECIES_COMMON_NAMES_MAX_COUNT: Final = 5
+SPECIES_COMMON_NAME_MAX_LEN: Final = 100
 COLLECTION_MAX_COUNT: Final = 1_000
 PLANT_TAG_MAX_COUNT: Final = 32
 SENSOR_SOURCE_MAX_COUNT: Final = 32
@@ -553,6 +559,15 @@ class SpeciesSnapshot:
     care_text: Mapping[str, str] = field(default_factory=dict)
     field_sources: Mapping[str, str] = field(default_factory=dict)
     threshold_defaults: Mapping[str, Mapping[str, int]] = field(default_factory=dict)
+    # Species-level air temperature range in degrees Celsius, and the lowest
+    # temperature the species is reported to survive. Stored for later care
+    # suggestions; nothing evaluates them yet.
+    min_temperature: float | None = None
+    max_temperature: float | None = None
+    survival_min_temperature: int | None = None
+    # Provider common names per language code, limited to the languages the
+    # panel is translated into.
+    common_names: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "care_text", _deep_freeze(self.care_text))
@@ -560,6 +575,7 @@ class SpeciesSnapshot:
         object.__setattr__(
             self, "threshold_defaults", _deep_freeze(self.threshold_defaults)
         )
+        object.__setattr__(self, "common_names", _deep_freeze(self.common_names))
 
     @classmethod
     def from_storage(cls, data: object) -> Self:  # noqa: PLR0912, PLR0915
@@ -581,6 +597,10 @@ class SpeciesSnapshot:
                 "care_text",
                 "field_sources",
                 "threshold_defaults",
+                "min_temperature",
+                "max_temperature",
+                "survival_min_temperature",
+                "common_names",
             }
         )
         _require_no_extra_keys(data, allowed, "species snapshot")
@@ -675,11 +695,42 @@ class SpeciesSnapshot:
                 ):
                     raise ValueError("species thresholds must be integer maps")
                 parsed_thresholds[role][key] = value
+        min_temperature = _optional_species_temperature(
+            data.get("min_temperature"), "species min_temperature"
+        )
+        max_temperature = _optional_species_temperature(
+            data.get("max_temperature"), "species max_temperature"
+        )
+        if (
+            min_temperature is not None
+            and max_temperature is not None
+            and min_temperature > max_temperature
+        ):
+            raise ValueError("species temperature range is inverted")
+        survival_raw = data.get("survival_min_temperature")
+        if survival_raw is not None and (
+            not _is_pure_int(survival_raw)
+            or not SPECIES_TEMPERATURE_MIN <= survival_raw <= SPECIES_TEMPERATURE_MAX
+        ):
+            raise ValueError(
+                "species survival_min_temperature must be an integer or null"
+            )
+        common_names = _species_common_names(data.get("common_names", {}))
         populated = {
             key
-            for key in ("common_name", "latin_name", "category", "confidence")
+            for key in (
+                "common_name",
+                "latin_name",
+                "category",
+                "confidence",
+                "min_temperature",
+                "max_temperature",
+                "survival_min_temperature",
+            )
             if data.get(key) is not None
         }
+        if common_names:
+            populated.add("common_names")
         populated.update(care)
         populated.update(
             f"{role}_{key}"
@@ -720,6 +771,10 @@ class SpeciesSnapshot:
             care_text=care,
             field_sources=sources,
             threshold_defaults=parsed_thresholds,
+            min_temperature=min_temperature,
+            max_temperature=max_temperature,
+            survival_min_temperature=survival_raw,
+            common_names=common_names,
         )
 
     def as_storage(self) -> dict[str, Any]:
@@ -738,7 +793,46 @@ class SpeciesSnapshot:
             "care_text": _deep_thaw(self.care_text),
             "field_sources": _deep_thaw(self.field_sources),
             "threshold_defaults": _deep_thaw(self.threshold_defaults),
+            "min_temperature": self.min_temperature,
+            "max_temperature": self.max_temperature,
+            "survival_min_temperature": self.survival_min_temperature,
+            "common_names": _deep_thaw(self.common_names),
         }
+
+
+def _optional_species_temperature(value: object, field_name: str) -> float | None:
+    if value is None:
+        return None
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        or not SPECIES_TEMPERATURE_MIN <= value <= SPECIES_TEMPERATURE_MAX
+    ):
+        raise ValueError(f"{field_name} must be a bounded number or null")
+    return float(value)
+
+
+def _species_common_names(value: object) -> dict[str, tuple[str, ...]]:
+    if not isinstance(value, dict) or not set(value) <= SPECIES_COMMON_NAME_LANGUAGES:
+        raise ValueError("species common_names must map supported languages")
+    parsed: dict[str, tuple[str, ...]] = {}
+    for language, names in value.items():
+        if (
+            not isinstance(names, list)
+            or not 0 < len(names) <= SPECIES_COMMON_NAMES_MAX_COUNT
+            or not all(
+                isinstance(name, str)
+                and name
+                and name == name.strip()
+                and len(name) <= SPECIES_COMMON_NAME_MAX_LEN
+                for name in names
+            )
+            or len(set(names)) != len(names)
+        ):
+            raise ValueError("species common_names exceeds its field limits")
+        parsed[language] = tuple(names)
+    return parsed
 
 
 @dataclass(frozen=True, slots=True)

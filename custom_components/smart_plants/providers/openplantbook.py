@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import time
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable, Mapping
@@ -17,7 +18,15 @@ from custom_components.smart_plants.const import (
     CONF_OPENPLANTBOOK_CLIENT_SECRET,
     CONF_OPENPLANTBOOK_ENABLED,
 )
-from custom_components.smart_plants.models import SpeciesSnapshot
+from custom_components.smart_plants.models import (
+    SPECIES_COMMON_NAME_LANGUAGES,
+    SPECIES_COMMON_NAME_MAX_LEN,
+    SPECIES_COMMON_NAMES_MAX_COUNT,
+    SPECIES_TEMPERATURE_MAX,
+    SPECIES_TEMPERATURE_MIN,
+    SpeciesSnapshot,
+    _is_pure_int,
+)
 from custom_components.smart_plants.provider import (
     ProviderAuthenticationError,
     ProviderDescriptor,
@@ -432,6 +441,17 @@ def _normalize_profile(payload: Any, locale: str) -> SpeciesProfile:
                     "provider returned invalid moisture thresholds"
                 )
             thresholds[target] = value
+    min_temp = _optional_temperature(payload.get("min_temp"))
+    max_temp = _optional_temperature(payload.get("max_temp"))
+    if min_temp is not None and max_temp is not None and min_temp > max_temp:
+        min_temp = max_temp = None
+    survival = payload.get("min_temp_survival")
+    if not (
+        _is_pure_int(survival)
+        and SPECIES_TEMPERATURE_MIN <= survival <= SPECIES_TEMPERATURE_MAX
+    ):
+        survival = None
+    common_names = _common_names(payload.get("common_names"))
     fields = {
         key: ATTRIBUTION
         for key, value in {
@@ -440,6 +460,10 @@ def _normalize_profile(payload: Any, locale: str) -> SpeciesProfile:
             "category": optional["category"],
             **care,
             **{f"moisture_{key}": value for key, value in thresholds.items()},
+            "min_temperature": min_temp,
+            "max_temperature": max_temp,
+            "survival_min_temperature": survival,
+            "common_names": common_names or None,
         }.items()
         if value is not None
     }
@@ -458,6 +482,10 @@ def _normalize_profile(payload: Any, locale: str) -> SpeciesProfile:
         care_text=care,
         field_sources=fields,
         threshold_defaults={"moisture": thresholds} if thresholds else {},
+        min_temperature=min_temp,
+        max_temperature=max_temp,
+        survival_min_temperature=survival,
+        common_names=common_names,
     )
     try:
         snapshot = SpeciesSnapshot.from_storage(snapshot.as_storage())
@@ -466,6 +494,47 @@ def _normalize_profile(payload: Any, locale: str) -> SpeciesProfile:
             "provider returned oversized species data"
         ) from err
     return SpeciesProfile(snapshot)
+
+
+def _optional_temperature(value: object) -> float | None:
+    """Return a plausible temperature in degrees Celsius, or None."""
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        or not SPECIES_TEMPERATURE_MIN <= value <= SPECIES_TEMPERATURE_MAX
+    ):
+        return None
+    return float(value)
+
+
+def _common_names(value: object) -> dict[str, tuple[str, ...]]:
+    """
+    Keep the English and German common names from a language-keyed mapping.
+
+    Each language contributes at most a few trimmed, bounded, distinct names;
+    other languages and entries of an unexpected shape are ignored rather
+    than failing the whole species profile.
+    """
+    if not isinstance(value, dict):
+        return {}
+    names: dict[str, tuple[str, ...]] = {}
+    for language in sorted(SPECIES_COMMON_NAME_LANGUAGES):
+        raw = value.get(language)
+        if not isinstance(raw, list):
+            continue
+        kept: list[str] = []
+        for item in raw:
+            if not isinstance(item, str):
+                continue
+            name = item.strip()
+            if name and len(name) <= SPECIES_COMMON_NAME_MAX_LEN and name not in kept:
+                kept.append(name)
+            if len(kept) == SPECIES_COMMON_NAMES_MAX_COUNT:
+                break
+        if kept:
+            names[language] = tuple(kept)
+    return names
 
 
 def _required_short(value: object, field_name: str) -> str:

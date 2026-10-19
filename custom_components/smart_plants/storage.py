@@ -47,6 +47,13 @@ _MINOR_TEMPERATURE_STRESS_OVERRIDES: Final = 8
 _MINOR_STRESS_THRESHOLD_OVERRIDES: Final = 9
 _MINOR_CARE_EVENTS: Final = 11
 _MINOR_CARE_TASKS: Final = 12
+_MINOR_SPECIES_CARE_RANGES: Final = 13
+_SPECIES_CARE_RANGE_KEYS: Final = (
+    "min_temperature",
+    "max_temperature",
+    "survival_min_temperature",
+    "common_names",
+)
 _LEGACY_CARE_EVENT_SCHEMA: Final = 1
 _LEGACY_SPECIES_TEXT_MAX: Final = 500
 _INVENTORY_MAX_BYTES: Final = 8 * 1024 * 1024
@@ -404,6 +411,30 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                         else event
                         for event in events
                     ]
+
+        if old_major_version == 1 and old_minor_version < _MINOR_SPECIES_CARE_RANGES:
+            # Minor 13 keeps a species temperature range, a survival
+            # temperature, and per-language common names in the snapshot.
+            # Existing snapshots predate them and start empty. A snapshot that
+            # already carries one of the keys cannot come from an older minor,
+            # so the load fails closed instead of guessing.
+            for plant in data["plants"]:
+                species = plant.get("species") if isinstance(plant, dict) else None
+                snapshot = (
+                    species.get("snapshot") if isinstance(species, dict) else None
+                )
+                if not isinstance(snapshot, dict):
+                    continue
+                if any(key in snapshot for key in _SPECIES_CARE_RANGE_KEYS):
+                    raise SmartPlantsInvalidStorageError(
+                        "older storage cannot contain species care ranges"
+                    )
+                snapshot.update(
+                    min_temperature=None,
+                    max_temperature=None,
+                    survival_min_temperature=None,
+                    common_names={},
+                )
 
         return data
 

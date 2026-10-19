@@ -9,6 +9,11 @@ const timestamp = (v: unknown) => text(v, 64) && /^\d{4}-\d\d-\d\dT/.test(v) && 
 // records may still carry a calendar date such as "2024-03-01".
 const acquiredAt = (v: unknown) => v === null || timestamp(v) || (typeof v === "string" && /^\d{4}-\d\d-\d\d$/.test(v) && Number.isFinite(Date.parse(v)));
 const map = (v: unknown, valid: (v: unknown) => boolean) => object(v) && Object.keys(v).length <= 32 && Object.entries(v).every(([k, value]) => text(k, 60) && valid(value));
+// Species temperatures and common names are optional: snapshots the panel builds
+// itself (manual species) omit them, and absent, null or empty mean "unknown".
+const temperature = (v: unknown) => v === undefined || v === null || (typeof v === "number" && Number.isFinite(v) && v >= -100 && v <= 100);
+const commonNames = (v: unknown) => v === undefined || (object(v) && Object.entries(v).every(([lang, names]) => (lang === "en" || lang === "de") && Array.isArray(names) &&
+  names.length > 0 && names.length <= 5 && new Set(names).size === names.length && names.every(name => text(name, 100) && name === name.trim())));
 const snapshotFields: Record<string, (v: unknown) => boolean> = {
   provider: v => text(v, 60), provider_id: v => nullableText(v, 200), provider_ref: v => nullableText(v, 200),
   fetched_at: timestamp, locale: v => typeof v === "string" && /^(und|[a-z]{2}(?:-[A-Z]{2})?)$/.test(v), source_status: v => v === "manual" || v === "provider",
@@ -16,10 +21,13 @@ const snapshotFields: Record<string, (v: unknown) => boolean> = {
   confidence: v => v === null || (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1),
   care_text: v => map(v, value => text(value, 4000)), field_sources: v => map(v, text),
   threshold_defaults: v => map(v, values => map(values, value => typeof value === "number" && Number.isSafeInteger(value))),
+  min_temperature: temperature, max_temperature: temperature,
+  survival_min_temperature: v => temperature(v) && (v === undefined || v === null || Number.isSafeInteger(v)), common_names: commonNames,
 };
 function snapshot(v: unknown): boolean {
   if (!object(v) || !Object.keys(v).every(key => Object.hasOwn(snapshotFields, key)) || !Object.entries(snapshotFields).every(([key, valid]) => valid(v[key]))) return false;
-  const populated = ["common_name", "latin_name", "category", "confidence"].filter(key => v[key] !== null);
+  const populated = ["common_name", "latin_name", "category", "confidence", "min_temperature", "max_temperature", "survival_min_temperature"].filter(key => v[key] !== null && v[key] !== undefined);
+  if (v.common_names !== undefined && Object.keys(v.common_names as object).length > 0) populated.push("common_names");
   populated.push(...Object.keys(v.care_text as object), ...Object.entries(v.threshold_defaults as Record<string, Record<string, number>>).flatMap(([role, values]) => Object.keys(values).map(key => `${role}_${key}`)));
   const sources = v.field_sources as Record<string, string>;
   return new TextEncoder().encode(JSON.stringify(v)).length <= 32768 && new Set(populated).size === Object.keys(sources).length && populated.every(key => sources[key] === v.attribution) &&
