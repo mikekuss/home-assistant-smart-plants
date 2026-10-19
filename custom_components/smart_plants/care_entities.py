@@ -212,6 +212,11 @@ class CareEntityLifecycle:
 
     def _track_midnight(self) -> None:
         self._cancel_midnight()
+        # A setup that finishes while Home Assistant is shutting down (for
+        # example a reload scheduled just before) missed the stop event, so
+        # nothing would cancel a timer started now.
+        if self._hass.is_stopping:
+            return
         # One second past midnight so the new local date is in effect when
         # the states are recomputed.
         self._unsub_midnight = async_track_time_change(

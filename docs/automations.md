@@ -304,7 +304,7 @@ triggers:
 actions:
   - action: smart_plants.log_care
     target:
-      entity_id: binary_sensor.monstera_fertilize_due
+      entity_id: binary_sensor.monstera_fertilize
 mode: single
 ```
 
@@ -313,5 +313,5 @@ To skip the current occurrence instead, for example while you're away:
 ```yaml
 action: smart_plants.skip_care_task
 target:
-  entity_id: binary_sensor.monstera_fertilize_due
+  entity_id: binary_sensor.monstera_fertilize
 ```

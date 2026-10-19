@@ -586,9 +586,22 @@ async def test_task_entity_errors(hass: HomeAssistant) -> None:
     await _manager(entry).async_delete_care_task(
         plant_id, task_id, expected_revision=plant.revision
     )
+    await hass.async_block_till_done()
+    # Deleting the task removes its entities from the registry.
+    assert registry.async_get(entity_id) is None
+    for service in (SERVICE_LOG_CARE, SERVICE_SKIP_CARE_TASK):
+        await _expect_error(hass, service, {"entity_id": entity_id}, "unknown_target")
+
+    # A registry entry that outlives its task names the missing task.
+    stale = registry.async_get_or_create(
+        "binary_sensor",
+        DOMAIN,
+        f"{DOMAIN}:{plant_id}:care_task:{task_id}:due",
+        config_entry=entry,
+    )
     for service in (SERVICE_LOG_CARE, SERVICE_SKIP_CARE_TASK):
         await _expect_error(
-            hass, service, {"entity_id": entity_id}, "care_task_not_found"
+            hass, service, {"entity_id": stale.entity_id}, "care_task_not_found"
         )
 
     orphan = registry.async_get_or_create(

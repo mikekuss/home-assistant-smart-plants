@@ -5,16 +5,17 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from custom_components.smart_plants import sensor as sensor_module
+from custom_components.smart_plants.care_entities import CareEntityLifecycle
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.manager import SmartPlantsManager
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_UNAVAILABLE
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
@@ -489,6 +490,24 @@ async def test_reload_keeps_entities_and_unload_stops_refresh(
     state = hass.states.get(due_id or "")
     assert state is not None
     assert state.state == STATE_UNAVAILABLE
+
+
+async def test_setup_during_shutdown_starts_no_midnight_timer(
+    hass: HomeAssistant,
+) -> None:
+    # A reload that finishes after the stop event must not leave a timer
+    # that nothing cancels.
+    entry = await _setup(hass)
+    lifecycle = CareEntityLifecycle(
+        hass, entry.runtime_data.manager, "binary_sensor", {}, {}, MagicMock()
+    )
+    hass.set_state(CoreState.stopping)
+    try:
+        await lifecycle.async_setup()
+        assert lifecycle._unsub_midnight is None
+    finally:
+        hass.set_state(CoreState.running)
+        await lifecycle.async_unload()
 
 
 async def test_registry_entries_of_tasks_deleted_while_unloaded_are_removed(
