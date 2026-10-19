@@ -39,6 +39,12 @@ export function friendlyName(l: Localizer, states: Record<string, HAState>, enti
   return objectId ? objectId.charAt(0).toLocaleUpperCase() + objectId.slice(1) : entityId;
 }
 
+// When the sensor last reported, the same time staleness is measured from.
+// Falls back to `last_updated` where the state object has no `last_reported`.
+export function reportedAt(state: HAState): string {
+  return typeof state.last_reported === "string" && Number.isFinite(Date.parse(state.last_reported)) ? state.last_reported : state.last_updated;
+}
+
 // A reading's name inside a sentence: "Change light sensors". German keeps
 // the capital noun.
 export function readingPhrase(l: Localizer, role: ReadingRole): string {

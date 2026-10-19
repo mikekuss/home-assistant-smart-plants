@@ -25,8 +25,8 @@ Notes:
 - Temperatures in °F or K are converted to °C. Plant temperature sensors report in °C, and
   Home Assistant displays them in your configured unit system.
 - The panel's sensor picker filters by device class and unit (for example `moisture` for
-  soil moisture, `carbon_dioxide` for CO₂). Use **Show all sensors (metadata fallback)** if
-  your sensor lacks a device class; the unit must still match.
+  soil moisture, `carbon_dioxide` for CO₂). Use **Show all sensors, including ones that don't look
+  like a match** if your sensor lacks a device class; the unit must still match.
 - In the panel, roles are called readings and some have plainer names: *Temperature*,
   *Humidity*, *Light* (illuminance), and *Fertilizer level* (conductivity).
 

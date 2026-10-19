@@ -83,6 +83,11 @@ export function chipText(l: Localizer, overview: PlantOverview): { label: string
     const key = (first.role === "soil_temperature" ? SOIL_KIND_LABELS[first.kind] : undefined) ?? KIND_LABELS[first.kind];
     return { label: key ? l.t(key) : statusLabel(l, "problem"), more };
   }
+  // `no_sensors` means the moisture role has no sources. Say "No sensors"
+  // only when no role has any; otherwise name the missing moisture sensor.
+  if (overview.status === "no_sensors" && Object.keys(overview.roles).length) {
+    return { label: l.t("plant_status.no_moisture"), more };
+  }
   return { label: statusLabel(l, overview.status), more };
 }
 

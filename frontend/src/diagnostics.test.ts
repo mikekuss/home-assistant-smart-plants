@@ -227,9 +227,9 @@ describe("Problem checks in Troubleshooting", () => {
     expect(lists.length).toBe(3);
     const tempList = [...lists].find(ul => ul.getAttribute("aria-label")?.includes("Temperature stress"))!;
     const tempText = tempList.textContent ?? "";
-    expect(tempText).toContain("Cold threshold");
+    expect(tempText).toContain("Cold trigger");
     expect(tempText).toContain("10 °C");
-    expect(tempText).toContain("Hot threshold");
+    expect(tempText).toContain("Hot trigger");
     expect(tempText).toContain("35 °C");
     const co2List = [...lists].find(ul => ul.getAttribute("aria-label")?.includes("CO2 stress"))!;
     expect(co2List.textContent).toContain("5000 ppm");

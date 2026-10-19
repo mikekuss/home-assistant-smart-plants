@@ -177,7 +177,7 @@ describe("panel watering from the overview", () => {
   it("shows an error when watering fails for another reason", async () => {
     const { el } = await mountPanel(msg => msg.type === "smart_plants/care/add_watering" ? Promise.reject({ code: "not_found", message: "gone" }) : undefined);
     waterButton(el).click();
-    await vi.waitFor(() => { expect(el.shadowRoot!.querySelector(".error")?.textContent).toContain("Plant or species not found"); });
+    await vi.waitFor(() => { expect(el.shadowRoot!.querySelector(".error")?.textContent).toContain("This plant or species no longer exists"); });
   });
   it("keeps edits possible when the status read fails", async () => {
     const { el } = await mountPanel(msg => msg.type === "smart_plants/plants/overview" ? Promise.reject({ code: "unknown_error", message: "boom" }) : undefined);

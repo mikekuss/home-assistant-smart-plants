@@ -127,7 +127,7 @@ describe("overview and lifecycle", () => {
   it.each(["api_version", "schema_version"])("fails closed on %s mismatch and recovers on refresh", async key => {
     let mismatch = true;
     const h = harness([], msg => msg.type === "smart_plants/panel/info" && mismatch ? { ...capabilities, [key]: 2 } : undefined); const el = await mount(h.hass);
-    expect(el.shadowRoot?.textContent).toContain("version mismatch"); expect(button(el.shadowRoot!, "Add plant").disabled).toBe(true); expect(h.calls.some(c => c.type === "smart_plants/plants/list")).toBe(false);
+    expect(el.shadowRoot?.textContent).toContain("doesn't match the installed version"); expect(button(el.shadowRoot!, "Add plant").disabled).toBe(true); expect(h.calls.some(c => c.type === "smart_plants/plants/list")).toBe(false);
     mismatch = false; await click(el, "Refresh"); expect(button(el.shadowRoot!, "Add plant").disabled).toBe(false);
   });
   it("does not issue admin calls for a non-admin", async () => {
@@ -188,7 +188,7 @@ describe("overview and lifecycle", () => {
   });
   it("shows unload errors and blocks all writes until refresh succeeds", async () => {
     let unloaded = false; const h = harness([sample], msg => { if (unloaded && msg.type === "smart_plants/panel/info") throw { code: "integration_not_loaded", message: "unloaded" }; }); const el = await detail(h.hass);
-    unloaded = true; await click(el, "Refresh"); expect(el.shadowRoot?.textContent).toContain("not loaded"); expect(button(el.shadowRoot!, "Save name").closest("fieldset")?.disabled).toBe(true);
+    unloaded = true; await click(el, "Refresh"); expect(el.shadowRoot?.textContent).toContain("isn't running"); expect(button(el.shadowRoot!, "Save name").closest("fieldset")?.disabled).toBe(true);
     unloaded = false; await click(el, "Refresh"); expect(button(el.shadowRoot!, "Save name").closest("fieldset")?.disabled).toBe(false);
   });
   it("ignores stale refresh results after a connection replacement", async () => {
@@ -294,7 +294,7 @@ describe("detail saves and conflict review", () => {
     expect(el.shadowRoot?.textContent).toContain("Other name"); expect(el.shadowRoot?.textContent).toContain("Other category");
     expect(field(el.shadowRoot!, "Name").value).toBe("My edited name"); expect(writes).toHaveLength(1);
     expect(button(el.shadowRoot!, "Save name").closest("fieldset")?.disabled).toBe(true);
-    await click(el, "I reviewed changes; retain my edits for reapply"); expect(writes).toHaveLength(1);
+    await click(el, "Keep my edits"); expect(writes).toHaveLength(1);
     expect(field(el.shadowRoot!, "Name").value).toBe("My edited name"); expect(field(el.shadowRoot!, "Category").value).toBe("Other category");
     conflict = false; await click(el, "Save name"); expect(writes[1]).toMatchObject({ expected_revision: 2, name: "My edited name" });
   });
@@ -321,10 +321,11 @@ describe("detail saves and conflict review", () => {
     }); const el = await detail(h.hass, "Sensors"); await openMoisture(el, "pick");
     const options = () => [...(field(el.shadowRoot!, "Add moisture sensor") as HTMLSelectElement).options].map(o => o.value);
     expect(options()).toContain("sensor.soil"); expect(options()).not.toContain("sensor.odd");
-    const all = field(el.shadowRoot!, "Show all sensors (metadata fallback)") as HTMLInputElement; all.checked = true; all.dispatchEvent(new Event("change")); await settle(el); expect(options()).toContain("sensor.odd");
+    const all = field(el.shadowRoot!, "Show all sensors, including ones that don't look like a match") as HTMLInputElement; all.checked = true; all.dispatchEvent(new Event("change")); await settle(el); expect(options()).toContain("sensor.odd");
     await fill(el, "Add moisture sensor", "sensor.odd"); expect(el.shadowRoot?.textContent).toContain("Unexpected metadata");
     await fill(el, "Add moisture sensor", "sensor.soil");
     await openMoisture(el, "combine"); expect(field(el.shadowRoot!, "Main sensor").value).toBe("");
+    expect([...(field(el.shadowRoot!, "Main sensor") as HTMLSelectElement).options].map(o => o.textContent)).toEqual(["None", "sensor.odd", "Soil probe · sensor.soil"]);
     await fill(el, "Main sensor", "sensor.soil"); await fill(el, "Combine readings", "average"); await fill(el, "Not updating after (seconds, 60–604800)", "3600");
     await click(el, "Settings"); await fill(el, "Ideal", "40"); await click(el, "Save targets");
     expect(h.calls.find(c => c.type === "smart_plants/moisture/configure")).toEqual({ type: "smart_plants/moisture/configure", plant_id: sample.id, expected_revision: 1, moisture: { sources: [{ entity_id: "sensor.odd", registry_id: "uuid-2" }, { entity_id: "sensor.soil", registry_id: "uuid-1" }], primary_entity_id: "sensor.soil", aggregation: "average", stale_after_seconds: 3600, threshold_overrides: { min: null, target: 40, max: null } } });
@@ -351,7 +352,7 @@ describe("reviewed species and accessible destructive actions", () => {
     button(el.shadowRoot!, "Accept and apply reviewed species").focus(); plant = { ...plant, revision: 2 }; h.events.get("ready")!(); await settle(el);
     expect(el.shadowRoot?.activeElement).toBe(dialogCancel(el)); await cancelDialog(el);
     // Conflict disables the original trigger, so a subsequent review is required.
-    await click(el, "I reviewed changes; retain my edits for reapply"); trigger.focus(); await click(el, "Preview species refresh"); await cancelDialog(el); expect(el.shadowRoot?.activeElement).toBe(trigger);
+    await click(el, "Keep my edits"); trigger.focus(); await click(el, "Preview species refresh"); await cancelDialog(el); expect(el.shadowRoot?.activeElement).toBe(trigger);
   });
   it("shows durable attribution offline and previews refresh nonmutating before explicit apply", async () => {
     const h = harness([{ ...sample, species: { provider: "openplantbook", snapshot } }]); const el = await detail(h.hass);
@@ -409,6 +410,6 @@ describe("local image validation and mutation", () => {
     vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 100, height: 100, close: vi.fn() })));
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: { code: "invalid_format", message: "Image decoding rejected" } }), { status: 400 })));
     const el = await detail(harness().hass); const input = el.shadowRoot!.querySelector<HTMLInputElement>('input[type="file"]')!; const file = pngFile(); Object.defineProperty(input, "files", { value: [file] }); input.dispatchEvent(new Event("change")); await settle(el);
-    expect(fetch).toHaveBeenCalledWith(`/api/smart_plants/plants/${sample.id}/image?expected_revision=1`, expect.objectContaining({ method: "POST", body: file, headers: { Authorization: "Bearer test-token", "Content-Type": "image/png" } })); expect(el.shadowRoot?.textContent).toContain("Images must be valid"); expect(el.shadowRoot?.textContent).not.toContain("Image decoding rejected");
+    expect(fetch).toHaveBeenCalledWith(`/api/smart_plants/plants/${sample.id}/image?expected_revision=1`, expect.objectContaining({ method: "POST", body: file, headers: { Authorization: "Bearer test-token", "Content-Type": "image/png" } })); expect(el.shadowRoot?.textContent).toContain("Photos must be JPEG, PNG or WebP"); expect(el.shadowRoot?.textContent).not.toContain("Image decoding rejected");
   });
 });

@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- Plainer wording in the panel, in English and German: error messages, the notice shown when
+  a plant was changed somewhere else, the threshold editor introductions and errors, the
+  "no update for a while" reasons, and the **Show all sensors** option.
+- A plant with sensors but no soil moisture sensor now shows *No moisture sensor*. *No
+  sensors* is shown only when nothing is assigned.
+- The **Main sensor** menu shows each sensor's name, followed by its entity ID.
+- **Assigned sensors** shows when each sensor last reported, the same time used to decide
+  whether it is not updating.
+- The delete confirmation now says that the plant's care history is deleted too.
+
 ### Fixed
 
 - A plant whose acquired date was stored as a plain date (for example `2024-03-01`, possible

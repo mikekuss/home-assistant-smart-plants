@@ -133,7 +133,7 @@ for (const spec of EDITORS) {
     await editor.getByRole("button", { name: "Save thresholds", exact: true }).click();
     const err = editor.getByRole("alert");
     await expect(err).toBeVisible();
-    await expect(err).toContainText("Effective thresholds must satisfy");
+    await expect(err).toContainText("Check the values");
     // Keyboard reach: per-field Inherit button and Save primary must be tabbable.
     const inherit = editor.getByRole("button", { name: "Inherit", exact: true }).first();
     await expect(inherit).toBeVisible();

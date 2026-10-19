@@ -155,7 +155,7 @@ describe("temperature stress threshold editor UI", () => {
     await settle(el);
     await click(el, "Save thresholds");
     const err = el.shadowRoot!.querySelector("#temperature_stress-editor p.error");
-    expect(err?.textContent).toContain("Effective thresholds");
+    expect(err?.textContent).toContain("Check the values");
     expect(calls.some(c => c.type === "smart_plants/roles/set_threshold_overrides")).toBe(false);
   });
 
@@ -310,7 +310,7 @@ describe("humidity stress threshold editor UI", () => {
     await settle(el);
     await click(el, "Save thresholds");
     const err = el.shadowRoot!.querySelector("#humidity_stress-editor p.error");
-    expect(err?.textContent).toContain("Effective thresholds");
+    expect(err?.textContent).toContain("Check the values");
     expect(calls.some(c => c.type === "smart_plants/roles/set_threshold_overrides")).toBe(false);
   });
 
@@ -449,7 +449,7 @@ describe("conductivity stress threshold editor UI", () => {
     await settle(el);
     await click(el, "Save thresholds");
     const err = el.shadowRoot!.querySelector("#conductivity_stress-editor p.error");
-    expect(err?.textContent).toContain("Effective thresholds");
+    expect(err?.textContent).toContain("Check the values");
     expect(calls.some(c => c.type === "smart_plants/roles/set_threshold_overrides")).toBe(false);
   });
 
@@ -591,7 +591,7 @@ describe("co2 stress threshold editor UI", () => {
     await settle(el);
     await click(el, "Save thresholds");
     const err = el.shadowRoot!.querySelector("#co2_stress-editor p.error");
-    expect(err?.textContent).toContain("Effective thresholds");
+    expect(err?.textContent).toContain("Check the values");
     expect(calls.some(c => c.type === "smart_plants/roles/set_threshold_overrides")).toBe(false);
   });
 
@@ -605,7 +605,7 @@ describe("co2 stress threshold editor UI", () => {
     await settle(el);
     await click(el, "Save thresholds");
     const err = el.shadowRoot!.querySelector("#co2_stress-editor p.error");
-    expect(err?.textContent).toContain("Effective thresholds");
+    expect(err?.textContent).toContain("Check the values");
     expect(calls.some(c => c.type === "smart_plants/roles/set_threshold_overrides")).toBe(false);
   });
 
@@ -758,7 +758,7 @@ describe("soil temperature stress threshold editor UI", () => {
     await settle(el);
     await click(el, "Save thresholds");
     const err = el.shadowRoot!.querySelector("#soil_temperature_stress-editor p.error");
-    expect(err?.textContent).toContain("Effective thresholds");
+    expect(err?.textContent).toContain("Check the values");
     expect(calls.some(c => c.type === "smart_plants/roles/set_threshold_overrides")).toBe(false);
   });
 
@@ -908,7 +908,7 @@ describe("low battery threshold editor UI", () => {
     await settle(el);
     await click(el, "Save thresholds");
     const err = el.shadowRoot!.querySelector("#low_battery-editor p.error");
-    expect(err?.textContent).toContain("Effective thresholds");
+    expect(err?.textContent).toContain("Check the values");
     expect(calls.some(c => c.type === "smart_plants/roles/set_threshold_overrides")).toBe(false);
   });
 
@@ -922,7 +922,7 @@ describe("low battery threshold editor UI", () => {
     await settle(el);
     await click(el, "Save thresholds");
     const err = el.shadowRoot!.querySelector("#low_battery-editor p.error");
-    expect(err?.textContent).toContain("Effective thresholds");
+    expect(err?.textContent).toContain("Check the values");
     expect(calls.some(c => c.type === "smart_plants/roles/set_threshold_overrides")).toBe(false);
   });
 
@@ -1073,7 +1073,7 @@ describe("low light threshold editor UI", () => {
     await settle(el);
     await click(el, "Save thresholds");
     const err = el.shadowRoot!.querySelector("#low_light-editor p.error");
-    expect(err?.textContent).toContain("Effective thresholds");
+    expect(err?.textContent).toContain("Check the values");
     expect(calls.some(c => c.type === "smart_plants/roles/set_threshold_overrides")).toBe(false);
   });
 
@@ -1087,7 +1087,7 @@ describe("low light threshold editor UI", () => {
     await settle(el);
     await click(el, "Save thresholds");
     const err = el.shadowRoot!.querySelector("#low_light-editor p.error");
-    expect(err?.textContent).toContain("Effective thresholds");
+    expect(err?.textContent).toContain("Check the values");
     expect(calls.some(c => c.type === "smart_plants/roles/set_threshold_overrides")).toBe(false);
   });
 
@@ -1270,7 +1270,7 @@ describe("Threshold editor localization", () => {
     expect(editor.textContent).toContain("Standard 10 °C · wirksam 10,5 °C");
     input.value = "30"; input.dispatchEvent(new Event("input", { bubbles: true })); await settle(el);
     await click(el, "Schwellenwerte speichern");
-    expect(el.shadowRoot!.querySelector("#temperature_stress-editor p.error")?.textContent).toContain("Die wirksamen Schwellenwerte müssen");
+    expect(el.shadowRoot!.querySelector("#temperature_stress-editor p.error")?.textContent).toContain("Prüfe die Werte");
   });
 
   it("uses English copy when the Home Assistant language has no panel catalog", async () => {

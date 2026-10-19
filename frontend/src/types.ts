@@ -214,7 +214,9 @@ export interface WizardCreateInput {
 export interface HAArea { area_id: string; name: string }
 export interface HAEntity { id: string; entity_id: string; device_id: string | null; unique_id: string; platform: string; area_id?: string | null }
 export interface HADevice { id: string; area_id: string | null; identifiers: [string, string][]; name_by_user?: string | null }
-export interface HAState { entity_id: string; state: string; attributes: Record<string, unknown>; last_updated: string }
+// `last_reported` changes on every report, even when nothing else did; staleness
+// is measured from it. Not every state source supplies it.
+export interface HAState { entity_id: string; state: string; attributes: Record<string, unknown>; last_updated: string; last_reported?: unknown }
 export interface Evaluation {
   computed_percent: number | null;
   health_score: number | null;

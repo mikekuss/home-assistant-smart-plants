@@ -16,7 +16,7 @@ import { READING_ROLES, ROLE_META, formatValue, isReadingRole, readingLabel, rel
 import type { ReadingRole } from "./status.js";
 import { RANGE_SPECS, isHistoryRange } from "./history-model.js";
 import type { HistoryPoint, HistoryRange } from "./history-model.js";
-import { CARE_ICONS, CARE_KINDS, DETAIL_SECTIONS, SECTION_LABELS, careDetails, expander, formatDuration, friendlyName, headerReason, readingPhrase, plantStyles, readingsInOrder, renderHistoryCard, renderKeyReadings, renderReadingRow } from "./views/plant.js";
+import { CARE_ICONS, CARE_KINDS, DETAIL_SECTIONS, SECTION_LABELS, careDetails, expander, formatDuration, friendlyName, headerReason, readingPhrase, plantStyles, readingsInOrder, renderHistoryCard, renderKeyReadings, renderReadingRow, reportedAt } from "./views/plant.js";
 import type { DetailSection, HistoryStatus } from "./views/plant.js";
 
 // Per-role editable-threshold configuration. Adding a role here + wiring
@@ -1248,7 +1248,7 @@ export class SmartPlantsPanel extends LitElement {
       <section class="sp-card" aria-labelledby="assigned-heading"><div class="card-h"><h3 id="assigned-heading">${l.t("assigned.heading")}</h3></div>
         ${assigned.length ? html`<ul class="list">${assigned.map(item => {
           const name = friendlyName(l, this._states, item.entityId); const state = this._states[item.entityId];
-          const updated = state ? l.t("assigned.updated", { age: relativeTime(l, state.last_updated) }) : l.t("assigned.not_found");
+          const updated = state ? l.t("assigned.updated", { age: relativeTime(l, reportedAt(state)) }) : l.t("assigned.not_found");
           return html`<li class="li"><span class="ic" aria-hidden="true"><ha-icon .icon=${ROLE_META[item.role].icon}></ha-icon></span>
             <span class="li-main"><span class="li-title">${name}</span><span class="li-sub">${readingLabel(l, item.role)} · ${updated}${item.main && item.several ? ` · ${l.t("assigned.main")}` : ""}</span></span>
             <span class="li-actions"><span class="li-value">${this._sensorValue(item.entityId)}</span>
