@@ -4,6 +4,7 @@
 import type { Localizer, MessageKey } from "./localize.js";
 import { ROLE_META, compareStatus, formatValue, isPlantStatus, isReadingRole, readingLabel, relativeTime, statusLabel } from "./status.js";
 import type { PlantStatus, ReadingRole, ReadingState, TargetRange } from "./status.js";
+import type { CareTaskStatus, CareTaskType, RestPeriod } from "./types.js";
 
 export interface RoleReading {
   value: number | null;
@@ -14,6 +15,21 @@ export interface RoleReading {
   sources: string[];
 }
 export interface PlantProblem { role: string; kind: string }
+// One care task's state today, ordered by the backend: overdue, due, then by
+// next due date. Dates are calendar dates in the Home Assistant time zone.
+export interface CareTaskSummary {
+  task_id: string;
+  type: CareTaskType;
+  // null means the translated default name for the type.
+  name: string | null;
+  status: CareTaskStatus;
+  is_due: boolean;
+  next_due: string | null;
+  // Days until next_due when scheduled, days overdue when overdue, else null.
+  days: number | null;
+  window_end: string | null;
+  resume_on: string | null;
+}
 export interface PlantOverview {
   plant_id: string;
   revision: number;
@@ -23,12 +39,37 @@ export interface PlantOverview {
   roles: Partial<Record<ReadingRole, RoleReading>>;
   last_watered_at: string | null;
   image: { id: string } | null;
+  care: CareTaskSummary[];
+  rest_period: RestPeriod | null;
+  resting: boolean;
 }
 
 const READING_STATES: readonly ReadingState[] = ["ok", "low", "high", "stale", "unavailable"];
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const numOrNull = (v: unknown): v is number | null => v === null || (typeof v === "number" && Number.isFinite(v));
 const strOrNull = (v: unknown): v is string | null => v === null || typeof v === "string";
+
+const CARE_TASK_TYPES: readonly CareTaskType[] = ["fertilize", "prune", "repot", "pests", "custom"];
+const CARE_TASK_STATUSES: readonly CareTaskStatus[] = ["scheduled", "due", "overdue", "resting", "done", "skipped", "missed"];
+const dateOrNull = (v: unknown): v is string | null => v === null || (typeof v === "string" && /^\d{4}-\d\d-\d\d$/.test(v) && Number.isFinite(Date.parse(v)));
+const month = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 12;
+
+function parseCareTask(raw: unknown): CareTaskSummary | null {
+  if (!isRecord(raw)) return null;
+  const { task_id, type, name, status, is_due, next_due, days, window_end, resume_on } = raw;
+  if (typeof task_id !== "string" || !/^[0-9a-f]{32}$/.test(task_id) || !CARE_TASK_TYPES.includes(type as CareTaskType)) return null;
+  if (!(name === null ? type !== "custom" : typeof name === "string" && name.length > 0 && name.length <= 60)) return null;
+  if (!CARE_TASK_STATUSES.includes(status as CareTaskStatus) || typeof is_due !== "boolean" || is_due !== (status === "due" || status === "overdue")) return null;
+  if (!dateOrNull(next_due) || !dateOrNull(window_end) || !dateOrNull(resume_on)) return null;
+  if (!(days === null || (typeof days === "number" && Number.isSafeInteger(days) && days >= 0))) return null;
+  return { task_id, type: type as CareTaskType, name: name as string | null, status: status as CareTaskStatus, is_due, next_due, days, window_end, resume_on };
+}
+
+function parseRestPeriod(raw: unknown): RestPeriod | null | undefined {
+  if (raw === null) return null;
+  if (!isRecord(raw) || Object.keys(raw).length !== 2 || !month(raw.start_month) || !month(raw.end_month)) return undefined;
+  return { start_month: raw.start_month, end_month: raw.end_month };
+}
 
 function parseReading(raw: unknown): RoleReading | null {
   if (!isRecord(raw) || !isRecord(raw.range)) return null;
@@ -43,10 +84,15 @@ function parseReading(raw: unknown): RoleReading | null {
 // entry never renders guessed values. Unknown roles are skipped.
 export function parseOverview(raw: unknown): PlantOverview | null {
   if (!isRecord(raw)) return null;
-  const { plant_id, revision, lifecycle_state, status, problems, roles, last_watered_at, image } = raw;
+  const { plant_id, revision, lifecycle_state, status, problems, roles, last_watered_at, image, care, rest_period, resting } = raw;
   if (typeof plant_id !== "string" || typeof revision !== "number" || (lifecycle_state !== "active" && lifecycle_state !== "disabled")) return null;
   if (!isPlantStatus(status) || !Array.isArray(problems) || !isRecord(roles) || !strOrNull(last_watered_at)) return null;
   if (!(image === null || (isRecord(image) && typeof image.id === "string"))) return null;
+  if (!Array.isArray(care) || care.length > 20 || typeof resting !== "boolean") return null;
+  const parsedCare = care.map(parseCareTask);
+  if (!parsedCare.every((task): task is CareTaskSummary => task !== null) || new Set(parsedCare.map(task => task.task_id)).size !== parsedCare.length) return null;
+  const parsedRest = parseRestPeriod(rest_period);
+  if (parsedRest === undefined || (parsedRest === null && resting)) return null;
   const parsedProblems = problems.filter((p): p is PlantProblem => isRecord(p) && typeof p.role === "string" && typeof p.kind === "string").map(p => ({ role: p.role, kind: p.kind }));
   if (parsedProblems.length !== problems.length) return null;
   const parsedRoles: Partial<Record<ReadingRole, RoleReading>> = {};
@@ -56,7 +102,7 @@ export function parseOverview(raw: unknown): PlantOverview | null {
     if (!reading) return null;
     parsedRoles[role] = reading;
   }
-  return { plant_id, revision, lifecycle_state, status, problems: parsedProblems, roles: parsedRoles, last_watered_at, image: image === null ? null : { id: (image as { id: string }).id } };
+  return { plant_id, revision, lifecycle_state, status, problems: parsedProblems, roles: parsedRoles, last_watered_at, image: image === null ? null : { id: (image as { id: string }).id }, care: parsedCare, rest_period: parsedRest, resting };
 }
 
 // ---- Chip and reason text ----

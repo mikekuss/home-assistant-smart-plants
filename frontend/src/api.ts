@@ -11,7 +11,7 @@ import type {
   PanelCapabilities, WizardDraft, WizardPreview, WizardCreateInput,
   MoistureInput, HAArea, HAEntity, HADevice, HAState, Evaluation,
   HealthEvaluation, PlantPlacement, PlantSpecies, SensorSource,
-  CareHistory, CareEvent,
+  CareHistory, CareEvent, CareTaskInput, CareTaskChanges, CareTaskCompletion, RestPeriod,
 } from "./types.js";
 import { validPlant, validPlantList, validResponse, validState } from "./validation.js";
 import { parseOverview } from "./overview-model.js";
@@ -100,6 +100,29 @@ export const api = {
   },
   async deleteCareEvent(hass: HomeAssistantLike, plantId: string, revision: number, eventId: string): Promise<{ plant: PlantRecord; summary: CareHistory["summary"] }> {
     return send(hass, { type: "smart_plants/care/delete", plant_id: plantId, expected_revision: revision, event_id: eventId });
+  },
+  // Care task commands return the updated plant; the extra fields let the
+  // panel undo: delete the logged event, or restore the previous skip date.
+  async createCareTask(hass: HomeAssistantLike, plantId: string, revision: number, input: CareTaskInput): Promise<{ plant: PlantRecord; task_id: string }> {
+    return send(hass, { type: "smart_plants/care_tasks/create", plant_id: plantId, expected_revision: revision, ...input });
+  },
+  async updateCareTask(hass: HomeAssistantLike, plantId: string, taskId: string, revision: number, changes: CareTaskChanges): Promise<PlantRecord> {
+    return (await send<{ plant: PlantRecord }>(hass, { type: "smart_plants/care_tasks/update", plant_id: plantId, task_id: taskId, expected_revision: revision, ...changes })).plant;
+  },
+  async deleteCareTask(hass: HomeAssistantLike, plantId: string, taskId: string, revision: number): Promise<PlantRecord> {
+    return (await send<{ plant: PlantRecord }>(hass, { type: "smart_plants/care_tasks/delete", plant_id: plantId, task_id: taskId, expected_revision: revision })).plant;
+  },
+  async completeCareTask(hass: HomeAssistantLike, plantId: string, taskId: string, revision: number, completion: CareTaskCompletion = {}): Promise<{ plant: PlantRecord; event_id: string }> {
+    return send(hass, { type: "smart_plants/care_tasks/complete", plant_id: plantId, task_id: taskId, expected_revision: revision, ...completion });
+  },
+  async skipCareTask(hass: HomeAssistantLike, plantId: string, taskId: string, revision: number): Promise<{ plant: PlantRecord; previous_skipped_on: string | null }> {
+    return send(hass, { type: "smart_plants/care_tasks/skip", plant_id: plantId, task_id: taskId, expected_revision: revision });
+  },
+  async undoSkipCareTask(hass: HomeAssistantLike, plantId: string, taskId: string, revision: number, previousSkippedOn: string | null): Promise<PlantRecord> {
+    return (await send<{ plant: PlantRecord }>(hass, { type: "smart_plants/care_tasks/undo_skip", plant_id: plantId, task_id: taskId, expected_revision: revision, previous_skipped_on: previousSkippedOn })).plant;
+  },
+  async setRestPeriod(hass: HomeAssistantLike, plantId: string, revision: number, restPeriod: RestPeriod | null): Promise<PlantRecord> {
+    return (await send<{ plant: PlantRecord }>(hass, { type: "smart_plants/plants/set_rest_period", plant_id: plantId, expected_revision: revision, rest_period: restPeriod })).plant;
   },
   async info(hass: HomeAssistantLike): Promise<PanelCapabilities> {
     const result = await send<PanelCapabilities>(hass, { type: "smart_plants/panel/info" });
@@ -264,7 +287,7 @@ export const api = {
     return (await send<{ plant: PlantRecord }>(hass, { type: "smart_plants/roles/set_stale_after", plant_id: plantId, expected_revision: expectedRevision, role, stale_after_seconds: staleAfterSeconds })).plant;
   },
 
-  // Status, readings and last watering for every plant in one call. Malformed
+  // Status, readings, last watering and care task states for every plant in one call. Malformed
   // entries are dropped so the overview never renders guessed values.
   async overview(hass: HomeAssistantLike): Promise<PlantOverview[]> {
     const result = await send<{ plants?: unknown }>(hass, { type: "smart_plants/plants/overview" });

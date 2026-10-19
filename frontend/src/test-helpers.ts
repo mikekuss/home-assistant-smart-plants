@@ -63,6 +63,9 @@ export function overviewFor(plant: PlantRecord): PlantOverview {
     roles: sources.length ? { moisture: { value: 30, unit: "%", state: "ok", range: { min: 20, target: 40, max: 60 }, last_reported: "2026-09-10T00:00:00+00:00", sources: sources.map(s => s.entity_id) } } : {},
     last_watered_at: plant.care_events?.[0]?.occurred_at ?? null,
     image: plant.image ? { id: plant.image.id } : null,
+    care: [],
+    rest_period: plant.rest_period ?? null,
+    resting: false,
   };
 }
 export function overviewOf(panel: { shadowRoot: ShadowRoot | null }): HTMLElementTagNameMap["smart-plants-overview"] {

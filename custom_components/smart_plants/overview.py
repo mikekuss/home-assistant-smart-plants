@@ -3,8 +3,9 @@ Build the per-plant overview payload for ``smart_plants/plants/overview``.
 
 Every value comes from the role controllers' current evaluations and the
 plant's stored role configuration, which are exactly what the entities and
-evaluators use. The payload never includes species provider data,
-credentials or tokens.
+evaluators use. Care task states come from the pure schedule engine for
+today's date in the Home Assistant time zone. The payload never includes
+species provider data, credentials or tokens.
 """
 
 from __future__ import annotations
@@ -13,14 +14,19 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Final
 
 from homeassistant.const import PERCENTAGE, UnitOfConductivity, UnitOfTemperature
+from homeassistant.util import dt as dt_util
 
 from .care import care_summary
+from .care_schedule import is_resting, task_state
 from .co2_evaluator import CO2_PARTS_PER_MILLION
 from .illuminance_evaluator import LIGHT_LUX
 from .plant_status import evaluate_plant_status, role_state
 from .roles import role_definitions
 
 if TYPE_CHECKING:
+    from datetime import date, tzinfo
+
+    from .care_schedule import TaskState
     from .manager import SmartPlantsManager
     from .models import PlantRecord
 
@@ -118,6 +124,50 @@ def _role_view(
     }
 
 
+# Overdue tasks first, then tasks due today, then everything else.
+_CARE_STATUS_RANK: Final = {"overdue": 0, "due": 1}
+
+
+def _iso(value: date | None) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
+def _care_sort_key(item: tuple[int, TaskState]) -> tuple[int, bool, str, int]:
+    index, state = item
+    rank = _CARE_STATUS_RANK.get(state.status, 2)
+    # Tasks without a next due date sort after every dated task.
+    next_due = state.next_due
+    return (
+        rank,
+        next_due is None,
+        next_due.isoformat() if next_due is not None else "",
+        index,
+    )
+
+
+def _care_view(plant: PlantRecord, *, tz: tzinfo, today: date) -> list[dict[str, Any]]:
+    tasks = plant.care_tasks
+    states = [
+        (index, task_state(task, plant.rest_period, tz=tz, today=today))
+        for index, task in enumerate(tasks)
+    ]
+    states.sort(key=_care_sort_key)
+    return [
+        {
+            "task_id": tasks[index].id,
+            "type": tasks[index].type,
+            "name": tasks[index].name,
+            "status": state.status,
+            "is_due": state.is_due,
+            "next_due": _iso(state.next_due),
+            "days": state.days,
+            "window_end": _iso(state.window_end),
+            "resume_on": _iso(state.resume_on),
+        }
+        for index, state in states
+    ]
+
+
 def plant_overview(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str, Any]:
     """Return the overview payload for one plant."""
     disabled = plant.lifecycle_state == "disabled"
@@ -135,6 +185,8 @@ def plant_overview(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str,
             definition.key, config, controller, disabled=disabled
         )
     result = evaluate_plant_status(disabled=disabled, evaluations=evaluations)
+    tz = dt_util.get_default_time_zone()
+    today = dt_util.now(tz).date()
     return {
         "plant_id": plant.id,
         "revision": plant.revision,
@@ -144,4 +196,9 @@ def plant_overview(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str,
         "roles": roles,
         "last_watered_at": care_summary(plant.care_events)["last_watered_at"],
         "image": {"id": plant.image.id} if plant.image is not None else None,
+        "care": _care_view(plant, tz=tz, today=today),
+        "rest_period": (
+            plant.rest_period.as_storage() if plant.rest_period is not None else None
+        ),
+        "resting": is_resting(plant.rest_period, today),
     }

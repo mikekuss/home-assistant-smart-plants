@@ -2577,7 +2577,9 @@ class RestPeriod:
     Months of the year a plant rests, inclusive at both ends.
 
     The range may wrap past December (``11`` to ``2`` is November through
-    February); equal months mean a single month.
+    February); equal months mean a single month. A rest period never covers
+    all twelve months, because the plant would have no growing season and
+    growing-season-only tasks would never come due.
     """
 
     start_month: int
@@ -2586,6 +2588,8 @@ class RestPeriod:
     @classmethod
     def from_storage(cls, data: object) -> Self:
         start, end = _parse_month_range(data, "rest period")
+        if (end - start) % 12 == _LAST_MONTH - 1:
+            raise ValueError("rest period cannot cover all 12 months")
         return cls(start_month=start, end_month=end)
 
     def as_storage(self) -> dict[str, Any]:

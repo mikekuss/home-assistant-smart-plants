@@ -136,6 +136,9 @@ function overviewOf(p) {
     roles: sources.length ? { moisture: { value: e.computed_available ? e.computed_percent : null, unit: "%", state: e.needs_water ? "low" : e.too_wet ? "high" : e.sensor_stale ? "stale" : e.computed_available ? "ok" : "unavailable", range: { min: bound("min"), target: bound("target"), max: bound("max") }, last_reported: e.computed_available ? now : null, sources: sources.map(s => s.entity_id) } } : {},
     last_watered_at: watered?.occurred_at ?? null,
     image: p.image ? { id: p.image.id } : null,
+    care: [],
+    rest_period: p.rest_period ?? null,
+    resting: false,
   };
 }
 const params = new URLSearchParams(location.search);
