@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SmartPlantsPanel } from "./panel.js";
 import { createLocalizer, ENGLISH } from "./localize.js";
-import { formatDuration, friendlyName, headerReason, readingPhrase, readingStateText } from "./views/plant.js";
+import { formatDuration, friendlyName, headerReason, readingPhrase, readingStateText, reportedAt } from "./views/plant.js";
 import type { PlantOverview } from "./overview-model.js";
 import type { CareEvent, HAState, PlantRecord } from "./types.js";
 import { button, click, deferred, harness, overviewFor, panelText, role, sample, settle } from "./test-helpers.js";
@@ -46,6 +46,9 @@ describe("plant page helpers", () => {
   });
   it("names sensors by their friendly name and never shows a raw entity ID", () => {
     expect(friendlyName(ENGLISH, { [soil.entity_id]: soil }, soil.entity_id)).toBe("Kitchen Soil Probe");
+    expect(reportedAt({ ...soil, last_updated: "2026-09-28T03:00:00Z", last_reported: "2026-09-28T11:00:00Z" })).toBe("2026-09-28T11:00:00Z");
+    expect(reportedAt({ ...soil, last_updated: "2026-09-28T03:00:00Z" })).toBe("2026-09-28T03:00:00Z");
+    expect(reportedAt({ ...soil, last_updated: "2026-09-28T03:00:00Z", last_reported: "not a time" })).toBe("2026-09-28T03:00:00Z");
     expect(friendlyName(ENGLISH, { "sensor.mock_plain": { ...soil, entity_id: "sensor.mock_plain", attributes: {} } }, "sensor.mock_plain")).toBe("Mock plain");
     expect(friendlyName(ENGLISH, {}, "sensor.mock_gone")).toBe("Missing sensor");
   });
@@ -113,7 +116,7 @@ describe("plant page", () => {
     await click(el, "Watered"); await settle(el); await settle(el);
     expect(h.calls.filter(c => c.type === "smart_plants/care/add_watering")).toHaveLength(1);
     expect(toasts).toEqual(["Watering logged for Aloe"]);
-    expect(el.shadowRoot!.textContent).not.toContain("Review changes from another session");
+    expect(el.shadowRoot!.textContent).not.toContain("This plant was changed somewhere else");
   });
   it("filters care entries by kind and opens the form from Log care", async () => {
     const events = [watered("n1", "note", "21"), watered("w1", "watering", "20")];

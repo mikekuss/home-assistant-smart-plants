@@ -78,6 +78,12 @@ describe("chip and reason text", () => {
     expect(chipText(en, entry("paused", [{ role: "moisture", kind: "needs_water" }]))).toEqual({ label: "Paused", more: 0 });
     expect(cardReason(en, entry("no_sensors", [{ role: "moisture", kind: "no_sensors" }]))).toBe("");
   });
+  it("says No sensors only when nothing is assigned, otherwise names the missing moisture sensor", () => {
+    expect(chipText(en, entry("no_sensors", [{ role: "moisture", kind: "no_sensors" }])).label).toBe("No sensors");
+    const tempOnly = entry("no_sensors", [{ role: "moisture", kind: "no_sensors" }], { temperature: reading(21, "°C", { min: 15, target: null, max: 30 }) });
+    expect(chipText(en, tempOnly).label).toBe("No moisture sensor");
+    expect(chipText(de, tempOnly).label).toBe("Kein Feuchtesensor");
+  });
   it("lists other readings in a fixed order after moisture", () => {
     const plant = entry("healthy", [], { battery: reading(80, "%", { min: 20, target: null, max: null }), moisture: reading(40, "%", { min: 20, target: 40, max: 60 }), temperature: reading(21, "°C", { min: 15, target: null, max: 30 }) });
     expect(secondaryReadings(plant).map(([role]) => role)).toEqual(["temperature", "battery"]);

@@ -243,12 +243,12 @@ describe("Sensors section", () => {
     const picker = sensorsSection(el).querySelector<HTMLSelectElement>("#temperature-sources-editor select")!;
     picker.value = "sensor.living_temp"; picker.dispatchEvent(new Event("change", { bubbles: true })); await settle(el);
     await click(el, "Save temperature sensors");
-    expect(el.shadowRoot!.textContent).toContain("Review changes from another session");
-    expect(el.shadowRoot!.textContent).toContain("Both sessions changed these source fields: stale_after_seconds");
+    expect(el.shadowRoot!.textContent).toContain("This plant was changed somewhere else");
+    expect(el.shadowRoot!.textContent).toContain("You and the other change both edited not-updating time");
     expect(sensorsSection(el).textContent).toContain("sensor.living_temp");
     expect(h.calls.filter(c => String(c.type).startsWith("smart_plants/roles/set_"))).toHaveLength(1);
-    await click(el, "I reviewed changes; retain my edits for reapply");
-    expect(el.shadowRoot!.textContent).toContain("Saving will replace the refreshed values for those fields");
+    await click(el, "Keep my edits");
+    expect(el.shadowRoot!.textContent).toContain("These also changed elsewhere: not-updating time. Saving replaces them with your values.");
     expect(sensorsSection(el).textContent).toContain("sensor.living_temp");
     await openCombine(el, "Temperature");
     expect(sensorsSection(el).querySelector<HTMLInputElement>('#temperature-sources-editor input[type="number"]')!.value).toBe("3600");
@@ -288,9 +288,9 @@ describe("Sensors section", () => {
     await openCombine(el, "Temperature");
     await setTemperatureStale(el, "3600");
     await click(el, "Save temperature sensors");
-    expect(el.shadowRoot!.textContent).toContain("Review changes from another session");
+    expect(el.shadowRoot!.textContent).toContain("This plant was changed somewhere else");
     expect(sensorsSection(el).querySelector<HTMLInputElement>('#temperature-sources-editor input[type="number"]')!.value).toBe("3600");
-    await click(el, "I reviewed changes; retain my edits for reapply");
+    await click(el, "Keep my edits");
     expect(h.calls.filter(c => String(c.type).startsWith("smart_plants/roles/set_"))).toHaveLength(2);
     await click(el, "Save temperature sensors");
     expect(h.calls.filter(c => String(c.type).startsWith("smart_plants/roles/set_")).map(c => [c.type, c.expected_revision])).toEqual([

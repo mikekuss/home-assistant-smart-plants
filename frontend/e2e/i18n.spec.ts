@@ -93,7 +93,7 @@ test("German diagnostics format thresholds and composite health", async ({ page 
   await expect(editor).toContainText("Standard 10 °C · wirksam 10,5 °C");
   await editor.getByLabel("Kälte-Auslöser (°C)").fill("30");
   await editor.getByRole("button", { name: "Schwellenwerte speichern" }).click();
-  await expect(editor.getByRole("alert")).toContainText("Die wirksamen Schwellenwerte müssen Kälte-Auslöser < Kälte-Aufhebung");
+  await expect(editor.getByRole("alert")).toContainText("Prüfe die Werte: Sie müssen von Kälte-Auslöser über Kälte-Aufhebung");
   await audit(page, info, "german-diagnostics");
 });
 

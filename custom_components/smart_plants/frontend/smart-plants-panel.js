@@ -925,7 +925,10 @@ function kt(e, t) {
 			more: r
 		};
 	}
-	return {
+	return t.status === "no_sensors" && Object.keys(t.roles).length ? {
+		label: e.t("plant_status.no_moisture"),
+		more: r
+	} : {
 		label: mt(e, t.status),
 		more: r
 	};
@@ -1600,20 +1603,20 @@ var fn = {
 	"panel.busy": "Speichern oder Vorschau wird geladen …",
 	"panel.update_available": "Smart Plants wurde aktualisiert. Lade die Seite neu, um die neue Version zu verwenden.",
 	"panel.reload": "Neu laden",
-	"api_error.unknown": "Anfrage fehlgeschlagen. Aktualisiere die Seite und versuche es erneut, sobald eine Verbindung besteht.",
-	"api_error.integration_not_loaded": "Smart Plants ist nicht geladen. Öffne Einstellungen → Geräte & Dienste und aktualisiere die Seite, nachdem die Integration geladen wurde.",
-	"api_error.unauthorized": "Smart Plants erfordert ein Administratorkonto.",
-	"api_error.not_found": "Pflanze oder Art nicht gefunden. Sie wurde möglicherweise in einer anderen Sitzung entfernt.",
-	"api_error.revision_conflict": "Diese Pflanze wurde an anderer Stelle geändert. Prüfe die aktualisierten Felder und wende deine Änderungen ausdrücklich erneut an.",
-	"api_error.provider_disabled": "Der Anbieter ist nicht verfügbar. Fahre manuell fort; übernommene lokale Artdaten bleiben verfügbar.",
-	"api_error.provider_authentication": "Die Anmeldung beim Anbieter ist fehlgeschlagen. Prüfe die erneute Anmeldung der Integration in den Einstellungen oder fahre manuell fort.",
-	"api_error.provider_rate_limit": "Das Anfragelimit des Anbieters ist erreicht. Versuche es später erneut oder fahre manuell fort.",
-	"api_error.provider_timeout": "Zeitüberschreitung beim Anbieter. Versuche es später erneut oder fahre manuell fort.",
-	"api_error.provider_outage": "Der Anbieter ist derzeit nicht erreichbar. Versuche es später erneut oder fahre manuell fort.",
-	"api_error.provider_malformed_response": "Der Anbieter hat eine ungültige Antwort geliefert. Fahre manuell fort oder versuche es später erneut.",
-	"api_error.version_mismatch": "Panel- und API-Version passen nicht zusammen. Starte Home Assistant nach dem Update neu und lade das Frontend vollständig neu.",
-	"api_error.invalid_response": "Die Antwort ist nicht kompatibel. Aktualisiere die Seite, bevor du bearbeitest oder es erneut versuchst; Wiederholungen beim Erstellen behalten die ursprüngliche Anfrage bei.",
-	"api_error.invalid_format": "Der Server hat die Eingabe abgelehnt. Prüfe die Felder und Quellenzuordnungen. Bilder müssen gültige JPEG-, PNG- oder WebP-Dateien mit höchstens 5 MiB und 2048 × 2048 Pixeln sein; abgelaufene Artvorschauen müssen erneut geprüft werden.",
+	"api_error.unknown": "Etwas ist schiefgelaufen. Prüfe deine Verbindung und versuche es erneut.",
+	"api_error.integration_not_loaded": "Smart Plants läuft nicht. Sieh unter Einstellungen → Geräte & Dienste nach und lade diese Seite dann neu.",
+	"api_error.unauthorized": "Nur Administratoren können Smart Plants verwenden.",
+	"api_error.not_found": "Diese Pflanze oder Art gibt es nicht mehr. Sie wurde vielleicht an anderer Stelle gelöscht.",
+	"api_error.revision_conflict": "Diese Pflanze wurde an anderer Stelle geändert. Sieh dir die aktuellen Werte an und speichere deine Änderungen dann erneut.",
+	"api_error.provider_disabled": "OpenPlantBook ist nicht verfügbar. Du kannst ohne fortfahren; bereits übernommene Artdaten bleiben erhalten.",
+	"api_error.provider_authentication": "OpenPlantBook hat deine Zugangsdaten nicht akzeptiert. Aktualisiere sie unter Einstellungen → Geräte & Dienste oder fahre ohne Art fort.",
+	"api_error.provider_rate_limit": "OpenPlantBook erhält gerade zu viele Anfragen. Versuche es später erneut oder fahre ohne fort.",
+	"api_error.provider_timeout": "OpenPlantBook hat zu lange nicht geantwortet. Versuche es später erneut oder fahre ohne fort.",
+	"api_error.provider_outage": "OpenPlantBook ist gerade nicht erreichbar. Versuche es später erneut oder fahre ohne fort.",
+	"api_error.provider_malformed_response": "OpenPlantBook hat eine Antwort geschickt, die Smart Plants nicht lesen kann. Versuche es später erneut oder fahre ohne fort.",
+	"api_error.version_mismatch": "Das Smart-Plants-Panel passt nicht zur installierten Version. Starte Home Assistant neu und lade diese Seite dann neu (leere bei Bedarf den Browser-Cache).",
+	"api_error.invalid_response": "Smart Plants hat eine unerwartete Antwort erhalten. Lade die Seite neu und versuche es erneut.",
+	"api_error.invalid_format": "Einige Angaben konnten nicht gespeichert werden. Prüfe die Felder und versuche es erneut. Fotos müssen JPEG, PNG oder WebP sein, höchstens 5 MiB groß und höchstens 2048 × 2048 Pixel. Wenn du gerade eine Art auswählst, suche sie erneut.",
 	"error.disconnected": "Verbindung getrennt. Lokale Änderungen und Wiederholungen beim Erstellen bleiben erhalten. Stelle die Verbindung vor dem Speichern wieder her.",
 	"error.registry_updates": "Registrierungsaktualisierungen nicht verfügbar; stelle die Verbindung wieder her, um native Änderungen erneut zu laden.",
 	"error.area_reconnect": "Stelle die Verbindung wieder her, um die aktuellen Home-Assistant-Bereiche zu laden, und wähle dann einen Bereich oder „Kein Bereich“.",
@@ -1625,15 +1628,15 @@ var fn = {
 	"notice.area_changed_synced": "Der Home-Assistant-Bereich wurde von {from} zu {to} geändert. Die Bereichsauswahl zeigt jetzt den nativen Bereich.",
 	"notice.related_failed": "Zugehörige Automatisierungen konnten nicht geladen werden. Öffne die native Geräteseite, um sie einzusehen.",
 	"notice.saved": "Gespeichert.",
-	"conflict.heading": "Änderungen aus einer anderen Sitzung prüfen",
-	"conflict.revision": "Revision {before} → {after}. Das Speichern ist angehalten. Lokale Änderungen bleiben erhalten.",
-	"conflict.roles_changed": "Sensorkonfiguration oder Schwellenwert-Standards bzw. -Überschreibungen wurden geändert.",
-	"conflict.source_overlap": "Beide Sitzungen haben diese Quellenfelder geändert: {fields}. Prüfe die aktualisierte Rollenübersicht und deinen Entwurf, bevor du es erneut versuchst; Speichern ersetzt die aktualisierten Werte dieser Felder.",
-	"conflict.retain": "Änderungen geprüft; meine Änderungen zum erneuten Anwenden behalten",
-	"conflict.discard": "Meine Änderungen verwerfen und aktualisierte Werte verwenden",
-	"conflict.reviewed": "Änderungen geprüft. Deine bearbeiteten Felder bleiben erhalten; prüfe sie und wende sie mit der jeweiligen Speichern-Schaltfläche ausdrücklich erneut an.",
-	"conflict.reviewed_overlap": "Beide Sitzungen haben {fields} im Quellen-Editor geändert. Speichern ersetzt die aktualisierten Werte dieser Felder.",
-	"conflict.reviewed_species": "Artvorschauen müssen erneut angefordert und geprüft werden.",
+	"conflict.heading": "Diese Pflanze wurde an anderer Stelle geändert",
+	"conflict.revision": "Speichern ist angehalten, damit nichts überschrieben wird. Deine Änderungen bleiben erhalten.",
+	"conflict.roles_changed": "Sensoren oder Warnschwellen wurden geändert.",
+	"conflict.source_overlap": "Du und die andere Änderung habt beide {fields} bearbeitet. Beim Speichern ersetzen deine Werte die jetzt angezeigten.",
+	"conflict.retain": "Meine Änderungen behalten",
+	"conflict.discard": "Meine Änderungen verwerfen",
+	"conflict.reviewed": "Deine Änderungen bleiben erhalten. Prüfe sie und speichere jeden Bereich erneut.",
+	"conflict.reviewed_overlap": "Auch an anderer Stelle geändert: {fields}. Beim Speichern werden diese Werte durch deine ersetzt.",
+	"conflict.reviewed_species": "Wenn du gerade eine Art auswählst, suche sie erneut.",
 	"conflict_field.name": "Name",
 	"conflict_field.acquired_at": "Angeschafft",
 	"conflict_field.placement": "Standort",
@@ -1641,13 +1644,13 @@ var fn = {
 	"conflict_field.tags": "Tags",
 	"conflict_field.species": "Art",
 	"conflict_field.image": "Foto",
-	"conflict_field.lifecycle_state": "Lebenszyklus",
-	"conflict_field.roles": "Rollen",
-	"conflict_field.care_events": "Pflegeeinträge",
-	"source_field.sources": "Quellen",
-	"source_field.primary_entity_id": "primäre Quelle",
-	"source_field.aggregation": "Aggregation",
-	"source_field.stale_after_seconds": "Veraltet nach",
+	"conflict_field.lifecycle_state": "Status",
+	"conflict_field.roles": "Sensoren",
+	"conflict_field.care_events": "Pflegeverlauf",
+	"source_field.sources": "Sensoren",
+	"source_field.primary_entity_id": "Hauptsensor",
+	"source_field.aggregation": "Kombination der Messwerte",
+	"source_field.stale_after_seconds": "Zeit bis „Keine Daten“",
 	"list.loading": "Pflanzen werden geladen …",
 	"list.count_filtered": "{shown} von {total} Pflanzen",
 	"detail.not_found": "Pflanze nicht gefunden – sie wurde möglicherweise in einer anderen Sitzung gelöscht.",
@@ -1714,7 +1717,7 @@ var fn = {
 	"snapshot.proposed_changes": "Vorgeschlagene Änderungen",
 	"snapshot.preview_read_only": "Die Vorschau ist schreibgeschützt. Lokale Überschreibungen bleiben erhalten. Es werden keine externen Bilder geladen.",
 	"dialog.delete_title": "{name} löschen?",
-	"dialog.delete_body": "Dadurch werden die Pflanze, ihr Gerät, ihre Entitäten und das lokale Foto dauerhaft entfernt. Dies kann nicht rückgängig gemacht werden.",
+	"dialog.delete_body": "Dadurch werden die Pflanze, ihr Pflegeverlauf, ihr Gerät mit allen Entitäten und ihr Foto dauerhaft entfernt. Das kann nicht rückgängig gemacht werden.",
 	"dialog.delete_confirm": "Pflanze dauerhaft löschen",
 	"dialog.species_title": "Artänderungen prüfen",
 	"dialog.preview_invalid": "Die Vorschau ist nicht mehr gültig. Schließe den Dialog und fordere eine neue Vorschau an.",
@@ -1755,7 +1758,7 @@ var fn = {
 	"moisture_threshold.min": "Minimum",
 	"moisture_threshold.target": "Zielwert",
 	"moisture_threshold.max": "Maximum",
-	"sources.show_all": "Alle Sensoren anzeigen (ohne Metadatenfilter)",
+	"sources.show_all": "Alle Sensoren anzeigen, auch solche, die nicht passend erscheinen",
 	"sources.choose": "Sensor auswählen",
 	"sources.candidate": "{name} · {entity_id} · Einheit: {unit} · Klasse: {device_class} · {state}",
 	"sources.not_supplied_lower": "nicht angegeben",
@@ -1907,15 +1910,15 @@ var fn = {
 	"section.advanced_diagnostics_edit_thresholds": "Schwellenwerte bearbeiten",
 	"section.effective_thresholds_label": "Wirksame Schwellenwerte für {label}",
 	"problem_reason.battery_ok": "Batterie über der unteren Schwelle",
-	"problem_reason.battery_stale": "Batteriemesswert veraltet",
+	"problem_reason.battery_stale": "seit einer Weile keine Batteriemeldung",
 	"problem_reason.battery_unavailable": "Batteriemesswert nicht verfügbar",
 	"problem_reason.co2_ok": "CO2 im Sollbereich",
-	"problem_reason.co2_stale": "CO2-Messwert veraltet",
+	"problem_reason.co2_stale": "seit einer Weile kein neuer CO₂-Wert",
 	"problem_reason.co2_stress": "CO2 zu hoch",
 	"problem_reason.co2_unavailable": "CO2-Messwert nicht verfügbar",
 	"problem_reason.cold_stress": "zu kalt",
 	"problem_reason.conductivity_ok": "Leitfähigkeit im Sollbereich",
-	"problem_reason.conductivity_stale": "Leitfähigkeitsmesswert veraltet",
+	"problem_reason.conductivity_stale": "seit einer Weile kein neuer Düngergehalt",
 	"problem_reason.conductivity_unavailable": "Leitfähigkeitsmesswert nicht verfügbar",
 	"problem_reason.damp_stress": "Luft zu feucht",
 	"problem_reason.dry_stress": "Luft zu trocken",
@@ -1923,9 +1926,9 @@ var fn = {
 	"problem_reason.high_conductivity_stress": "Leitfähigkeit zu hoch",
 	"problem_reason.hot_stress": "zu heiß",
 	"problem_reason.humidity_ok": "Luftfeuchte im Sollbereich",
-	"problem_reason.humidity_stale": "Luftfeuchtemesswert veraltet",
+	"problem_reason.humidity_stale": "seit einer Weile kein neuer Luftfeuchtewert",
 	"problem_reason.humidity_unavailable": "Luftfeuchtemesswert nicht verfügbar",
-	"problem_reason.illuminance_stale": "Messwert der Beleuchtungsstärke veraltet",
+	"problem_reason.illuminance_stale": "seit einer Weile kein neuer Lichtwert",
 	"problem_reason.illuminance_unavailable": "Messwert der Beleuchtungsstärke nicht verfügbar",
 	"problem_reason.insufficient_daytime_samples": "noch nicht genug Messwerte bei Tageslicht",
 	"problem_reason.low_battery": "Batterie niedrig",
@@ -1933,10 +1936,10 @@ var fn = {
 	"problem_reason.low_light": "zu wenig Tageslicht",
 	"problem_reason.nighttime": "Nacht; Licht wird nicht bewertet",
 	"problem_reason.soil_temperature_ok": "Bodentemperatur im Sollbereich",
-	"problem_reason.soil_temperature_stale": "Bodentemperaturmesswert veraltet",
+	"problem_reason.soil_temperature_stale": "seit einer Weile kein neuer Bodentemperaturwert",
 	"problem_reason.soil_temperature_unavailable": "Bodentemperaturmesswert nicht verfügbar",
 	"problem_reason.temperature_ok": "Temperatur im Sollbereich",
-	"problem_reason.temperature_stale": "Temperaturmesswert veraltet",
+	"problem_reason.temperature_stale": "seit einer Weile kein neuer Temperaturwert",
 	"problem_reason.temperature_unavailable": "Temperaturmesswert nicht verfügbar",
 	"problem.temperature_stress": "Temperaturstress",
 	"problem.humidity_stress": "Luftfeuchtestress",
@@ -1985,13 +1988,13 @@ var fn = {
 	"threshold.inherit_all": "Alle integrierten Standardwerte übernehmen",
 	"threshold.save": "Schwellenwerte speichern",
 	"threshold.group_label": "Schwellenwerte für {label}",
-	"threshold_intro.temperature_stress": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Kälte-Auslöser < Kälte-Aufhebung < Hitze-Aufhebung < Hitze-Auslöser erfüllen, mit mindestens 0,5 °C Hysterese je Seite und einem stabilen Bereich von 1,0 °C.",
-	"threshold_intro.humidity_stress": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Trocken-Auslöser < Trocken-Aufhebung < Feucht-Aufhebung < Feucht-Auslöser erfüllen, mit mindestens 1,0 % Hysterese je Seite und einem stabilen Bereich von 5,0 %.",
-	"threshold_intro.conductivity_stress": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Niedrig-Auslöser < Niedrig-Aufhebung < Hoch-Aufhebung < Hoch-Auslöser erfüllen, mit mindestens 10,0 µS/cm Hysterese je Seite und einem stabilen Bereich von 50,0 µS/cm.",
-	"threshold_intro.co2_stress": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Aufhebung < Auslöser erfüllen, mit mindestens 100 ppm Hysterese; beide Werte sind ganze Zahlen von 0 bis 10.000 ppm.",
-	"threshold_intro.soil_temperature_stress": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Kälte-Auslöser < Kälte-Aufhebung < Hitze-Aufhebung < Hitze-Auslöser erfüllen, mit mindestens 0,5 °C Hysterese je Seite und einem stabilen Bereich von 1,0 °C, alles innerhalb von −20,0 bis 60,0 °C.",
-	"threshold_intro.low_battery": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Auslöser < Aufhebung erfüllen, mit mindestens 1 % Hysterese; beide Werte sind ganze Zahlen von 0 bis 100 %.",
-	"threshold_intro.low_light": "Leere Felder übernehmen den integrierten Standardwert. Ausgefüllte Felder überschreiben ihn nur für diese Pflanze. Die wirksame Reihenfolge muss Zielwert < Aufhebung erfüllen, mit mindestens 10,0 lx Hysterese; beide Werte liegen zwischen 0,0 und 200.000,0 lx.",
+	"threshold_intro.temperature_stress": "Lass ein Feld leer, um den Standardwert zu verwenden, oder gib einen Wert nur für diese Pflanze ein. Jede Warnung schaltet sich beim Auslöser ein und bei der Aufhebung wieder aus. Die Aufhebung liegt etwas innerhalb des Auslösers, damit die Warnung nicht ständig an- und ausgeht.",
+	"threshold_intro.humidity_stress": "Lass ein Feld leer, um den Standardwert zu verwenden, oder gib einen Wert nur für diese Pflanze ein. Jede Warnung schaltet sich beim Auslöser ein und bei der Aufhebung wieder aus. Die Aufhebung liegt etwas innerhalb des Auslösers, damit die Warnung nicht ständig an- und ausgeht.",
+	"threshold_intro.conductivity_stress": "Lass ein Feld leer, um den Standardwert zu verwenden, oder gib einen Wert nur für diese Pflanze ein. Jede Warnung schaltet sich beim Auslöser ein und bei der Aufhebung wieder aus. Die Aufhebung liegt etwas innerhalb des Auslösers, damit die Warnung nicht ständig an- und ausgeht.",
+	"threshold_intro.co2_stress": "Lass ein Feld leer, um den Standardwert zu verwenden, oder gib einen Wert nur für diese Pflanze ein. Jede Warnung schaltet sich beim Auslöser ein und bei der Aufhebung wieder aus. Die Aufhebung liegt etwas innerhalb des Auslösers, damit die Warnung nicht ständig an- und ausgeht.",
+	"threshold_intro.soil_temperature_stress": "Lass ein Feld leer, um den Standardwert zu verwenden, oder gib einen Wert nur für diese Pflanze ein. Jede Warnung schaltet sich beim Auslöser ein und bei der Aufhebung wieder aus. Die Aufhebung liegt etwas innerhalb des Auslösers, damit die Warnung nicht ständig an- und ausgeht.",
+	"threshold_intro.low_battery": "Lass ein Feld leer, um den Standardwert zu verwenden, oder gib einen Wert nur für diese Pflanze ein. Jede Warnung schaltet sich beim Auslöser ein und bei der Aufhebung wieder aus. Die Aufhebung liegt etwas innerhalb des Auslösers, damit die Warnung nicht ständig an- und ausgeht.",
+	"threshold_intro.low_light": "Lass ein Feld leer, um den Standardwert zu verwenden, oder gib einen Wert nur für diese Pflanze ein. Die Warnung schaltet sich ein, wenn das Licht unter dem Zielwert bleibt, und wieder aus, sobald es die Aufhebung erreicht. Die Aufhebung liegt etwas über dem Zielwert, damit die Warnung nicht ständig an- und ausgeht.",
 	"threshold_saved.temperature_stress": "Schwellenwerte für Temperaturstress gespeichert.",
 	"threshold_saved.humidity_stress": "Schwellenwerte für Luftfeuchtestress gespeichert.",
 	"threshold_saved.conductivity_stress": "Schwellenwerte für Leitfähigkeitsstress gespeichert.",
@@ -1999,13 +2002,13 @@ var fn = {
 	"threshold_saved.soil_temperature_stress": "Schwellenwerte für Bodentemperaturstress gespeichert.",
 	"threshold_saved.low_battery": "Schwellenwerte für „Batterie niedrig“ gespeichert.",
 	"threshold_saved.low_light": "Schwellenwerte für „Zu wenig Licht“ gespeichert.",
-	"threshold_error.temperature_stress": "Die wirksamen Schwellenwerte müssen Kälte-Auslöser < Kälte-Aufhebung < Hitze-Aufhebung < Hitze-Auslöser erfüllen, mit ≥ 0,5 °C Hysterese und einem stabilen Bereich von ≥ 1,0 °C, alles innerhalb von −40,0 bis 80,0 °C.",
-	"threshold_error.humidity_stress": "Die wirksamen Schwellenwerte müssen Trocken-Auslöser < Trocken-Aufhebung < Feucht-Aufhebung < Feucht-Auslöser erfüllen, mit ≥ 1,0 % Hysterese und einem stabilen Bereich von ≥ 5,0 %, alles innerhalb von 0,0 bis 100,0 %.",
-	"threshold_error.conductivity_stress": "Die wirksamen Schwellenwerte müssen Niedrig-Auslöser < Niedrig-Aufhebung < Hoch-Aufhebung < Hoch-Auslöser erfüllen, mit ≥ 10,0 µS/cm Hysterese und einem stabilen Bereich von ≥ 50,0 µS/cm, alles innerhalb von 0,0 bis 10.000,0 µS/cm.",
-	"threshold_error.co2_stress": "Die wirksamen Schwellenwerte müssen Aufhebung < Auslöser mit ≥ 100 ppm Hysterese erfüllen; beide Werte sind ganze Zahlen von 0 bis 10.000 ppm.",
-	"threshold_error.soil_temperature_stress": "Die wirksamen Schwellenwerte müssen Kälte-Auslöser < Kälte-Aufhebung < Hitze-Aufhebung < Hitze-Auslöser erfüllen, mit ≥ 0,5 °C Hysterese und einem stabilen Bereich von ≥ 1,0 °C, alles innerhalb von −20,0 bis 60,0 °C.",
-	"threshold_error.low_battery": "Die wirksamen Schwellenwerte müssen Auslöser < Aufhebung mit ≥ 1 % Hysterese erfüllen; beide Werte sind ganze Zahlen von 0 bis 100 %.",
-	"threshold_error.low_light": "Die wirksamen Schwellenwerte müssen Zielwert < Aufhebung mit ≥ 10,0 lx Hysterese erfüllen; beide Werte liegen zwischen 0,0 und 200.000,0 lx.",
+	"threshold_error.temperature_stress": "Prüfe die Werte: Sie müssen von Kälte-Auslöser über Kälte-Aufhebung und Hitze-Aufhebung bis Hitze-Auslöser ansteigen. Jede Aufhebung muss mindestens 0,5 °C von ihrem Auslöser entfernt sein, die beiden Aufhebungen mindestens 1,0 °C auseinander, und alle Werte zwischen −40,0 und 80,0 °C liegen.",
+	"threshold_error.humidity_stress": "Prüfe die Werte: Sie müssen von Trocken-Auslöser über Trocken-Aufhebung und Feucht-Aufhebung bis Feucht-Auslöser ansteigen. Jede Aufhebung muss mindestens 1,0 % von ihrem Auslöser entfernt sein, die beiden Aufhebungen mindestens 5,0 % auseinander, und alle Werte zwischen 0,0 und 100,0 % liegen.",
+	"threshold_error.conductivity_stress": "Prüfe die Werte: Sie müssen von Niedrig-Auslöser über Niedrig-Aufhebung und Hoch-Aufhebung bis Hoch-Auslöser ansteigen. Jede Aufhebung muss mindestens 10,0 µS/cm von ihrem Auslöser entfernt sein, die beiden Aufhebungen mindestens 50,0 µS/cm auseinander, und alle Werte zwischen 0,0 und 10.000,0 µS/cm liegen.",
+	"threshold_error.co2_stress": "Prüfe die Werte: Die Hoch-Aufhebung muss mindestens 100 ppm unter dem Hoch-Auslöser liegen. Beide müssen ganze Zahlen zwischen 0 und 10.000 ppm sein.",
+	"threshold_error.soil_temperature_stress": "Prüfe die Werte: Sie müssen von Kälte-Auslöser über Kälte-Aufhebung und Hitze-Aufhebung bis Hitze-Auslöser ansteigen. Jede Aufhebung muss mindestens 0,5 °C von ihrem Auslöser entfernt sein, die beiden Aufhebungen mindestens 1,0 °C auseinander, und alle Werte zwischen −20,0 und 60,0 °C liegen.",
+	"threshold_error.low_battery": "Prüfe die Werte: Die Niedrig-Aufhebung muss mindestens 1 % über dem Niedrig-Auslöser liegen. Beide müssen ganze Zahlen zwischen 0 und 100 % sein.",
+	"threshold_error.low_light": "Prüfe die Werte: Die Aufhebung muss mindestens 10,0 lx über dem Zielwert liegen. Beide müssen zwischen 0,0 und 200.000,0 lx liegen.",
 	"wizard.step_plant": "Pflanze",
 	"wizard.step_sensors": "Sensoren",
 	"wizard.step_review": "Prüfen",
@@ -2109,6 +2112,7 @@ var fn = {
 	"plant_status.problem": "Problem",
 	"plant_status.stale": "Keine aktuellen Daten",
 	"plant_status.no_sensors": "Keine Sensoren",
+	"plant_status.no_moisture": "Kein Feuchtesensor",
 	"plant_status.healthy": "Gesund",
 	"plant_status.paused": "Pausiert",
 	"plant_status.more": "+{count}",
@@ -2368,20 +2372,20 @@ var fn = {
 	"panel.busy": "Saving or loading preview…",
 	"panel.update_available": "Smart Plants was updated. Reload the page to use the new version.",
 	"panel.reload": "Reload",
-	"api_error.unknown": "Request failed. Refresh and retry when connected.",
-	"api_error.integration_not_loaded": "Smart Plants is not loaded. Open Settings → Devices & Services, then refresh after loading the integration.",
-	"api_error.unauthorized": "Smart Plants requires an administrator account.",
-	"api_error.not_found": "Plant or species not found. It may have been removed in another session.",
-	"api_error.revision_conflict": "This plant changed elsewhere. Review the refreshed field changes and explicitly reapply your edits.",
-	"api_error.provider_disabled": "Provider is unavailable. Continue manually; accepted local species data remains available.",
-	"api_error.provider_authentication": "Provider authentication failed. Review the integration's reauthentication in Settings, or continue manually.",
-	"api_error.provider_rate_limit": "Provider rate limit reached. Retry later or continue manually.",
-	"api_error.provider_timeout": "Provider timed out. Retry later or continue manually.",
-	"api_error.provider_outage": "Provider is currently unavailable. Retry later or continue manually.",
-	"api_error.provider_malformed_response": "Provider returned an invalid response. Continue manually or retry later.",
-	"api_error.version_mismatch": "Panel/API version mismatch. Restart Home Assistant and fully reload the frontend after upgrading.",
-	"api_error.invalid_response": "The response is incompatible. Refresh before editing or retrying; creation retries retain the original request.",
-	"api_error.invalid_format": "The server rejected the input. Review fields and source identities. Images must be valid JPEG, PNG or WebP up to 5 MiB and 2048 × 2048 pixels; expired species previews require a new review.",
+	"api_error.unknown": "Something went wrong. Check your connection and try again.",
+	"api_error.integration_not_loaded": "Smart Plants isn't running. Check it under Settings → Devices & services, then refresh this page.",
+	"api_error.unauthorized": "Only administrators can use Smart Plants.",
+	"api_error.not_found": "This plant or species no longer exists. It may have been deleted somewhere else.",
+	"api_error.revision_conflict": "This plant was changed somewhere else. Check the latest values, then save your changes again.",
+	"api_error.provider_disabled": "OpenPlantBook isn't available. You can continue without it; species data you already added is kept.",
+	"api_error.provider_authentication": "OpenPlantBook didn't accept your credentials. Update them in Settings → Devices & services, or continue without a species.",
+	"api_error.provider_rate_limit": "OpenPlantBook is getting too many requests. Try again later, or continue without it.",
+	"api_error.provider_timeout": "OpenPlantBook took too long to answer. Try again later, or continue without it.",
+	"api_error.provider_outage": "OpenPlantBook isn't reachable right now. Try again later, or continue without it.",
+	"api_error.provider_malformed_response": "OpenPlantBook sent an answer Smart Plants can't read. Try again later, or continue without it.",
+	"api_error.version_mismatch": "The Smart Plants panel doesn't match the installed version. Restart Home Assistant, then reload this page (clear the browser cache if needed).",
+	"api_error.invalid_response": "Smart Plants got an unexpected answer. Refresh the page and try again.",
+	"api_error.invalid_format": "Some of the details couldn't be saved. Check the fields and try again. Photos must be JPEG, PNG or WebP, at most 5 MiB and 2048 × 2048 pixels. If you were choosing a species, search for it again.",
 	"error.disconnected": "Disconnected. Local edits and creation retries are retained. Reconnect before saving.",
 	"error.registry_updates": "Registry updates unavailable; reconnect to retry native changes.",
 	"error.area_reconnect": "Reconnect to load current Home Assistant areas, then choose an area or No area.",
@@ -2393,29 +2397,29 @@ var fn = {
 	"notice.area_changed_synced": "Home Assistant area changed from {from} to {to}. The area selector now reflects the native area.",
 	"notice.related_failed": "Related automations could not be loaded. Open the native device page to inspect them.",
 	"notice.saved": "Saved.",
-	"conflict.heading": "Review changes from another session",
-	"conflict.revision": "Revision {before} → {after}. Saving is paused. Local edits are retained.",
-	"conflict.roles_changed": "Sensor configuration or threshold defaults/overrides changed.",
-	"conflict.source_overlap": "Both sessions changed these source fields: {fields}. Review the refreshed role summary and your draft before retrying; Save will replace the refreshed values for these fields.",
-	"conflict.retain": "I reviewed changes; retain my edits for reapply",
-	"conflict.discard": "Discard my edits and use refreshed values",
-	"conflict.reviewed": "Changes reviewed. Your edited fields are retained; inspect them and use each Save button to explicitly reapply.",
-	"conflict.reviewed_overlap": "Both sessions changed {fields} in the sources editor. Saving will replace the refreshed values for those fields.",
-	"conflict.reviewed_species": "Species previews must be requested and reviewed again.",
-	"conflict_field.name": "name",
-	"conflict_field.acquired_at": "acquired_at",
-	"conflict_field.placement": "placement",
-	"conflict_field.category": "category",
-	"conflict_field.tags": "tags",
-	"conflict_field.species": "species",
-	"conflict_field.image": "image",
-	"conflict_field.lifecycle_state": "lifecycle_state",
-	"conflict_field.roles": "roles",
-	"conflict_field.care_events": "care_events",
-	"source_field.sources": "sources",
-	"source_field.primary_entity_id": "primary_entity_id",
-	"source_field.aggregation": "aggregation",
-	"source_field.stale_after_seconds": "stale_after_seconds",
+	"conflict.heading": "This plant was changed somewhere else",
+	"conflict.revision": "Saving is paused so nothing gets overwritten. Your edits are kept.",
+	"conflict.roles_changed": "Sensors or alert thresholds changed.",
+	"conflict.source_overlap": "You and the other change both edited {fields}. If you save, your values replace the ones shown now.",
+	"conflict.retain": "Keep my edits",
+	"conflict.discard": "Discard my edits",
+	"conflict.reviewed": "Your edits are kept. Check them, then save each section again.",
+	"conflict.reviewed_overlap": "These also changed elsewhere: {fields}. Saving replaces them with your values.",
+	"conflict.reviewed_species": "If you were choosing a species, search for it again.",
+	"conflict_field.name": "Name",
+	"conflict_field.acquired_at": "Acquired",
+	"conflict_field.placement": "Placement",
+	"conflict_field.category": "Category",
+	"conflict_field.tags": "Tags",
+	"conflict_field.species": "Species",
+	"conflict_field.image": "Photo",
+	"conflict_field.lifecycle_state": "Status",
+	"conflict_field.roles": "Sensors",
+	"conflict_field.care_events": "Care history",
+	"source_field.sources": "sensors",
+	"source_field.primary_entity_id": "main sensor",
+	"source_field.aggregation": "how readings are combined",
+	"source_field.stale_after_seconds": "not-updating time",
 	"list.loading": "Loading plants…",
 	"list.count_filtered": "{shown} of {total} plants",
 	"detail.not_found": "Plant not found — it may have been deleted in another session.",
@@ -2482,7 +2486,7 @@ var fn = {
 	"snapshot.proposed_changes": "Proposed changes",
 	"snapshot.preview_read_only": "Preview is read-only. Local overrides are preserved. No remote images are loaded.",
 	"dialog.delete_title": "Delete {name}?",
-	"dialog.delete_body": "This permanently removes the plant, its device, entities, and local photo. This cannot be undone.",
+	"dialog.delete_body": "This permanently removes the plant, its care history, its device and entities, and its photo. This can't be undone.",
 	"dialog.delete_confirm": "Permanently delete plant",
 	"dialog.species_title": "Review species changes",
 	"dialog.preview_invalid": "The preview is no longer valid. Close and request a new preview.",
@@ -2523,7 +2527,7 @@ var fn = {
 	"moisture_threshold.min": "min",
 	"moisture_threshold.target": "target",
 	"moisture_threshold.max": "max",
-	"sources.show_all": "Show all sensors (metadata fallback)",
+	"sources.show_all": "Show all sensors, including ones that don't look like a match",
 	"sources.choose": "Choose a sensor",
 	"sources.candidate": "{name} · {entity_id} · unit: {unit} · class: {device_class} · {state}",
 	"sources.not_supplied_lower": "not supplied",
@@ -2675,15 +2679,15 @@ var fn = {
 	"section.advanced_diagnostics_edit_thresholds": "Edit thresholds",
 	"section.effective_thresholds_label": "{label} effective thresholds",
 	"problem_reason.battery_ok": "battery above the low threshold",
-	"problem_reason.battery_stale": "battery reading is stale",
+	"problem_reason.battery_stale": "no battery update for a while",
 	"problem_reason.battery_unavailable": "battery reading unavailable",
 	"problem_reason.co2_ok": "CO2 within range",
-	"problem_reason.co2_stale": "CO2 reading is stale",
+	"problem_reason.co2_stale": "no CO₂ update for a while",
 	"problem_reason.co2_stress": "CO2 too high",
 	"problem_reason.co2_unavailable": "CO2 reading unavailable",
 	"problem_reason.cold_stress": "too cold",
 	"problem_reason.conductivity_ok": "conductivity within range",
-	"problem_reason.conductivity_stale": "conductivity reading is stale",
+	"problem_reason.conductivity_stale": "no fertilizer level update for a while",
 	"problem_reason.conductivity_unavailable": "conductivity reading unavailable",
 	"problem_reason.damp_stress": "air too damp",
 	"problem_reason.dry_stress": "air too dry",
@@ -2691,9 +2695,9 @@ var fn = {
 	"problem_reason.high_conductivity_stress": "conductivity too high",
 	"problem_reason.hot_stress": "too hot",
 	"problem_reason.humidity_ok": "humidity within range",
-	"problem_reason.humidity_stale": "humidity reading is stale",
+	"problem_reason.humidity_stale": "no humidity update for a while",
 	"problem_reason.humidity_unavailable": "humidity reading unavailable",
-	"problem_reason.illuminance_stale": "illuminance reading is stale",
+	"problem_reason.illuminance_stale": "no light update for a while",
 	"problem_reason.illuminance_unavailable": "illuminance reading unavailable",
 	"problem_reason.insufficient_daytime_samples": "not enough daytime readings yet",
 	"problem_reason.low_battery": "battery low",
@@ -2701,10 +2705,10 @@ var fn = {
 	"problem_reason.low_light": "too little daytime light",
 	"problem_reason.nighttime": "night; light is not evaluated",
 	"problem_reason.soil_temperature_ok": "soil temperature within range",
-	"problem_reason.soil_temperature_stale": "soil temperature reading is stale",
+	"problem_reason.soil_temperature_stale": "no soil temperature update for a while",
 	"problem_reason.soil_temperature_unavailable": "soil temperature reading unavailable",
 	"problem_reason.temperature_ok": "temperature within range",
-	"problem_reason.temperature_stale": "temperature reading is stale",
+	"problem_reason.temperature_stale": "no temperature update for a while",
 	"problem_reason.temperature_unavailable": "temperature reading unavailable",
 	"problem.temperature_stress": "Temperature stress",
 	"problem.humidity_stress": "Humidity stress",
@@ -2720,17 +2724,17 @@ var fn = {
 	"problem_phrase.low_light": "low light",
 	"problem_phrase.low_battery": "low battery",
 	"problem_phrase.conductivity_stress": "conductivity stress",
-	"threshold_label.cold_threshold": "Cold threshold",
+	"threshold_label.cold_threshold": "Cold trigger",
 	"threshold_label.cold_clear": "Cold clear",
 	"threshold_label.hot_clear": "Hot clear",
-	"threshold_label.hot_threshold": "Hot threshold",
-	"threshold_label.dry_threshold": "Dry threshold",
+	"threshold_label.hot_threshold": "Hot trigger",
+	"threshold_label.dry_threshold": "Dry trigger",
 	"threshold_label.dry_clear": "Dry clear",
 	"threshold_label.damp_clear": "Damp clear",
-	"threshold_label.damp_threshold": "Damp threshold",
-	"threshold_label.high_threshold": "High threshold",
+	"threshold_label.damp_threshold": "Damp trigger",
+	"threshold_label.high_threshold": "High trigger",
 	"threshold_label.high_clear": "High clear",
-	"threshold_label.low_threshold": "Low threshold",
+	"threshold_label.low_threshold": "Low trigger",
 	"threshold_label.low_clear": "Low clear",
 	"threshold_label.target": "Target",
 	"threshold_label.clear": "Clear",
@@ -2753,13 +2757,13 @@ var fn = {
 	"threshold.inherit_all": "Inherit all built-in defaults",
 	"threshold.save": "Save thresholds",
 	"threshold.group_label": "{label} thresholds",
-	"threshold_intro.temperature_stress": "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy cold trigger < cold clear < hot clear < hot trigger, with at least 0.5 °C hysteresis per side and a 1.0 °C stable band.",
-	"threshold_intro.humidity_stress": "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy dry trigger < dry clear < damp clear < damp trigger, with at least 1.0 % hysteresis per side and a 5.0 % stable band.",
-	"threshold_intro.conductivity_stress": "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy low trigger < low clear < high clear < high trigger, with at least 10.0 µS/cm hysteresis per side and a 50.0 µS/cm stable band.",
-	"threshold_intro.co2_stress": "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy clear_ppm < threshold_ppm with at least 100 ppm hysteresis; both are integers within 0…10000 ppm.",
-	"threshold_intro.soil_temperature_stress": "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy cold trigger < cold clear < hot clear < hot trigger, with at least 0.5 °C hysteresis per side and a 1.0 °C stable band, all within −20.0…60.0 °C.",
-	"threshold_intro.low_battery": "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy threshold_percent < clear_percent with at least 1 % hysteresis; both are integers within 0…100 %.",
-	"threshold_intro.low_light": "Blank fields inherit the built-in default. Filled fields override it for this plant only. Effective ordering must satisfy target_lux < clear_lux with at least 10.0 lx hysteresis; both are within 0.0…200000.0 lx.",
+	"threshold_intro.temperature_stress": "Leave a field empty to use the default, or enter a value for this plant only. Each alert turns on at its trigger value and turns off at its clear value. The clear value sits a little inside the trigger, so the alert doesn't switch on and off over and over.",
+	"threshold_intro.humidity_stress": "Leave a field empty to use the default, or enter a value for this plant only. Each alert turns on at its trigger value and turns off at its clear value. The clear value sits a little inside the trigger, so the alert doesn't switch on and off over and over.",
+	"threshold_intro.conductivity_stress": "Leave a field empty to use the default, or enter a value for this plant only. Each alert turns on at its trigger value and turns off at its clear value. The clear value sits a little inside the trigger, so the alert doesn't switch on and off over and over.",
+	"threshold_intro.co2_stress": "Leave a field empty to use the default, or enter a value for this plant only. Each alert turns on at its trigger value and turns off at its clear value. The clear value sits a little inside the trigger, so the alert doesn't switch on and off over and over.",
+	"threshold_intro.soil_temperature_stress": "Leave a field empty to use the default, or enter a value for this plant only. Each alert turns on at its trigger value and turns off at its clear value. The clear value sits a little inside the trigger, so the alert doesn't switch on and off over and over.",
+	"threshold_intro.low_battery": "Leave a field empty to use the default, or enter a value for this plant only. Each alert turns on at its trigger value and turns off at its clear value. The clear value sits a little inside the trigger, so the alert doesn't switch on and off over and over.",
+	"threshold_intro.low_light": "Leave a field empty to use the default, or enter a value for this plant only. The alert turns on when light stays below the target and turns off once it reaches the clear value. The clear value sits a little above the target, so the alert doesn't switch on and off over and over.",
 	"threshold_saved.temperature_stress": "Temperature stress thresholds saved.",
 	"threshold_saved.humidity_stress": "Humidity stress thresholds saved.",
 	"threshold_saved.conductivity_stress": "Conductivity stress thresholds saved.",
@@ -2767,13 +2771,13 @@ var fn = {
 	"threshold_saved.soil_temperature_stress": "Soil temperature stress thresholds saved.",
 	"threshold_saved.low_battery": "Low battery thresholds saved.",
 	"threshold_saved.low_light": "Low light thresholds saved.",
-	"threshold_error.temperature_stress": "Effective thresholds must satisfy cold trigger < cold clear < hot clear < hot trigger, with ≥ 0.5 °C hysteresis and a ≥ 1.0 °C stable band, all within −40.0…80.0 °C.",
-	"threshold_error.humidity_stress": "Effective thresholds must satisfy dry trigger < dry clear < damp clear < damp trigger, with ≥ 1.0 % hysteresis and a ≥ 5.0 % stable band, all within 0.0…100.0 %.",
-	"threshold_error.conductivity_stress": "Effective thresholds must satisfy low trigger < low clear < high clear < high trigger, with ≥ 10.0 µS/cm hysteresis and a ≥ 50.0 µS/cm stable band, all within 0.0…10000.0 µS/cm.",
-	"threshold_error.co2_stress": "Effective thresholds must satisfy clear_ppm < threshold_ppm with ≥ 100 ppm hysteresis, both integers within 0…10000 ppm.",
-	"threshold_error.soil_temperature_stress": "Effective thresholds must satisfy cold trigger < cold clear < hot clear < hot trigger, with ≥ 0.5 °C hysteresis and a ≥ 1.0 °C stable band, all within −20.0…60.0 °C.",
-	"threshold_error.low_battery": "Effective thresholds must satisfy threshold_percent < clear_percent with ≥ 1 % hysteresis, both integers within 0…100 %.",
-	"threshold_error.low_light": "Effective thresholds must satisfy target_lux < clear_lux with ≥ 10.0 lx hysteresis, both within 0.0…200000.0 lx.",
+	"threshold_error.temperature_stress": "Check the values: they must go up from Cold trigger to Cold clear to Hot clear to Hot trigger. Each clear value must be at least 0.5 °C from its trigger, the two clear values at least 1.0 °C apart, and all values between −40.0 and 80.0 °C.",
+	"threshold_error.humidity_stress": "Check the values: they must go up from Dry trigger to Dry clear to Damp clear to Damp trigger. Each clear value must be at least 1.0 % from its trigger, the two clear values at least 5.0 % apart, and all values between 0.0 and 100.0 %.",
+	"threshold_error.conductivity_stress": "Check the values: they must go up from Low trigger to Low clear to High clear to High trigger. Each clear value must be at least 10.0 µS/cm from its trigger, the two clear values at least 50.0 µS/cm apart, and all values between 0.0 and 10000.0 µS/cm.",
+	"threshold_error.co2_stress": "Check the values: High clear must be at least 100 ppm below High trigger. Both must be whole numbers between 0 and 10000 ppm.",
+	"threshold_error.soil_temperature_stress": "Check the values: they must go up from Cold trigger to Cold clear to Hot clear to Hot trigger. Each clear value must be at least 0.5 °C from its trigger, the two clear values at least 1.0 °C apart, and all values between −20.0 and 60.0 °C.",
+	"threshold_error.low_battery": "Check the values: Low clear must be at least 1 % above Low trigger. Both must be whole numbers between 0 and 100 %.",
+	"threshold_error.low_light": "Check the values: Clear must be at least 10.0 lx above Target. Both must be between 0.0 and 200000.0 lx.",
 	"wizard.step_plant": "Plant",
 	"wizard.step_sensors": "Sensors",
 	"wizard.step_review": "Review",
@@ -2877,6 +2881,7 @@ var fn = {
 	"plant_status.problem": "Problem",
 	"plant_status.stale": "No recent data",
 	"plant_status.no_sensors": "No sensors",
+	"plant_status.no_moisture": "No moisture sensor",
 	"plant_status.healthy": "Healthy",
 	"plant_status.paused": "Paused",
 	"plant_status.more": "+{count}",
@@ -4114,14 +4119,18 @@ function di(e, t, n) {
 		state: r?.state ?? e.t("sources.unavailable_lower")
 	});
 }
-function fi(e, t, n, r, i, a, o, s, c, l, u, d, f = "all") {
+function fi(e, t) {
+	let n = t[e]?.attributes.friendly_name;
+	return typeof n == "string" && n.trim() ? `${n} · ${e}` : e;
+}
+function pi(e, t, n, r, i, a, o, s, c, l, u, d, f = "all") {
 	let p = e.t("common.not_supplied"), m = y`
     ${U(e, e.t("sources.primary"), t.primary_entity_id ?? "", [{
 		value: "",
 		label: e.t("sources.primary_none")
 	}, ...t.sources.map((e) => ({
 		value: e.entity_id,
-		label: B(e, n)?.entity_id ?? e.entity_id
+		label: fi(B(e, n)?.entity_id ?? e.entity_id, r)
 	}))], (e) => o({ primary_entity_id: e || null }))}
     ${U(e, e.t("sources.aggregation"), t.aggregation, [
 		"primary",
@@ -4172,12 +4181,12 @@ function fi(e, t, n, r, i, a, o, s, c, l, u, d, f = "all") {
     ${t.sources.some((e) => e.registry_id && !B(e, n)) ? y`<a href="/config/repairs">${e.t("sources.open_repairs")}</a>` : x}
     ${f === "all" ? m : x}`;
 }
-function pi(e, t, n, r, i, a, o, s, c = "all") {
+function mi(e, t, n, r, i, a, o, s, c = "all") {
 	let l = (e) => s({
 		...t,
 		...e
 	}), u = [.../* @__PURE__ */ new Set([...r.map((e) => e.entity_id), ...Object.keys(i)])].filter((e) => e.startsWith("sensor.") && (a || i[e]?.attributes.device_class === "moisture")).sort(), d = c === "pick" || c === "combine" ? c : "all";
-	return y`${c === "thresholds" ? x : fi(e, t, r, i, a, o, l, e.t("moisture.sources_intro"), e.t("moisture.add_sensor"), "sensor.soil_moisture", u, (t) => Kr(t, r, i, e), d)}
+	return y`${c === "thresholds" ? x : pi(e, t, r, i, a, o, l, e.t("moisture.sources_intro"), e.t("moisture.add_sensor"), "sensor.soil_moisture", u, (t) => Kr(t, r, i, e), d)}
     ${c === "thresholds" || c === "all" ? y`<p>${e.t("moisture.overrides_intro")}</p><div class="grid">${L.map((r) => y`<div>${H(e.t("moisture.override_label", { key: ci(e, r) }), t.threshold_overrides[r] === null ? "" : String(t.threshold_overrides[r]), (e) => l({ threshold_overrides: {
 		...t.threshold_overrides,
 		[r]: e.trim() === "" ? null : Number(e)
@@ -4189,14 +4198,14 @@ function pi(e, t, n, r, i, a, o, s, c = "all") {
 		[r]: null
 	} })}>${e.t("moisture.inherit_key", { key: ci(e, r) })}</button></div>`)}</div>` : x}`;
 }
-function mi(e, t, n, r, i, a, o, s, c = "all") {
+function hi(e, t, n, r, i, a, o, s, c = "all") {
 	let l = (e) => s({
 		...n,
 		...e
 	}), u = [.../* @__PURE__ */ new Set([...r.map((e) => e.entity_id), ...Object.keys(i)])].filter((e) => e.startsWith("sensor.") && (a || i[e]?.attributes.device_class === t.deviceClass && typeof i[e]?.attributes.unit_of_measurement == "string" && t.acceptedUnits.includes(i[e]?.attributes.unit_of_measurement))).sort(), d = Xr(t.role, e);
-	return fi(e, n, r, i, a, o, l, e.t("sources.role_intro", { role: d }), e.t("sources.add_role_sensor", { role: d }), `sensor.${t.role}`, u, (n) => ei(n, r, i, t, e), c);
+	return pi(e, n, r, i, a, o, l, e.t("sources.role_intro", { role: d }), e.t("sources.add_role_sensor", { role: d }), `sensor.${t.role}`, u, (n) => ei(n, r, i, t, e), c);
 }
-function hi(e, t, n) {
+function gi(e, t, n) {
 	let r = e.t("common.not_supplied"), i = [
 		[e.t("snapshot.provider"), t.provider],
 		[e.t("snapshot.reference"), t.provider_ref],
@@ -4235,10 +4244,10 @@ var W = o`
     --sp-primary: var(--primary-color, #009ac7);
     --sp-card: var(--card-background-color, #fff);
   }
-`, gi = o`
+`, _i = o`
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 `;
-function _i(e) {
+function vi(e) {
 	switch (e) {
 		case "--success-color": return "var(--sp-success)";
 		case "--warning-color": return "var(--sp-warning)";
@@ -4257,22 +4266,22 @@ function G(e, t, n, r) {
 }
 //#endregion
 //#region src/components/sp-status-chip.ts
-var vi, yi = class extends S {
+var yi, bi = class extends S {
 	constructor(...e) {
 		super(...e), this.status = "healthy", this.label = "", this.more = 0, this.l = I;
 	}
 	willUpdate() {
 		let e = ft[this.status]?.color ?? "--disabled-text-color";
-		this.toggleAttribute("muted", e === "--disabled-text-color"), this.style.setProperty("--sp-status", _i(e));
+		this.toggleAttribute("muted", e === "--disabled-text-color"), this.style.setProperty("--sp-status", vi(e));
 	}
 	render() {
 		let e = ft[this.status] ?? ft.healthy, t = this.label || mt(this.l, this.status in ft ? this.status : "healthy");
 		return y`<span class="chip" part="chip"><ha-icon aria-hidden="true" .icon=${e.icon}></ha-icon><span class="label">${t}</span>${this.more > 0 ? y`<span aria-hidden="true">${this.l.t("plant_status.more", { count: this.more })}</span><span class="sr-only">${this.l.t("plant_status.more_label", { count: this.more })}</span>` : x}</span>`;
 	}
 };
-vi = yi, vi.styles = [
+yi = bi, yi.styles = [
 	W,
-	gi,
+	_i,
 	o`
     :host { display: inline-flex; max-width: 100%; }
     .chip {
@@ -4285,10 +4294,10 @@ vi = yi, vi.styles = [
     ha-icon { --mdc-icon-size: 17px; flex: none; }
     .label { overflow-wrap: anywhere; hyphens: auto; }
   `
-], G([C({ reflect: !0 })], yi.prototype, "status", void 0), G([C()], yi.prototype, "label", void 0), G([C({ type: Number })], yi.prototype, "more", void 0), G([C({ attribute: !1 })], yi.prototype, "l", void 0), customElements.get("sp-status-chip") || customElements.define("sp-status-chip", yi);
+], G([C({ reflect: !0 })], bi.prototype, "status", void 0), G([C()], bi.prototype, "label", void 0), G([C({ type: Number })], bi.prototype, "more", void 0), G([C({ attribute: !1 })], bi.prototype, "l", void 0), customElements.get("sp-status-chip") || customElements.define("sp-status-chip", bi);
 //#endregion
 //#region src/components/sp-moisture-bar.ts
-var bi, xi = (e) => Math.min(100, Math.max(0, e)), Si = class extends S {
+var xi, Si = (e) => Math.min(100, Math.max(0, e)), Ci = class extends S {
 	constructor(...e) {
 		super(...e), this.value = null, this.range = null, this.state = "ok", this.lastReported = null, this.now = void 0, this.l = I;
 	}
@@ -4302,20 +4311,20 @@ var bi, xi = (e) => Math.min(100, Math.max(0, e)), Si = class extends S {
 		let e = this.l, t = this.range, n = this.value, r = vt(e, "moisture", t, "%"), i = n === null ? "—" : A(e, n, "%"), a = n === null ? e.t("moisture_bar.label_no_value") : r ? e.t("moisture_bar.label", {
 			value: i,
 			range: r
-		}) : e.t("moisture_bar.label_no_range", { value: i }), o = this._hasRange(), s = o ? xi(t.min) : 0, c = o ? xi(t.max) : 0, l = t?.target ?? null, u = this.state === "stale" && this.lastReported;
+		}) : e.t("moisture_bar.label_no_range", { value: i }), o = this._hasRange(), s = o ? Si(t.min) : 0, c = o ? Si(t.max) : 0, l = t?.target ?? null, u = this.state === "stale" && this.lastReported;
 		return y`
       <div class="top"><span class="name"><ha-icon aria-hidden="true" .icon=${O.moisture.icon}></ha-icon>${k(e, "moisture")}</span>
         <span class="value ${this.state}" aria-hidden="true">${i}</span></div>
       <div class="track" role="img" aria-label=${a}>
         ${o ? y`<div class="band" style="left:${s}%;width:${Math.max(0, c - s)}%"></div>` : x}
-        ${l === null ? x : y`<div class="tick" style="left:${xi(l)}%"></div>`}
+        ${l === null ? x : y`<div class="tick" style="left:${Si(l)}%"></div>`}
         ${n === null ? x : y`<div class="dot ${this.state}" style="left:${Math.min(98, Math.max(2, n))}%"></div>`}
       </div>
       <div class="scale" aria-hidden="true"><span>${e.t("moisture_bar.dry")}</span>${r ? y`<span>${e.t("moisture_bar.target", { range: r })}</span>` : x}<span>${e.t("moisture_bar.wet")}</span></div>
       ${u ? y`<div class="age"><ha-icon aria-hidden="true" icon="mdi:clock-outline"></ha-icon>${e.t("moisture_bar.last_update", { age: bt(e, this.lastReported, this.now) })}</div>` : x}`;
 	}
 };
-bi = Si, bi.styles = [W, o`
+xi = Ci, xi.styles = [W, o`
     :host { display: block; font-size: 13px; color: var(--sp-text); }
     .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
     .name { display: inline-flex; align-items: center; gap: 4px; color: var(--sp-text-secondary); }
@@ -4335,10 +4344,10 @@ bi = Si, bi.styles = [W, o`
     .scale { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; font-size: 11px; color: var(--sp-text-secondary); font-variant-numeric: tabular-nums; }
     .age { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
     .age ha-icon { --mdc-icon-size: 15px; }
-  `], G([C({ type: Number })], Si.prototype, "value", void 0), G([C({ attribute: !1 })], Si.prototype, "range", void 0), G([C({ reflect: !0 })], Si.prototype, "state", void 0), G([C({ attribute: !1 })], Si.prototype, "lastReported", void 0), G([C({ attribute: !1 })], Si.prototype, "now", void 0), G([C({ attribute: !1 })], Si.prototype, "l", void 0), customElements.get("sp-moisture-bar") || customElements.define("sp-moisture-bar", Si);
+  `], G([C({ type: Number })], Ci.prototype, "value", void 0), G([C({ attribute: !1 })], Ci.prototype, "range", void 0), G([C({ reflect: !0 })], Ci.prototype, "state", void 0), G([C({ attribute: !1 })], Ci.prototype, "lastReported", void 0), G([C({ attribute: !1 })], Ci.prototype, "now", void 0), G([C({ attribute: !1 })], Ci.prototype, "l", void 0), customElements.get("sp-moisture-bar") || customElements.define("sp-moisture-bar", Ci);
 //#endregion
 //#region src/components/sp-reading-chip.ts
-var Ci, K = class extends S {
+var wi, K = class extends S {
 	constructor(...e) {
 		super(...e), this.role = "temperature", this.value = null, this.unit = "", this.state = "ok", this.range = null, this.l = I;
 	}
@@ -4352,9 +4361,9 @@ var Ci, K = class extends S {
     </span>`;
 	}
 };
-Ci = K, Ci.styles = [
+wi = K, wi.styles = [
 	W,
-	gi,
+	_i,
 	o`
     :host { display: inline-flex; }
     .chip {
@@ -4373,7 +4382,7 @@ Ci = K, Ci.styles = [
 ], G([C()], K.prototype, "role", void 0), G([C({ type: Number })], K.prototype, "value", void 0), G([C()], K.prototype, "unit", void 0), G([C({ reflect: !0 })], K.prototype, "state", void 0), G([C({ attribute: !1 })], K.prototype, "range", void 0), G([C({ attribute: !1 })], K.prototype, "l", void 0), customElements.get("sp-reading-chip") || customElements.define("sp-reading-chip", K);
 //#endregion
 //#region src/components/sp-plant-avatar.ts
-var wi, Ti = class extends S {
+var Ti, Ei = class extends S {
 	constructor(...e) {
 		super(...e), this.src = null, this.name = "", this.size = "small", this.l = I;
 	}
@@ -4384,7 +4393,7 @@ var wi, Ti = class extends S {
 		}))}>` : y`<ha-icon aria-hidden="true" icon="mdi:sprout"></ha-icon>`}</div>`;
 	}
 };
-wi = Ti, wi.styles = [W, o`
+Ti = Ei, Ti.styles = [W, o`
     :host { --sp-avatar-size: 56px; --sp-avatar-radius: 12px; display: inline-block; flex: none; width: var(--sp-avatar-size); height: var(--sp-avatar-size); max-width: 100%; }
     :host([size="large"]) { --sp-avatar-size: 132px; --sp-avatar-radius: 16px; }
     @media (max-width: 600px) { :host([size="large"]) { --sp-avatar-size: 76px; --sp-avatar-radius: 12px; } }
@@ -4392,10 +4401,10 @@ wi = Ti, wi.styles = [W, o`
       background: color-mix(in srgb, var(--sp-primary) 12%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); }
     img { width: 100%; height: 100%; object-fit: cover; display: block; }
     ha-icon { --mdc-icon-size: calc(var(--sp-avatar-size) * .54); }
-  `], G([C({ attribute: !1 })], Ti.prototype, "src", void 0), G([C()], Ti.prototype, "name", void 0), G([C({ reflect: !0 })], Ti.prototype, "size", void 0), G([C({ attribute: !1 })], Ti.prototype, "l", void 0), customElements.get("sp-plant-avatar") || customElements.define("sp-plant-avatar", Ti);
+  `], G([C({ attribute: !1 })], Ei.prototype, "src", void 0), G([C()], Ei.prototype, "name", void 0), G([C({ reflect: !0 })], Ei.prototype, "size", void 0), G([C({ attribute: !1 })], Ei.prototype, "l", void 0), customElements.get("sp-plant-avatar") || customElements.define("sp-plant-avatar", Ei);
 //#endregion
 //#region src/components/sp-empty-state.ts
-var Ei, Di = class extends S {
+var Di, Oi = class extends S {
 	constructor(...e) {
 		super(...e), this.icon = "mdi:sprout", this.heading = "", this.compact = !1;
 	}
@@ -4404,7 +4413,7 @@ var Ei, Di = class extends S {
       <h2>${this.heading}</h2><div class="text"><slot></slot></div><div class="actions"><slot name="actions"></slot></div>`;
 	}
 };
-Ei = Di, Ei.styles = [W, o`
+Di = Oi, Di.styles = [W, o`
     :host { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 48px 20px; color: var(--sp-text); }
     .art { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center;
       background: color-mix(in srgb, var(--sp-primary) 12%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); }
@@ -4416,13 +4425,13 @@ Ei = Di, Ei.styles = [W, o`
     :host([compact]) h2 { font-size: 18px; }
     .text { max-width: 44ch; color: var(--sp-text-secondary); }
     .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
-  `], G([C()], Di.prototype, "icon", void 0), G([C()], Di.prototype, "heading", void 0), G([C({
+  `], G([C()], Oi.prototype, "icon", void 0), G([C()], Oi.prototype, "heading", void 0), G([C({
 	type: Boolean,
 	reflect: !0
-})], Di.prototype, "compact", void 0), customElements.get("sp-empty-state") || customElements.define("sp-empty-state", Di);
+})], Oi.prototype, "compact", void 0), customElements.get("sp-empty-state") || customElements.define("sp-empty-state", Oi);
 //#endregion
 //#region src/components/sp-history-chart.ts
-var Oi, ki = 200, q = {
+var ki, Ai = 200, q = {
 	top: 10,
 	right: 12,
 	bottom: 24,
@@ -4463,7 +4472,7 @@ var Oi, ki = 200, q = {
 		return i;
 	}
 	render() {
-		let e = this.l, t = this.points, n = Math.max(this._width, 240), r = n - q.left - q.right, i = ki - q.bottom, a = this.band, o = Zt(t, [
+		let e = this.l, t = this.points, n = Math.max(this._width, 240), r = n - q.left - q.right, i = Ai - q.bottom, a = this.band, o = Zt(t, [
 			a?.min,
 			a?.max,
 			a?.target
@@ -4472,7 +4481,7 @@ var Oi, ki = 200, q = {
 		};
 		return y`
       <div class="plot">
-        <svg viewBox="0 0 ${n} ${ki}" role="img" aria-label=${this.summary}
+        <svg viewBox="0 0 ${n} ${Ai}" role="img" aria-label=${this.summary}
           @pointermove=${re} @pointerdown=${re} @pointerleave=${() => {
 			this._active = null;
 		}}>
@@ -4503,14 +4512,14 @@ var Oi, ki = 200, q = {
       </div>`;
 	}
 };
-Oi = J, Oi.styles = [
+ki = J, ki.styles = [
 	W,
-	gi,
+	_i,
 	o`
     :host { display: block; color: var(--sp-text); }
     .plot { position: relative; border-radius: 4px; }
     .plot:focus-within { outline: 2px solid var(--sp-primary); outline-offset: 2px; }
-    svg { display: block; width: 100%; height: ${ki}px; touch-action: pan-y; }
+    svg { display: block; width: 100%; height: ${Ai}px; touch-action: pan-y; }
     text { font-size: 11px; fill: var(--sp-text-secondary); font-variant-numeric: tabular-nums; }
     .grid { stroke: color-mix(in srgb, var(--sp-text) 12%, transparent); stroke-width: 1; }
     .band { fill: color-mix(in srgb, var(--sp-success) 14%, transparent); }
@@ -4543,42 +4552,45 @@ var X = [
 	"sensors",
 	"care",
 	"settings"
-], Ai = {
+], ji = {
 	overview: "detail.tab_overview",
 	sensors: "detail.tab_sensors",
 	care: "detail.tab_care",
 	settings: "detail.tab_settings"
-}, ji = [
+}, Mi = [
 	"watering",
 	"fertilizing",
 	"pruning",
 	"repotting",
 	"note"
-], Mi = {
+], Ni = {
 	watering: "mdi:water",
 	fertilizing: "mdi:flask-outline",
 	pruning: "mdi:content-cut",
 	repotting: "mdi:shovel",
 	note: "mdi:note-text-outline"
 };
-function Ni(e, t, n) {
+function Pi(e, t, n) {
 	let r = t[n], i = r?.attributes.friendly_name;
 	if (typeof i == "string" && i.trim()) return i;
 	if (!r) return e.t("sensor.missing");
 	let a = n.split(".").slice(1).join(".").replaceAll("_", " ");
 	return a ? a.charAt(0).toLocaleUpperCase() + a.slice(1) : n;
 }
-function Pi(e, t) {
+function Fi(e) {
+	return typeof e.last_reported == "string" && Number.isFinite(Date.parse(e.last_reported)) ? e.last_reported : e.last_updated;
+}
+function Ii(e, t) {
 	let n = k(e, t);
 	return e.language !== "en" || /^.[A-Z₀-₉]/.test(n) ? n : n.charAt(0).toLocaleLowerCase() + n.slice(1);
 }
-function Fi(e) {
+function Li(e) {
 	return e ? Object.keys(O).filter((t) => e.roles[t]).map((t) => [t, e.roles[t]]) : [];
 }
-function Ii(e, t) {
+function Ri(e, t) {
 	return t.state === "stale" || t.state === "unavailable" ? "off" : t.state === "low" ? e === "moisture" ? "water" : "bad" : t.state === "high" ? e === "moisture" ? "wet" : "bad" : "ok";
 }
-function Li(e, t, n) {
+function zi(e, t, n) {
 	switch (t.state) {
 		case "ok": return e.t("reading_state.ok");
 		case "low": return e.t("reading_state.low");
@@ -4587,29 +4599,29 @@ function Li(e, t, n) {
 		case "unavailable": return e.t("reading_state.unavailable");
 	}
 }
-function Ri(e, t) {
+function Bi(e, t) {
 	return t.value === null ? "—" : A(e, t.value, t.unit);
 }
-function zi(e, t, n) {
+function Vi(e, t, n) {
 	return t.status === "paused" ? e.t("detail.reason_paused") : t.status === "healthy" || !t.problems.length ? e.t("detail.reason_healthy") : t.problems.map((r) => jt(e, t, r, n)).join(" · ");
 }
-function Bi(e, t, n) {
-	let r = Fi(t).slice(0, 4);
+function Hi(e, t, n) {
+	let r = Li(t).slice(0, 4);
 	return r.length ? y`<ul class="keyreads" aria-label=${e.t("detail.key_readings")}>${r.map(([t, r]) => {
-		let i = Ii(t, r), a = vt(e, t, r.range, r.unit), o = r.state === "stale" && r.last_reported ? e.t("moisture_bar.last_update", { age: bt(e, r.last_reported, n) }) : a, s = i === "water" || i === "wet" || i === "bad";
+		let i = Ri(t, r), a = vt(e, t, r.range, r.unit), o = r.state === "stale" && r.last_reported ? e.t("moisture_bar.last_update", { age: bt(e, r.last_reported, n) }) : a, s = i === "water" || i === "wet" || i === "bad";
 		return y`<li class="kr"><span class="kr-label"><ha-icon aria-hidden="true" .icon=${O[t].icon}></ha-icon>${k(e, t)}</span>
-      <span class="kr-value tone-${i}">${Ri(e, r)}${s ? y`<span class="sr-only">, ${Li(e, r, n)}</span>` : x}</span>
+      <span class="kr-value tone-${i}">${Bi(e, r)}${s ? y`<span class="sr-only">, ${zi(e, r, n)}</span>` : x}</span>
       ${o ? y`<span class="kr-range">${o}</span>` : x}</li>`;
 	})}</ul>` : x;
 }
-function Vi(e, t, n, r, i) {
-	let a = Ii(t, n), o = n.sources.map((t) => Ni(e, r, t)).join(", "), s = vt(e, t, n.range, n.unit);
+function Ui(e, t, n, r, i) {
+	let a = Ri(t, n), o = n.sources.map((t) => Pi(e, r, t)).join(", "), s = vt(e, t, n.range, n.unit);
 	return y`<li class="li"><span class="ic tone-${a}" aria-hidden="true"><ha-icon .icon=${O[t].icon}></ha-icon></span>
     <span class="li-main"><span class="li-title">${k(e, t)}</span>
-      <span class="li-sub">${o ? y`${o} · ` : x}<span class="state tone-${a}">${Li(e, n, i)}</span></span></span>
-    <span class="li-end"><span class="li-value">${Ri(e, n)}</span>${s ? y`<span class="li-sub">${s}</span>` : x}</span></li>`;
+      <span class="li-sub">${o ? y`${o} · ` : x}<span class="state tone-${a}">${zi(e, n, i)}</span></span></span>
+    <span class="li-end"><span class="li-value">${Bi(e, n)}</span>${s ? y`<span class="li-sub">${s}</span>` : x}</span></li>`;
 }
-var Hi = {
+var Wi = {
 	moisture: "%",
 	temperature: "°C",
 	humidity: "%",
@@ -4618,14 +4630,14 @@ var Hi = {
 	soil_temperature: "°C",
 	co2: "ppm",
 	battery: "%"
-}, Ui = {
+}, Gi = {
 	"24h": "history.range_24h",
 	"7d": "history.range_7d",
 	"30d": "history.range_30d",
 	"1y": "history.range_1y"
 };
-function Wi(e, t) {
-	let { role: n, range: r, reading: i } = t, a = Wt[r], o = i?.unit || Hi[n], s = i && i.state !== "stale" && i.state !== "unavailable" ? i.value : null, c = t.status === "ready" ? Jt(t.points, s, t.now) : [], l = cn(n, i?.range), u = vt(e, n, i?.range, o), d = n === "moisture" && c.length ? rn(c, {
+function Ki(e, t) {
+	let { role: n, range: r, reading: i } = t, a = Wt[r], o = i?.unit || Wi[n], s = i && i.state !== "stale" && i.state !== "unavailable" ? i.value : null, c = t.status === "ready" ? Jt(t.points, s, t.now) : [], l = cn(n, i?.range), u = vt(e, n, i?.range, o), d = n === "moisture" && c.length ? rn(c, {
 		periodMs: a.periodMs,
 		wateredAt: t.lastWatered,
 		min: l.min
@@ -4636,20 +4648,20 @@ function Wi(e, t) {
       <div class="history-bar">
         ${t.roles.length > 1 ? y`<div class="row" role="group" aria-label=${e.t("history.role_label")}>${t.roles.map((r) => y`<button type="button" class="fchip" aria-pressed=${r === n ? "true" : "false"} @click=${() => t.onRole(r)}>${k(e, r)}</button>`)}</div>` : x}
         <span class="spacer"></span>
-        <div class="seg" role="group" aria-label=${e.t("history.range_label")}>${Ht.map((n) => y`<button type="button" aria-pressed=${n === r ? "true" : "false"} @click=${() => t.onRange(n)}>${e.t(Ui[n])}</button>`)}</div>
+        <div class="seg" role="group" aria-label=${e.t("history.range_label")}>${Ht.map((n) => y`<button type="button" aria-pressed=${n === r ? "true" : "false"} @click=${() => t.onRange(n)}>${e.t(Gi[n])}</button>`)}</div>
       </div>
       ${t.status === "error" ? y`<div class="row"><span class="error-text" role="alert">${e.t("history.error")}</span><button type="button" class="btn text sm" @click=${t.onRetry}>${e.t("history.retry")}</button></div>` : p ? y`<p class="muted history-message" role="status">${p}</p>` : y`<sp-history-chart .points=${c} .start=${t.now - a.spanMs} .end=${t.now} .periodMs=${a.periodMs} .unit=${o} .band=${l} .markers=${t.markers}
             .summary=${sn(e, k(e, n), r, c, o)} .bandLabel=${u ? e.t("history.legend_target", { range: u }) : ""} .markerLabel=${t.markerLabel} .l=${e}></sp-history-chart>`}
       ${f ? y`<p class="small history-rate"><strong>${f.rate}</strong>${f.forecast ? y` <span class="muted">${f.forecast}</span>` : x}</p>` : x}
     </div></section>`;
 }
-function Gi(e, t) {
+function qi(e, t) {
 	return t >= 3600 && t % 3600 == 0 ? e.t("duration.hours", { count: t / 3600 }) : t >= 60 && t % 60 == 0 ? e.t("duration.minutes", { count: t / 60 }) : e.t("duration.seconds", { count: t });
 }
-function Ki(e, t, n) {
+function Ji(e, t, n) {
 	return Object.entries(t.payload).filter(([, e]) => e !== null && e !== "").map(([t, r]) => `${n(t)}: ${typeof r == "number" && t === "amount" ? e.number(r) : String(r)}`);
 }
-function qi(e) {
+function Yi(e) {
 	let { key: t, icon: n, header: r, secondary: i, open: a, native: o, toggle: s, content: c } = e;
 	return o ? y`<ha-expansion-panel class="expander" data-section=${t} outlined .header=${r} .secondary=${i} .expanded=${a}
       @expanded-changed=${(e) => {
@@ -4663,7 +4675,7 @@ function qi(e) {
     <summary><ha-icon aria-hidden="true" .icon=${n}></ha-icon><span class="summary-text"><span class="summary-title">${r}</span><span class="summary-sub">${i}</span></span></summary>
     <div class="expander-body">${c()}</div></details>`;
 }
-var Ji = o`
+var Xi = o`
   .pd { container: plant / inline-size; display: flex; flex-direction: column; gap: 16px; padding-bottom: 32px; --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000); }
   .pd .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .pd ha-icon { --mdc-icon-size: 20px; flex: none; }
@@ -4831,13 +4843,13 @@ var Ji = o`
     dl.sensors, dl.other-targets { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }
     dl.sensors dd, dl.other-targets dd { margin-bottom: 10px; }
   }
-`, Yi = 5242880, Xi = 2048, Zi = 41943040, Qi = 64e6, $i = [
+`, Zi = 5242880, Qi = 2048, $i = 41943040, ea = 64e6, ta = [
 	"image/jpeg",
 	"image/png",
 	"image/webp"
 ];
-async function ea(e, t, n) {
-	if (!$i.includes(e.type) || e.size === 0 || e.size > t) throw Error(n.t(t > 5242880 ? "image_error.type_or_input_size" : "image_error.type_or_size"));
+async function na(e, t, n) {
+	if (!ta.includes(e.type) || e.size === 0 || e.size > t) throw Error(n.t(t > 5242880 ? "image_error.type_or_input_size" : "image_error.type_or_size"));
 	let r;
 	try {
 		r = new Uint8Array(await e.slice(0, 12).arrayBuffer());
@@ -4848,7 +4860,7 @@ async function ea(e, t, n) {
 	if (a !== e.type) throw Error(n.t("image_error.signature"));
 	return a;
 }
-async function ta(e, t) {
+async function ra(e, t) {
 	try {
 		if (typeof createImageBitmap == "function") {
 			let t = await createImageBitmap(e, { imageOrientation: "from-image" });
@@ -4877,10 +4889,10 @@ async function ta(e, t) {
 		throw Error(t.t("image_error.decode"));
 	}
 }
-var na = (e, t) => Number.isInteger(e) && Number.isInteger(t) && e >= 1 && t >= 1;
-async function ra(e, t = I) {
-	let n = await ea(e, Yi, t), { width: r, height: i, release: a } = await ta(e, t);
-	if (a(), !na(r, i) || r > 2048 || i > 2048) throw Error(t.t("image_error.dimensions"));
+var ia = (e, t) => Number.isInteger(e) && Number.isInteger(t) && e >= 1 && t >= 1;
+async function aa(e, t = I) {
+	let n = await na(e, Zi, t), { width: r, height: i, release: a } = await ra(e, t);
+	if (a(), !ia(r, i) || r > 2048 || i > 2048) throw Error(t.t("image_error.dimensions"));
 	return {
 		format: n,
 		bytes: e.size,
@@ -4888,19 +4900,19 @@ async function ra(e, t = I) {
 		height: i
 	};
 }
-function ia(e, t, n) {
+function oa(e, t, n) {
 	return new Promise((r) => {
 		e.toBlob((e) => r(e), t, n);
 	});
 }
-async function aa(e, t = I) {
-	await ea(e, Zi, t);
-	let { source: n, width: r, height: i, release: a } = await ta(e, t);
+async function sa(e, t = I) {
+	await na(e, $i, t);
+	let { source: n, width: r, height: i, release: a } = await ra(e, t);
 	try {
-		if (!na(r, i)) throw Error(t.t("image_error.decode"));
-		if (r * i > Qi) throw Error(t.t("image_error.too_many_pixels"));
+		if (!ia(r, i)) throw Error(t.t("image_error.decode"));
+		if (r * i > ea) throw Error(t.t("image_error.too_many_pixels"));
 		if (r <= 2048 && i <= 2048 && e.size <= 5242880) return e;
-		let a = Math.min(1, Xi / Math.max(r, i)), o = document.createElement("canvas");
+		let a = Math.min(1, Qi / Math.max(r, i)), o = document.createElement("canvas");
 		o.width = Math.max(1, Math.round(r * a)), o.height = Math.max(1, Math.round(i * a));
 		let s = o.getContext("2d");
 		if (!s) throw Error(t.t("image_error.resize"));
@@ -4910,8 +4922,8 @@ async function aa(e, t = I) {
 			.8,
 			.65
 		]) {
-			let n = await ia(o, "image/webp", t);
-			if (n?.type !== "image/webp" && (n = await ia(o, "image/jpeg", t)), !n || !$i.includes(n.type)) break;
+			let n = await oa(o, "image/webp", t);
+			if (n?.type !== "image/webp" && (n = await oa(o, "image/jpeg", t)), !n || !ta.includes(n.type)) break;
 			if (n.size > 0 && n.size <= 5242880) {
 				let t = n.type === "image/webp" ? "webp" : "jpg";
 				return new File([n], `${e.name.replace(/\.[^.]*$/, "") || "photo"}.${t}`, { type: n.type });
@@ -4924,19 +4936,19 @@ async function aa(e, t = I) {
 }
 //#endregion
 //#region src/bundle-version.ts
-function oa(e) {
+function ca(e) {
 	try {
 		return new URL(e).searchParams.get("v") || null;
 	} catch {
 		return null;
 	}
 }
-function sa(e, t) {
+function la(e, t) {
 	return !!e && !!t && e !== t;
 }
 //#endregion
 //#region src/styles.ts
-var ca = o`
+var ua = o`
   :host{display:block;color:var(--primary-text-color,#212121);font-family:var(--paper-font-body1_-_font-family,system-ui,sans-serif);line-height:1.5;overflow-wrap:anywhere}
   *{box-sizing:border-box} .update-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-left:4px solid var(--info-color,#039be5);padding:8px 16px;margin-bottom:16px;background:var(--card-background-color,#fff)} .update-banner p{margin:0} main{width:100%;max-width:none;margin:0;padding:0} .panel-content{width:100%;max-width:1280px;margin:0 auto;padding:16px 24px 24px} header,.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap} header{justify-content:space-between;margin-bottom:24px}
   .page-title{font-size:inherit;font-weight:inherit;margin:inherit;line-height:inherit}
@@ -4950,7 +4962,7 @@ var ca = o`
    .detail-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 12px;margin:8px 0 16px}.detail-tabs button{flex:0 0 auto;background:var(--secondary-background-color,#f5f5f5);border-color:transparent}.detail-tabs button[aria-current=page]{background:var(--secondary-background-color,#f5f5f5);color:var(--primary-text-color,#212121);border:2px solid var(--primary-color,#007bad);font-weight:600}.plant-overview-card{padding:0;overflow:hidden}.overview-heading{display:flex;align-items:center;gap:20px;padding:24px;background:var(--secondary-background-color,#f5f5f5)}.overview-avatar{width:84px;height:84px;flex:0 0 84px;object-fit:cover;border-radius:16px}.overview-avatar.placeholder{display:grid;place-items:center;background:var(--secondary-background-color,#f5f5f5);color:var(--primary-text-color,#212121);font-size:2rem;font-weight:700;border:1px solid var(--divider-color,#ddd)}.overview-heading h2{font-size:1.8rem;margin:4px 0}.overview-heading>section,.overview-heading>article{padding:0;margin:0;border:0;background:transparent}.eyebrow{font-size:.75rem;font-weight:700;letter-spacing:.08em;color:var(--secondary-text-color,#666);margin:0}.overview-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:20px}.overview-metrics article{display:grid;gap:4px;margin:0;background:var(--secondary-background-color,#f5f5f5);border:0}.overview-metrics article span{color:var(--secondary-text-color,#666)}.overview-metrics article strong{font-size:1.45rem}.overview-sensors,.overview-care{border:0;border-top:1px solid var(--divider-color,#ddd);border-radius:0;margin:0}.overview-sensors h2,.overview-care h2{margin-top:0}.overview-heading button{margin-top:8px}
   .detail-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:4px 2px 8px}.detail-heading h2{font-size:1.5rem;margin:0}.detail-heading p{margin:4px 0;color:var(--secondary-text-color,#666)}.detail-heading a{color:var(--primary-text-color,#212121);text-decoration:underline;text-underline-offset:3px}
   @media(max-width:600px){.panel-content{padding:16px 16px 16px}section,article{padding:16px}.actions button{flex:1 1 auto}header{align-items:flex-start}dl{grid-template-columns:1fr}dd{margin-bottom:8px}.stepper li span:last-child{display:none}.stepper li[aria-current=step] span:last-child{display:inline}.choice-card{min-height:0}.overview-heading{align-items:flex-start;flex-direction:column;padding:18px}.overview-metrics{grid-template-columns:1fr;padding:14px}.detail-tabs button{font-size:.9rem;padding:8px}}
-`, la, ua = [
+`, da, fa = [
 	"ha-area-picker",
 	"ha-entity-picker",
 	"ha-selector",
@@ -4958,7 +4970,7 @@ var ca = o`
 	"ha-expansion-panel",
 	"ha-dropdown",
 	"ha-dropdown-item"
-], da = gt.filter((e) => e !== "moisture"), fa = "/config/integrations/integration/smart_plants", pa = "https://open.plantbook.io/apikey/", Z = class extends S {
+], pa = gt.filter((e) => e !== "moisture"), ma = "/config/integrations/integration/smart_plants", ha = "https://open.plantbook.io/apikey/", Z = class extends S {
 	constructor(...e) {
 		super(...e), this.areas = [], this.entities = [], this.devices = [], this.states = {}, this.blocked = !1, this.navigationContext = 0, this.photoStatus = "", this.step = 1, this.busy = !1, this.error = "", this.name = "", this.area = "", this.photo = null, this.photoUrl = null, this.photoError = "", this.photoChecking = !1, this.dragging = !1, this.moisture = Vr(), this.extras = [], this.pendingRole = null, this.roleMenu = !1, this.expanded = /* @__PURE__ */ new Set(), this.opened = /* @__PURE__ */ new Set(), this.query = "", this.results = [], this.searched = !1, this.preview = null, this.accepted = !1, this.speciesError = "", this.common = "", this.latin = "", this.acquired = "", this.placement = "", this.category = "", this.tagText = "", this.draft = null, this.finalRequest = null, this.rejected = !1, this.created = null, this.generation = 0, this.lifecycle = 0, this.photoCheck = 0, this.entityById = /* @__PURE__ */ new Map(), this.areaOfEntity = /* @__PURE__ */ new Map();
 	}
@@ -4975,7 +4987,7 @@ var ca = o`
 	}
 	connectedCallback() {
 		super.connectedCallback();
-		for (let e of ua) Y(e) || customElements.whenDefined(e).then(() => this.requestUpdate());
+		for (let e of fa) Y(e) || customElements.whenDefined(e).then(() => this.requestUpdate());
 		this.photo && !this.photoUrl && (this.photoUrl = URL.createObjectURL(this.photo)), !this.draft && !this.created && this.start();
 	}
 	disconnectedCallback() {
@@ -5156,7 +5168,7 @@ var ca = o`
 		let t = ++this.photoCheck;
 		this.photoChecking = !0;
 		try {
-			let n = await aa(e, this.l);
+			let n = await sa(e, this.l);
 			if (t !== this.photoCheck) return;
 			this.photo = n, this.photoUrl = URL.createObjectURL(n);
 		} catch (e) {
@@ -5398,7 +5410,7 @@ var ca = o`
       <button type="button" class="iconbtn" aria-label=${n.t("wizard.remove_sensor", { name: r })} @click=${() => this.unassign(e)}><ha-icon aria-hidden="true" icon="mdi:close"></ha-icon></button></div>`;
 	}
 	renderSensors() {
-		let e = this.l, t = this.moisture.sources[0]?.entity_id, n = this.knownAreas.find((e) => e.area_id === this.area)?.name, r = this.suggestions(), i = da.filter((e) => !this.takenRoles.has(e) && e !== this.pendingRole);
+		let e = this.l, t = this.moisture.sources[0]?.entity_id, n = this.knownAreas.find((e) => e.area_id === this.area)?.name, r = this.suggestions(), i = pa.filter((e) => !this.takenRoles.has(e) && e !== this.pendingRole);
 		return y`<h2 tabindex="-1">${e.t("wizard.sensors_heading")}</h2><p class="intro">${e.t("wizard.sensors_intro")}</p>
       <div class="stack">
         ${t ? this.assignedRow("moisture", t) : this.sensorPicker("moisture", e.t("wizard.moisture_sensor"))}
@@ -5423,7 +5435,7 @@ var ca = o`
 		}}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("wizard.add_another")}</button>`;
 		return Y("ha-dropdown") && Y("ha-dropdown-item") ? y`<ha-dropdown @wa-select=${(e) => {
 			let t = e.detail.item.value;
-			da.includes(t) && (this.pendingRole = t);
+			pa.includes(t) && (this.pendingRole = t);
 		}}>
         ${n(!0)}${e.map((e) => y`<ha-dropdown-item value=${e}><ha-icon slot="icon" .icon=${O[e].icon}></ha-icon>${k(t, e)}</ha-dropdown-item>`)}</ha-dropdown>` : y`${n(!1)}${this.roleMenu ? y`<div class="role-menu">${e.map((e) => y`<button type="button" class="btn outline sm" @click=${() => {
 			this.pendingRole = e, this.roleMenu = !1;
@@ -5491,13 +5503,13 @@ var ca = o`
         ${this.speciesError ? y`<p class="error" role="alert">${this.speciesError}</p><button type="button" class="btn text sm flush" @click=${() => this.manual()}>${e.t("common.continue_manually")}</button>` : x}
         ${this.searched && !this.results.length ? y`<p class="small muted">${e.t("wizard.no_matches")}</p>` : x}
         ${this.results.length && !this.preview ? y`<ul class="results" aria-label=${e.t("wizard.results")}>${this.results.map((e) => y`<li><button type="button" @click=${() => void this.choose(e)}>${e.common_name ?? e.latin_name} · ${e.latin_name}</button><small>${e.attribution}</small></li>`)}</ul>` : x}
-        ${this.preview ? y`<div class="preview">${hi(e, this.preview.snapshot)}</div>
+        ${this.preview ? y`<div class="preview">${gi(e, this.preview.snapshot)}</div>
           <label class="check"><input type="checkbox" .checked=${this.accepted} @change=${(e) => {
 			this.accepted = e.target.checked, this.error = "";
 		}}>${e.t("wizard.accept_species")}</label>
-          <button type="button" class="btn text sm flush" @click=${() => this.manual()}>${e.t("wizard.remove_species")}</button>` : x}` : t ? this.alert("info", y`${e.t("wizard.provider_unavailable_body")}<span class="alert-links"><a href=${fa} @click=${(e) => {
-			e.preventDefault(), history.pushState(null, "", fa), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
-		}}>${e.t("wizard.open_options")}</a><a href=${pa} target="_blank" rel="noreferrer">${e.t("wizard.openplantbook_credentials_link")}</a></span>`, e.t("wizard.provider_unavailable_title")) : x}
+          <button type="button" class="btn text sm flush" @click=${() => this.manual()}>${e.t("wizard.remove_species")}</button>` : x}` : t ? this.alert("info", y`${e.t("wizard.provider_unavailable_body")}<span class="alert-links"><a href=${ma} @click=${(e) => {
+			e.preventDefault(), history.pushState(null, "", ma), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
+		}}>${e.t("wizard.open_options")}</a><a href=${ha} target="_blank" rel="noreferrer">${e.t("wizard.openplantbook_credentials_link")}</a></span>`, e.t("wizard.provider_unavailable_title")) : x}
       ${this.accepted || this.preview ? x : y`<h3>${e.t("wizard.manual_species")}</h3><div class="two">
         <label class="field">${e.t("species.common_name")}<input maxlength="200" .value=${this.common} @input=${(e) => {
 			this.common = e.target.value;
@@ -5563,9 +5575,9 @@ var ca = o`
     </div></div>`;
 	}
 };
-la = Z, la.styles = [
+da = Z, da.styles = [
 	W,
-	gi,
+	_i,
 	o`
     :host { display: block; container-type: inline-size; color: var(--sp-text);
       --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000);
@@ -5722,7 +5734,7 @@ la = Z, la.styles = [
 ], G([C({ attribute: !1 })], Z.prototype, "hass", void 0), G([C({ attribute: !1 })], Z.prototype, "capabilities", void 0), G([C({ attribute: !1 })], Z.prototype, "areas", void 0), G([C({ attribute: !1 })], Z.prototype, "entities", void 0), G([C({ attribute: !1 })], Z.prototype, "devices", void 0), G([C({ attribute: !1 })], Z.prototype, "states", void 0), G([C({ type: Boolean })], Z.prototype, "blocked", void 0), G([C({ type: Number })], Z.prototype, "navigationContext", void 0), G([C()], Z.prototype, "photoStatus", void 0), G([w()], Z.prototype, "step", void 0), G([w()], Z.prototype, "busy", void 0), G([w()], Z.prototype, "error", void 0), G([w()], Z.prototype, "name", void 0), G([w()], Z.prototype, "area", void 0), G([w()], Z.prototype, "photo", void 0), G([w()], Z.prototype, "photoUrl", void 0), G([w()], Z.prototype, "photoError", void 0), G([w()], Z.prototype, "photoChecking", void 0), G([w()], Z.prototype, "dragging", void 0), G([w()], Z.prototype, "moisture", void 0), G([w()], Z.prototype, "extras", void 0), G([w()], Z.prototype, "pendingRole", void 0), G([w()], Z.prototype, "roleMenu", void 0), G([w()], Z.prototype, "expanded", void 0), G([w()], Z.prototype, "opened", void 0), G([w()], Z.prototype, "query", void 0), G([w()], Z.prototype, "results", void 0), G([w()], Z.prototype, "searched", void 0), G([w()], Z.prototype, "preview", void 0), G([w()], Z.prototype, "accepted", void 0), G([w()], Z.prototype, "speciesError", void 0), G([w()], Z.prototype, "common", void 0), G([w()], Z.prototype, "latin", void 0), G([w()], Z.prototype, "acquired", void 0), G([w()], Z.prototype, "placement", void 0), G([w()], Z.prototype, "category", void 0), G([w()], Z.prototype, "tagText", void 0), G([w()], Z.prototype, "draft", void 0), G([w()], Z.prototype, "finalRequest", void 0), G([w()], Z.prototype, "rejected", void 0), G([w()], Z.prototype, "created", void 0), customElements.get("smart-plants-wizard") || customElements.define("smart-plants-wizard", Z);
 //#endregion
 //#region src/views/overview.ts
-var ma, ha = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", ga = {
+var ga, _a = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", va = {
 	all: {
 		label: "overview.tile_all",
 		icon: "mdi:sprout",
@@ -5743,11 +5755,11 @@ var ma, ha = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 		icon: "mdi:clock-alert-outline",
 		tone: "var(--sp-disabled)"
 	}
-}, _a = {
+}, ya = {
 	attention: "overview.sort_attention",
 	name: "overview.sort_name",
 	area: "overview.sort_area"
-}, va = {
+}, ba = {
 	attention: "mdi:alert-circle-outline",
 	name: "mdi:sort-alphabetical-ascending",
 	area: "mdi:texture-box"
@@ -5804,22 +5816,22 @@ var ma, ha = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 			let t = e.detail.item.value;
 			Lt.includes(t) && (this._sort = t);
 		}}>
-          <button slot="trigger" class="pill" type="button" aria-label=${e.t("overview.sort_button", { sort: e.t(_a[this._sort]) })}><ha-icon aria-hidden="true" icon="mdi:sort"></ha-icon>${e.t(_a[this._sort])}<ha-icon aria-hidden="true" icon="mdi:menu-down"></ha-icon></button>
+          <button slot="trigger" class="pill" type="button" aria-label=${e.t("overview.sort_button", { sort: e.t(ya[this._sort]) })}><ha-icon aria-hidden="true" icon="mdi:sort"></ha-icon>${e.t(ya[this._sort])}<ha-icon aria-hidden="true" icon="mdi:menu-down"></ha-icon></button>
           ${Lt.map((t) => y`<ha-dropdown-item value=${t} ?checked=${this._sort === t}>
-            ${this._sort === t ? y`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : y`<ha-icon slot="icon" .icon=${va[t]}></ha-icon>`}${e.t(_a[t])}</ha-dropdown-item>`)}
+            ${this._sort === t ? y`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : y`<ha-icon slot="icon" .icon=${ba[t]}></ha-icon>`}${e.t(ya[t])}</ha-dropdown-item>`)}
         </ha-dropdown>
       </div>
       <div class="countline"><p role="status">${e.t("list.count_filtered", {
 			shown: n.length,
 			total: t.length
-		})}${r ? ` · ${e.t(ga[this._filter].label)}` : ""}</p>
+		})}${r ? ` · ${e.t(va[this._filter].label)}` : ""}</p>
         ${r || this._query ? y`<button type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.clear_filter")}</button>` : x}</div>
       ${n.length ? this._renderList(n) : this._renderNoResults()}
     </div>
     <button type="button" class="fab" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("panel.add_plant")}</button>`;
 	}
 	_renderTile(e, t) {
-		let n = ga[e];
+		let n = va[e];
 		return y`<button type="button" class="tile ${t === 0 ? "zero" : ""}" style="--tone:${n.tone}" aria-pressed=${this._filter === e ? "true" : "false"}
       @click=${() => {
 			this._filter = this._filter === e && e !== "all" ? "all" : e;
@@ -5853,15 +5865,15 @@ var ma, ha = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 		let e = this.l;
 		return y`<sp-empty-state icon="mdi:sprout" .heading=${e.t("overview.empty_heading")}>${e.t("overview.empty_body")}
       <button slot="actions" type="button" class="filled" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("panel.add_plant")}</button>
-      <a slot="actions" class="text-button" href=${ha} target="_blank" rel="noopener noreferrer">${e.t("overview.how_it_works")}</a></sp-empty-state>`;
+      <a slot="actions" class="text-button" href=${_a} target="_blank" rel="noopener noreferrer">${e.t("overview.how_it_works")}</a></sp-empty-state>`;
 	}
 	_renderNoResults() {
-		let e = this.l, t = this._query.trim() ? e.t("overview.no_match_query", { query: this._query.trim() }) : e.t("overview.no_match_filter", { filter: e.t(ga[this._filter].label) });
+		let e = this.l, t = this._query.trim() ? e.t("overview.no_match_query", { query: this._query.trim() }) : e.t("overview.no_match_filter", { filter: e.t(va[this._filter].label) });
 		return y`<sp-empty-state class="no-results" compact icon="mdi:magnify-remove-outline" .heading=${e.t("overview.no_match_heading")}>${t}
       <button slot="actions" type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.show_all")}</button></sp-empty-state>`;
 	}
 };
-ma = Q, ma.styles = [W, o`
+ga = Q, ga.styles = [W, o`
     /* White text on the theme's primary colour needs a slightly darker fill to reach 4.5:1. */
     :host { display: block; container-type: inline-size; --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000); }
     :host([hidden]) { display: none; }
@@ -5952,7 +5964,7 @@ ma = Q, ma.styles = [W, o`
 })], Q.prototype, "hidden", void 0), G([w()], Q.prototype, "_filter", void 0), G([w()], Q.prototype, "_sort", void 0), G([w()], Q.prototype, "_query", void 0), customElements.get("smart-plants-overview") || customElements.define("smart-plants-overview", Q);
 //#endregion
 //#region src/panel.ts
-var ya, ba = Object.fromEntries([
+var xa, Sa = Object.fromEntries([
 	{
 		problemRole: "temperature_stress",
 		configRole: "temperature",
@@ -6073,27 +6085,27 @@ var ya, ba = Object.fromEntries([
 		validate: (e, t) => Lr(e, t),
 		seed: (e) => Rr(e)
 	}
-].map((e) => [e.problemRole, e])), xa = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", Sa = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Ca = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
-function wa(e) {
+].map((e) => [e.problemRole, e])), Ca = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", wa = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Ta = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
+function Ea(e) {
 	let t = -e.getTimezoneOffset();
 	return `${new Date(e.getTime() + t * 6e4).toISOString().slice(0, 19)}${t < 0 ? "-" : "+"}${String(Math.floor(Math.abs(t) / 60)).padStart(2, "0")}:${String(Math.abs(t) % 60).padStart(2, "0")}`;
 }
-var Ta = "smart_plants.history_role", Ea = "smart_plants.history_range", Da = 3e5;
-function Oa(e) {
+var Da = "smart_plants.history_role", Oa = "smart_plants.history_range", ka = 3e5;
+function Aa(e) {
 	try {
 		return localStorage.getItem(e);
 	} catch {
 		return null;
 	}
 }
-function ka(e, t) {
+function ja(e, t) {
 	try {
 		localStorage.setItem(e, t);
 	} catch {}
 }
 var $ = class e extends S {
 	constructor(...e) {
-		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => _t(e) ? e : "moisture")(Oa(Ta)), this._historyRange = ((e) => Gt(e) ? e : "7d")(Oa(Ea)), this._history = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._wizardStarted = !1, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ready = () => {
+		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => _t(e) ? e : "moisture")(Aa(Da)), this._historyRange = ((e) => Gt(e) ? e : "7d")(Aa(Oa)), this._history = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._wizardStarted = !1, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ready = () => {
 			this._refresh();
 		}, this._disconnected = () => {
 			this._context++, this._formBusy = !1, this._blocked = !0, this._request++, this._providerRequest++, this._preview = null, this._clearImage(), this._error = this._l.t("error.disconnected");
@@ -6202,7 +6214,7 @@ var $ = class e extends S {
 		try {
 			let i = await P.info(r), a = await P.list(r);
 			if (n !== this._request || !this.isConnected) return;
-			if (this._capabilities = i, this._blocked = !1, this._plants = a, this._updateAvailable = sa(e.bundleVersion, i.bundle_version), t && (this._error = ""), this._base) {
+			if (this._capabilities = i, this._blocked = !1, this._plants = a, this._updateAvailable = la(e.bundleVersion, i.bundle_version), t && (this._error = ""), this._base) {
 				let e = a.find((e) => e.id === this._base?.id);
 				e && e.revision !== this._base.revision && this._setConflict(this._base, e), e || (this._context++, this._formBusy = !1, this._closeDialog(), this._base = null, this._conflict = null, this._edits = null, this._notice = this._l.t("notice.deleted_elsewhere"), this.updateComplete.then(() => this.shadowRoot?.querySelector("h1")?.focus()));
 			}
@@ -6354,7 +6366,7 @@ var $ = class e extends S {
 		this._syncImage(), this._syncThumbnails(), this.updateComplete.then(() => this.shadowRoot?.querySelector("h1")?.focus());
 	}
 	_handleMenuAction(e) {
-		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(ha, "_blank", "noopener,noreferrer");
+		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(_a, "_blank", "noopener,noreferrer");
 		let t = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0;
 		if (!t) return;
 		let n = z(t, this._devices);
@@ -6434,7 +6446,7 @@ var $ = class e extends S {
 		let n = this.hass, r = this._l;
 		this._setWatering(e, !0), this._error = "", this._request++;
 		try {
-			let i = await this._withRevision(e, (t) => P.addWatering(n, e, t, wa(/* @__PURE__ */ new Date()), null));
+			let i = await this._withRevision(e, (t) => P.addWatering(n, e, t, Ea(/* @__PURE__ */ new Date()), null));
 			this._adopt(i.plant), this._followQuickWrite(i.plant);
 			let a = this._overview[e];
 			a && (this._overview = {
@@ -6506,7 +6518,7 @@ var $ = class e extends S {
 		let n = this._historyTarget(t);
 		if (!n) return;
 		let { key: r, entityId: i, role: a } = n, o = this._history?.key === r;
-		if (o && !e && Date.now() - this._historyLoadedAt < Da) return;
+		if (o && !e && Date.now() - this._historyLoadedAt < ka) return;
 		let s = ++this._historyRequest;
 		this._historyLoadedAt = Date.now(), (!o || this._history?.status !== "ready") && (this._history = {
 			key: r,
@@ -6532,7 +6544,7 @@ var $ = class e extends S {
 		let t = this._historyTarget(e);
 		if (!t) return x;
 		let n = this._l, r = this._overview[e.id], i = this._history?.key === t.key ? this._history : null, a = t.role === "moisture" ? "watering" : t.role === "conductivity" ? "fertilizing" : null, o = a ? (this._careHistory?.events ?? []).filter((e) => e.kind === a).map((e) => Date.parse(e.occurred_at)).filter(Number.isFinite) : [], s = r?.last_watered_at ? Date.parse(r.last_watered_at) : NaN;
-		return Wi(n, {
+		return Ki(n, {
 			roles: t.roles,
 			role: t.role,
 			range: this._historyRange,
@@ -6544,10 +6556,10 @@ var $ = class e extends S {
 			lastWatered: Number.isFinite(s) ? s : null,
 			now: Date.now(),
 			onRole: (e) => {
-				this._historyRole = e, ka(Ta, e);
+				this._historyRole = e, ja(Da, e);
 			},
 			onRange: (e) => {
-				this._historyRange = e, ka(Ea, e);
+				this._historyRange = e, ja(Oa, e);
 			},
 			onOpen: () => {
 				this.dispatchEvent(new CustomEvent("hass-more-info", {
@@ -6650,7 +6662,7 @@ var $ = class e extends S {
 		}, i = (e) => {
 			let n = `care_field.${e}`;
 			return F(n) ? t.t(n) : e;
-		}, a = (e) => t.t(`care_kind.${e}`), o = (e) => t.t(`care_kind_phrase.${e}`), s = this._formBusy || !!this._conflict, c = n?.events.filter((e) => this._careFilter === "all" || e.kind === this._careFilter) ?? [], l = [["all", t.t("care.filter_all")], ...ji.map((e) => [e, e === "note" ? t.t("care.filter_notes") : a(e)])], u = this._careFormOpen || this._careEditingId !== null;
+		}, a = (e) => t.t(`care_kind.${e}`), o = (e) => t.t(`care_kind_phrase.${e}`), s = this._formBusy || !!this._conflict, c = n?.events.filter((e) => this._careFilter === "all" || e.kind === this._careFilter) ?? [], l = [["all", t.t("care.filter_all")], ...Mi.map((e) => [e, e === "note" ? t.t("care.filter_notes") : a(e)])], u = this._careFormOpen || this._careEditingId !== null;
 		return y`<div class="care-bar"><div class="row" role="group" aria-label=${t.t("care.filter_label")}>${l.map(([e, t]) => y`<button type="button" class="fchip" aria-pressed=${this._careFilter === e ? "true" : "false"} @click=${() => {
 			this._careFilter = e;
 		}}>${t}</button>`)}</div>
@@ -6663,7 +6675,7 @@ var $ = class e extends S {
         <legend class="sr-only">${this._careEditingId ? t.t("care.edit_kind", { kind: o(this._careKind) }) : t.t("care.record")}</legend>
         <label>${t.t("care.type")}<select aria-label=${t.t("care.type")} .value=${this._careKind} @change=${(e) => {
 			this._careKind = e.target.value, this._careFields = {};
-		}}>${ji.map((e) => y`<option value=${e} ?selected=${e === this._careKind}>${a(e)}</option>`)}</select></label>
+		}}>${Mi.map((e) => y`<option value=${e} ?selected=${e === this._careKind}>${a(e)}</option>`)}</select></label>
         <label>${t.t("care.when")}<input type="datetime-local" .value=${this._careDate} @input=${(e) => this._careDate = e.target.value}></label>
         ${(r[this._careKind] ?? []).map((e) => y`<label>${i(e)}<input aria-label=${i(e)} type=${e === "amount" ? "number" : "text"} maxlength=${e === "text" ? 1e3 : 120} .value=${this._careFields[e] ?? ""} @input=${(t) => this._careFields = {
 			...this._careFields,
@@ -6681,8 +6693,8 @@ var $ = class e extends S {
       </fieldset></div></section>` : x}
       <section class="sp-card" aria-labelledby="care-heading"><div class="card-h"><h3 id="care-heading">${t.t("care.heading")}</h3></div>
       ${n ? n.events.length ? c.length ? y`<ul class="list" aria-label=${t.t("care.events_label")}>${c.map((n) => {
-			let r = Ki(t, n, i), c = t.recordedDateTime(n.occurred_at);
-			return y`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${Mi[n.kind]}></ha-icon></span>
+			let r = Ji(t, n, i), c = t.recordedDateTime(n.occurred_at);
+			return y`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${Ni[n.kind]}></ha-icon></span>
             <span class="li-main"><span class="li-title">${a(n.kind)}</span><span class="li-sub"><time datetime=${n.occurred_at}>${c}</time>${r.map((e) => y` · <span class="prose">${e}</span>`)}</span></span>
             <ha-dropdown @wa-select=${(t) => {
 				t.detail.item.value === "edit" ? (this._editCare(n), this._goTo("care", "#care-form select")) : t.detail.item.value === "delete" && this._deleteCare(e, n);
@@ -6848,7 +6860,7 @@ var $ = class e extends S {
 			}
 		}
 		if (c && l && u) {
-			let e = ba[c];
+			let e = Sa[c];
 			if (e) {
 				let n = e.seed(this._persistedRoleOverrides(e, t)), r = { ...n };
 				for (let t of e.keys) l[t] !== u[t] && (r[t] = l[t]);
@@ -6905,7 +6917,7 @@ var $ = class e extends S {
 			let t = [...e.currentTarget.querySelectorAll("button:not([disabled]),a[href],input:not([disabled]),summary")], n = t[0], r = t.at(-1);
 			e.shiftKey && (this.shadowRoot?.activeElement === n || this.shadowRoot?.activeElement?.matches("#dialog-title")) ? (e.preventDefault(), r?.focus()) : !e.shiftKey && this.shadowRoot?.activeElement === r && (e.preventDefault(), n?.focus());
 		}}><h2 id="dialog-title" tabindex="-1">${this._dialog === "delete" ? n.t("dialog.delete_title", { name: e.name }) : n.t("dialog.species_title")}</h2>
-      ${this._dialog === "delete" ? y`<p>${n.t("dialog.delete_body")}</p>` : t ? hi(n, t.snapshot, t) : y`<p>${n.t("dialog.preview_invalid")}</p>`}
+      ${this._dialog === "delete" ? y`<p>${n.t("dialog.delete_body")}</p>` : t ? gi(n, t.snapshot, t) : y`<p>${n.t("dialog.preview_invalid")}</p>`}
       <div class="actions"><button @click=${() => this._closeDialog()}>${n.t("common.cancel")}</button><button class="primary" ?disabled=${this._formBusy || this._blocked || !!this._conflict || this._dialog === "species" && !t} @click=${() => {
 			let n = this._dialog;
 			if (this._closeDialog(), !this.hass) return;
@@ -6919,7 +6931,7 @@ var $ = class e extends S {
 		this._formBusy = !0;
 		let r;
 		try {
-			r = await aa(t, this._l);
+			r = await sa(t, this._l);
 		} catch (e) {
 			n === this._context && (this._error = e.message);
 			return;
@@ -6986,7 +6998,7 @@ var $ = class e extends S {
 		return e === "on" ? t.t("section.advanced_diagnostics_status_problem") : e === "off" ? t.t("section.advanced_diagnostics_status_ok") : e === "unavailable" ? t.t("section.advanced_diagnostics_status_unavailable") : t.t("section.advanced_diagnostics_status_not_configured");
 	}
 	_renderOtherTargets(e) {
-		let t = this._l, n = Br(e, this._entities, this._states, t).filter((e) => e.status !== "not_configured" && ba[e.role]), r = this._pendingThresholdSwitch, i = this._thresholdRole ? ba[this._thresholdRole] : null, a = i ? t.t(`problem_phrase.${i.problemRole}`) : "", o = r ? t.t(`problem_phrase.${r.spec.problemRole}`) : "";
+		let t = this._l, n = Br(e, this._entities, this._states, t).filter((e) => e.status !== "not_configured" && Sa[e.role]), r = this._pendingThresholdSwitch, i = this._thresholdRole ? Sa[this._thresholdRole] : null, a = i ? t.t(`problem_phrase.${i.problemRole}`) : "", o = r ? t.t(`problem_phrase.${r.spec.problemRole}`) : "";
 		return y`<p class="small muted">${t.t("other_targets.intro")}</p>
       ${r ? y`<p class="notice threshold-switch-alert" role="alert">${t.t("section.advanced_diagnostics_switch_prompt", {
 			current: a,
@@ -6998,7 +7010,7 @@ var $ = class e extends S {
 		}}>${t.t("section.advanced_diagnostics_switch_keep")}</button>
       </p>` : x}
       ${n.length ? y`<dl class="other-targets">${n.map((n) => {
-			let r = ba[n.role], i = zr(e, n.role, this._entities, this._states, t), a = this._thresholdRole === n.role && this._thresholdEdits !== null, o = this._thresholdSaved[n.role];
+			let r = Sa[n.role], i = zr(e, n.role, this._entities, this._states, t), a = this._thresholdRole === n.role && this._thresholdEdits !== null, o = this._thresholdSaved[n.role];
 			return y`<dt>${n.label}</dt><dd>${i.length ? y`<ul class="thresholds" aria-label=${t.t("section.effective_thresholds_label", { label: n.label })}>${i.map((e) => y`<li><span class="threshold-label">${e.label}</span>: <span class="threshold-value">${e.value === null ? "—" : `${t.number(e.value)} ${e.unit}`}</span></li>`)}</ul>` : x}
           <button class="threshold-toggle btn outline sm" type="button" aria-expanded=${a ? "true" : "false"} aria-controls=${`${n.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(r, e)}>${a ? t.t("section.advanced_diagnostics_cancel_edit") : t.t("section.advanced_diagnostics_edit_thresholds")}</button>${a ? this._renderThresholdEditor(r, e) : x}${o && !a ? y`<p class="notice" role="status">${o}</p>` : x}</dd>`;
 		})}</dl>` : y`<p>${t.t("other_targets.none")}</p>`}`;
@@ -7100,7 +7112,7 @@ var $ = class e extends S {
 		if (!n) return r.t("sensors.summary_unavailable");
 		if (!n.sources.length) return r.t("sensors.summary_empty");
 		let i = [r.tn(n.sources.length, "sensors.source_count_one", "sensors.source_count_other"), si(r, n.aggregation)];
-		return n.primary_entity_id && n.sources.length > 1 && i.push(r.t("sensors.summary_primary", { name: Ni(r, this._states, n.primary_entity_id) })), i.push(r.t("sensors.summary_stale", { duration: Gi(r, n.stale_after_seconds) })), i.join(" · ");
+		return n.primary_entity_id && n.sources.length > 1 && i.push(r.t("sensors.summary_primary", { name: Pi(r, this._states, n.primary_entity_id) })), i.push(r.t("sensors.summary_stale", { duration: qi(r, n.stale_after_seconds) })), i.join(" · ");
 	}
 	_toggleSourceEdit(e, t, n = "combine") {
 		if (this._sourceRole === e && this._sourceEdits !== null) {
@@ -7248,7 +7260,7 @@ var $ = class e extends S {
 	_staleAlert(e) {
 		let t = this._l, n = this._overview[e.id]?.roles.moisture;
 		if (!n || n.state !== "stale") return x;
-		let r = n.sources.map((e) => Ni(t, this._states, e)).join(", ") || k(t, "moisture"), i = n.last_reported ? t.t("stale_alert.title", {
+		let r = n.sources.map((e) => Pi(t, this._states, e)).join(", ") || k(t, "moisture"), i = n.last_reported ? t.t("stale_alert.title", {
 			name: r,
 			age: bt(t, n.last_reported)
 		}) : t.t("stale_alert.title_no_age", { name: r });
@@ -7257,20 +7269,20 @@ var $ = class e extends S {
 	_renderSensorsTab(e) {
 		let t = this._l, n = this._formBusy || this._blocked || !!this._conflict, r = this._pendingSourceSwitch, i = Jr(this._sourceRole ?? ""), a = this._assignedSensors(e), o = [...R(e)?.sources.length ? [] : ["moisture"], ...qr.filter((t) => !V(e, t.role)?.sources.length).map((e) => e.role)], s = qr.find((t) => this._sourceRefused(e, t.role, "pick"));
 		return y`${this._staleAlert(e)}
-      ${r ? y`<div class="notice" role="alert"><p>${t.t("sensors.switch_prompt", { role: i ? Pi(t, i.role) : this._sourceRole ?? "" })}</p>
+      ${r ? y`<div class="notice" role="alert"><p>${t.t("sensors.switch_prompt", { role: i ? Ii(t, i.role) : this._sourceRole ?? "" })}</p>
         <button type="button" class="primary" @click=${() => this._confirmSourceSwitch()}>${t.t("section.advanced_diagnostics_switch_discard")}</button>
         <button type="button" @click=${() => {
 			this._pendingSourceSwitch = null;
 		}}>${t.t("section.advanced_diagnostics_switch_keep")}</button></div>` : x}
       <section class="sp-card" aria-labelledby="assigned-heading"><div class="card-h"><h3 id="assigned-heading">${t.t("assigned.heading")}</h3></div>
         ${a.length ? y`<ul class="list">${a.map((r) => {
-			let i = Ni(t, this._states, r.entityId), a = this._states[r.entityId], o = a ? t.t("assigned.updated", { age: bt(t, a.last_updated) }) : t.t("assigned.not_found");
+			let i = Pi(t, this._states, r.entityId), a = this._states[r.entityId], o = a ? t.t("assigned.updated", { age: bt(t, Fi(a)) }) : t.t("assigned.not_found");
 			return y`<li class="li"><span class="ic" aria-hidden="true"><ha-icon .icon=${O[r.role].icon}></ha-icon></span>
             <span class="li-main"><span class="li-title">${i}</span><span class="li-sub">${k(t, r.role)} · ${o}${r.main && r.several ? ` · ${t.t("assigned.main")}` : ""}</span></span>
             <span class="li-actions"><span class="li-value">${this._sensorValue(r.entityId)}</span>
               <ha-dropdown @wa-select=${(t) => void this._sensorAction(e, r.role, r.entityId, t.detail.item.value)}>
                 <button slot="trigger" type="button" class="icon-btn" ?disabled=${n} aria-label=${t.t("assigned.menu", { name: i })}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
-                <ha-dropdown-item value="change">${t.t("assigned.change", { role: Pi(t, r.role) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>
+                <ha-dropdown-item value="change">${t.t("assigned.change", { role: Ii(t, r.role) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>
                 ${r.several && !r.main ? y`<ha-dropdown-item value="primary">${t.t("assigned.make_main")}<ha-icon slot="icon" icon="mdi:star-outline"></ha-icon></ha-dropdown-item>` : x}
                 <ha-dropdown-item value="remove">${t.t("assigned.remove")}<ha-icon slot="icon" icon="mdi:link-variant-off"></ha-icon></ha-dropdown-item>
               </ha-dropdown></span></li>`;
@@ -7288,18 +7300,18 @@ var $ = class e extends S {
 	}
 	_renderPicker(e, t) {
 		let n = this._l, r = k(n, e), i = this._formBusy || this._blocked || !!this._conflict, a = this._edits, o;
-		return o = e === "moisture" ? a?.moisture ? y`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${i}>${pi(n, a.moisture, this._defaults(t), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "pick")}
+		return o = e === "moisture" ? a?.moisture ? y`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${i}>${mi(n, a.moisture, this._defaults(t), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "pick")}
         <div class="actions"><button type="button" @click=${() => this._closeMoistureEditor()}>${n.t("common.cancel")}</button><button type="button" class="primary" @click=${() => void this._saveMoistureSensors()}>${n.t("sensors.save_moisture")}</button></div></fieldset></div>` : y`<p class="error" role="alert">${n.t("moisture.incompatible")}</p>` : this._renderSourceEditor(e, t), y`<section class="sp-card picker" aria-labelledby=${`${e}-picker-heading`}><div class="card-h"><h3 id=${`${e}-picker-heading`} tabindex="-1">${n.t("sensors.edit_heading", { role: r })}</h3></div>
       <div class="card-b">${o}</div></section>`;
 	}
 	_renderSourceEditor(e, t) {
 		let n = Jr(e), r = this._sourceEdits, i = this._l;
 		return !n || !r ? x : y`<div id=${`${e}-sources-editor`} class="editor"><fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>
-      ${mi(i, n, r, this._entities, this._states, this._allSourceSensors, (e) => this._allSourceSensors = e, (e) => this._editSource(e), this._sourceMode)}
+      ${hi(i, n, r, this._entities, this._states, this._allSourceSensors, (e) => this._allSourceSensors = e, (e) => this._editSource(e), this._sourceMode)}
       ${this._sourceError ? y`<p class="error" role="alert">${this._sourceError}</p>` : x}
       <div class="actions">
         <button type="button" @click=${() => this._closeSourceEditor()}>${i.t("common.cancel")}</button>
-        <button type="button" class="primary" @click=${() => void this._saveRoleSources(e, t)}>${i.t("sensors.save", { role: Pi(i, e) })}</button>
+        <button type="button" class="primary" @click=${() => void this._saveRoleSources(e, t)}>${i.t("sensors.save", { role: Ii(i, e) })}</button>
       </div></fieldset></div>`;
 	}
 	_renderCombine(e) {
@@ -7307,15 +7319,15 @@ var $ = class e extends S {
 		return y`<p class="small muted">${t.t("combine.intro")}</p>
       <dl class="sensors">
         <dt>${k(t, "moisture")}</dt><dd>${this._sourceSummary(e, "moisture")}
-          <button class="source-toggle btn text sm" type="button" aria-expanded=${i ? "true" : "false"} aria-controls="moisture-sources-editor" aria-label=${i ? t.t("common.cancel") : t.t("combine.edit_label", { role: Pi(t, "moisture") })} ?disabled=${n || !r?.moisture} @click=${() => {
+          <button class="source-toggle btn text sm" type="button" aria-expanded=${i ? "true" : "false"} aria-controls="moisture-sources-editor" aria-label=${i ? t.t("common.cancel") : t.t("combine.edit_label", { role: Ii(t, "moisture") })} ?disabled=${n || !r?.moisture} @click=${() => {
 			i ? this._closeMoistureEditor() : this._moistureMode = "combine";
 		}}>${i ? t.t("common.cancel") : t.t("sensors.edit")}</button>
-          ${i && r?.moisture ? y`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${n}>${pi(t, r.moisture, this._defaults(e), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "combine")}
+          ${i && r?.moisture ? y`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${n}>${mi(t, r.moisture, this._defaults(e), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "combine")}
             <div class="actions"><button type="button" @click=${() => this._closeMoistureEditor()}>${t.t("common.cancel")}</button><button type="button" class="primary" @click=${() => void this._saveMoistureSensors()}>${t.t("sensors.save_moisture")}</button></div></fieldset></div>` : x}</dd>
         ${qr.map((r) => {
 			let i = this._sourceRole === r.role && this._sourceEdits !== null && this._sourceMode === "combine", a = this._sourceSaved[r.role], o = k(t, r.role);
 			return y`<dt>${o}</dt><dd>${this._sourceSummary(e, r.role)}
-            <button class="source-toggle btn text sm" type="button" aria-expanded=${i ? "true" : "false"} aria-controls=${`${r.role}-sources-editor`} aria-label=${i ? t.t("common.cancel") : t.t("combine.edit_label", { role: Pi(t, r.role) })} ?disabled=${n} @click=${() => this._toggleSourceEdit(r.role, e, "combine")}>${i ? t.t("common.cancel") : t.t("sensors.edit")}</button>
+            <button class="source-toggle btn text sm" type="button" aria-expanded=${i ? "true" : "false"} aria-controls=${`${r.role}-sources-editor`} aria-label=${i ? t.t("common.cancel") : t.t("combine.edit_label", { role: Ii(t, r.role) })} ?disabled=${n} @click=${() => this._toggleSourceEdit(r.role, e, "combine")}>${i ? t.t("common.cancel") : t.t("sensors.edit")}</button>
             ${i ? this._renderSourceEditor(r.role, e) : x}
             ${!i && this._sourceRefused(e, r.role, "combine") ? y`<p id=${`${r.role}-sources-unavailable`} class="error" role="alert">${t.t("sensors.refused", { role: o })}</p>` : x}
             ${a && !i ? y`<p class="notice" role="status">${a}</p>` : x}</dd>`;
@@ -7391,7 +7403,7 @@ var $ = class e extends S {
 		this._mutate(() => e.lifecycle_state === "active" ? P.disable(t, e.id, e.revision) : P.reenable(t, e.id, e.revision));
 	}
 	_expander(e, t, n, r, i) {
-		return qi({
+		return Yi({
 			key: e,
 			icon: t,
 			header: n,
@@ -7434,39 +7446,39 @@ var $ = class e extends S {
           <h2 class="hero-name">${e.name}</h2>
           <div class="hero-meta">${r ? y`<span><ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${this._areaName(r)}</span>` : x}
             <span><ha-icon aria-hidden="true" icon="mdi:leaf"></ha-icon>${i ? y`<i>${i}</i>` : t.t("detail.no_species")}</span></div>
-          ${n && a ? y`<div class="hero-status"><sp-status-chip .status=${n.status} .label=${a.label} .more=${a.more} .l=${t}></sp-status-chip><span class="reason">${zi(t, n)}</span></div>` : x}
+          ${n && a ? y`<div class="hero-status"><sp-status-chip .status=${n.status} .label=${a.label} .more=${a.more} .l=${t}></sp-status-chip><span class="reason">${Vi(t, n)}</span></div>` : x}
         </div>
         <div class="hero-actions">
           <button type="button" class="btn filled" ?disabled=${this._blocked || this._watering.has(e.id) || !!this._conflict} @click=${() => void this._logWatering(e.id)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${t.t("card.log_watering")}</button>
           <button type="button" class="btn outline" @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:note-edit-outline"></ha-icon>${t.t("detail.log_care")}</button>
         </div>
       </div>
-      ${Bi(t, n)}
+      ${Hi(t, n)}
     </div>`;
 	}
 	_renderTabs() {
 		let e = this._l;
 		return Y("ha-tab-group") ? y`<ha-tab-group class="tabs" @wa-tab-show=${(e) => this._selectSection(e.detail.name)}>
-        ${X.map((t) => y`<ha-tab-group-tab slot="nav" .panel=${t} .active=${this._detailSection === t}>${e.t(Ai[t])}</ha-tab-group-tab>`)}</ha-tab-group>` : y`<div class="tablist" role="tablist" aria-label=${e.t("detail.sections_label")} @keydown=${(e) => {
+        ${X.map((t) => y`<ha-tab-group-tab slot="nav" .panel=${t} .active=${this._detailSection === t}>${e.t(ji[t])}</ha-tab-group-tab>`)}</ha-tab-group>` : y`<div class="tablist" role="tablist" aria-label=${e.t("detail.sections_label")} @keydown=${(e) => {
 			let t = X.indexOf(this._detailSection), n = e.key === "ArrowRight" ? (t + 1) % X.length : e.key === "ArrowLeft" ? (t + X.length - 1) % X.length : e.key === "Home" ? 0 : e.key === "End" ? X.length - 1 : -1;
 			n < 0 || (e.preventDefault(), this._selectSection(X[n]), this.updateComplete.then(() => this.shadowRoot?.querySelector(`#tab-${X[n]}`)?.focus()));
 		}}>${X.map((t) => {
 			let n = this._detailSection === t;
-			return y`<button type="button" role="tab" id=${`tab-${t}`} aria-controls="detail-panel" aria-selected=${n ? "true" : "false"} tabindex=${n ? "0" : "-1"} @click=${() => this._selectSection(t)}>${e.t(Ai[t])}</button>`;
+			return y`<button type="button" role="tab" id=${`tab-${t}`} aria-controls="detail-panel" aria-selected=${n ? "true" : "false"} tabindex=${n ? "0" : "-1"} @click=${() => this._selectSection(t)}>${e.t(ji[t])}</button>`;
 		})}</div>`;
 	}
 	_renderOverviewTab(e) {
-		let t = this._l, n = this._overview[e.id], r = Fi(n), i = this._careHistory, a = i?.events.slice(0, 3) ?? [], o = z(e, this._devices), s = t.t("about.not_set"), c = e.species?.snapshot, l = (e) => e.charAt(0).toLocaleUpperCase() + e.slice(1), u = o ? `/config/automation/edit/new?add_automation_element=trigger&target_device_id=${encodeURIComponent(o.id)}` : "", d = o ? `/config/devices/device/${encodeURIComponent(o.id)}` : "";
+		let t = this._l, n = this._overview[e.id], r = Li(n), i = this._careHistory, a = i?.events.slice(0, 3) ?? [], o = z(e, this._devices), s = t.t("about.not_set"), c = e.species?.snapshot, l = (e) => e.charAt(0).toLocaleUpperCase() + e.slice(1), u = o ? `/config/automation/edit/new?add_automation_element=trigger&target_device_id=${encodeURIComponent(o.id)}` : "", d = o ? `/config/devices/device/${encodeURIComponent(o.id)}` : "";
 		return y`<div class="cols">
       <div class="stack">
         <section class="sp-card" aria-labelledby="readings-heading"><div class="card-h"><h3 id="readings-heading">${t.t("readings.heading")}</h3>
           ${r.length ? y`<button type="button" class="btn text sm" @click=${() => this._selectSection("sensors")}>${t.t("readings.manage")}</button>` : x}</div>
-          ${r.length ? y`<ul class="list">${r.map(([e, n]) => Vi(t, e, n, this._states))}</ul>` : y`<div class="card-b"><div class="empty-box"><span>${n?.status === "paused" ? t.t("readings.paused") : t.t("readings.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._selectSection("sensors")}>${t.t("readings.assign")}</button></div></div>`}
+          ${r.length ? y`<ul class="list">${r.map(([e, n]) => Ui(t, e, n, this._states))}</ul>` : y`<div class="card-b"><div class="empty-box"><span>${n?.status === "paused" ? t.t("readings.paused") : t.t("readings.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._selectSection("sensors")}>${t.t("readings.assign")}</button></div></div>`}
         </section>
         ${this._renderHistory(e)}
         <section class="sp-card" aria-labelledby="recent-heading"><div class="card-h"><h3 id="recent-heading">${t.t("recent.heading")}</h3>
           ${i?.events.length ? y`<button type="button" class="btn text sm" @click=${() => this._selectSection("care")}>${t.t("recent.show_all")}</button>` : x}</div>
-          ${i ? a.length ? y`<ul class="list">${a.map((e) => y`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${Mi[e.kind]}></ha-icon></span>
+          ${i ? a.length ? y`<ul class="list">${a.map((e) => y`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${Ni[e.kind]}></ha-icon></span>
             <span class="li-main"><span class="li-title">${t.t(`care_done.${e.kind}`)}</span><span class="li-sub">${t.date(e.local_date)}</span></span><span></span></li>`)}</ul>` : y`<div class="card-b"><div class="empty-box"><span>${t.t("care.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._openCareForm()}>${t.t("detail.log_care")}</button></div></div>` : y`<p class="card-b muted">${t.t("care.loading")}</p>`}
         </section>
       </div>
@@ -7526,7 +7538,7 @@ var $ = class e extends S {
 		}}>${t.t("common.cancel")}</button><button type="button" class="primary" ?disabled=${i || !!this._registryError || this._areaReview} @click=${() => void this._save("area")}>${t.t("detail.save_area")}</button></div>`, this._areaReview)}
         ${this._renderPhotoRow(e)}
         ${this._settingRow("species", t.t("settings.species"), c, o ? t.t("settings.change_species") : t.t("settings.find_species"), () => y`
-          ${e.species ? hi(t, e.species.snapshot) : x}<fieldset ?disabled=${i}>
+          ${e.species ? gi(t, e.species.snapshot) : x}<fieldset ?disabled=${i}>
           ${e.species?.snapshot.provider_ref ? y`<button type="button" @click=${() => void this._previewSpecies()}>${t.t("species.preview_refresh")}</button>` : x}
           ${U(t, t.t("species.provider"), this._provider, [{
 			value: "manual",
@@ -7594,7 +7606,7 @@ var $ = class e extends S {
 		})}</p><ul>${this._conflict.changes.map((e) => y`<li class="prose">${e}</li>`)}</ul>${i.length ? y`<p>${t.t("conflict.source_overlap", { fields: this._sourceFieldList(i) })}</p>` : x}<div class="actions"><button @click=${() => this._reviewConflict()}>${t.t("conflict.retain")}</button><button @click=${() => this._beginEdit(n)}>${t.t("conflict.discard")}</button></div></section>` : x}
       ${this._renderHeader(n)}
       ${this._renderTabs()}
-      <div class="tabpanel" id="detail-panel" role="tabpanel" aria-label=${t.t(Ai[this._detailSection])}>${{
+      <div class="tabpanel" id="detail-panel" role="tabpanel" aria-label=${t.t(ji[this._detailSection])}>${{
 			overview: () => this._renderOverviewTab(n),
 			sensors: () => this._renderSensorsTab(n),
 			care: () => this._renderCare(n),
@@ -7626,7 +7638,7 @@ var $ = class e extends S {
 		let f = this._context;
 		if (this._refresh(!1), o && i) {
 			try {
-				if (await ra(n, c), !this.isConnected || this.hass?.connection !== i.connection || this._blocked) return;
+				if (await aa(n, c), !this.isConnected || this.hass?.connection !== i.connection || this._blocked) return;
 				let e = await P.uploadImage(i, t.id, t.revision, n);
 				if (!this.isConnected || this.hass?.connection !== i.connection) return;
 				f === this._context && this._base?.id === t.id && this._base.revision === t.revision && !this._formBusy && !this._conflict && this._rebaseEdits(this._base, e), this._createdPlantId === t.id && d(c.t("created.photo_uploaded"));
@@ -7647,19 +7659,19 @@ var $ = class e extends S {
 		if (this.hass?.user?.is_admin === !1) return y`<main><div class="panel-content"><p role="alert">${e.t("panel.admin_required")}</p></div></main>`;
 		let t = this.hass?.localize?.("ui.common.menu") || e.t("panel.menu"), n = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0, r = this._formBusy || this._blocked || !!this._conflict;
 		return y`<main><ha-top-app-bar-fixed class="panel-appbar" .narrow=${this.narrow}>
-       ${this._view.kind === "detail" ? y`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Ca} @click=${() => {
+       ${this._view.kind === "detail" ? y`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Ta} @click=${() => {
 			this._formBusy || this._show({ kind: "list" });
 		}}></ha-icon-button>` : x}
        <h1 slot="title" class="page-title" tabindex="-1">${n ? n.name : "Smart Plants"}</h1>
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
-         <ha-icon-button slot="trigger" .label=${t} .path=${xa}></ha-icon-button>
+         <ha-icon-button slot="trigger" .label=${t} .path=${Ca}></ha-icon-button>
          ${n ? y`
          <ha-dropdown-item value="open-device" ?disabled=${!z(n, this._devices)}>${e.t("detail.menu_open_device")}<ha-icon slot="icon" icon="mdi:open-in-new"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="download-diagnostics">${e.t("detail.menu_download")}<ha-icon slot="icon" icon="mdi:download"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="toggle-monitoring" ?disabled=${r}>${n.lifecycle_state === "active" ? e.t("manage.pause") : e.t("manage.resume")}<ha-icon slot="icon" .icon=${n.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="delete-plant" ?disabled=${r}>${e.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>` : y`
          ${this._view.kind === "list" ? x : y`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${e.t("panel.back_to_overview")}</ha-dropdown-item>`}
-         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${Sa}></ha-svg-icon></ha-dropdown-item>
+         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${wa}></ha-svg-icon></ha-dropdown-item>
          <ha-dropdown-item value="integration-options">${e.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="documentation">${e.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>`}
        </ha-dropdown>
@@ -7681,11 +7693,11 @@ var $ = class e extends S {
         <p role="status" aria-live="polite">${this._formBusy ? e.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
 	}
 };
-ya = $, ya.styles = [
+xa = $, xa.styles = [
 	W,
-	ca,
-	Ji
-], ya.bundleVersion = oa(import.meta.url), G([C({ attribute: !1 })], $.prototype, "hass", void 0), G([C({ attribute: !1 })], $.prototype, "panel", void 0), G([C({
+	ua,
+	Xi
+], xa.bundleVersion = ca(import.meta.url), G([C({ attribute: !1 })], $.prototype, "hass", void 0), G([C({ attribute: !1 })], $.prototype, "panel", void 0), G([C({
 	type: Boolean,
 	reflect: !0
 })], $.prototype, "narrow", void 0), G([w()], $.prototype, "_plants", void 0), G([w()], $.prototype, "_loading", void 0), G([w()], $.prototype, "_error", void 0), G([w()], $.prototype, "_notice", void 0), G([w()], $.prototype, "_view", void 0), G([w()], $.prototype, "_detailSection", void 0), G([w()], $.prototype, "_formBusy", void 0), G([w()], $.prototype, "_capabilities", void 0), G([w()], $.prototype, "_updateAvailable", void 0), G([w()], $.prototype, "_blocked", void 0), G([w()], $.prototype, "_areas", void 0), G([w()], $.prototype, "_entities", void 0), G([w()], $.prototype, "_devices", void 0), G([w()], $.prototype, "_states", void 0), G([w()], $.prototype, "_evaluations", void 0), G([w()], $.prototype, "_health", void 0), G([w()], $.prototype, "_healthError", void 0), G([w()], $.prototype, "_careHistory", void 0), G([w()], $.prototype, "_historyRole", void 0), G([w()], $.prototype, "_historyRange", void 0), G([w()], $.prototype, "_history", void 0), G([w()], $.prototype, "_careError", void 0), G([w()], $.prototype, "_careDate", void 0), G([w()], $.prototype, "_careNote", void 0), G([w()], $.prototype, "_careKind", void 0), G([w()], $.prototype, "_careFields", void 0), G([w()], $.prototype, "_careEditingId", void 0), G([w()], $.prototype, "_registryError", void 0), G([w()], $.prototype, "_areaReview", void 0), G([w()], $.prototype, "_overview", void 0), G([w()], $.prototype, "_overviewError", void 0), G([w()], $.prototype, "_thumbnails", void 0), G([w()], $.prototype, "_watering", void 0), G([w()], $.prototype, "_edits", void 0), G([w()], $.prototype, "_conflict", void 0), G([w()], $.prototype, "_allSensors", void 0), G([w()], $.prototype, "_preview", void 0), G([w()], $.prototype, "_provider", void 0), G([w()], $.prototype, "_query", void 0), G([w()], $.prototype, "_results", void 0), G([w()], $.prototype, "_related", void 0), G([w()], $.prototype, "_imageUrl", void 0), G([w()], $.prototype, "_imageLoading", void 0), G([w()], $.prototype, "_imageError", void 0), G([w()], $.prototype, "_dialog", void 0), G([w()], $.prototype, "_wizardStarted", void 0), G([w()], $.prototype, "_creationNotice", void 0), G([w()], $.prototype, "_creationPhoto", void 0), G([w()], $.prototype, "_createdPlantId", void 0), G([w()], $.prototype, "_thresholdRole", void 0), G([w()], $.prototype, "_thresholdEdits", void 0), G([w()], $.prototype, "_thresholdBaseline", void 0), G([w()], $.prototype, "_thresholdError", void 0), G([w()], $.prototype, "_thresholdSaved", void 0), G([w()], $.prototype, "_pendingThresholdSwitch", void 0), G([w()], $.prototype, "_sourceRole", void 0), G([w()], $.prototype, "_sourceEdits", void 0), G([w()], $.prototype, "_sourceBaseline", void 0), G([w()], $.prototype, "_sourceError", void 0), G([w()], $.prototype, "_sourceUnavailable", void 0), G([w()], $.prototype, "_sourceSaved", void 0), G([w()], $.prototype, "_pendingSourceSwitch", void 0), G([w()], $.prototype, "_sourceMode", void 0), G([w()], $.prototype, "_moistureMode", void 0), G([w()], $.prototype, "_expanded", void 0), G([w()], $.prototype, "_settingsOpen", void 0), G([w()], $.prototype, "_careFilter", void 0), G([w()], $.prototype, "_careFormOpen", void 0), G([w()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);

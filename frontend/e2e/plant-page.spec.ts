@@ -123,7 +123,7 @@ test("Watered in the header logs a watering and keeps the page editable", async 
   await expect(page.locator("smart-plants-panel section", { hasText: "Recent care" })).toContainText("Watered");
   expect(await messages(page, "care/add_watering")).toHaveLength(1);
   expect(await page.evaluate(() => (window as unknown as { __toasts: string[] }).__toasts)).toEqual(["Watering logged for Office Aloe"]);
-  await expect(page.getByRole("heading", { name: "Review changes from another session" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "This plant was changed somewhere else" })).toHaveCount(0);
   await tab(page, "Care").click();
   await expect(page.getByRole("status").filter({ hasText: "1 watering event." })).toBeVisible();
   await audit(page, info, "care-after-header-watering");

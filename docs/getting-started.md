@@ -26,7 +26,8 @@ The overview shows:
   which opens its **Sensors** tab.
 
 Each plant has one status, most urgent first: *Needs water*, *Too wet*, a named problem
-(such as *Too little light* or *Battery low*), *No recent data*, *No sensors*, *Healthy*.
+(such as *Too little light* or *Battery low*), *No recent data*, *No moisture sensor* (or
+*No sensors* when nothing is assigned), *Healthy*.
 Paused plants show *Paused*.
 
 Select **Watered** on a card to log a watering right now. A message confirms it and offers
@@ -153,8 +154,8 @@ When the soil moisture sensor stops reporting, a warning at the top of the tab n
 sensor and when it last reported.
 
 The sensor picker is filtered by device class and unit for each reading. Tick
-**Show all sensors (metadata fallback)** to pick anything else, or type an entity ID and press
-Enter to assign a sensor that is currently unavailable. Each reading accepts up to 32
+**Show all sensors, including ones that don't look like a match** to pick anything else, or
+type an entity ID and press Enter to assign a sensor that is currently unavailable. Each reading accepts up to 32
 sensors.
 
 A reading's sensor and problem entities appear the first time you assign a sensor to it. See

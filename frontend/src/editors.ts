@@ -34,6 +34,12 @@ function candidateLabel(l: Localizer, id: string, states: Record<string, HAState
   const state = states[id]; const notSupplied = l.t("sources.not_supplied_lower");
   return l.t("sources.candidate", { name: typeof state?.attributes.friendly_name === "string" ? state.attributes.friendly_name : id, entity_id: id, unit: String(state?.attributes.unit_of_measurement ?? notSupplied), device_class: String(state?.attributes.device_class ?? notSupplied), state: state?.state ?? l.t("sources.unavailable_lower") });
 }
+// "Kitchen Soil Probe · sensor.kitchen_soil", like the sensor picker, or the
+// entity ID alone when Home Assistant has no name for it.
+function sourceOptionLabel(id: string, states: Record<string, HAState>): string {
+  const name = states[id]?.attributes.friendly_name;
+  return typeof name === "string" && name.trim() ? `${name} · ${id}` : id;
+}
 // Which part of a sensor editor to show: everything, only the assigned sensor
 // list with its pickers, or only how several sensors combine (main sensor,
 // combination and the not-updating window).
@@ -42,7 +48,7 @@ export type SourcesPart = "all" | "pick" | "combine";
 function sourcesControls<T extends MoistureInput | RoleSourceInput>(l: Localizer, c: T, entities: HAEntity[], states: Record<string, HAState>, all: boolean, setAll: (v: boolean) => void, patch: (part: Partial<T>) => void, intro: string, addLabel: string, placeholder: string, candidates: string[], warning: (s: T["sources"][number]) => string, part: SourcesPart = "all") {
   const notSupplied = l.t("common.not_supplied");
   const combine = html`
-    ${selectField(l, l.t("sources.primary"), c.primary_entity_id ?? "", [{ value: "", label: l.t("sources.primary_none") }, ...c.sources.map(s => ({ value: s.entity_id, label: resolveSource(s, entities)?.entity_id ?? s.entity_id }))], v => patch({ primary_entity_id: v || null } as Partial<T>))}
+    ${selectField(l, l.t("sources.primary"), c.primary_entity_id ?? "", [{ value: "", label: l.t("sources.primary_none") }, ...c.sources.map(s => ({ value: s.entity_id, label: sourceOptionLabel(resolveSource(s, entities)?.entity_id ?? s.entity_id, states) }))], v => patch({ primary_entity_id: v || null } as Partial<T>))}
     ${selectField(l, l.t("sources.aggregation"), c.aggregation, ["primary", "average", "min", "max"].map(v => ({ value: v, label: aggregationLabel(l, v) })), v => patch({ aggregation: v } as Partial<T>))}
     ${textField(l.t("sources.stale_after"), String(c.stale_after_seconds), v => patch({ stale_after_seconds: Number(v) } as Partial<T>), "number")}`;
   if (part === "combine") return combine;

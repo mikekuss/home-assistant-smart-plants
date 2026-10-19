@@ -614,7 +614,7 @@ test("source metadata fallback and explicit unregistered input display availabil
   await openMoisture(page, "pick");
   const selector = page.getByRole("combobox", { name: "Add moisture sensor", exact: true });
   expect(await selector.locator("option").allTextContents()).not.toEqual(expect.arrayContaining([expect.stringContaining("Metadata-free")]));
-  await page.getByLabel("Show all sensors (metadata fallback)").check();
+  await page.getByLabel("Show all sensors, including ones that don't look like a match").check();
   await selector.selectOption("sensor.metadata_free");
   await expect(page.getByText("Unexpected metadata: evaluation requires numeric 0–100 %", { exact: true })).toBeVisible();
   await page.getByLabel("Assign an unavailable or unregistered sensor", { exact: true }).fill("sensor.offline");
@@ -690,7 +690,7 @@ test("image validation and backend errors remain actionable and sanitized", asyn
   expect(await page.evaluate(() => window.__smartPlantsHarness.requests)).toHaveLength(0);
   await page.evaluate(() => { window.__smartPlantsHarness.imageFailure = "invalid_format"; });
   await photo(page, "Add photo");
-  await expect(page.getByRole("alert")).toContainText("server rejected the input");
+  await expect(page.getByRole("alert")).toContainText("couldn't be saved");
   expect((await inventory(page))[0]!.image).toBeNull();
   await page.evaluate(() => { window.__smartPlantsHarness.imageFailure = null; });
   await photo(page, "Add photo");
@@ -923,11 +923,11 @@ test("revision conflict retains dirty edits and requires explicit review and rea
   await page.getByLabel("Name", { exact: true }).fill("My local name");
   await page.evaluate(() => { window.__smartPlantsHarness.conflictNext = true; });
   await button(page, "Save name").click();
-  await expect(page.getByRole("heading", { name: "Review changes from another session" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "This plant was changed somewhere else" })).toBeVisible();
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue("My local name");
   await expect(button(page, "Save name")).toBeDisabled();
   expect(await messages(page, "plants/update")).toHaveLength(1);
-  await button(page, "I reviewed changes; retain my edits for reapply").click();
+  await button(page, "Keep my edits").click();
   await expect(page.getByLabel("Category", { exact: true })).toHaveValue("Remote category");
   expect((await inventory(page))[0]!.name).toBe("Remote renamed plant");
   await button(page, "Save name").click();
@@ -1083,11 +1083,11 @@ test("malformed plant, registry, evaluation and API-version responses fail close
   await show(page, "Settings");
   await page.evaluate(() => { window.__smartPlantsHarness.malformed["smart_plants/plants/list"] = { plants: { name: "PRIVATE_SENTINEL" } }; });
   await refreshData(page);
-  await expect(page.getByRole("alert")).toContainText("response is incompatible");
+  await expect(page.getByRole("alert")).toContainText("unexpected answer");
   await expect(button(page, "Save name")).toBeDisabled();
   await page.evaluate(() => { window.__smartPlantsHarness.malformed = { "smart_plants/panel/info": { api_version: 2, schema_version: 1, providers: [] } }; });
   await refreshData(page);
-  await expect(page.getByRole("alert")).toContainText("Panel/API version mismatch");
+  await expect(page.getByRole("alert")).toContainText("The Smart Plants panel doesn't match the installed version");
   await page.evaluate(() => { window.__smartPlantsHarness.malformed = {}; });
   await refreshData(page);
   await expect(button(page, "Save name")).toBeEnabled();
@@ -1098,14 +1098,14 @@ test("integration unload and malformed provider preview preserve local state", a
   await page.getByLabel("Name", { exact: true }).fill("Pending name");
   await page.evaluate(() => { window.__smartPlantsHarness.failures["smart_plants/plants/update"] = "integration_not_loaded"; });
   await button(page, "Save name").click();
-  await expect(page.getByRole("alert")).toContainText("Smart Plants is not loaded");
+  await expect(page.getByRole("alert")).toContainText("Smart Plants isn't running");
   await expect(button(page, "Save name")).toBeDisabled();
   await page.evaluate(() => { window.__smartPlantsHarness.failures = {}; });
   await refreshData(page);
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue("Pending name");
   await page.evaluate(() => { window.__smartPlantsHarness.malformed["smart_plants/species/refresh_preview"] = { provider: "openplantbook", snapshot: { common_name: "PRIVATE_SENTINEL" } }; });
   await button(page, "Preview species refresh").click();
-  await expect(page.getByRole("alert")).toContainText("response is incompatible");
+  await expect(page.getByRole("alert")).toContainText("unexpected answer");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(await messages(page, "species/apply")).toHaveLength(0);
   expect((await inventory(page))[0]!.name).toBe("Office Aloe");
@@ -1165,7 +1165,7 @@ test("axe full-rule audit and screenshots cover overview, every wizard step, det
   await page.getByLabel("Name", { exact: true }).fill("Pending Fern");
   await page.evaluate(() => { window.__smartPlantsHarness.conflictNext = true; });
   await button(page, "Save name").click();
-  await expect(page.getByRole("heading", { name: "Review changes from another session" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "This plant was changed somewhere else" })).toBeVisible();
   await audit(page, info, "conflict"); await screenshot(page, info, "conflict");
 
   await start(page, "Reviewed Aloe"); await toReview(page);

@@ -60,7 +60,7 @@ describe("manual watering", () => {
     await settle(panel);
     plant.revision++; // another admin edited this plant
     await click(panel, "Refresh"); await settle(panel);
-    expect(panel.shadowRoot?.textContent).toContain("Review changes from another session");
+    expect(panel.shadowRoot?.textContent).toContain("This plant was changed somewhere else");
     note = [...panel.shadowRoot!.querySelectorAll("label")].find(label => label.textContent?.includes("Note (optional)"))!.querySelector("input")!;
     expect(note.value).toBe("Retry me");
     expect(plant.care_events).toHaveLength(1);
