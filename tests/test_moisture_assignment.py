@@ -405,7 +405,7 @@ async def test_migration_from_minor_3_fills_default_moisture(
     manager = await _loaded_manager(hass)
     plant = manager.snapshot.plants["plant-1"]
     assert plant.moisture == MoistureConfig()
-    assert STORAGE_MINOR_VERSION == 12
+    assert STORAGE_MINOR_VERSION == 13
 
 
 async def test_unregistered_source_rename_updates_by_entity_id(

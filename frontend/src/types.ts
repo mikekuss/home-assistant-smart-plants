@@ -39,6 +39,10 @@ export interface SpeciesSnapshot {
   care_text: Record<string, string>;
   field_sources: Record<string, string>;
   threshold_defaults: Record<string, Record<string, number>>;
+  min_temperature?: number | null;
+  max_temperature?: number | null;
+  survival_min_temperature?: number | null;
+  common_names?: Partial<Record<"en" | "de", string[]>>;
 }
 
 export interface SpeciesSearchResult {

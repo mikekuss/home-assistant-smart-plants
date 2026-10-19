@@ -332,6 +332,106 @@ async def test_migration_from_supported_minors_loads_with_moisture(
     assert hass_storage[STORAGE_KEY]["minor_version"] == STORAGE_MINOR_VERSION
 
 
+def _provider_species() -> dict[str, Any]:
+    attribution = "Synthetic test provider"
+    return {
+        "provider": "openplantbook",
+        "snapshot": {
+            "provider": "openplantbook",
+            "provider_id": "aloe vera",
+            "provider_ref": "aloe vera",
+            "fetched_at": "2026-09-10T00:00:00Z",
+            "locale": "en",
+            "source_status": "provider",
+            "attribution": attribution,
+            "common_name": "Aloe",
+            "latin_name": "Aloe vera",
+            "category": None,
+            "confidence": None,
+            "care_text": {"watering": "Allow soil to dry."},
+            "field_sources": {
+                "common_name": attribution,
+                "latin_name": attribution,
+                "watering": attribution,
+                "moisture_min": attribution,
+            },
+            "threshold_defaults": {"moisture": {"min": 15}},
+        },
+    }
+
+
+def _minor_twelve_plant(species: object) -> dict[str, Any]:
+    plant = _plant_base()
+    plant.update(
+        {
+            "species": species,
+            "roles": {"moisture": MoistureConfig().as_storage()},
+            "care_events": [],
+            "care_tasks": [],
+            "rest_period": None,
+        }
+    )
+    return plant
+
+
+async def test_minor_twelve_migration_adds_empty_species_care_ranges(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    species = _provider_species()
+    original = dict(species["snapshot"])
+    plain = _minor_twelve_plant(None)
+    plain["id"] = "plant-2"
+    _seed(
+        hass_storage,
+        major=STORAGE_MAJOR_VERSION,
+        minor=12,
+        data={
+            "revision": 1,
+            "plants": [_minor_twelve_plant(species), plain],
+            "pending_operations": [],
+            "tombstones": [],
+        },
+    )
+    snapshot = await SmartPlantsStore(hass).async_load()
+    migrated = snapshot.plants["plant-1"].species
+    assert migrated is not None
+    assert migrated.snapshot.min_temperature is None
+    assert migrated.snapshot.max_temperature is None
+    assert migrated.snapshot.survival_min_temperature is None
+    assert migrated.snapshot.common_names == {}
+    assert migrated.snapshot.care_text == {"watering": "Allow soil to dry."}
+    assert snapshot.plants["plant-2"].species is None
+    assert hass_storage[STORAGE_KEY]["minor_version"] == STORAGE_MINOR_VERSION
+    persisted = hass_storage[STORAGE_KEY]["data"]["plants"][0]["species"]["snapshot"]
+    assert persisted == {
+        **original,
+        "min_temperature": None,
+        "max_temperature": None,
+        "survival_min_temperature": None,
+        "common_names": {},
+    }
+
+
+async def test_minor_twelve_migration_rejects_premature_care_ranges(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    species = _provider_species()
+    species["snapshot"]["common_names"] = {}
+    _seed(
+        hass_storage,
+        major=STORAGE_MAJOR_VERSION,
+        minor=12,
+        data={
+            "revision": 1,
+            "plants": [_minor_twelve_plant(species)],
+            "pending_operations": [],
+            "tombstones": [],
+        },
+    )
+    with pytest.raises(SmartPlantsInvalidStorageError, match="species care ranges"):
+        await SmartPlantsStore(hass).async_load()
+
+
 async def test_migration_adds_stress_overrides_to_pre_minor_8_temperature(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
