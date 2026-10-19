@@ -55,6 +55,9 @@ REQUIRED_FILES = [
     "moisture_controller.py",
     "source_tracker.py",
     "repairs.py",
+    # Actions: handlers plus the action descriptions Home Assistant reads.
+    "services.py",
+    "services.yaml",
 ]
 
 REQUIRED_MANIFEST_KEYS = {

@@ -414,6 +414,43 @@ async def test_durable_watering_grace_expires_and_unavailable_stays_unavailable(
     assert controller.current_evaluation.needs_water is True
 
 
+@pytest.mark.parametrize("provenance", ["manual", "action", "automation"])
+async def test_watering_grace_counts_every_provenance(
+    hass: HomeAssistant, freezer: Any, provenance: str
+) -> None:
+    entry = await _setup(hass)
+    manager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    hass.states.async_set("sensor.source_a", "10", {"unit_of_measurement": "%"})
+    assigned = await manager.async_set_moisture_sources(
+        plant.id,
+        expected_revision=plant.revision,
+        sources=[{"entity_id": "sensor.source_a"}],
+    )
+    await manager.async_set_moisture_primary(
+        plant.id,
+        expected_revision=assigned.revision,
+        primary_entity_id="sensor.source_a",
+    )
+    controller = manager.get_moisture_controller(plant.id)
+    assert controller.current_evaluation.needs_water is True
+
+    now = dt_util.utcnow().replace(microsecond=0)
+    freezer.move_to(now)
+    await manager.async_add_watering(
+        plant.id,
+        expected_revision=None,
+        occurred_at=(now - timedelta(hours=2)).isoformat(),
+        note=None,
+        provenance=provenance,
+    )
+    await hass.async_block_till_done()
+
+    evaluation = controller.current_evaluation
+    assert evaluation.needs_water is False
+    assert controller._watering_grace_deadline() == now + timedelta(hours=22)
+
+
 async def test_watering_grace_deadline_is_reconstructed_after_manager_restart(
     hass: HomeAssistant, freezer: Any
 ) -> None:

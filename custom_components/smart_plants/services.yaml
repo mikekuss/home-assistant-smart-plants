@@ -1,0 +1,33 @@
+log_care:
+  # The entity filter also limits the device picker to devices that have a
+  # matching entity, which are the Smart Plants plant devices.
+  target:
+    entity:
+      - integration: smart_plants
+        domain: binary_sensor
+  fields:
+    kind:
+      selector:
+        select:
+          translation_key: care_kind
+          mode: dropdown
+          options:
+            - watering
+            - fertilizing
+            - pruning
+            - repotting
+            - note
+            - task
+    occurred_at:
+      selector:
+        datetime:
+    note:
+      selector:
+        text:
+          multiline: true
+
+skip_care_task:
+  target:
+    entity:
+      - integration: smart_plants
+        domain: binary_sensor

@@ -25,6 +25,7 @@ from .care import (
     care_summary,
     clean_note,
     kind_for_task_type,
+    minimal_care_payload,
     newest_matching_occurred_at,
     ordered_events,
     parse_occurred_at,
@@ -1012,7 +1013,7 @@ class SmartPlantsManager:
             occurred_at=occurred_at
             if occurred_at is not None
             else dt_util.now().replace(microsecond=0).isoformat(),
-            payload=_minimal_task_payload(kind, cleaned_note),
+            payload=minimal_care_payload(kind, cleaned_note),
             provenance=provenance,
             task_id=task_id,
         )
@@ -2603,17 +2604,6 @@ def _validate_past_date(value: object, field_name: str) -> str | None:
     if result > _local_today():
         raise SmartPlantsValidationError(f"{field_name} cannot be in the future")
     return result
-
-
-def _minimal_task_payload(kind: str, note: str | None) -> dict[str, Any]:
-    """Return the smallest valid payload of ``kind`` that carries ``note``."""
-    if kind == "fertilizing":
-        return {"product": None, "amount": None, "unit": None, "note": note}
-    if kind == "pruning":
-        return {"part": None, "note": note}
-    if kind == "repotting":
-        return {"container": None, "medium": None, "note": note}
-    return {"note": note}
 
 
 def _build_care_event(  # noqa: PLR0913

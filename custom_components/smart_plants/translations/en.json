@@ -148,5 +148,82 @@
         }
       }
     }
+  },
+  "selector": {
+    "care_kind": {
+      "options": {
+        "watering": "Watering",
+        "fertilizing": "Fertilizing",
+        "pruning": "Pruning",
+        "repotting": "Repotting",
+        "note": "Note",
+        "task": "Other task"
+      }
+    }
+  },
+  "services": {
+    "log_care": {
+      "name": "Log care",
+      "description": "Logs care for Smart Plants plants or marks care tasks as done. Logging watering also keeps Needs water off for 24 hours.",
+      "fields": {
+        "kind": {
+          "name": "Care type",
+          "description": "What was done. Required when you target plants. When you target a care task, it can be left empty; if set, it must match the task."
+        },
+        "occurred_at": {
+          "name": "Time",
+          "description": "When the care happened. Defaults to now and cannot be in the future."
+        },
+        "note": {
+          "name": "Note",
+          "description": "Optional note, up to 500 characters. Required for the Note care type."
+        }
+      }
+    },
+    "skip_care_task": {
+      "name": "Skip care task",
+      "description": "Skips the current occurrence of Smart Plants care tasks. The task becomes due again on its next scheduled date."
+    }
+  },
+  "exceptions": {
+    "integration_not_loaded": {
+      "message": "Smart Plants is not loaded."
+    },
+    "no_target": {
+      "message": "Choose at least one plant or care task."
+    },
+    "unsupported_target": {
+      "message": "Choose plants or care tasks directly. Areas, floors, and labels are not supported."
+    },
+    "task_target_required": {
+      "message": "Choose the care task to skip, not a whole plant."
+    },
+    "unknown_target": {
+      "message": "{target} was not found."
+    },
+    "invalid_target": {
+      "message": "{target} is not a Smart Plants plant or care task."
+    },
+    "plant_disabled": {
+      "message": "{plant} is disabled. Enable it before logging care."
+    },
+    "care_task_not_found": {
+      "message": "The care task of {target} no longer exists."
+    },
+    "kind_required": {
+      "message": "Choose a care type when you log care for a plant."
+    },
+    "note_required": {
+      "message": "Enter the note text for the Note care type."
+    },
+    "kind_mismatch": {
+      "message": "The care type {kind} does not match {target}, which logs {task_kind}."
+    },
+    "future_time": {
+      "message": "The care time cannot be in the future."
+    },
+    "care_rejected": {
+      "message": "Care for {target} was not saved: {reason}"
+    }
   }
 }

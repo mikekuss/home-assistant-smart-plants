@@ -158,12 +158,13 @@ class MoisturePlantController:
         )
 
     def _watering_grace_deadline(self) -> datetime | None:
+        # Every logged watering counts, whatever logged it: the panel, an
+        # action call after an irrigation valve ran, or an automation.
         now = self._evaluation_now
         deadlines = [
             deadline
             for event in self._care_events
             if event.kind == "watering"
-            and event.provenance == "manual"
             and (occurred := dt_util.parse_datetime(event.occurred_at)) is not None
             and occurred <= now
             and (deadline := occurred + timedelta(hours=24)) > now
