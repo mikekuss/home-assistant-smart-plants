@@ -3,7 +3,7 @@
 // computes them for today's date in the Home Assistant time zone; nothing here
 // recomputes a schedule from browser dates.
 import type { Localizer, MessageKey } from "./localize.js";
-import type { CareTaskSummary } from "./overview-model.js";
+import type { CareTaskSummary, PlantOverview } from "./overview-model.js";
 import type { CareEvent, CareTask, CareTaskChanges, CareTaskInput, CareTaskType, IntervalSchedule, RestPeriod, YearlySchedule } from "./types.js";
 
 export const CARE_TASK_TYPES: readonly CareTaskType[] = ["fertilize", "prune", "repot", "pests", "custom"];
@@ -46,7 +46,7 @@ export function monthsInRange(start: number, end: number): number[] {
   }
 }
 
-export function monthName(l: Localizer, month: number, style: "long" | "short" = "long"): string {
+export function monthName(l: Localizer, month: number, style: "long" | "short" | "narrow" = "long"): string {
   return new Intl.DateTimeFormat(l.language, { month: style, timeZone: "UTC" }).format(Date.UTC(2000, month - 1, 1));
 }
 
@@ -226,4 +226,77 @@ export function careOnlyChange(before: object, after: object): boolean {
 // Entity registry unique IDs of a task's entities and the plant's care due sensor.
 export function taskEntityUniqueIds(plantId: string, taskId: string): { due: string; next: string; careDue: string } {
   return { due: `smart_plants:${plantId}:care_task:${taskId}:due`, next: `smart_plants:${plantId}:care_task:${taskId}:next`, careDue: `smart_plants:${plantId}:care_due` };
+}
+
+// ---- Care chips and summaries ----
+
+export function summaryName(l: Localizer, state: CareTaskSummary): string {
+  return state.name ?? l.t(`care_task_type.${state.type}`);
+}
+
+// Tasks due today or overdue, in the backend's order (overdue first).
+export function dueTasks(overview: PlantOverview | undefined): CareTaskSummary[] {
+  return overview?.care.filter(task => task.is_due) ?? [];
+}
+
+// "Prune, Fertilize +1": the first `shown` due task names and how many more.
+export function careLine(l: Localizer, due: readonly CareTaskSummary[], shown = 2): string {
+  const names = due.slice(0, shown).map(task => summaryName(l, task)).join(", ");
+  return due.length > shown ? l.t("care_plan.line_more", { names, count: due.length - shown }) : names;
+}
+
+// ---- Rest period ----
+
+export function inRestPeriod(rest: RestPeriod | null, month: number): boolean {
+  return !!rest && monthsInRange(rest.start_month, rest.end_month).includes(month);
+}
+
+// First day after the rest period that contains or follows `today`.
+export function resumeDate(rest: RestPeriod, today: string): string {
+  const year = Number(today.slice(0, 4)); const month = Number(today.slice(5, 7));
+  const resume = rest.end_month % 12 + 1;
+  return `${resume > month ? year : year + 1}-${String(resume).padStart(2, "0")}-01`;
+}
+
+// Repeating tasks that wait during the rest period.
+export function tasksOffDuringRest(tasks: readonly CareTask[]): CareTask[] {
+  return tasks.filter(task => task.schedule.kind === "interval" && task.schedule.growing_season_only);
+}
+
+// The rest row's sentence: the current season and how many tasks wait.
+export function restSentence(l: Localizer, rest: RestPeriod, tasks: readonly CareTask[], today: string): { resting: boolean; season: string; tasks: string } {
+  const resting = inRestPeriod(rest, Number(today.slice(5, 7)));
+  const off = tasksOffDuringRest(tasks).length;
+  const season = resting ? l.t("care_plan.resting_until", { date: shortDate(l, resumeDate(rest, today), today) }) : l.t("care_plan.growing_season");
+  const count = off === 0 ? l.t("care_plan.rest_all_running")
+    : resting ? l.tn(off, "care_plan.rest_tasks_off_now_one", "care_plan.rest_tasks_off_now_other")
+    : l.tn(off, "care_plan.rest_tasks_off_one", "care_plan.rest_tasks_off_other");
+  return { resting, season, tasks: count };
+}
+
+export interface RestDraft {
+  startMonth: number | null;
+  endMonth: number | null;
+  // Repeating tasks that wait during the rest period.
+  off: ReadonlySet<string>;
+}
+
+// A new rest period pauses fertilizing by default; an existing one shows the
+// tasks' current settings.
+export function restDraft(rest: RestPeriod | null, tasks: readonly CareTask[]): RestDraft {
+  const repeating = tasks.filter(task => task.schedule.kind === "interval");
+  const off = repeating.filter(task => task.schedule.kind === "interval" && (task.schedule.growing_season_only || (!rest && task.type === "fertilize")));
+  return { startMonth: rest?.start_month ?? null, endMonth: rest?.end_month ?? null, off: new Set(off.map(task => task.id)) };
+}
+
+export function validateRest(draft: RestDraft): { rest: RestPeriod; error: null } | { rest: null; error: MessageKey } {
+  if (draft.startMonth === null || draft.endMonth === null) return { rest: null, error: "care_plan.rest_error_months" };
+  if (monthsInRange(draft.startMonth, draft.endMonth).length === 12) return { rest: null, error: "care_plan.rest_error_whole_year" };
+  return { rest: { start_month: draft.startMonth, end_month: draft.endMonth }, error: null };
+}
+
+// Repeating tasks whose "off during rest" setting the draft changes.
+export function restTaskChanges(tasks: readonly CareTask[], off: ReadonlySet<string>): { task: CareTask; schedule: IntervalSchedule }[] {
+  return tasks.flatMap(task => task.schedule.kind === "interval" && task.schedule.growing_season_only !== off.has(task.id)
+    ? [{ task, schedule: { ...task.schedule, growing_season_only: off.has(task.id) } }] : []);
 }

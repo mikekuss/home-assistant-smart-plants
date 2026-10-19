@@ -1142,11 +1142,13 @@ var en = [
 	"all",
 	"water",
 	"problems",
-	"sensors"
+	"sensors",
+	"care"
 ];
-function tn(e, t) {
+function tn(e, t, n = !1) {
 	switch (e) {
 		case "all": return !0;
+		case "care": return n;
 		case "water": return t === "needs_water";
 		case "problems": return t === "too_wet" || t === "problem";
 		case "sensors": return t === "stale" || t === "no_sensors";
@@ -2667,7 +2669,36 @@ var jn = {
 	"care_plan.open_automation_editor": "Automationseditor öffnen",
 	"care_plan.copy": "{entity} kopieren",
 	"care_plan.copied": "{entity} kopiert",
-	"care_plan.copy_failed": "Kopieren fehlgeschlagen. Markiere die Entitäts-ID und kopiere sie selbst."
+	"care_plan.copy_failed": "Kopieren fehlgeschlagen. Markiere die Entitäts-ID und kopiere sie selbst.",
+	"care_plan.line_more": "{names} +{count}",
+	"care_plan.plan_menu": "Optionen für den Pflegeplan",
+	"care_plan.rest_set": "Ruhezeit festlegen",
+	"care_plan.rest_edit": "Ruhezeit bearbeiten",
+	"care_plan.rest_period": "Ruhezeit",
+	"care_plan.rest_months_label": "Ruhemonate: {months}",
+	"care_plan.edit": "Bearbeiten",
+	"care_plan.growing_season": "Wachstumszeit",
+	"care_plan.rest_all_running": "alle Aufgaben laufen weiter",
+	"care_plan.rest_tasks_off_one": "1 Aufgabe ruht während der Ruhezeit",
+	"care_plan.rest_tasks_off_other": "{count} Aufgaben ruhen während der Ruhezeit",
+	"care_plan.rest_tasks_off_now_one": "1 Aufgabe ruht",
+	"care_plan.rest_tasks_off_now_other": "{count} Aufgaben ruhen",
+	"care_plan.rest_intro": "Optional. Viele Freiland- und Mittelmeerpflanzen wachsen im Winter kaum und brauchen dann keinen Dünger. Die meisten Zimmerpflanzen brauchen keine Ruhezeit.",
+	"care_plan.rest_watering": "Gießwarnungen sind davon nicht betroffen.",
+	"care_plan.rest_months": "Ruhemonate",
+	"care_plan.rest_off_heading": "Ruht während der Ruhezeit",
+	"care_plan.rest_no_repeating": "Noch keine wiederkehrenden Aufgaben.",
+	"care_plan.rest_yearly_note": "Jährliche Aufgaben folgen ihren eigenen Monaten und sind nicht betroffen.",
+	"care_plan.rest_remove": "Entfernen",
+	"care_plan.rest_error_months": "Wähle die Ruhemonate.",
+	"care_plan.rest_error_whole_year": "Eine Ruhezeit kann nicht das ganze Jahr umfassen.",
+	"care_plan.rest_saved_toast": "Ruhezeit gespeichert",
+	"care_plan.rest_removed_toast": "Ruhezeit entfernt",
+	"care_plan.due_chips_label": "Fällige Pflege",
+	"care_plan.more_due": "und {count} weitere fällig",
+	"overview.tile_care": "Pflege fällig",
+	"card.care_due": "Pflege: {tasks}",
+	"card.care_overdue": "überfällig"
 }, Mn = {
 	"format.percent": "{value}%",
 	"format.recorded_date_time": "{datetime} (UTC{offset})",
@@ -3547,7 +3578,36 @@ var jn = {
 	"care_plan.open_automation_editor": "Open automation editor",
 	"care_plan.copy": "Copy {entity}",
 	"care_plan.copied": "Copied {entity}",
-	"care_plan.copy_failed": "Couldn't copy. Select the entity ID and copy it by hand."
+	"care_plan.copy_failed": "Couldn't copy. Select the entity ID and copy it by hand.",
+	"care_plan.line_more": "{names} +{count}",
+	"care_plan.plan_menu": "Care plan options",
+	"care_plan.rest_set": "Set rest period",
+	"care_plan.rest_edit": "Edit rest period",
+	"care_plan.rest_period": "Rest period",
+	"care_plan.rest_months_label": "Rest months: {months}",
+	"care_plan.edit": "Edit",
+	"care_plan.growing_season": "Growing season",
+	"care_plan.rest_all_running": "all tasks keep running",
+	"care_plan.rest_tasks_off_one": "1 task off during rest",
+	"care_plan.rest_tasks_off_other": "{count} tasks off during rest",
+	"care_plan.rest_tasks_off_now_one": "1 task off",
+	"care_plan.rest_tasks_off_now_other": "{count} tasks off",
+	"care_plan.rest_intro": "Optional. Many outdoor and Mediterranean plants grow little in winter and need no fertilizer then. Most houseplants don't need a rest period.",
+	"care_plan.rest_watering": "Watering alerts are not affected.",
+	"care_plan.rest_months": "Rest months",
+	"care_plan.rest_off_heading": "Off during rest",
+	"care_plan.rest_no_repeating": "No repeating tasks yet.",
+	"care_plan.rest_yearly_note": "Once-a-year tasks follow their own months and are not affected.",
+	"care_plan.rest_remove": "Remove",
+	"care_plan.rest_error_months": "Pick the rest months.",
+	"care_plan.rest_error_whole_year": "A rest period can't cover the whole year.",
+	"care_plan.rest_saved_toast": "Rest period saved",
+	"care_plan.rest_removed_toast": "Rest period removed",
+	"care_plan.due_chips_label": "Care due",
+	"care_plan.more_due": "and {count} more due",
+	"overview.tile_care": "Care due",
+	"card.care_due": "Care: {tasks}",
+	"card.care_overdue": "overdue"
 }, Nn = ["en", "de"], Pn = {
 	en: Mn,
 	de: jn
@@ -4667,6 +4727,8 @@ var Li = o`
     --sp-text-secondary: var(--secondary-text-color, #727272);
     --sp-primary: var(--primary-color, #009ac7);
     --sp-card: var(--card-background-color, #fff);
+    /* Care reminders have their own colour, apart from the watering palette. */
+    --sp-care: var(--purple-color, #8f5bd1);
   }
 `, Ri = o`
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -5556,18 +5618,99 @@ function Wa(e, t) {
 		careDue: `smart_plants:${e}:care_due`
 	};
 }
+function Ga(e, t) {
+	return t.name ?? e.t(`care_task_type.${t.type}`);
+}
+function Ka(e) {
+	return e?.care.filter((e) => e.is_due) ?? [];
+}
+function qa(e, t, n = 2) {
+	let r = t.slice(0, n).map((t) => Ga(e, t)).join(", ");
+	return t.length > n ? e.t("care_plan.line_more", {
+		names: r,
+		count: t.length - n
+	}) : r;
+}
+function Ja(e, t) {
+	return !!e && wa(e.start_month, e.end_month).includes(t);
+}
+function Ya(e, t) {
+	let n = Number(t.slice(0, 4)), r = Number(t.slice(5, 7)), i = e.end_month % 12 + 1;
+	return `${i > r ? n : n + 1}-${String(i).padStart(2, "0")}-01`;
+}
+function Xa(e) {
+	return e.filter((e) => e.schedule.kind === "interval" && e.schedule.growing_season_only);
+}
+function Za(e, t, n, r) {
+	let i = Ja(t, Number(r.slice(5, 7))), a = Xa(n).length;
+	return {
+		resting: i,
+		season: i ? e.t("care_plan.resting_until", { date: Da(e, Ya(t, r), r) }) : e.t("care_plan.growing_season"),
+		tasks: a === 0 ? e.t("care_plan.rest_all_running") : i ? e.tn(a, "care_plan.rest_tasks_off_now_one", "care_plan.rest_tasks_off_now_other") : e.tn(a, "care_plan.rest_tasks_off_one", "care_plan.rest_tasks_off_other")
+	};
+}
+function Qa(e, t) {
+	let n = t.filter((e) => e.schedule.kind === "interval").filter((t) => t.schedule.kind === "interval" && (t.schedule.growing_season_only || !e && t.type === "fertilize"));
+	return {
+		startMonth: e?.start_month ?? null,
+		endMonth: e?.end_month ?? null,
+		off: new Set(n.map((e) => e.id))
+	};
+}
+function $a(e) {
+	return e.startMonth === null || e.endMonth === null ? {
+		rest: null,
+		error: "care_plan.rest_error_months"
+	} : wa(e.startMonth, e.endMonth).length === 12 ? {
+		rest: null,
+		error: "care_plan.rest_error_whole_year"
+	} : {
+		rest: {
+			start_month: e.startMonth,
+			end_month: e.endMonth
+		},
+		error: null
+	};
+}
+function eo(e, t) {
+	return e.flatMap((e) => e.schedule.kind === "interval" && e.schedule.growing_season_only !== t.has(e.id) ? [{
+		task: e,
+		schedule: {
+			...e.schedule,
+			growing_season_only: t.has(e.id)
+		}
+	}] : []);
+}
 //#endregion
 //#region src/views/care-plan.ts
-function Ga(e) {
+function to(e) {
 	let { l: t, plant: n } = e, r = n.care_tasks ?? [], i = r.length >= 20;
 	return y`<section class="sp-card care-plan" aria-labelledby="care-plan-heading">
     <div class="card-h"><h3 id="care-plan-heading">${t.t("care_plan.heading")}</h3>
-      ${r.length ? y`<button type="button" class="btn text sm" ?disabled=${e.disabled || i} title=${i ? t.t("care_plan.full") : ""} @click=${e.onAdd}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("care_plan.add_task")}</button>` : x}</div>
-    ${r.length ? y`<ul class="list task-list" aria-label=${t.t("care_plan.tasks_label")}>${r.map((t) => Ka(e, t))}</ul>` : y`<div class="card-b"><p class="muted">${t.t("care_plan.empty")}</p>
+      <span class="row care-plan-actions">${r.length ? y`<button type="button" class="btn text sm" ?disabled=${e.disabled || i} title=${i ? t.t("care_plan.full") : ""} @click=${e.onAdd}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("care_plan.add_task")}</button>` : x}
+        <ha-dropdown @wa-select=${(t) => {
+		t.detail.item.value === "rest" && e.onRest();
+	}}>
+          <button slot="trigger" type="button" class="icon-btn" ?disabled=${e.disabled} aria-label=${t.t("care_plan.plan_menu")}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
+          <ha-dropdown-item value="rest" ?disabled=${e.disabled}>${t.t(n.rest_period ? "care_plan.rest_edit" : "care_plan.rest_set")}<ha-icon slot="icon" icon="mdi:weather-night"></ha-icon></ha-dropdown-item>
+        </ha-dropdown></span></div>
+    ${n.rest_period ? no(e, n.rest_period) : x}
+    ${r.length ? y`<ul class="list task-list" aria-label=${t.t("care_plan.tasks_label")}>${r.map((t) => ro(e, t))}</ul>` : y`<div class="card-b"><p class="muted">${t.t("care_plan.empty")}</p>
           <div><button type="button" class="btn filled" ?disabled=${e.disabled} @click=${e.onAdd}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("care_plan.add_task")}</button></div></div>`}
   </section>`;
 }
-function Ka(e, t) {
+function no(e, t) {
+	let { l: n } = e, r = Number(e.today.slice(5, 7)), i = Za(n, t, e.plant.care_tasks ?? [], e.today), a = Ea(n, t.start_month, t.end_month, "short");
+	return y`<div class="restline">
+    <ha-icon aria-hidden="true" icon="mdi:weather-night"></ha-icon>
+    <div class="restline-main"><div class="restline-top"><span class="restline-title">${n.t("care_plan.rest_period")}</span>
+        <span class="months" role="img" aria-label=${n.t("care_plan.rest_months_label", { months: Ea(n, t.start_month, t.end_month) })}>${Array.from({ length: 12 }, (e, t) => t + 1).map((e) => y`<i class="${Ja(t, e) ? "on" : ""} ${e === r ? "now" : ""}">${Ta(n, e, "narrow")}</i>`)}</span>
+        <span aria-hidden="true">${a}</span></div>
+      <div class="restline-text"><b>${i.season}</b> · ${i.tasks}</div></div>
+    <button type="button" class="btn text sm" ?disabled=${e.disabled} aria-label=${n.t("care_plan.rest_edit")} @click=${e.onRest}>${n.t("care_plan.edit")}</button>
+  </div>`;
+}
+function ro(e, t) {
 	let { l: n } = e, r = X(n, t), i = e.overview?.care.find((e) => e.task_id === t.id), a = i ? ka(n, i, t.schedule, e.today) : null, o = ja(t, e.timeZone), s = e.disabled || e.pending.has(t.id);
 	return y`<li class="li task">
     <span class="ic tonal" aria-hidden="true"><ha-icon .icon=${ba[t.type]}></ha-icon></span>
@@ -5607,24 +5750,24 @@ function Ka(e, t) {
     </ha-dropdown>
   </li>`;
 }
-function qa(e, t) {
+function io(e, t) {
 	return e.t(t.taskId ? "care_plan.edit_title" : "care_plan.add_title");
 }
-function Ja(e) {
-	return e.state.step === 1 ? Ya(e) : Qa(e);
+function ao(e) {
+	return e.state.step === 1 ? oo(e) : lo(e);
 }
-function Ya(e) {
+function oo(e) {
 	let { l: t, plant: n } = e, r = Na(n.care_tasks ?? []);
 	return y`<p class="muted">${t.t("care_plan.add_intro")}</p>
     <div class="presets" role="list">${ya.map((i) => {
-		let a = r.has(i), o = a ? t.t("care_plan.preset_exists") : i === "custom" ? t.t("care_plan.preset_custom") : Oa(t, Xa(Fa(i)), n.rest_period ?? null);
+		let a = r.has(i), o = a ? t.t("care_plan.preset_exists") : i === "custom" ? t.t("care_plan.preset_custom") : Oa(t, so(Fa(i)), n.rest_period ?? null);
 		return y`<div role="listitem"><button type="button" class="preset" ?disabled=${a || e.busy} @click=${() => e.onPreset(i)}>
         <span class="ic tonal" aria-hidden="true"><ha-icon .icon=${ba[i]}></ha-icon></span>
         <span class="preset-text"><span class="preset-name">${t.t(`care_task_type.${i}`)}</span><span class="preset-d">${o}</span></span></button></div>`;
 	})}</div>
     <div class="actions dialog-actions"><span class="spacer"></span><button type="button" @click=${e.onCancel}>${t.t("common.cancel")}</button></div>`;
 }
-function Xa(e) {
+function so(e) {
 	return e.mode === "yearly" ? {
 		kind: "yearly",
 		start_month: e.startMonth ?? 1,
@@ -5636,10 +5779,10 @@ function Xa(e) {
 		growing_season_only: e.growingSeasonOnly
 	};
 }
-function Za(e, t) {
+function co(e, t) {
 	return t ? y`<span class="error-text small" id=${e}>${t}</span>` : x;
 }
-function Qa(e) {
+function lo(e) {
 	let { l: t, plant: n, state: r } = e, i = r.draft, a = r.errors, o = (e) => {
 		let n = a[e];
 		return n ? t.t(n) : void 0;
@@ -5651,7 +5794,7 @@ function Qa(e) {
       <input type="text" maxlength=${60} .value=${i.name} placeholder=${c ? "" : s} ?required=${c}
         aria-invalid=${a.name ? "true" : "false"} aria-describedby=${a.name ? "task-name-error" : x}
         @input=${(t) => e.onChange({ name: d(t) })}></label>
-    ${Za("task-name-error", o("name"))}
+    ${co("task-name-error", o("name"))}
     <div class="field-group"><span class="field-label" id="task-mode-label">${t.t("care_plan.when_due")}</span>
       <div class="seg" role="group" aria-labelledby="task-mode-label">
         <button type="button" aria-pressed=${i.mode === "interval" ? "true" : "false"} @click=${() => e.onChange({ mode: "interval" })}>${t.t("care_plan.mode_interval")}</button>
@@ -5662,32 +5805,51 @@ function Qa(e) {
           @input=${(t) => e.onChange({ every: d(t) })}></label>
         <label>${t.t("care_plan.unit")}<select .value=${i.unit} @change=${(t) => e.onChange({ unit: t.target.value })}>
           ${Sa.map((e) => y`<option value=${e} ?selected=${e === i.unit}>${t.t(`care_plan.unit_${e}`)}</option>`)}</select></label></div>
-      ${Za("task-every-error", o("every"))}
+      ${co("task-every-error", o("every"))}
       ${l ? y`<div><label class="check"><input type="checkbox" aria-describedby="task-growing-hint" .checked=${i.growingSeasonOnly} @change=${(t) => e.onChange({ growingSeasonOnly: t.target.checked })}>
         <span>${t.t("care_plan.growing_only")}</span></label>
         <span class="small muted growing-hint" id="task-growing-hint">${t.t("care_plan.growing_only_hint", { months: Ea(t, l.start_month, l.end_month) })}</span></div>` : x}` : y`<div class="field-group"><span class="field-label" id="task-months-label">${t.t("care_plan.months")}</span>
         <div class="monthpick" role="group" aria-labelledby="task-months-label" aria-describedby=${a.months ? "task-months-error task-months-hint" : "task-months-hint"}>
           ${Array.from({ length: 12 }, (e, t) => t + 1).map((n) => y`<button type="button" aria-pressed=${u.has(n) ? "true" : "false"} aria-label=${Ta(t, n)} @click=${() => e.onMonth(n)}>${Ta(t, n, "short")}</button>`)}</div>
         <span class="small muted" id="task-months-hint">${t.t("care_plan.months_hint")}</span>
-        ${Za("task-months-error", o("months"))}</div>`}
+        ${co("task-months-error", o("months"))}</div>`}
     <label>${t.t("care_plan.instructions")}<textarea rows="3" maxlength=${500} .value=${i.instructions} placeholder=${t.t("care_plan.instructions_placeholder")}
       aria-invalid=${a.instructions ? "true" : "false"} aria-describedby=${a.instructions ? "task-instructions-error" : x}
       @input=${(t) => e.onChange({ instructions: t.target.value })}></textarea></label>
-    ${Za("task-instructions-error", o("instructions"))}
+    ${co("task-instructions-error", o("instructions"))}
     <div class="more-options">
       <button type="button" class="btn text sm" aria-expanded=${r.moreOpen || a.lastDone ? "true" : "false"} aria-controls="task-more" @click=${e.onToggleMore}>
         <ha-icon aria-hidden="true" icon=${r.moreOpen || a.lastDone ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>${t.t("care_plan.more_options")}</button>
       ${r.moreOpen || a.lastDone ? y`<div id="task-more"><label>${t.t("care_plan.last_done_field")}
         <input type="date" max=${e.today} .value=${i.lastDone} aria-invalid=${a.lastDone ? "true" : "false"} aria-describedby="task-last-done-hint${a.lastDone ? " task-last-done-error" : ""}"
           @input=${(t) => e.onChange({ lastDone: d(t) })}></label>
-        <span class="small muted" id="task-last-done-hint">${t.t("care_plan.last_done_hint")}</span>${Za("task-last-done-error", o("lastDone"))}</div>` : x}
+        <span class="small muted" id="task-last-done-hint">${t.t("care_plan.last_done_hint")}</span>${co("task-last-done-error", o("lastDone"))}</div>` : x}
     </div>
     <div class="actions dialog-actions">
       ${r.taskId ? y`<button type="button" class="danger-text" ?disabled=${e.busy} @click=${e.onDelete}>${t.t("care_plan.delete")}</button><span class="spacer"></span>` : y`<button type="button" ?disabled=${e.busy} @click=${e.onBack}>${t.t("care_plan.back")}</button><span class="spacer"></span>`}
       <button type="button" ?disabled=${e.busy} @click=${e.onCancel}>${t.t("common.cancel")}</button>
       <button type="button" class="primary" ?disabled=${e.busy} @click=${e.onSave}>${t.t(r.taskId ? "care_plan.save" : "care_plan.add_task")}</button></div>`;
 }
-function $a(e) {
+function uo(e) {
+	let { l: t, plant: n, draft: r } = e, i = (n.care_tasks ?? []).filter((e) => e.schedule.kind === "interval"), a = r.startMonth !== null && r.endMonth !== null ? new Set(wa(r.startMonth, r.endMonth)) : /* @__PURE__ */ new Set();
+	return y`<p class="muted">${t.t("care_plan.rest_intro")}</p>
+    <p class="small muted">${t.t("care_plan.rest_watering")}</p>
+    <div class="field-group"><span class="field-label" id="rest-months-label">${t.t("care_plan.rest_months")}</span>
+      <div class="monthpick" role="group" aria-labelledby="rest-months-label" aria-describedby=${e.error ? "rest-error rest-months-hint" : "rest-months-hint"}>
+        ${Array.from({ length: 12 }, (e, t) => t + 1).map((n) => y`<button type="button" aria-pressed=${a.has(n) ? "true" : "false"} aria-label=${Ta(t, n)} @click=${() => e.onMonth(n)}>${Ta(t, n, "short")}</button>`)}</div>
+      <span class="small muted" id="rest-months-hint">${t.t("care_plan.months_hint")}</span>
+      ${e.error ? y`<span class="error-text small" id="rest-error">${e.error}</span>` : x}</div>
+    <fieldset class="rest-tasks"><legend class="field-label">${t.t("care_plan.rest_off_heading")}</legend>
+      ${i.length ? i.map((n) => y`<div><label class="check"><input type="checkbox" .checked=${r.off.has(n.id)} aria-describedby="rest-task-${n.id}"
+          @change=${(t) => e.onToggle(n.id, t.target.checked)}><span>${X(t, n)}</span></label>
+          <span class="small muted growing-hint" id="rest-task-${n.id}">${Oa(t, n.schedule, null)}</span></div>`) : y`<p class="small muted">${t.t("care_plan.rest_no_repeating")}</p>`}
+      <p class="small muted">${t.t("care_plan.rest_yearly_note")}</p></fieldset>
+    <div class="actions dialog-actions">
+      ${n.rest_period ? y`<button type="button" class="danger-text" ?disabled=${e.busy} @click=${e.onRemove}>${t.t("care_plan.rest_remove")}</button>` : x}<span class="spacer"></span>
+      <button type="button" ?disabled=${e.busy} @click=${e.onCancel}>${t.t("common.cancel")}</button>
+      <button type="button" class="primary" ?disabled=${e.busy} @click=${e.onSave}>${t.t("care_plan.save")}</button></div>`;
+}
+function fo(e) {
 	let { l: t } = e;
 	return y`<p class="muted">${t.t("care_plan.automate_intro")}</p>
     <ul class="list automate-list">${e.rows.map((n) => y`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${n.icon}></ha-icon></span>
@@ -5698,8 +5860,7 @@ function $a(e) {
     <div class="actions dialog-actions"><span class="spacer"></span><button type="button" @click=${e.onClose}>${t.t("care_plan.close")}</button>
       <button type="button" class="primary" @click=${e.onOpenEditor}>${t.t("care_plan.open_automation_editor")}</button></div>`;
 }
-var eo = o`
-  .pd { --sp-care: var(--purple-color, #8f5bd1); }
+var po = o`
   .care-plan .task { grid-template-columns: 40px minmax(0, 1fr) auto 40px; }
   .care-plan .task-side { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
   .cchip { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 2px 10px 2px 7px; border-radius: 13px; font-size: 13px; font-weight: 500; line-height: 1.3; max-width: 100%; }
@@ -5709,6 +5870,17 @@ var eo = o`
   .cchip.tone-later, .cchip.tone-resting { background: color-mix(in srgb, var(--sp-text) 7%, transparent); color: color-mix(in srgb, var(--sp-text-secondary) 55%, var(--sp-text)); }
   .cchip.tone-done { background: color-mix(in srgb, var(--sp-success) 15%, transparent); color: color-mix(in srgb, var(--sp-success) 55%, var(--sp-text)); }
   .care-note { display: flex; align-items: center; gap: 6px; }
+  .care-plan-actions { gap: 0; }
+  .restline { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 4px 10px; align-items: start; padding: 0 8px 12px 16px; font-size: 13px; color: var(--sp-text-secondary); }
+  .restline > ha-icon { --mdc-icon-size: 18px; margin-top: 2px; }
+  .restline-top { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; }
+  .restline-title, .restline-text b { font-weight: 500; color: var(--sp-text); }
+  .restline-text { margin-top: 4px; }
+  .months { display: inline-flex; gap: 2px; }
+  .months i { font-style: normal; width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; font-size: 10.5px; background: color-mix(in srgb, var(--sp-text) 7%, transparent); color: color-mix(in srgb, var(--sp-text-secondary) 55%, var(--sp-text)); }
+  .months i.on { background: color-mix(in srgb, var(--sp-care) 18%, transparent); color: color-mix(in srgb, var(--sp-care) 55%, var(--sp-text)); font-weight: 500; }
+  .months i.now { box-shadow: inset 0 0 0 1.5px var(--sp-text-secondary); }
+  .pd .care-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .care-kind { display: flex; flex-direction: column; gap: 2px; margin: 8px 0; }
   .care-note ha-icon { --mdc-icon-size: 18px; color: color-mix(in srgb, var(--sp-care) 55%, var(--sp-text)); }
 
@@ -5740,6 +5912,8 @@ var eo = o`
   .care-dialog .growing-hint { display: block; margin-inline-start: 34px; }
   .care-dialog #task-more { display: flex; flex-direction: column; gap: 4px; }
   .care-dialog .more-options .btn { margin-inline-start: -14px; }
+  .care-dialog .rest-tasks { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .care-dialog .rest-tasks legend { padding: 0; margin-bottom: 6px; }
   .care-dialog .automate-list { border: 1px solid var(--divider-color, #e0e0e0); border-radius: 12px; }
   .care-dialog .automate-hint { display: flex; gap: 8px; align-items: flex-start; }
   @media (max-width: 600px) {
@@ -5750,14 +5924,16 @@ var eo = o`
     .care-plan .task { grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: start; }
     .care-plan .task-side { grid-column: 2; grid-row: 2; justify-content: flex-start; }
     .care-plan .task-menu { grid-column: 3; grid-row: 1; }
+    .restline { grid-template-columns: 20px minmax(0, 1fr); }
+    .restline > .btn { grid-column: 2; justify-self: start; margin-inline-start: -12px; }
   }
-`, to = 5242880, no = 2048, ro = 41943040, io = 64e6, ao = [
+`, mo = 5242880, ho = 2048, go = 41943040, _o = 64e6, vo = [
 	"image/jpeg",
 	"image/png",
 	"image/webp"
 ];
-async function oo(e, t, n) {
-	if (!ao.includes(e.type) || e.size === 0 || e.size > t) throw Error(n.t(t > 5242880 ? "image_error.type_or_input_size" : "image_error.type_or_size"));
+async function yo(e, t, n) {
+	if (!vo.includes(e.type) || e.size === 0 || e.size > t) throw Error(n.t(t > 5242880 ? "image_error.type_or_input_size" : "image_error.type_or_size"));
 	let r;
 	try {
 		r = new Uint8Array(await e.slice(0, 12).arrayBuffer());
@@ -5768,7 +5944,7 @@ async function oo(e, t, n) {
 	if (a !== e.type) throw Error(n.t("image_error.signature"));
 	return a;
 }
-async function so(e, t) {
+async function bo(e, t) {
 	try {
 		if (typeof createImageBitmap == "function") {
 			let t = await createImageBitmap(e, { imageOrientation: "from-image" });
@@ -5797,10 +5973,10 @@ async function so(e, t) {
 		throw Error(t.t("image_error.decode"));
 	}
 }
-var co = (e, t) => Number.isInteger(e) && Number.isInteger(t) && e >= 1 && t >= 1;
-async function lo(e, t = R) {
-	let n = await oo(e, to, t), { width: r, height: i, release: a } = await so(e, t);
-	if (a(), !co(r, i) || r > 2048 || i > 2048) throw Error(t.t("image_error.dimensions"));
+var xo = (e, t) => Number.isInteger(e) && Number.isInteger(t) && e >= 1 && t >= 1;
+async function So(e, t = R) {
+	let n = await yo(e, mo, t), { width: r, height: i, release: a } = await bo(e, t);
+	if (a(), !xo(r, i) || r > 2048 || i > 2048) throw Error(t.t("image_error.dimensions"));
 	return {
 		format: n,
 		bytes: e.size,
@@ -5808,19 +5984,19 @@ async function lo(e, t = R) {
 		height: i
 	};
 }
-function uo(e, t, n) {
+function Co(e, t, n) {
 	return new Promise((r) => {
 		e.toBlob((e) => r(e), t, n);
 	});
 }
-async function fo(e, t = R) {
-	await oo(e, ro, t);
-	let { source: n, width: r, height: i, release: a } = await so(e, t);
+async function wo(e, t = R) {
+	await yo(e, go, t);
+	let { source: n, width: r, height: i, release: a } = await bo(e, t);
 	try {
-		if (!co(r, i)) throw Error(t.t("image_error.decode"));
-		if (r * i > io) throw Error(t.t("image_error.too_many_pixels"));
+		if (!xo(r, i)) throw Error(t.t("image_error.decode"));
+		if (r * i > _o) throw Error(t.t("image_error.too_many_pixels"));
 		if (r <= 2048 && i <= 2048 && e.size <= 5242880) return e;
-		let a = Math.min(1, no / Math.max(r, i)), o = document.createElement("canvas");
+		let a = Math.min(1, ho / Math.max(r, i)), o = document.createElement("canvas");
 		o.width = Math.max(1, Math.round(r * a)), o.height = Math.max(1, Math.round(i * a));
 		let s = o.getContext("2d");
 		if (!s) throw Error(t.t("image_error.resize"));
@@ -5830,8 +6006,8 @@ async function fo(e, t = R) {
 			.8,
 			.65
 		]) {
-			let n = await uo(o, "image/webp", t);
-			if (n?.type !== "image/webp" && (n = await uo(o, "image/jpeg", t)), !n || !ao.includes(n.type)) break;
+			let n = await Co(o, "image/webp", t);
+			if (n?.type !== "image/webp" && (n = await Co(o, "image/jpeg", t)), !n || !vo.includes(n.type)) break;
 			if (n.size > 0 && n.size <= 5242880) {
 				let t = n.type === "image/webp" ? "webp" : "jpg";
 				return new File([n], `${e.name.replace(/\.[^.]*$/, "") || "photo"}.${t}`, { type: n.type });
@@ -5844,19 +6020,19 @@ async function fo(e, t = R) {
 }
 //#endregion
 //#region src/bundle-version.ts
-function po(e) {
+function To(e) {
 	try {
 		return new URL(e).searchParams.get("v") || null;
 	} catch {
 		return null;
 	}
 }
-function mo(e, t) {
+function Eo(e, t) {
 	return !!e && !!t && e !== t;
 }
 //#endregion
 //#region src/styles.ts
-var ho = o`
+var Do = o`
   :host{display:block;color:var(--primary-text-color,#212121);font-family:var(--paper-font-body1_-_font-family,system-ui,sans-serif);line-height:1.5;overflow-wrap:anywhere}
   *{box-sizing:border-box} .update-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-left:4px solid var(--info-color,#039be5);padding:8px 16px;margin-bottom:16px;background:var(--card-background-color,#fff)} .update-banner p{margin:0} main{width:100%;max-width:none;margin:0;padding:0} .panel-content{width:100%;max-width:1280px;margin:0 auto;padding:16px 24px 24px} header,.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap} header{justify-content:space-between;margin-bottom:24px}
   .page-title{font-size:inherit;font-weight:inherit;margin:inherit;line-height:inherit}
@@ -5870,7 +6046,7 @@ var ho = o`
    .detail-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 12px;margin:8px 0 16px}.detail-tabs button{flex:0 0 auto;background:var(--secondary-background-color,#f5f5f5);border-color:transparent}.detail-tabs button[aria-current=page]{background:var(--secondary-background-color,#f5f5f5);color:var(--primary-text-color,#212121);border:2px solid var(--primary-color,#007bad);font-weight:600}.plant-overview-card{padding:0;overflow:hidden}.overview-heading{display:flex;align-items:center;gap:20px;padding:24px;background:var(--secondary-background-color,#f5f5f5)}.overview-avatar{width:84px;height:84px;flex:0 0 84px;object-fit:cover;border-radius:16px}.overview-avatar.placeholder{display:grid;place-items:center;background:var(--secondary-background-color,#f5f5f5);color:var(--primary-text-color,#212121);font-size:2rem;font-weight:700;border:1px solid var(--divider-color,#ddd)}.overview-heading h2{font-size:1.8rem;margin:4px 0}.overview-heading>section,.overview-heading>article{padding:0;margin:0;border:0;background:transparent}.eyebrow{font-size:.75rem;font-weight:700;letter-spacing:.08em;color:var(--secondary-text-color,#666);margin:0}.overview-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:20px}.overview-metrics article{display:grid;gap:4px;margin:0;background:var(--secondary-background-color,#f5f5f5);border:0}.overview-metrics article span{color:var(--secondary-text-color,#666)}.overview-metrics article strong{font-size:1.45rem}.overview-sensors,.overview-care{border:0;border-top:1px solid var(--divider-color,#ddd);border-radius:0;margin:0}.overview-sensors h2,.overview-care h2{margin-top:0}.overview-heading button{margin-top:8px}
   .detail-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:4px 2px 8px}.detail-heading h2{font-size:1.5rem;margin:0}.detail-heading p{margin:4px 0;color:var(--secondary-text-color,#666)}.detail-heading a{color:var(--primary-text-color,#212121);text-decoration:underline;text-underline-offset:3px}
   @media(max-width:600px){.panel-content{padding:16px 16px 16px}section,article{padding:16px}.actions button{flex:1 1 auto}header{align-items:flex-start}dl{grid-template-columns:1fr}dd{margin-bottom:8px}.stepper li span:last-child{display:none}.stepper li[aria-current=step] span:last-child{display:inline}.choice-card{min-height:0}.overview-heading{align-items:flex-start;flex-direction:column;padding:18px}.overview-metrics{grid-template-columns:1fr;padding:14px}.detail-tabs button{font-size:.9rem;padding:8px}}
-`, go, _o = [
+`, Oo, ko = [
 	"ha-area-picker",
 	"ha-entity-picker",
 	"ha-selector",
@@ -5878,7 +6054,7 @@ var ho = o`
 	"ha-expansion-panel",
 	"ha-dropdown",
 	"ha-dropdown-item"
-], vo = kt.filter((e) => e !== "moisture"), yo = "/config/integrations/integration/smart_plants", bo = "https://open.plantbook.io/apikey/", Z = class extends S {
+], Ao = kt.filter((e) => e !== "moisture"), jo = "/config/integrations/integration/smart_plants", Mo = "https://open.plantbook.io/apikey/", Z = class extends S {
 	constructor(...e) {
 		super(...e), this.areas = [], this.entities = [], this.devices = [], this.states = {}, this.blocked = !1, this.navigationContext = 0, this.photoStatus = "", this.step = 1, this.busy = !1, this.error = "", this.name = "", this.area = "", this.photo = null, this.photoUrl = null, this.photoError = "", this.photoChecking = !1, this.dragging = !1, this.moisture = oi(), this.extras = [], this.pendingRole = null, this.roleMenu = !1, this.expanded = /* @__PURE__ */ new Set(), this.opened = /* @__PURE__ */ new Set(), this.query = "", this.results = [], this.searched = !1, this.preview = null, this.accepted = !1, this.speciesError = "", this.common = "", this.latin = "", this.acquired = "", this.placement = "", this.category = "", this.tagText = "", this.draft = null, this.finalRequest = null, this.rejected = !1, this.created = null, this.generation = 0, this.lifecycle = 0, this.photoCheck = 0, this.entityById = /* @__PURE__ */ new Map(), this.areaOfEntity = /* @__PURE__ */ new Map();
 	}
@@ -5895,7 +6071,7 @@ var ho = o`
 	}
 	connectedCallback() {
 		super.connectedCallback();
-		for (let e of _o) J(e) || customElements.whenDefined(e).then(() => this.requestUpdate());
+		for (let e of ko) J(e) || customElements.whenDefined(e).then(() => this.requestUpdate());
 		this.photo && !this.photoUrl && (this.photoUrl = URL.createObjectURL(this.photo)), !this.draft && !this.created && this.start();
 	}
 	disconnectedCallback() {
@@ -6076,7 +6252,7 @@ var ho = o`
 		let t = ++this.photoCheck;
 		this.photoChecking = !0;
 		try {
-			let n = await fo(e, this.l);
+			let n = await wo(e, this.l);
 			if (t !== this.photoCheck) return;
 			this.photo = n, this.photoUrl = URL.createObjectURL(n);
 		} catch (e) {
@@ -6318,7 +6494,7 @@ var ho = o`
       <button type="button" class="iconbtn" aria-label=${n.t("wizard.remove_sensor", { name: r })} @click=${() => this.unassign(e)}><ha-icon aria-hidden="true" icon="mdi:close"></ha-icon></button></div>`;
 	}
 	renderSensors() {
-		let e = this.l, t = this.moisture.sources[0]?.entity_id, n = this.knownAreas.find((e) => e.area_id === this.area)?.name, r = this.suggestions(), i = vo.filter((e) => !this.takenRoles.has(e) && e !== this.pendingRole);
+		let e = this.l, t = this.moisture.sources[0]?.entity_id, n = this.knownAreas.find((e) => e.area_id === this.area)?.name, r = this.suggestions(), i = Ao.filter((e) => !this.takenRoles.has(e) && e !== this.pendingRole);
 		return y`<h2 tabindex="-1">${e.t("wizard.sensors_heading")}</h2><p class="intro">${e.t("wizard.sensors_intro")}</p>
       <div class="stack">
         ${t ? this.assignedRow("moisture", t) : this.sensorPicker("moisture", e.t("wizard.moisture_sensor"))}
@@ -6343,7 +6519,7 @@ var ho = o`
 		}}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("wizard.add_another")}</button>`;
 		return J("ha-dropdown") && J("ha-dropdown-item") ? y`<ha-dropdown @wa-select=${(e) => {
 			let t = e.detail.item.value;
-			vo.includes(t) && (this.pendingRole = t);
+			Ao.includes(t) && (this.pendingRole = t);
 		}}>
         ${n(!0)}${e.map((e) => y`<ha-dropdown-item value=${e}><ha-icon slot="icon" .icon=${A[e].icon}></ha-icon>${j(t, e)}</ha-dropdown-item>`)}</ha-dropdown>` : y`${n(!1)}${this.roleMenu ? y`<div class="role-menu">${e.map((e) => y`<button type="button" class="btn outline sm" @click=${() => {
 			this.pendingRole = e, this.roleMenu = !1;
@@ -6415,9 +6591,9 @@ var ho = o`
           <label class="check"><input type="checkbox" .checked=${this.accepted} @change=${(e) => {
 			this.accepted = e.target.checked, this.error = "";
 		}}>${e.t("wizard.accept_species")}</label>
-          <button type="button" class="btn text sm flush" @click=${() => this.manual()}>${e.t("wizard.remove_species")}</button>` : x}` : t ? this.alert("info", y`${e.t("wizard.provider_unavailable_body")}<span class="alert-links"><a href=${yo} @click=${(e) => {
-			e.preventDefault(), history.pushState(null, "", yo), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
-		}}>${e.t("wizard.open_options")}</a><a href=${bo} target="_blank" rel="noreferrer">${e.t("wizard.openplantbook_credentials_link")}</a></span>`, e.t("wizard.provider_unavailable_title")) : x}
+          <button type="button" class="btn text sm flush" @click=${() => this.manual()}>${e.t("wizard.remove_species")}</button>` : x}` : t ? this.alert("info", y`${e.t("wizard.provider_unavailable_body")}<span class="alert-links"><a href=${jo} @click=${(e) => {
+			e.preventDefault(), history.pushState(null, "", jo), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
+		}}>${e.t("wizard.open_options")}</a><a href=${Mo} target="_blank" rel="noreferrer">${e.t("wizard.openplantbook_credentials_link")}</a></span>`, e.t("wizard.provider_unavailable_title")) : x}
       ${this.accepted || this.preview ? x : y`<h3>${e.t("wizard.manual_species")}</h3><div class="two">
         <label class="field">${e.t("species.common_name")}<input maxlength="200" .value=${this.common} @input=${(e) => {
 			this.common = e.target.value;
@@ -6483,7 +6659,7 @@ var ho = o`
     </div></div>`;
 	}
 };
-go = Z, go.styles = [
+Oo = Z, Oo.styles = [
 	Li,
 	Ri,
 	o`
@@ -6642,7 +6818,7 @@ go = Z, go.styles = [
 ], G([C({ attribute: !1 })], Z.prototype, "hass", void 0), G([C({ attribute: !1 })], Z.prototype, "capabilities", void 0), G([C({ attribute: !1 })], Z.prototype, "areas", void 0), G([C({ attribute: !1 })], Z.prototype, "entities", void 0), G([C({ attribute: !1 })], Z.prototype, "devices", void 0), G([C({ attribute: !1 })], Z.prototype, "states", void 0), G([C({ type: Boolean })], Z.prototype, "blocked", void 0), G([C({ type: Number })], Z.prototype, "navigationContext", void 0), G([C()], Z.prototype, "photoStatus", void 0), G([w()], Z.prototype, "step", void 0), G([w()], Z.prototype, "busy", void 0), G([w()], Z.prototype, "error", void 0), G([w()], Z.prototype, "name", void 0), G([w()], Z.prototype, "area", void 0), G([w()], Z.prototype, "photo", void 0), G([w()], Z.prototype, "photoUrl", void 0), G([w()], Z.prototype, "photoError", void 0), G([w()], Z.prototype, "photoChecking", void 0), G([w()], Z.prototype, "dragging", void 0), G([w()], Z.prototype, "moisture", void 0), G([w()], Z.prototype, "extras", void 0), G([w()], Z.prototype, "pendingRole", void 0), G([w()], Z.prototype, "roleMenu", void 0), G([w()], Z.prototype, "expanded", void 0), G([w()], Z.prototype, "opened", void 0), G([w()], Z.prototype, "query", void 0), G([w()], Z.prototype, "results", void 0), G([w()], Z.prototype, "searched", void 0), G([w()], Z.prototype, "preview", void 0), G([w()], Z.prototype, "accepted", void 0), G([w()], Z.prototype, "speciesError", void 0), G([w()], Z.prototype, "common", void 0), G([w()], Z.prototype, "latin", void 0), G([w()], Z.prototype, "acquired", void 0), G([w()], Z.prototype, "placement", void 0), G([w()], Z.prototype, "category", void 0), G([w()], Z.prototype, "tagText", void 0), G([w()], Z.prototype, "draft", void 0), G([w()], Z.prototype, "finalRequest", void 0), G([w()], Z.prototype, "rejected", void 0), G([w()], Z.prototype, "created", void 0), customElements.get("smart-plants-wizard") || customElements.define("smart-plants-wizard", Z);
 //#endregion
 //#region src/views/overview.ts
-var xo, So = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", Co = {
+var No, Po = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", Fo = {
 	all: {
 		label: "overview.tile_all",
 		icon: "mdi:sprout",
@@ -6662,12 +6838,17 @@ var xo, So = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 		label: "overview.tile_sensors",
 		icon: "mdi:clock-alert-outline",
 		tone: "var(--sp-disabled)"
+	},
+	care: {
+		label: "overview.tile_care",
+		icon: "mdi:calendar-check-outline",
+		tone: "var(--sp-care)"
 	}
-}, wo = {
+}, Io = {
 	attention: "overview.sort_attention",
 	name: "overview.sort_name",
 	area: "overview.sort_area"
-}, To = {
+}, Lo = {
 	attention: "mdi:alert-circle-outline",
 	name: "mdi:sort-alphabetical-ascending",
 	area: "mdi:texture-box"
@@ -6693,6 +6874,7 @@ var xo, So = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 				plant: e,
 				overview: r,
 				species: t,
+				careDue: Ka(r).length > 0,
 				searchText: [
 					e.name,
 					n,
@@ -6712,9 +6894,9 @@ var xo, So = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 		if (this.hidden) return x;
 		if (this.loading && !this.plants.length) return y`<p class="loading" role="status">${e.t("list.loading")}</p>`;
 		if (!this.plants.length) return this._renderEmpty();
-		let t = this._items(), n = t.filter((e) => tn(this._filter, e.status) && rn(e, this._query)), r = this._filter !== "all";
+		let t = this._items(), n = t.filter((e) => tn(this._filter, e.status, e.careDue) && rn(e, this._query)), r = en.filter((e) => e !== "care" || t.some((e) => e.overview?.care.length) || this._filter === "care"), i = this._filter !== "all";
 		return y`<div class="content">
-      <div class="summary" role="group" aria-label=${e.t("overview.filter_label")}>${en.map((e) => this._renderTile(e, t.filter((t) => tn(e, t.status)).length))}</div>
+      <div class="summary ${r.length === 5 ? "five" : ""}" role="group" aria-label=${e.t("overview.filter_label")}>${r.map((e) => this._renderTile(e, t.filter((t) => tn(e, t.status, t.careDue)).length))}</div>
       <div class="listbar">
         <label class="search"><ha-icon aria-hidden="true" icon="mdi:magnify"></ha-icon>
           <input type="search" .value=${this._query} placeholder=${e.t("overview.search")} aria-label=${e.t("overview.search")} @input=${(e) => {
@@ -6724,22 +6906,22 @@ var xo, So = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 			let t = e.detail.item.value;
 			nn.includes(t) && (this._sort = t);
 		}}>
-          <button slot="trigger" class="pill" type="button" aria-label=${e.t("overview.sort_button", { sort: e.t(wo[this._sort]) })}><ha-icon aria-hidden="true" icon="mdi:sort"></ha-icon>${e.t(wo[this._sort])}<ha-icon aria-hidden="true" icon="mdi:menu-down"></ha-icon></button>
+          <button slot="trigger" class="pill" type="button" aria-label=${e.t("overview.sort_button", { sort: e.t(Io[this._sort]) })}><ha-icon aria-hidden="true" icon="mdi:sort"></ha-icon>${e.t(Io[this._sort])}<ha-icon aria-hidden="true" icon="mdi:menu-down"></ha-icon></button>
           ${nn.map((t) => y`<ha-dropdown-item value=${t} ?checked=${this._sort === t}>
-            ${this._sort === t ? y`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : y`<ha-icon slot="icon" .icon=${To[t]}></ha-icon>`}${e.t(wo[t])}</ha-dropdown-item>`)}
+            ${this._sort === t ? y`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : y`<ha-icon slot="icon" .icon=${Lo[t]}></ha-icon>`}${e.t(Io[t])}</ha-dropdown-item>`)}
         </ha-dropdown>
       </div>
       <div class="countline"><p role="status">${e.t("list.count_filtered", {
 			shown: n.length,
 			total: t.length
-		})}${r ? ` · ${e.t(Co[this._filter].label)}` : ""}</p>
-        ${r || this._query ? y`<button type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.clear_filter")}</button>` : x}</div>
+		})}${i ? ` · ${e.t(Fo[this._filter].label)}` : ""}</p>
+        ${i || this._query ? y`<button type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.clear_filter")}</button>` : x}</div>
       ${n.length ? this._renderList(n) : this._renderNoResults()}
     </div>
     <button type="button" class="fab" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("panel.add_plant")}</button>`;
 	}
 	_renderTile(e, t) {
-		let n = Co[e];
+		let n = Fo[e];
 		return y`<button type="button" class="tile ${t === 0 ? "zero" : ""}" style="--tone:${n.tone}" aria-pressed=${this._filter === e ? "true" : "false"}
       @click=${() => {
 			this._filter = this._filter === e && e !== "all" ? "all" : e;
@@ -6758,6 +6940,7 @@ var xo, So = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
         <div class="title"><div role="heading" aria-level=${this._sort === "area" ? "3" : "2"}><button type="button" class="name" id=${c} @click=${() => this._emit("open-plant", { plantId: r.id })}>${r.name}</button></div>
           <span class="sub">${e.areaName ? y`<ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${e.areaName}` : x}${e.areaName && e.species ? " · " : ""}${e.species ? y`<i>${e.species}</i>` : x}</span></div></div>
       ${n && i ? y`<div class="status"><sp-status-chip .status=${n.status} .label=${i.label} .more=${i.more} .l=${t}></sp-status-chip>${a ? y`<span class="reason">${a}</span>` : x}</div>` : x}
+      ${this._renderCare(n)}
       ${n && n.status === "no_sensors" && !s.length ? y`<div class="empty-box"><span>${t.t("card.no_sensors")}</span><button type="button" class="text-button" @click=${() => this._emit("open-plant", {
 			plantId: r.id,
 			section: "sensors"
@@ -6769,19 +6952,26 @@ var xo, So = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
         <button type="button" class="tonal" ?disabled=${this.blocked || this.watering.has(r.id)} aria-label=${t.t("card.log_watering_label", { name: r.name })} @click=${() => this._emit("log-watering", { plantId: r.id })}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${t.t("card.log_watering")}</button></div>
     </article>`;
 	}
+	_renderCare(e) {
+		let t = Ka(e);
+		if (!t.length) return x;
+		let n = this.l, r = t.some((e) => e.status === "overdue");
+		return y`<p class="care ${r ? "overdue" : ""}"><ha-icon aria-hidden="true" icon=${r ? "mdi:alarm" : "mdi:calendar-check-outline"}></ha-icon>
+      <span>${n.t("card.care_due", { tasks: qa(n, t) })}${r ? y`<span class="sr-only"> (${n.t("card.care_overdue")})</span>` : x}</span></p>`;
+	}
 	_renderEmpty() {
 		let e = this.l;
 		return y`<sp-empty-state icon="mdi:sprout" .heading=${e.t("overview.empty_heading")}>${e.t("overview.empty_body")}
       <button slot="actions" type="button" class="filled" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("panel.add_plant")}</button>
-      <a slot="actions" class="text-button" href=${So} target="_blank" rel="noopener noreferrer">${e.t("overview.how_it_works")}</a></sp-empty-state>`;
+      <a slot="actions" class="text-button" href=${Po} target="_blank" rel="noopener noreferrer">${e.t("overview.how_it_works")}</a></sp-empty-state>`;
 	}
 	_renderNoResults() {
-		let e = this.l, t = this._query.trim() ? e.t("overview.no_match_query", { query: this._query.trim() }) : e.t("overview.no_match_filter", { filter: e.t(Co[this._filter].label) });
+		let e = this.l, t = this._query.trim() ? e.t("overview.no_match_query", { query: this._query.trim() }) : e.t("overview.no_match_filter", { filter: e.t(Fo[this._filter].label) });
 		return y`<sp-empty-state class="no-results" compact icon="mdi:magnify-remove-outline" .heading=${e.t("overview.no_match_heading")}>${t}
       <button slot="actions" type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.show_all")}</button></sp-empty-state>`;
 	}
 };
-xo = Q, xo.styles = [Li, o`
+No = Q, No.styles = [Li, o`
     /* White text on the theme's primary colour needs a slightly darker fill to reach 4.5:1. */
     :host { display: block; container-type: inline-size; --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000); }
     :host([hidden]) { display: none; }
@@ -6801,6 +6991,12 @@ xo = Q, xo.styles = [Li, o`
     .tile .num { display: block; font-size: 22px; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
     .tile .lbl { display: block; font-size: 13px; color: var(--sp-text-secondary); overflow-wrap: anywhere; hyphens: auto; }
     .tile.zero .num { color: var(--sp-text-secondary); }
+    .summary.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .care { display: flex; align-items: center; gap: 6px; margin: 0 14px 10px; font-size: 13px; min-width: 0; color: color-mix(in srgb, var(--sp-care) 55%, var(--sp-text)); }
+    .care.overdue { color: color-mix(in srgb, var(--sp-error) 60%, var(--sp-text)); }
+    .care ha-icon { --mdc-icon-size: 17px; }
+    .care > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
     .listbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
     .search { flex: 1 1 220px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 20px; color: var(--sp-text-secondary);
@@ -6861,7 +7057,8 @@ xo = Q, xo.styles = [Li, o`
     .fab:disabled { opacity: .6; cursor: default; }
 
     @container (max-width: 600px) {
-      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .summary, .summary.five { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .summary.five .tile:last-child { grid-column: 1 / -1; }
       .tile { padding: 10px; gap: 10px; }
       .tile .ico { width: 34px; height: 34px; }
       .grid { grid-template-columns: 1fr; }
@@ -6872,7 +7069,7 @@ xo = Q, xo.styles = [Li, o`
 })], Q.prototype, "hidden", void 0), G([w()], Q.prototype, "_filter", void 0), G([w()], Q.prototype, "_sort", void 0), G([w()], Q.prototype, "_query", void 0), customElements.get("smart-plants-overview") || customElements.define("smart-plants-overview", Q);
 //#endregion
 //#region src/panel.ts
-var Eo, Do = Object.fromEntries([
+var Ro, zo = Object.fromEntries([
 	{
 		problemRole: "temperature_stress",
 		configRole: "temperature",
@@ -6993,27 +7190,27 @@ var Eo, Do = Object.fromEntries([
 		validate: (e, t) => ni(e, t),
 		seed: (e) => ri(e)
 	}
-].map((e) => [e.problemRole, e])), Oo = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", ko = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Ao = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
-function jo(e) {
+].map((e) => [e.problemRole, e])), Bo = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", Vo = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Ho = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
+function Uo(e) {
 	let t = -e.getTimezoneOffset();
 	return `${new Date(e.getTime() + t * 6e4).toISOString().slice(0, 19)}${t < 0 ? "-" : "+"}${String(Math.floor(Math.abs(t) / 60)).padStart(2, "0")}:${String(Math.abs(t) % 60).padStart(2, "0")}`;
 }
-var Mo = "smart_plants.history_role", No = "smart_plants.history_range", Po = 3e5;
-function Fo(e) {
+var Wo = "smart_plants.history_role", Go = "smart_plants.history_range", Ko = 3e5;
+function qo(e) {
 	try {
 		return localStorage.getItem(e);
 	} catch {
 		return null;
 	}
 }
-function Io(e, t) {
+function Jo(e, t) {
 	try {
 		localStorage.setItem(e, t);
 	} catch {}
 }
 var $ = class e extends S {
 	constructor(...e) {
-		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => At(e) ? e : "moisture")(Fo(Mo)), this._historyRange = ((e) => dn(e) ? e : "7d")(Fo(No)), this._history = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._taskEditor = null, this._automateTaskId = null, this._carePending = /* @__PURE__ */ new Set(), this._careTaskId = null, this._wizardStarted = !1, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ready = () => {
+		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => At(e) ? e : "moisture")(qo(Wo)), this._historyRange = ((e) => dn(e) ? e : "7d")(qo(Go)), this._history = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._restEditor = null, this._taskEditor = null, this._automateTaskId = null, this._carePending = /* @__PURE__ */ new Set(), this._careTaskId = null, this._wizardStarted = !1, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ready = () => {
 			this._refresh();
 		}, this._disconnected = () => {
 			this._context++, this._formBusy = !1, this._blocked = !0, this._request++, this._providerRequest++, this._preview = null, this._clearImage(), this._error = this._l.t("error.disconnected");
@@ -7122,7 +7319,7 @@ var $ = class e extends S {
 		try {
 			let i = await I.info(r), a = await I.list(r);
 			if (n !== this._request || !this.isConnected) return;
-			if (this._capabilities = i, this._blocked = !1, this._plants = a, this._updateAvailable = mo(e.bundleVersion, i.bundle_version), t && (this._error = ""), this._base) {
+			if (this._capabilities = i, this._blocked = !1, this._plants = a, this._updateAvailable = Eo(e.bundleVersion, i.bundle_version), t && (this._error = ""), this._base) {
 				let e = a.find((e) => e.id === this._base?.id);
 				e && e.revision !== this._base.revision && (Ua(this._base, e) && !this._conflict ? this._formBusy || this._rebaseEdits(this._base, e) : this._setConflict(this._base, e)), e || (this._context++, this._formBusy = !1, this._closeDialog(), this._base = null, this._conflict = null, this._edits = null, this._notice = this._l.t("notice.deleted_elsewhere"), this.updateComplete.then(() => this.shadowRoot?.querySelector("h1")?.focus()));
 			}
@@ -7274,7 +7471,7 @@ var $ = class e extends S {
 		this._syncImage(), this._syncThumbnails(), this.updateComplete.then(() => this.shadowRoot?.querySelector("h1")?.focus());
 	}
 	_handleMenuAction(e) {
-		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(So, "_blank", "noopener,noreferrer");
+		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(Po, "_blank", "noopener,noreferrer");
 		let t = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0;
 		if (!t) return;
 		let n = V(t, this._devices);
@@ -7354,7 +7551,7 @@ var $ = class e extends S {
 		let n = this.hass, r = this._l;
 		this._setWatering(e, !0), this._error = "", this._request++;
 		try {
-			let i = await this._withRevision(e, (t) => I.addWatering(n, e, t, jo(/* @__PURE__ */ new Date()), null));
+			let i = await this._withRevision(e, (t) => I.addWatering(n, e, t, Uo(/* @__PURE__ */ new Date()), null));
 			this._adopt(i.plant), this._followQuickWrite(i.plant);
 			let a = this._overview[e];
 			a && (this._overview = {
@@ -7426,7 +7623,7 @@ var $ = class e extends S {
 		let n = this._historyTarget(t);
 		if (!n) return;
 		let { key: r, entityId: i, role: a } = n, o = this._history?.key === r;
-		if (o && !e && Date.now() - this._historyLoadedAt < Po) return;
+		if (o && !e && Date.now() - this._historyLoadedAt < Ko) return;
 		let s = ++this._historyRequest;
 		this._historyLoadedAt = Date.now(), (!o || this._history?.status !== "ready") && (this._history = {
 			key: r,
@@ -7464,10 +7661,10 @@ var $ = class e extends S {
 			lastWatered: Number.isFinite(s) ? s : null,
 			now: Date.now(),
 			onRole: (e) => {
-				this._historyRole = e, Io(Mo, e);
+				this._historyRole = e, Jo(Wo, e);
 			},
 			onRange: (e) => {
-				this._historyRange = e, Io(No, e);
+				this._historyRange = e, Jo(Go, e);
 			},
 			onOpen: () => {
 				this.dispatchEvent(new CustomEvent("hass-more-info", {
@@ -7580,7 +7777,7 @@ var $ = class e extends S {
 			let r = n.task_id ? (e.care_tasks ?? []).find((e) => e.id === n.task_id) : void 0;
 			return n.kind === "task" && r ? X(t, r) : a(n.kind);
 		}, g = this._today();
-		return y`${Ga({
+		return y`${to({
 			l: t,
 			plant: e,
 			overview: this._overview[e.id],
@@ -7589,6 +7786,7 @@ var $ = class e extends S {
 			disabled: s || this._blocked,
 			pending: this._carePending,
 			onAdd: () => this._openTaskEditor(),
+			onRest: () => this._openRestEditor(e),
 			onDone: (t) => void this._completeTask(e.id, t),
 			onAction: (t, n) => this._taskAction(e, t, n)
 		})}
@@ -7793,7 +7991,7 @@ var $ = class e extends S {
 			}
 		}
 		if (c && l && u) {
-			let e = Do[c];
+			let e = zo[c];
 			if (e) {
 				let n = e.seed(this._persistedRoleOverrides(e, t)), r = { ...n };
 				for (let t of e.keys) l[t] !== u[t] && (r[t] = l[t]);
@@ -7838,11 +8036,11 @@ var $ = class e extends S {
 		});
 	}
 	_closeDialog() {
-		this.shadowRoot?.querySelector("dialog")?.close(), this._dialog = null, this._taskEditor = null, this._automateTaskId = null, (this._focusReturn?.isConnected && !this._focusReturn.matches(":disabled") ? this._focusReturn : this.shadowRoot?.querySelector("h1"))?.focus(), this._focusReturn = null;
+		this.shadowRoot?.querySelector("dialog")?.close(), this._dialog = null, this._taskEditor = null, this._automateTaskId = null, this._restEditor = null, (this._focusReturn?.isConnected && !this._focusReturn.matches(":disabled") ? this._focusReturn : this.shadowRoot?.querySelector("h1"))?.focus(), this._focusReturn = null;
 	}
 	_renderDialog() {
 		if (!this._dialog || !this._base) return x;
-		if (this._dialog === "care_task" || this._dialog === "care_automate") return this._renderCareDialog(this._base.id);
+		if (this._dialog === "care_task" || this._dialog === "care_automate" || this._dialog === "care_rest") return this._renderCareDialog(this._base.id);
 		let e = this._base, t = this._preview, n = this._l;
 		return y`<dialog aria-labelledby="dialog-title" @cancel=${(e) => {
 			e.preventDefault(), this._closeDialog();
@@ -7939,6 +8137,56 @@ var $ = class e extends S {
 			o === this._context && this._setTaskEditor({ error: this._friendly(e) });
 		} finally {
 			o === this._context && (this._formBusy = !1, this._refresh(!1));
+		}
+	}
+	_openRestEditor(e) {
+		this._restEditor = {
+			draft: Qa(e.rest_period ?? null, e.care_tasks ?? []),
+			error: ""
+		}, this._openDialog("care_rest");
+	}
+	_editRest(e) {
+		let t = this._restEditor;
+		if (!t) return;
+		let n = {
+			...t.draft,
+			...e
+		}, r = t.error ? ((e) => e.error ? this._l.t(e.error) : "")($a(n)) : "";
+		this._restEditor = {
+			draft: n,
+			error: r
+		};
+	}
+	async _saveRest(e, t = !1) {
+		let n = this._restEditor, r = this.hass, i = this._l;
+		if (!n || !r || this._formBusy || this._blocked) return;
+		let a = t ? null : $a(n.draft);
+		if (a && !a.rest) {
+			this._restEditor = {
+				...n,
+				error: i.t(a.error)
+			};
+			return;
+		}
+		let o = a?.rest ?? null, s = this._context;
+		this._formBusy = !0, this._restEditor = {
+			...n,
+			error: ""
+		}, this._request++;
+		try {
+			let a = this._plantById(e);
+			if (!a) return;
+			let c = a;
+			if (JSON.stringify(o) !== JSON.stringify(a.rest_period ?? null) && (c = await this._withRevision(e, (t) => I.setRestPeriod(r, e, t, o)), this._adopt(c), this._followQuickWrite(c)), !t) for (let t of eo(c.care_tasks ?? [], n.draft.off)) c = await this._withRevision(e, (n) => I.updateCareTask(r, e, t.task.id, n, { schedule: t.schedule })), this._adopt(c), this._followQuickWrite(c);
+			if (s !== this._context) return;
+			this._formBusy = !1, this._closeDialog(), this._toast(i.t(t ? "care_plan.rest_removed_toast" : "care_plan.rest_saved_toast"));
+		} catch (e) {
+			s === this._context && this._restEditor && (this._restEditor = {
+				...this._restEditor,
+				error: this._friendly(e)
+			});
+		} finally {
+			s === this._context && (this._formBusy = !1, this._refresh(!1));
 		}
 	}
 	_setCarePending(e, t) {
@@ -8039,7 +8287,7 @@ var $ = class e extends S {
 		let r = "", i = x;
 		if (this._dialog === "care_task" && this._taskEditor) {
 			let e = this._taskEditor;
-			r = qa(t, e), i = Ja({
+			r = io(t, e), i = ao({
 				l: t,
 				plant: n,
 				state: e,
@@ -8070,9 +8318,31 @@ var $ = class e extends S {
 					t && this._deleteTask(n.id, t);
 				}
 			});
+		} else if (this._dialog === "care_rest" && this._restEditor) {
+			let e = this._restEditor;
+			r = t.t("care_plan.rest_period"), i = uo({
+				l: t,
+				plant: n,
+				draft: e.draft,
+				error: e.error,
+				busy: this._formBusy || this._blocked,
+				onMonth: (e) => {
+					let t = this._restEditor;
+					t && this._editRest({ ...La(t.draft.startMonth, t.draft.endMonth, e) });
+				},
+				onToggle: (e, t) => {
+					let n = this._restEditor;
+					if (!n) return;
+					let r = new Set(n.draft.off);
+					t ? r.add(e) : r.delete(e), this._editRest({ off: r });
+				},
+				onSave: () => void this._saveRest(n.id),
+				onRemove: () => void this._saveRest(n.id, !0),
+				onCancel: () => this._closeDialog()
+			});
 		} else if (this._dialog === "care_automate") {
 			let e = n.care_tasks?.find((e) => e.id === this._automateTaskId);
-			e ? (r = t.t("care_plan.automate_title", { name: X(t, e) }), i = $a({
+			e ? (r = t.t("care_plan.automate_title", { name: X(t, e) }), i = fo({
 				l: t,
 				rows: this._automateRows(n, e),
 				onCopy: (e) => this._copyEntityId(e),
@@ -8093,7 +8363,7 @@ var $ = class e extends S {
 		this._formBusy = !0;
 		let r;
 		try {
-			r = await fo(t, this._l);
+			r = await wo(t, this._l);
 		} catch (e) {
 			n === this._context && (this._error = e.message);
 			return;
@@ -8160,7 +8430,7 @@ var $ = class e extends S {
 		return e === "on" ? t.t("section.advanced_diagnostics_status_problem") : e === "off" ? t.t("section.advanced_diagnostics_status_ok") : e === "unavailable" ? t.t("section.advanced_diagnostics_status_unavailable") : t.t("section.advanced_diagnostics_status_not_configured");
 	}
 	_renderOtherTargets(e) {
-		let t = this._l, n = ai(e, this._entities, this._states, t).filter((e) => e.status !== "not_configured" && Do[e.role]), r = this._pendingThresholdSwitch, i = this._thresholdRole ? Do[this._thresholdRole] : null, a = i ? t.t(`problem_phrase.${i.problemRole}`) : "", o = r ? t.t(`problem_phrase.${r.spec.problemRole}`) : "";
+		let t = this._l, n = ai(e, this._entities, this._states, t).filter((e) => e.status !== "not_configured" && zo[e.role]), r = this._pendingThresholdSwitch, i = this._thresholdRole ? zo[this._thresholdRole] : null, a = i ? t.t(`problem_phrase.${i.problemRole}`) : "", o = r ? t.t(`problem_phrase.${r.spec.problemRole}`) : "";
 		return y`<p class="small muted">${t.t("other_targets.intro")}</p>
       ${r ? y`<p class="notice threshold-switch-alert" role="alert">${t.t("section.advanced_diagnostics_switch_prompt", {
 			current: a,
@@ -8172,7 +8442,7 @@ var $ = class e extends S {
 		}}>${t.t("section.advanced_diagnostics_switch_keep")}</button>
       </p>` : x}
       ${n.length ? y`<dl class="other-targets">${n.map((n) => {
-			let r = Do[n.role], i = ii(e, n.role, this._entities, this._states, t), a = this._thresholdRole === n.role && this._thresholdEdits !== null, o = this._thresholdSaved[n.role];
+			let r = zo[n.role], i = ii(e, n.role, this._entities, this._states, t), a = this._thresholdRole === n.role && this._thresholdEdits !== null, o = this._thresholdSaved[n.role];
 			return y`<dt>${n.label}</dt><dd>${i.length ? y`<ul class="thresholds" aria-label=${t.t("section.effective_thresholds_label", { label: n.label })}>${i.map((e) => y`<li><span class="threshold-label">${e.label}</span>: <span class="threshold-value">${e.value === null ? "—" : `${t.number(e.value)} ${e.unit}`}</span></li>`)}</ul>` : x}
           <button class="threshold-toggle btn outline sm" type="button" aria-expanded=${a ? "true" : "false"} aria-controls=${`${n.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(r, e)}>${a ? t.t("section.advanced_diagnostics_cancel_edit") : t.t("section.advanced_diagnostics_edit_thresholds")}</button>${a ? this._renderThresholdEditor(r, e) : x}${o && !a ? y`<p class="notice" role="status">${o}</p>` : x}</dd>`;
 		})}</dl>` : y`<p>${t.t("other_targets.none")}</p>`}`;
@@ -8609,6 +8879,7 @@ var $ = class e extends S {
           <div class="hero-meta">${r ? y`<span><ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${this._areaName(r)}</span>` : x}
             <span><ha-icon aria-hidden="true" icon="mdi:leaf"></ha-icon>${i ? y`<i>${i}</i>` : t.t("detail.no_species")}</span></div>
           ${n && a ? y`<div class="hero-status"><sp-status-chip .status=${n.status} .label=${a.label} .more=${a.more} .l=${t}></sp-status-chip><span class="reason">${la(t, n)}</span></div>` : x}
+          ${this._renderCareChips(e, n)}
         </div>
         <div class="hero-actions">
           <button type="button" class="btn filled" ?disabled=${this._blocked || this._watering.has(e.id) || !!this._conflict} @click=${() => void this._logWatering(e.id)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${t.t("card.log_watering")}</button>
@@ -8617,6 +8888,15 @@ var $ = class e extends S {
       </div>
       ${ua(t, n)}
     </div>`;
+	}
+	_renderCareChips(e, t) {
+		let n = this._l, r = Ka(t);
+		if (!r.length) return x;
+		let i = this._today(), a = r.slice(0, 2).map((t) => {
+			let r = e.care_tasks?.find((e) => e.id === t.task_id), a = r ? ka(n, t, r.schedule, i) : null;
+			return y`<li class="cchip tone-${a?.tone ?? "care"}"><ha-icon aria-hidden="true" .icon=${a?.icon ?? "mdi:calendar-clock"}></ha-icon><span>${Ga(n, t)}${a?.tone === "overdue" ? y`<span class="sr-only"> (${a.text})</span>` : x}</span></li>`;
+		});
+		return y`<ul class="care-chips" aria-label=${n.t("care_plan.due_chips_label")}>${a}${r.length > 2 ? y`<li class="cchip tone-later"><span aria-hidden="true">+${n.number(r.length - 2)}</span><span class="sr-only">${n.t("care_plan.more_due", { count: r.length - 2 })}</span></li>` : x}</ul>`;
 	}
 	_renderTabs() {
 		let e = this._l;
@@ -8800,7 +9080,7 @@ var $ = class e extends S {
 		let f = this._context;
 		if (this._refresh(!1), o && i) {
 			try {
-				if (await lo(n, c), !this.isConnected || this.hass?.connection !== i.connection || this._blocked) return;
+				if (await So(n, c), !this.isConnected || this.hass?.connection !== i.connection || this._blocked) return;
 				let e = await I.uploadImage(i, t.id, t.revision, n);
 				if (!this.isConnected || this.hass?.connection !== i.connection) return;
 				f === this._context && this._base?.id === t.id && this._base.revision === t.revision && !this._formBusy && !this._conflict && this._rebaseEdits(this._base, e), this._createdPlantId === t.id && d(c.t("created.photo_uploaded"));
@@ -8821,19 +9101,19 @@ var $ = class e extends S {
 		if (this.hass?.user?.is_admin === !1) return y`<main><div class="panel-content"><p role="alert">${e.t("panel.admin_required")}</p></div></main>`;
 		let t = this.hass?.localize?.("ui.common.menu") || e.t("panel.menu"), n = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0, r = this._formBusy || this._blocked || !!this._conflict;
 		return y`<main><ha-top-app-bar-fixed class="panel-appbar" .narrow=${this.narrow}>
-       ${this._view.kind === "detail" ? y`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Ao} @click=${() => {
+       ${this._view.kind === "detail" ? y`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Ho} @click=${() => {
 			this._formBusy || this._show({ kind: "list" });
 		}}></ha-icon-button>` : x}
        <h1 slot="title" class="page-title" tabindex="-1">${n ? n.name : "Smart Plants"}</h1>
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
-         <ha-icon-button slot="trigger" .label=${t} .path=${Oo}></ha-icon-button>
+         <ha-icon-button slot="trigger" .label=${t} .path=${Bo}></ha-icon-button>
          ${n ? y`
          <ha-dropdown-item value="open-device" ?disabled=${!V(n, this._devices)}>${e.t("detail.menu_open_device")}<ha-icon slot="icon" icon="mdi:open-in-new"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="download-diagnostics">${e.t("detail.menu_download")}<ha-icon slot="icon" icon="mdi:download"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="toggle-monitoring" ?disabled=${r}>${n.lifecycle_state === "active" ? e.t("manage.pause") : e.t("manage.resume")}<ha-icon slot="icon" .icon=${n.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="delete-plant" ?disabled=${r}>${e.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>` : y`
          ${this._view.kind === "list" ? x : y`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${e.t("panel.back_to_overview")}</ha-dropdown-item>`}
-         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${ko}></ha-svg-icon></ha-dropdown-item>
+         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${Vo}></ha-svg-icon></ha-dropdown-item>
          <ha-dropdown-item value="integration-options">${e.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="documentation">${e.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>`}
        </ha-dropdown>
@@ -8855,14 +9135,14 @@ var $ = class e extends S {
         <p role="status" aria-live="polite">${this._formBusy ? e.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
 	}
 };
-Eo = $, Eo.styles = [
+Ro = $, Ro.styles = [
 	Li,
-	ho,
+	Do,
 	va,
-	eo
-], Eo.bundleVersion = po(import.meta.url), G([C({ attribute: !1 })], $.prototype, "hass", void 0), G([C({ attribute: !1 })], $.prototype, "panel", void 0), G([C({
+	po
+], Ro.bundleVersion = To(import.meta.url), G([C({ attribute: !1 })], $.prototype, "hass", void 0), G([C({ attribute: !1 })], $.prototype, "panel", void 0), G([C({
 	type: Boolean,
 	reflect: !0
-})], $.prototype, "narrow", void 0), G([w()], $.prototype, "_plants", void 0), G([w()], $.prototype, "_loading", void 0), G([w()], $.prototype, "_error", void 0), G([w()], $.prototype, "_notice", void 0), G([w()], $.prototype, "_view", void 0), G([w()], $.prototype, "_detailSection", void 0), G([w()], $.prototype, "_formBusy", void 0), G([w()], $.prototype, "_capabilities", void 0), G([w()], $.prototype, "_updateAvailable", void 0), G([w()], $.prototype, "_blocked", void 0), G([w()], $.prototype, "_areas", void 0), G([w()], $.prototype, "_entities", void 0), G([w()], $.prototype, "_devices", void 0), G([w()], $.prototype, "_states", void 0), G([w()], $.prototype, "_evaluations", void 0), G([w()], $.prototype, "_health", void 0), G([w()], $.prototype, "_healthError", void 0), G([w()], $.prototype, "_careHistory", void 0), G([w()], $.prototype, "_historyRole", void 0), G([w()], $.prototype, "_historyRange", void 0), G([w()], $.prototype, "_history", void 0), G([w()], $.prototype, "_careError", void 0), G([w()], $.prototype, "_careDate", void 0), G([w()], $.prototype, "_careNote", void 0), G([w()], $.prototype, "_careKind", void 0), G([w()], $.prototype, "_careFields", void 0), G([w()], $.prototype, "_careEditingId", void 0), G([w()], $.prototype, "_registryError", void 0), G([w()], $.prototype, "_areaReview", void 0), G([w()], $.prototype, "_overview", void 0), G([w()], $.prototype, "_overviewError", void 0), G([w()], $.prototype, "_thumbnails", void 0), G([w()], $.prototype, "_watering", void 0), G([w()], $.prototype, "_edits", void 0), G([w()], $.prototype, "_conflict", void 0), G([w()], $.prototype, "_allSensors", void 0), G([w()], $.prototype, "_preview", void 0), G([w()], $.prototype, "_provider", void 0), G([w()], $.prototype, "_query", void 0), G([w()], $.prototype, "_results", void 0), G([w()], $.prototype, "_related", void 0), G([w()], $.prototype, "_imageUrl", void 0), G([w()], $.prototype, "_imageLoading", void 0), G([w()], $.prototype, "_imageError", void 0), G([w()], $.prototype, "_dialog", void 0), G([w()], $.prototype, "_taskEditor", void 0), G([w()], $.prototype, "_automateTaskId", void 0), G([w()], $.prototype, "_carePending", void 0), G([w()], $.prototype, "_careTaskId", void 0), G([w()], $.prototype, "_wizardStarted", void 0), G([w()], $.prototype, "_creationNotice", void 0), G([w()], $.prototype, "_creationPhoto", void 0), G([w()], $.prototype, "_createdPlantId", void 0), G([w()], $.prototype, "_thresholdRole", void 0), G([w()], $.prototype, "_thresholdEdits", void 0), G([w()], $.prototype, "_thresholdBaseline", void 0), G([w()], $.prototype, "_thresholdError", void 0), G([w()], $.prototype, "_thresholdSaved", void 0), G([w()], $.prototype, "_pendingThresholdSwitch", void 0), G([w()], $.prototype, "_sourceRole", void 0), G([w()], $.prototype, "_sourceEdits", void 0), G([w()], $.prototype, "_sourceBaseline", void 0), G([w()], $.prototype, "_sourceError", void 0), G([w()], $.prototype, "_sourceUnavailable", void 0), G([w()], $.prototype, "_sourceSaved", void 0), G([w()], $.prototype, "_pendingSourceSwitch", void 0), G([w()], $.prototype, "_sourceMode", void 0), G([w()], $.prototype, "_moistureMode", void 0), G([w()], $.prototype, "_expanded", void 0), G([w()], $.prototype, "_settingsOpen", void 0), G([w()], $.prototype, "_careFilter", void 0), G([w()], $.prototype, "_careFormOpen", void 0), G([w()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);
+})], $.prototype, "narrow", void 0), G([w()], $.prototype, "_plants", void 0), G([w()], $.prototype, "_loading", void 0), G([w()], $.prototype, "_error", void 0), G([w()], $.prototype, "_notice", void 0), G([w()], $.prototype, "_view", void 0), G([w()], $.prototype, "_detailSection", void 0), G([w()], $.prototype, "_formBusy", void 0), G([w()], $.prototype, "_capabilities", void 0), G([w()], $.prototype, "_updateAvailable", void 0), G([w()], $.prototype, "_blocked", void 0), G([w()], $.prototype, "_areas", void 0), G([w()], $.prototype, "_entities", void 0), G([w()], $.prototype, "_devices", void 0), G([w()], $.prototype, "_states", void 0), G([w()], $.prototype, "_evaluations", void 0), G([w()], $.prototype, "_health", void 0), G([w()], $.prototype, "_healthError", void 0), G([w()], $.prototype, "_careHistory", void 0), G([w()], $.prototype, "_historyRole", void 0), G([w()], $.prototype, "_historyRange", void 0), G([w()], $.prototype, "_history", void 0), G([w()], $.prototype, "_careError", void 0), G([w()], $.prototype, "_careDate", void 0), G([w()], $.prototype, "_careNote", void 0), G([w()], $.prototype, "_careKind", void 0), G([w()], $.prototype, "_careFields", void 0), G([w()], $.prototype, "_careEditingId", void 0), G([w()], $.prototype, "_registryError", void 0), G([w()], $.prototype, "_areaReview", void 0), G([w()], $.prototype, "_overview", void 0), G([w()], $.prototype, "_overviewError", void 0), G([w()], $.prototype, "_thumbnails", void 0), G([w()], $.prototype, "_watering", void 0), G([w()], $.prototype, "_edits", void 0), G([w()], $.prototype, "_conflict", void 0), G([w()], $.prototype, "_allSensors", void 0), G([w()], $.prototype, "_preview", void 0), G([w()], $.prototype, "_provider", void 0), G([w()], $.prototype, "_query", void 0), G([w()], $.prototype, "_results", void 0), G([w()], $.prototype, "_related", void 0), G([w()], $.prototype, "_imageUrl", void 0), G([w()], $.prototype, "_imageLoading", void 0), G([w()], $.prototype, "_imageError", void 0), G([w()], $.prototype, "_dialog", void 0), G([w()], $.prototype, "_restEditor", void 0), G([w()], $.prototype, "_taskEditor", void 0), G([w()], $.prototype, "_automateTaskId", void 0), G([w()], $.prototype, "_carePending", void 0), G([w()], $.prototype, "_careTaskId", void 0), G([w()], $.prototype, "_wizardStarted", void 0), G([w()], $.prototype, "_creationNotice", void 0), G([w()], $.prototype, "_creationPhoto", void 0), G([w()], $.prototype, "_createdPlantId", void 0), G([w()], $.prototype, "_thresholdRole", void 0), G([w()], $.prototype, "_thresholdEdits", void 0), G([w()], $.prototype, "_thresholdBaseline", void 0), G([w()], $.prototype, "_thresholdError", void 0), G([w()], $.prototype, "_thresholdSaved", void 0), G([w()], $.prototype, "_pendingThresholdSwitch", void 0), G([w()], $.prototype, "_sourceRole", void 0), G([w()], $.prototype, "_sourceEdits", void 0), G([w()], $.prototype, "_sourceBaseline", void 0), G([w()], $.prototype, "_sourceError", void 0), G([w()], $.prototype, "_sourceUnavailable", void 0), G([w()], $.prototype, "_sourceSaved", void 0), G([w()], $.prototype, "_pendingSourceSwitch", void 0), G([w()], $.prototype, "_sourceMode", void 0), G([w()], $.prototype, "_moistureMode", void 0), G([w()], $.prototype, "_expanded", void 0), G([w()], $.prototype, "_settingsOpen", void 0), G([w()], $.prototype, "_careFilter", void 0), G([w()], $.prototype, "_careFormOpen", void 0), G([w()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);
 //#endregion
 export { $ as SmartPlantsPanel };

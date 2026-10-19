@@ -18,9 +18,9 @@ import { RANGE_SPECS, isHistoryRange } from "./history-model.js";
 import type { HistoryPoint, HistoryRange } from "./history-model.js";
 import { CARE_ICONS, CARE_KINDS, DETAIL_SECTIONS, SECTION_LABELS, careDetails, expander, formatDuration, friendlyName, headerReason, readingPhrase, plantStyles, readingsInOrder, renderHistoryCard, renderKeyReadings, renderReadingRow, reportedAt } from "./views/plant.js";
 import type { DetailSection, HistoryStatus } from "./views/plant.js";
-import { TASK_KINDS, careOnlyChange, draftFromTask, localDate, matchingTask, pickMonth, presetDraft, taskChanges, taskEntityUniqueIds, taskName, validateDraft } from "./care-plan.js";
-import type { TaskDraft } from "./care-plan.js";
-import { carePlanStyles, renderAutomate, renderCarePlan, renderTaskEditor, taskEditorTitle } from "./views/care-plan.js";
+import { TASK_KINDS, careOnlyChange, draftFromTask, dueTasks, localDate, matchingTask, pickMonth, presetDraft, restDraft, restTaskChanges, summaryName, taskChanges, taskChip, taskEntityUniqueIds, taskName, validateDraft, validateRest } from "./care-plan.js";
+import type { RestDraft, TaskDraft } from "./care-plan.js";
+import { carePlanStyles, renderAutomate, renderCarePlan, renderRestEditor, renderTaskEditor, taskEditorTitle } from "./views/care-plan.js";
 import type { AutomateRow, TaskAction, TaskEditorState } from "./views/care-plan.js";
 
 // Per-role editable-threshold configuration. Adding a role here + wiring
@@ -210,7 +210,9 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _imageUrl: string | null = null;
   @state() private _imageLoading = false;
   @state() private _imageError: string | null = null;
-  @state() private _dialog: "delete" | "species" | "care_task" | "care_automate" | null = null;
+  @state() private _dialog: "delete" | "species" | "care_task" | "care_automate" | "care_rest" | null = null;
+  // Rest period editor draft.
+  @state() private _restEditor: { draft: RestDraft; error: string } | null = null;
   // Care task editor and the task shown in the Automate… sheet.
   @state() private _taskEditor: TaskEditorState | null = null;
   @state() private _automateTaskId: string | null = null;
@@ -747,7 +749,7 @@ export class SmartPlantsPanel extends LitElement {
     };
     const today = this._today();
     return html`${renderCarePlan({ l, plant, overview: this._overview[plant.id], today, timeZone: this._timeZone(), disabled: busy || this._blocked, pending: this._carePending,
-        onAdd: () => this._openTaskEditor(), onDone: task => void this._completeTask(plant.id, task), onAction: (task, action) => this._taskAction(plant, task, action) })}
+        onAdd: () => this._openTaskEditor(), onRest: () => this._openRestEditor(plant), onDone: task => void this._completeTask(plant.id, task), onAction: (task, action) => this._taskAction(plant, task, action) })}
       <div class="care-bar"><div class="row" role="group" aria-label=${l.t("care.filter_label")}>${filters.map(([kind, label]) => html`<button type="button" class="fchip" aria-pressed=${this._careFilter === kind ? "true" : "false"} @click=${() => { this._careFilter = kind; }}>${label}</button>`)}</div>
         <span class="spacer"></span><button type="button" class="btn filled" ?disabled=${this._blocked} @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("detail.log_care")}</button></div>
       ${this._careError ? html`<p class="error" role="alert">${this._careError}</p>` : nothing}
@@ -936,13 +938,13 @@ export class SmartPlantsPanel extends LitElement {
     void this.updateComplete.then(() => { if (context !== this._context || this._dialog !== kind) return; const dialog = this.shadowRoot?.querySelector("dialog"); if (dialog && !dialog.open) dialog.showModal(); dialog?.querySelector<HTMLElement>(kind === "delete" ? "button" : "h2")?.focus(); });
   }
   private _closeDialog(): void {
-    this.shadowRoot?.querySelector("dialog")?.close(); this._dialog = null; this._taskEditor = null; this._automateTaskId = null;
+    this.shadowRoot?.querySelector("dialog")?.close(); this._dialog = null; this._taskEditor = null; this._automateTaskId = null; this._restEditor = null;
     const target = this._focusReturn?.isConnected && !this._focusReturn.matches(":disabled") ? this._focusReturn : this.shadowRoot?.querySelector<HTMLElement>("h1");
     target?.focus(); this._focusReturn = null;
   }
   private _renderDialog() {
     if (!this._dialog || !this._base) return nothing;
-    if (this._dialog === "care_task" || this._dialog === "care_automate") return this._renderCareDialog(this._base.id);
+    if (this._dialog === "care_task" || this._dialog === "care_automate" || this._dialog === "care_rest") return this._renderCareDialog(this._base.id);
     const base = this._base; const preview = this._preview; const l = this._l;
     return html`<dialog aria-labelledby="dialog-title" @cancel=${(e: Event) => { e.preventDefault(); this._closeDialog(); }} @keydown=${(e: KeyboardEvent) => this._trapFocus(e)}><h2 id="dialog-title" tabindex="-1">${this._dialog === "delete" ? l.t("dialog.delete_title", { name: base.name }) : l.t("dialog.species_title")}</h2>
       ${this._dialog === "delete" ? html`<p>${l.t("dialog.delete_body")}</p>` : preview ? snapshotView(l, preview.snapshot, preview) : html`<p>${l.t("dialog.preview_invalid")}</p>`}
@@ -1020,6 +1022,52 @@ export class SmartPlantsPanel extends LitElement {
       this._toast(l.t(editor.taskId ? "care_plan.saved_toast" : "care_plan.added_toast", { name }));
     } catch (e) {
       if (context === this._context) this._setTaskEditor({ error: this._friendly(e) });
+    } finally {
+      if (context === this._context) { this._formBusy = false; void this._refresh(false); }
+    }
+  }
+  private _openRestEditor(plant: PlantRecord): void {
+    this._restEditor = { draft: restDraft(plant.rest_period ?? null, plant.care_tasks ?? []), error: "" };
+    this._openDialog("care_rest");
+  }
+  private _editRest(changes: Partial<RestDraft>): void {
+    const editor = this._restEditor;
+    if (!editor) return;
+    const draft = { ...editor.draft, ...changes };
+    // Once a save found a problem, it follows the edits live.
+    const error = editor.error ? ((check => check.error ? this._l.t(check.error) : "")(validateRest(draft))) : "";
+    this._restEditor = { draft, error };
+  }
+  // Saves the rest period, then the tasks whose "off during rest" setting
+  // changed. With `remove`, only clears the rest period; the tasks keep
+  // their setting for a later rest period.
+  private async _saveRest(plantId: string, remove = false): Promise<void> {
+    const editor = this._restEditor; const hass = this.hass; const l = this._l;
+    if (!editor || !hass || this._formBusy || this._blocked) return;
+    const checked = remove ? null : validateRest(editor.draft);
+    if (checked && !checked.rest) { this._restEditor = { ...editor, error: l.t(checked.error) }; return; }
+    const rest = checked?.rest ?? null;
+    const context = this._context;
+    this._formBusy = true; this._restEditor = { ...editor, error: "" }; this._request++;
+    try {
+      const before = this._plantById(plantId);
+      if (!before) return;
+      let plant = before;
+      if (JSON.stringify(rest) !== JSON.stringify(before.rest_period ?? null)) {
+        plant = await this._withRevision(plantId, revision => api.setRestPeriod(hass, plantId, revision, rest));
+        this._adopt(plant); this._followQuickWrite(plant);
+      }
+      if (!remove) {
+        for (const change of restTaskChanges(plant.care_tasks ?? [], editor.draft.off)) {
+          plant = await this._withRevision(plantId, revision => api.updateCareTask(hass, plantId, change.task.id, revision, { schedule: change.schedule }));
+          this._adopt(plant); this._followQuickWrite(plant);
+        }
+      }
+      if (context !== this._context) return;
+      this._formBusy = false; this._closeDialog();
+      this._toast(l.t(remove ? "care_plan.rest_removed_toast" : "care_plan.rest_saved_toast"));
+    } catch (e) {
+      if (context === this._context && this._restEditor) this._restEditor = { ...this._restEditor, error: this._friendly(e) };
     } finally {
       if (context === this._context) { this._formBusy = false; void this._refresh(false); }
     }
@@ -1113,6 +1161,15 @@ export class SmartPlantsPanel extends LitElement {
         onSave: () => void this._saveTask(plant.id),
         onCancel: () => this._closeDialog(),
         onDelete: () => { const task = plant.care_tasks?.find(item => item.id === editor.taskId); if (task) void this._deleteTask(plant.id, task); } });
+    } else if (this._dialog === "care_rest" && this._restEditor) {
+      const editor = this._restEditor;
+      title = l.t("care_plan.rest_period");
+      body = renderRestEditor({ l, plant, draft: editor.draft, error: editor.error, busy: this._formBusy || this._blocked,
+        onMonth: month => { const current = this._restEditor; if (current) this._editRest({ ...pickMonth(current.draft.startMonth, current.draft.endMonth, month) }); },
+        onToggle: (taskId, off) => { const current = this._restEditor; if (!current) return; const next = new Set(current.draft.off); if (off) next.add(taskId); else next.delete(taskId); this._editRest({ off: next }); },
+        onSave: () => void this._saveRest(plant.id),
+        onRemove: () => void this._saveRest(plant.id, true),
+        onCancel: () => this._closeDialog() });
     } else if (this._dialog === "care_automate") {
       const task = plant.care_tasks?.find(item => item.id === this._automateTaskId);
       if (task) {
@@ -1621,6 +1678,7 @@ export class SmartPlantsPanel extends LitElement {
           <div class="hero-meta">${areaId ? html`<span><ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${this._areaName(areaId)}</span>` : nothing}
             <span><ha-icon aria-hidden="true" icon="mdi:leaf"></ha-icon>${species ? html`<i>${species}</i>` : l.t("detail.no_species")}</span></div>
           ${o && chip ? html`<div class="hero-status"><sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip><span class="reason">${headerReason(l, o)}</span></div>` : nothing}
+          ${this._renderCareChips(plant, o)}
         </div>
         <div class="hero-actions">
           <button type="button" class="btn filled" ?disabled=${this._blocked || this._watering.has(plant.id) || !!this._conflict} @click=${() => void this._logWatering(plant.id)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${l.t("card.log_watering")}</button>
@@ -1629,6 +1687,18 @@ export class SmartPlantsPanel extends LitElement {
       </div>
       ${renderKeyReadings(l, o)}
     </div>`;
+  }
+  // Due care tasks under the status chip: at most two, then "+N".
+  private _renderCareChips(plant: PlantRecord, o: PlantOverview | undefined) {
+    const l = this._l; const due = dueTasks(o);
+    if (!due.length) return nothing;
+    const today = this._today();
+    const chips = due.slice(0, 2).map(state => {
+      const task = plant.care_tasks?.find(item => item.id === state.task_id);
+      const chip = task ? taskChip(l, state, task.schedule, today) : null;
+      return html`<li class="cchip tone-${chip?.tone ?? "care"}"><ha-icon aria-hidden="true" .icon=${chip?.icon ?? "mdi:calendar-clock"}></ha-icon><span>${summaryName(l, state)}${chip?.tone === "overdue" ? html`<span class="sr-only"> (${chip.text})</span>` : nothing}</span></li>`;
+    });
+    return html`<ul class="care-chips" aria-label=${l.t("care_plan.due_chips_label")}>${chips}${due.length > 2 ? html`<li class="cchip tone-later"><span aria-hidden="true">+${l.number(due.length - 2)}</span><span class="sr-only">${l.t("care_plan.more_due", { count: due.length - 2 })}</span></li>` : nothing}</ul>`;
   }
   private _renderTabs() {
     const l = this._l;

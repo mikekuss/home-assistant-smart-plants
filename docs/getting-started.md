@@ -15,15 +15,17 @@ The overview shows:
 
 - four summary tiles: **All plants**, **Needs water**, **Problems** (too wet, or another
   reading outside its target such as too little light or a low sensor battery) and
-  **Sensor issues** (no recent data, or no soil moisture sensor assigned). Select a tile to
-  show only those plants; select it again to show all plants.
+  **Sensor issues** (no recent data, or no soil moisture sensor assigned). Once a plant has a
+  care task, a fifth tile, **Care due**, counts the plants with a care task due today or
+  overdue. Select a tile to show only those plants; select it again to show all plants.
 - a search field that matches plant name, area, species, category and tags, and a sort menu:
   **Needs attention first** (the default), **Name**, or **Group by area**.
 - one card per plant with its photo, area and species, a status label with a short
   explanation (for example *Soil moisture 34% is below the minimum of 60%*), the soil
   moisture on a bar with its target range, the current value of every other assigned
   sensor, and when the plant was last watered. A plant without sensors shows **Assign**,
-  which opens its **Sensors** tab.
+  which opens its **Sensors** tab. When care tasks are due, one line names them, for example
+  *Care: Prune, Fertilize +1*.
 
 Each plant has one status, most urgent first: *Needs water*, *Too wet*, a named problem
 (such as *Too little light* or *Battery low*), *No recent data*, *No moisture sensor* (or
@@ -217,7 +219,8 @@ change the plant's health status.
 Select **Add task**, pick what you want to be reminded of, then choose when it is due:
 
 - **Repeating** – every so many days, weeks, months or years. The next date counts from the
-  day you last marked the task as done or skipped it, early or late.
+  day you last marked the task as done or skipped it, early or late. When the plant has a
+  rest period, **Only in the growing season** lets the task wait during the rest months.
 - **Once a year** – a range of months, for example March to April. Select the first month,
   then the last; a range can run past December, such as November to February. The task is due
   from the first day of the range to its end. If the range passes without a Done, the task
@@ -239,6 +242,26 @@ in your Home Assistant time zone. When a task is due, **Done** marks it as done 
   a button that opens the automation editor.
 - **Delete** – asks first. The task's entities are removed, so automations that use them stop
   working; its entries in the care history are kept.
+
+Due tasks also appear as small chips under the plant's status in the header, at most two
+followed by *+N*.
+
+### Rest period
+
+Many outdoor and Mediterranean plants grow little in winter and need no fertilizer then; most
+houseplants don't need a rest period. To set one, open the Care plan card's **⋮** menu and
+select **Set rest period**. Select the first rest month, then the last; a rest period can run
+past December, such as November to February, but can't cover the whole year. Below the
+months, choose which repeating tasks are **Off during rest**; for a new rest period,
+fertilizing is selected. Once-a-year tasks follow their own months, and watering alerts are
+not affected.
+
+The card then shows a rest row with the twelve months (rest months tinted, the current month
+outlined) and one sentence, for example *Growing season · 1 task off during rest* or
+*Resting until Mar 1 · 1 task off*. A task that waits shows *Resting until Mar 1* and is due
+again on the first day of the growing season, even if it was overdue before. **Edit** in the
+rest row changes the rest period; **Remove** in the editor clears it, and the tasks keep their
+setting for a later rest period.
 
 Every task has its own entities for automations; see [Entities](entities.md#care-tasks). To mark
 a task as done from an automation, for example from an NFC tag, use the
