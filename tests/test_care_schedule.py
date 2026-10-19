@@ -566,7 +566,21 @@ YEARLY_CASES = [
         SPRING,
         "2026-02-01",
         {"done": "2026-01-20", "created": "2025-12-01"},
-        scheduled("2026-03-01", 28, "2026-05-31"),
+        yearly_result("done", "2027-03-01", "2026-05-31"),
+    ),
+    (
+        "before window, skipped early for it",
+        SPRING,
+        "2026-02-01",
+        {"skipped": "2026-01-20", "created": "2025-12-01"},
+        yearly_result("skipped", "2027-03-01", "2026-05-31"),
+    ),
+    (
+        "before window, done early beats a missed last window",
+        SPRING,
+        "2026-02-01",
+        {"done": "2026-01-20", "created": "2025-01-01"},
+        yearly_result("done", "2027-03-01", "2026-05-31"),
     ),
     (
         "before window, created after last window",

@@ -252,6 +252,18 @@ def _yearly_state(
             window_end=end,
         )
 
+    # A Done or Skip shortly before the window opens already handles it.
+    upcoming = _counting_status((start, end), done_on, skipped_on)
+    if upcoming is not None:
+        next_start, _ = _month_window(start_month, end_month, start.year + 1)
+        return TaskState(
+            status=upcoming,
+            is_due=False,
+            next_due=next_start,
+            days=None,
+            window_end=end,
+        )
+
     previous = _previous_window(start_month, end_month, start)
     if (
         created_on <= previous[1]
