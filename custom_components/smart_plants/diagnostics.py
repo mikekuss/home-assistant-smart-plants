@@ -76,6 +76,10 @@ def _inventory_summary(snapshot: Any) -> dict[str, Any]:
     )
     role_source_counts = dict.fromkeys(source_roles, 0)
     image_count = 0
+    # Care tasks carry user-written names and instructions, so only their
+    # types are counted; no task text reaches diagnostics.
+    care_task_type_counts: dict[str, int] = {}
+    rest_period_count = 0
     for plant in snapshot.plants.values():
         lifecycle[plant.lifecycle_state] = lifecycle.get(plant.lifecycle_state, 0) + 1
         if plant.species is not None:
@@ -86,6 +90,11 @@ def _inventory_summary(snapshot: Any) -> dict[str, Any]:
             if config is not None:
                 role_source_counts[role] += len(config.sources)
         image_count += plant.image is not None
+        for task in plant.care_tasks:
+            care_task_type_counts[task.type] = (
+                care_task_type_counts.get(task.type, 0) + 1
+            )
+        rest_period_count += plant.rest_period is not None
     return {
         "schema_revision": snapshot.revision,
         "plant_count": len(snapshot.plants),
@@ -94,6 +103,9 @@ def _inventory_summary(snapshot: Any) -> dict[str, Any]:
         "assigned_source_count": sum(role_source_counts.values()),
         "assigned_source_counts_by_role": role_source_counts,
         "image_count": image_count,
+        "care_task_count": sum(care_task_type_counts.values()),
+        "care_task_type_counts": care_task_type_counts,
+        "rest_period_count": rest_period_count,
         "pending_operation_count": len(snapshot.pending_operations),
         "tombstone_count": len(snapshot.tombstones),
     }

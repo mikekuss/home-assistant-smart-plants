@@ -35,7 +35,34 @@ export function validPlant(v: unknown): boolean {
     (p === null || (object(p) && text(p.mode, 60) && nullableText(p.exposure, 60) && nullableText(p.rain_exposure, 60) && (p.container === null || typeof p.container === "boolean"))) &&
     (s === null || (object(s) && snapshot(s.snapshot) && object(s.snapshot) && s.provider === s.snapshot.provider)) &&
     (i === null || (object(i) && text(i.id, 200) && i.content_type === "image/webp" && integer(i.width, 1, 2048) && integer(i.height, 1, 2048) && timestamp(i.created_at))) &&
-    (v.care_events === undefined || (Array.isArray(v.care_events) && v.care_events.length <= 256 && v.care_events.every(validCareEvent)));
+    (v.care_events === undefined || (Array.isArray(v.care_events) && v.care_events.length <= 256 && v.care_events.every(validCareEvent))) &&
+    (v.care_tasks === undefined || validCareTasks(v.care_tasks)) &&
+    (v.rest_period === undefined || v.rest_period === null || monthRange(v.rest_period, ["start_month", "end_month"]));
+}
+const TASK_ID = /^[0-9a-f]{32}$/;
+const isoDate = (v: unknown) => typeof v === "string" && /^\d{4}-\d\d-\d\d$/.test(v) && Number.isFinite(Date.parse(v));
+const exactKeys = (v: Record<string, unknown>, keys: string[]) => Object.keys(v).length === keys.length && keys.every(key => Object.hasOwn(v, key));
+const monthRange = (v: unknown, keys: string[]) => object(v) && exactKeys(v, keys) && integer(v.start_month, 1, 12) && integer(v.end_month, 1, 12);
+const trimmed = (v: unknown, max: number) => text(v, max) && v === v.trim();
+function validSchedule(v: unknown): boolean {
+  if (!object(v)) return false;
+  if (v.kind === "yearly") return monthRange(v, ["kind", "start_month", "end_month"]);
+  return v.kind === "interval" && exactKeys(v, ["kind", "every", "unit", "growing_season_only"]) && integer(v.every, 1, 999) &&
+    ["days", "weeks", "months", "years"].includes(String(v.unit)) && typeof v.growing_season_only === "boolean";
+}
+export function validCareTask(v: unknown): boolean {
+  return object(v) && exactKeys(v, ["id", "type", "name", "schedule", "instructions", "baseline_done_on", "last_done_at", "last_skipped_on", "created_on"]) &&
+    typeof v.id === "string" && TASK_ID.test(v.id) && ["fertilize", "prune", "repot", "pests", "custom"].includes(String(v.type)) &&
+    (v.name === null ? v.type !== "custom" : trimmed(v.name, 60)) && validSchedule(v.schedule) &&
+    (v.instructions === null || trimmed(v.instructions, 500)) && (v.baseline_done_on === null || isoDate(v.baseline_done_on)) &&
+    (v.last_done_at === null || (timestamp(v.last_done_at) && String(v.last_done_at).endsWith("Z"))) &&
+    (v.last_skipped_on === null || isoDate(v.last_skipped_on)) && isoDate(v.created_on);
+}
+function validCareTasks(v: unknown): boolean {
+  if (!Array.isArray(v) || v.length > 20 || !v.every(validCareTask)) return false;
+  const tasks = v as Record<string, unknown>[];
+  const typed = tasks.map(task => task.type).filter(type => type !== "custom");
+  return new Set(tasks.map(task => task.id)).size === tasks.length && new Set(typed).size === typed.length;
 }
 // One malformed plant must not blank the whole panel: skip it with a console
 // warning and keep the rest of the inventory.
@@ -48,13 +75,14 @@ export function validPlantList(plants: unknown[]): unknown[] {
   });
 }
 export function validCareEvent(v: unknown): boolean {
-  if (!object(v) || v.schema_version !== 1 || !text(v.id, 36) || !["watering", "fertilizing", "pruning", "repotting", "note"].includes(String(v.kind)) || v.provenance !== "manual" ||
+  if (!object(v) || v.schema_version !== 2 || !text(v.id, 36) || !["watering", "fertilizing", "pruning", "repotting", "note", "task"].includes(String(v.kind)) ||
+    !["manual", "action", "automation"].includes(String(v.provenance)) || !(v.task_id === null || (typeof v.task_id === "string" && TASK_ID.test(v.task_id))) ||
     !timestamp(v.occurred_at) || !/(?:Z|[+-]\d\d:\d\d)$/.test(String(v.occurred_at)) ||
     typeof v.local_date !== "string" || !/^\d{4}-\d\d-\d\d$/.test(v.local_date) || v.local_date !== String(v.occurred_at).slice(0, 10) ||
     !timestamp(v.created_at) || !timestamp(v.updated_at) || !object(v.payload)) return false;
   const p = v.payload;
   const note = (value: unknown) => value === null || (text(value, 500) && value === value.trim());
-  if (v.kind === "watering") return Object.keys(p).length === 1 && note(p.note);
+  if (v.kind === "watering" || v.kind === "task") return Object.keys(p).length === 1 && Object.hasOwn(p, "note") && note(p.note);
   if (v.kind === "fertilizing") return Object.keys(p).length === 4 && (p.product === null || (text(p.product, 120) && p.product === p.product.trim())) &&
     (p.amount === null || (typeof p.amount === "number" && Number.isFinite(p.amount) && p.amount > 0 && p.amount <= 100000)) &&
     ((p.amount === null && p.unit === null) || (p.amount !== null && ["g", "mL"].includes(String(p.unit)))) && note(p.note);

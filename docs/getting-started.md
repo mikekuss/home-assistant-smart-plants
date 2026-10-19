@@ -195,7 +195,9 @@ Pruning, Repotting, Notes) filter the entries.
 | Note | Text (required, up to 1000 characters) |
 
 Notes can be up to 500 characters and other details up to 120. The **⋮** menu of an entry
-edits or deletes it. Each plant keeps up to 256 care entries.
+edits or deletes it. Each plant keeps up to 256 care entries; after that, the oldest
+waterings are removed to make room (see
+[Troubleshooting](troubleshooting.md#old-care-entries-disappeared)).
 
 Logging a **watering** pauses the plant's *Needs water* alert for 24 hours from the time you
 entered, giving the soil sensor time to catch up. See

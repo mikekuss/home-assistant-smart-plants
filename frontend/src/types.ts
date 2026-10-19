@@ -115,13 +115,46 @@ export interface PlantRecord {
   image: PlantImage | null;
   roles?: PlantRoles;
   care_events?: CareEvent[];
+  care_tasks?: CareTask[];
+  rest_period?: RestPeriod | null;
+}
+
+// Months are 1-12, inclusive at both ends; a range may wrap past December.
+export interface RestPeriod {
+  start_month: number;
+  end_month: number;
+}
+export interface IntervalSchedule {
+  kind: "interval";
+  every: number;
+  unit: "days" | "weeks" | "months" | "years";
+  growing_season_only: boolean;
+}
+export interface YearlySchedule {
+  kind: "yearly";
+  start_month: number;
+  end_month: number;
+}
+export type CareTaskType = "fertilize" | "prune" | "repot" | "pests" | "custom";
+export interface CareTask {
+  id: string;
+  type: CareTaskType;
+  // null means the translated default name for the type.
+  name: string | null;
+  schedule: IntervalSchedule | YearlySchedule;
+  instructions: string | null;
+  baseline_done_on: string | null;
+  last_done_at: string | null;
+  last_skipped_on: string | null;
+  created_on: string;
 }
 
 export interface CareEvent {
-  schema_version: 1;
+  schema_version: 2;
   id: string;
-  kind: "watering" | "fertilizing" | "pruning" | "repotting" | "note";
-  provenance: "manual";
+  kind: "watering" | "fertilizing" | "pruning" | "repotting" | "note" | "task";
+  provenance: "manual" | "action" | "automation";
+  task_id: string | null;
   occurred_at: string;
   local_date: string;
   created_at: string;

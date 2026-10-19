@@ -13,10 +13,11 @@ The file is designed to be safe to share. It contains:
 - OpenPlantBook connection status, such as whether a token and cached results exist,
 - inventory counts: number of plants, active vs. paused (`disabled`) plants, species
   sources, assigned sensor sources (in total and per role, for example moisture,
-  temperature, or battery), photos, and internal pending operations.
+  temperature, or battery), photos, care tasks per type, plants with a rest period, and
+  internal pending operations.
 
-It does **not** contain plant names, entity IDs, care history, or photos. Still, have a look
-at the file before attaching it publicly.
+It does **not** contain plant names, entity IDs, care history, care task names or
+instructions, or photos. Still, have a look at the file before attaching it publicly.
 
 > [!NOTE]
 > Each plant also has its own diagnostics in the panel: open the plant, go to the **Sensors**
@@ -128,10 +129,12 @@ Someone saved changes to the same plant in another browser tab or device while y
 editing. The panel keeps your edits and shows what changed. Review the differences before
 saving again.
 
-### "Care history is full"
+### Old care entries disappeared
 
-Each plant keeps up to 256 care entries. Delete old entries in the plant's **Care** tab to
-make room.
+Each plant keeps up to 256 care entries. When a new entry would go over that limit, Smart
+Plants removes one old entry to make room: first the oldest watering (never the latest one),
+then the oldest note, then the oldest entry that is not the latest of its type. Nothing is
+ever refused because the history is full.
 
 ## Report a bug
 

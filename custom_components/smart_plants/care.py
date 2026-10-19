@@ -1,4 +1,4 @@
-"""Version 1 manual care records and deterministic history summaries."""
+"""Care records, care task matching, and deterministic history summaries."""
 
 from __future__ import annotations
 
@@ -8,10 +8,31 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from types import MappingProxyType
-from typing import Any, Final, Self
+from typing import Any, Final, Protocol, Self
 from uuid import UUID
 
 MAX_CARE_EVENTS: Final = 256
+CARE_EVENT_SCHEMA_VERSION: Final = 2
+CARE_EVENT_KINDS: Final = (
+    "watering",
+    "fertilizing",
+    "pruning",
+    "repotting",
+    "note",
+    "task",
+)
+CARE_PROVENANCES: Final = ("manual", "action", "automation")
+CARE_TASK_TYPES: Final = ("fertilize", "prune", "repot", "pests", "custom")
+# Care task types without a dedicated event kind log the generic ``task`` kind.
+CARE_TASK_TYPE_KINDS: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "fertilize": "fertilizing",
+        "prune": "pruning",
+        "repot": "repotting",
+        "pests": "task",
+        "custom": "task",
+    }
+)
 _MAX_TIMESTAMP_LENGTH: Final = 64
 _MAX_NOTE_LENGTH: Final = 500
 _MAX_FERTILIZER_AMOUNT: Final = 100_000
@@ -20,6 +41,7 @@ _OFFSET_TIME = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$"
 )
 _UTC_TIME = re.compile(r"^\d{4}-\d{2}-\d{2}T.*Z$")
+_TASK_ID = re.compile(r"^[0-9a-f]{32}$")
 
 
 def parse_occurred_at(value: object) -> datetime:
@@ -40,7 +62,8 @@ def parse_occurred_at(value: object) -> datetime:
     return parsed
 
 
-def _server_time(value: object, label: str) -> datetime:
+def parse_utc_timestamp(value: object, label: str) -> datetime:
+    """Parse a server-written UTC timestamp such as ``2026-01-03T00:00:00Z``."""
     if (
         not isinstance(value, str)
         or len(value) > _MAX_TIMESTAMP_LENGTH
@@ -66,6 +89,28 @@ def clean_note(value: object) -> str | None:
     return value
 
 
+def utc_timestamp(value: datetime) -> str:
+    """Format an aware datetime as a UTC ISO timestamp with a ``Z`` suffix."""
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def validate_task_id(value: object) -> str:
+    """Return ``value`` if it is a care task id (``uuid4().hex``)."""
+    if not isinstance(value, str) or not _TASK_ID.fullmatch(value):
+        raise ValueError("care task id must be a UUID4 hex string")
+    if UUID(hex=value).version != _UUID_VERSION:
+        raise ValueError("care task id must be a UUID4 hex string")
+    return value
+
+
+def kind_for_task_type(task_type: str) -> str:
+    """Return the care event kind that records completion of ``task_type``."""
+    try:
+        return CARE_TASK_TYPE_KINDS[task_type]
+    except KeyError as err:
+        raise ValueError("unsupported care task type") from err
+
+
 @dataclass(frozen=True, slots=True)
 class CareEvent:
     id: str
@@ -76,7 +121,8 @@ class CareEvent:
     payload: Mapping[str, Any] = field(default_factory=dict)
     kind: str = "watering"
     provenance: str = "manual"
-    schema_version: int = 1
+    task_id: str | None = None
+    schema_version: int = CARE_EVENT_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "payload", MappingProxyType(dict(self.payload)))
@@ -92,6 +138,7 @@ class CareEvent:
             "kind",
             "provenance",
             "schema_version",
+            "task_id",
             "payload",
         }:
             raise ValueError("care event has invalid fields")
@@ -105,18 +152,22 @@ class CareEvent:
         if parsed_id.version != _UUID_VERSION or str(parsed_id) != identifier:
             raise ValueError("care event id must be a UUID4")
         occurred = parse_occurred_at(data["occurred_at"])
-        created = _server_time(data["created_at"], "created_at")
-        updated = _server_time(data["updated_at"], "updated_at")
+        created = parse_utc_timestamp(data["created_at"], "created_at")
+        updated = parse_utc_timestamp(data["updated_at"], "updated_at")
         if data["local_date"] != occurred.date().isoformat() or updated < created:
             raise ValueError("care event time or local date is inconsistent")
-        if data["schema_version"] != 1 or type(data["schema_version"]) is not int:
+        if (
+            data["schema_version"] != CARE_EVENT_SCHEMA_VERSION
+            or type(data["schema_version"]) is not int
+        ):
             raise ValueError("unsupported care event schema")
         kind = data["kind"]
-        if (
-            kind not in ("watering", "fertilizing", "pruning", "repotting", "note")
-            or data["provenance"] != "manual"
-        ):
+        provenance = data["provenance"]
+        if kind not in CARE_EVENT_KINDS or provenance not in CARE_PROVENANCES:
             raise ValueError("unsupported care event kind or provenance")
+        task_id = data["task_id"]
+        if task_id is not None:
+            validate_task_id(task_id)
         payload = data["payload"]
         validate_payload(kind, payload)
         return cls(
@@ -127,8 +178,9 @@ class CareEvent:
             updated_at=data["updated_at"],
             payload=dict(payload),
             kind=kind,
-            provenance="manual",
-            schema_version=1,
+            provenance=provenance,
+            task_id=task_id,
+            schema_version=CARE_EVENT_SCHEMA_VERSION,
         )
 
     def as_storage(self) -> dict[str, Any]:
@@ -137,6 +189,7 @@ class CareEvent:
             "id": self.id,
             "kind": self.kind,
             "provenance": self.provenance,
+            "task_id": self.task_id,
             "occurred_at": self.occurred_at,
             "local_date": self.local_date,
             "created_at": self.created_at,
@@ -177,12 +230,13 @@ def validate_payload(kind: object, payload: object) -> None:
         "pruning": {"part", "note"},
         "repotting": {"container", "medium", "note"},
         "note": {"text"},
+        "task": {"note"},
     }
     if not isinstance(kind, str) or kind not in schemas:
         raise ValueError("unsupported care event kind")
     if set(payload) != schemas[kind]:
         raise ValueError("care event payload has invalid fields")
-    if kind == "watering":
+    if kind in ("watering", "task"):
         clean_note(payload["note"])
     elif kind == "fertilizing":
         _text(payload["product"], "product", 120)
@@ -227,3 +281,85 @@ def care_summary(events: tuple[CareEvent, ...]) -> dict[str, Any]:
         "last_watered_at": latest.occurred_at if latest else None,
         "last_watered_local_date": latest.local_date if latest else None,
     }
+
+
+class CareTaskLike(Protocol):
+    """The care task attributes event matching relies on."""
+
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def type(self) -> str: ...
+
+
+def task_matches_event(task: CareTaskLike, event: CareEvent) -> bool:
+    """
+    Return whether ``event`` records a completion of ``task``.
+
+    An event linked to a task counts only for that task. An unlinked event
+    counts for the task whose type maps to the event's kind, so care logged
+    before a task existed (or logged without picking the task) still counts.
+    The generic ``task`` kind is shared by several task types and therefore
+    never matches without an explicit link.
+    """
+    if event.task_id is not None:
+        return event.task_id == task.id
+    return event.kind != "task" and CARE_TASK_TYPE_KINDS.get(task.type) == event.kind
+
+
+def newest_matching_occurred_at(
+    task: CareTaskLike, events: tuple[CareEvent, ...]
+) -> str | None:
+    """Return the newest matching ``occurred_at`` as a UTC timestamp, if any."""
+    instants = [
+        parse_occurred_at(event.occurred_at)
+        for event in events
+        if task_matches_event(task, event)
+    ]
+    return utc_timestamp(max(instants)) if instants else None
+
+
+def rotation_candidate(events: tuple[CareEvent, ...]) -> CareEvent | None:
+    """
+    Pick the event to drop so one more event fits into a full history.
+
+    Watering is logged most often and matters least once it is old, so the
+    oldest watering goes first. Notes follow. After that, any event goes,
+    oldest first, as long as it is not the newest event of its kind or of its
+    care task, so the latest entry of each kind and task always survives.
+    """
+    if not events:
+        return None
+    oldest_first = list(reversed(ordered_events(events)))
+    waterings = [event for event in oldest_first if event.kind == "watering"]
+    if len(waterings) > 1:
+        return waterings[0]
+    notes = [event for event in oldest_first if event.kind == "note"]
+    if notes:
+        return notes[0]
+    protected: set[str] = set()
+    seen_kinds: set[str] = set()
+    seen_tasks: set[str] = set()
+    for event in reversed(oldest_first):
+        if event.kind not in seen_kinds:
+            seen_kinds.add(event.kind)
+            protected.add(event.id)
+        if event.task_id is not None and event.task_id not in seen_tasks:
+            seen_tasks.add(event.task_id)
+            protected.add(event.id)
+    return next(
+        (event for event in oldest_first if event.id not in protected),
+        oldest_first[0],
+    )
+
+
+def rotate_for_append(events: tuple[CareEvent, ...]) -> tuple[CareEvent, ...]:
+    """Drop events until one more fits within ``MAX_CARE_EVENTS``."""
+    remaining = events
+    while len(remaining) >= MAX_CARE_EVENTS:
+        candidate = rotation_candidate(remaining)
+        if candidate is None:
+            break
+        remaining = tuple(event for event in remaining if event.id != candidate.id)
+    return remaining

@@ -9,7 +9,7 @@ import { button, click, deferred, harness, overviewFor, panelText, role, sample,
 const NOW = "2026-09-28T12:00:00+00:00";
 const soil: HAState = { entity_id: "sensor.mock_soil", state: "12", attributes: { friendly_name: "Kitchen Soil Probe", unit_of_measurement: "%", device_class: "moisture" }, last_updated: NOW };
 const backup: HAState = { entity_id: "sensor.mock_backup", state: "14", attributes: { friendly_name: "Backup Probe", unit_of_measurement: "%", device_class: "moisture" }, last_updated: NOW };
-const watered = (id: string, kind: CareEvent["kind"], day: string): CareEvent => ({ schema_version: 1, id, kind, provenance: "manual", occurred_at: `2026-09-${day}T10:00:00+00:00`, local_date: `2026-09-${day}`, created_at: NOW, updated_at: NOW, payload: kind === "note" ? { text: "Leaf" } : { note: null } });
+const watered = (id: string, kind: CareEvent["kind"], day: string): CareEvent => ({ schema_version: 2, id, kind, provenance: "manual", task_id: null, occurred_at: `2026-09-${day}T10:00:00+00:00`, local_date: `2026-09-${day}`, created_at: NOW, updated_at: NOW, payload: kind === "note" ? { text: "Leaf" } : { note: null } });
 
 function plantWithSensors(): PlantRecord {
   return { ...structuredClone(sample), roles: { moisture: { ...role, sources: [{ entity_id: "sensor.mock_soil", registry_id: null }, { entity_id: "sensor.mock_backup", registry_id: null }], primary_entity_id: "sensor.mock_soil" } } };
@@ -133,6 +133,21 @@ describe("plant page", () => {
     expect(root(el).querySelector("#care-form")).toBeNull();
     await click(el, "Log care");
     expect(root(el).querySelector("#care-form select")).not.toBeNull();
+  });
+  it("shows a care task entry like a note that can be deleted but not edited", async () => {
+    const task: CareEvent = { ...watered("t1", "task", "22"), provenance: "action", task_id: "0f8fad5bd9cb469fa16570867728950e", payload: { note: "Sprayed" } };
+    const events = [task, watered("w1", "watering", "20")];
+    const plant = { ...plantWithSensors(), care_events: events };
+    const { el } = await mount(plant, undefined, msg => msg.type === "smart_plants/care/list" ? { revision: 1, events, summary: { watering_count: 1, last_watered_at: events[1]!.occurred_at, last_watered_local_date: events[1]!.local_date } } : undefined);
+    expect(tabPanel(el).textContent).toContain("Care task done");
+    await click(el, "Care");
+    const entries = tabPanel(el).querySelectorAll("ul.list li");
+    expect(entries).toHaveLength(2);
+    expect(entries[0]!.textContent).toContain("Care task");
+    expect(entries[0]!.textContent).toContain("Sprayed");
+    expect(entries[0]!.querySelector('ha-dropdown-item[value="edit"]')).toBeNull();
+    expect(entries[0]!.querySelector('ha-dropdown-item[value="delete"]')).not.toBeNull();
+    expect(entries[1]!.querySelector('ha-dropdown-item[value="edit"]')).not.toBeNull();
   });
   it("removes a sensor and picks the main sensor from the row menu", async () => {
     const plant = plantWithSensors();

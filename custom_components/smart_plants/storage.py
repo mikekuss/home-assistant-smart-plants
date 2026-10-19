@@ -46,6 +46,8 @@ _MINOR_SPECIES_SNAPSHOTS: Final = 7
 _MINOR_TEMPERATURE_STRESS_OVERRIDES: Final = 8
 _MINOR_STRESS_THRESHOLD_OVERRIDES: Final = 9
 _MINOR_CARE_EVENTS: Final = 11
+_MINOR_CARE_TASKS: Final = 12
+_LEGACY_CARE_EVENT_SCHEMA: Final = 1
 _LEGACY_SPECIES_TEXT_MAX: Final = 500
 _INVENTORY_MAX_BYTES: Final = 8 * 1024 * 1024
 
@@ -375,6 +377,33 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                             "older storage cannot contain care events"
                         )
                     plant["care_events"] = []
+
+        if old_major_version == 1 and old_minor_version < _MINOR_CARE_TASKS:
+            # Minor 12 adds per-plant care tasks and an optional rest period,
+            # and links care events to tasks (care event schema 2). Existing
+            # plants start with no tasks and no rest period; existing events
+            # keep every field and gain an empty task link. Events in any
+            # other schema are left untouched so the strict load rejects them.
+            for plant in data["plants"]:
+                if not isinstance(plant, dict):
+                    continue
+                if "care_tasks" in plant or "rest_period" in plant:
+                    raise SmartPlantsInvalidStorageError(
+                        "older storage cannot contain care tasks or a rest period"
+                    )
+                plant["care_tasks"] = []
+                plant["rest_period"] = None
+                events = plant.get("care_events")
+                if isinstance(events, list):
+                    plant["care_events"] = [
+                        {**event, "schema_version": 2, "task_id": None}
+                        if isinstance(event, dict)
+                        and "task_id" not in event
+                        and event.get("schema_version") == _LEGACY_CARE_EVENT_SCHEMA
+                        and type(event.get("schema_version")) is int
+                        else event
+                        for event in events
+                    ]
 
         return data
 
