@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- A plant whose acquired date was stored as a plain date (for example `2024-03-01`, possible
+  through the websocket API or older data) no longer leaves the panel blank. The integration
+  now stores such dates as midnight UTC, and the panel skips a single malformed plant record
+  with a console warning instead of rejecting the whole plant list.
+
 ## [0.6.1] - 2026-10-06
 
 ### Changed

@@ -277,6 +277,13 @@ describe("detail saves and conflict review", () => {
     expect(h.calls.find(c => c.type === "smart_plants/plants/set_area")).toEqual({ type: "smart_plants/plants/set_area", plant_id: sample.id, expected_revision: 1, area_id: "garden" });
     expect(h.calls.filter(c => c.type === "smart_plants/plants/update").every(c => !("area_id" in c))).toBe(true);
   });
+  it("shows and round-trips a date-only acquired_at from older records", async () => {
+    const dated = { ...sample, acquired_at: "2024-03-01" };
+    const h = harness([dated]); const el = await detail(h.hass);
+    expect(field(el.shadowRoot!, "Date acquired (optional)").value).toBe("2024-03-01");
+    await fill(el, "Name", "Renamed"); await click(el, "Save placement and date");
+    expect(h.calls.find(c => c.type === "smart_plants/plants/update")).toMatchObject({ name: "Renamed", acquired_at: "2024-03-01T00:00:00.000Z" });
+  });
   it("refreshes conflicts, explains changed fields, retains dirty fields and requires explicit review/reapply", async () => {
     let plant = structuredClone(sample); let conflict = true; const writes: Record<string, unknown>[] = [];
     const h = harness([sample], msg => {

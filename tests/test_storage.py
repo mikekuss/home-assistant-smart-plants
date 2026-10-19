@@ -1037,6 +1037,7 @@ def test_tombstone_strict_validation_rejects(tombstone: dict[str, Any]) -> None:
     [
         ("created_at", "not-a-date"),
         ("acquired_at", "not-a-date"),
+        ("acquired_at", "2024-02-30"),
         ("id", " padded "),
         ("id", "x" * 201),
         ("name", ""),
@@ -1067,6 +1068,50 @@ def test_plant_record_strict_identity_and_timestamp_validation(
     }
     with pytest.raises(SmartPlantsInvalidStorageError):
         _snapshot_from_payload(payload)
+
+
+async def test_load_normalizes_date_only_acquired_at(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    plant: dict[str, Any] = {
+        "id": "plant-1",
+        "revision": 1,
+        "name": "Aloe",
+        "created_at": "2026-09-05T00:00:00Z",
+        "lifecycle_state": "active",
+        "acquired_at": "2024-03-01",
+        "species": None,
+        "placement": None,
+        "tags": [],
+        "category": None,
+        "image": None,
+        "roles": {"moisture": MoistureConfig().as_storage()},
+        "care_events": [],
+    }
+    timestamped = {**plant, "id": "plant-2", "acquired_at": "2024-03-01T08:30:00Z"}
+    _seed(
+        hass_storage,
+        major=STORAGE_MAJOR_VERSION,
+        minor=STORAGE_MINOR_VERSION,
+        data={
+            "revision": 1,
+            "plants": [plant, timestamped],
+            "pending_operations": [],
+            "tombstones": [],
+        },
+    )
+
+    store = SmartPlantsStore(hass)
+    snapshot = await store.async_load()
+    assert snapshot.plants["plant-1"].acquired_at == "2024-03-01T00:00:00+00:00"
+    assert snapshot.plants["plant-2"].acquired_at == "2024-03-01T08:30:00Z"
+
+    # The next write persists the normalized value, and it loads back unchanged.
+    await store.async_save(snapshot)
+    stored = hass_storage[STORAGE_KEY]["data"]["plants"][0]
+    assert stored["acquired_at"] == "2024-03-01T00:00:00+00:00"
+    reloaded = await SmartPlantsStore(hass).async_load()
+    assert reloaded.plants["plant-1"] == snapshot.plants["plant-1"]
 
 
 def test_live_plant_cannot_also_have_tombstone() -> None:

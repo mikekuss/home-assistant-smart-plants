@@ -53,6 +53,7 @@ from .models import (
     PlantSpecies,
     SensorSource,
     Tombstone,
+    normalize_acquired_at,
 )
 from .roles import require_role, role_definitions
 from .storage import SmartPlantsStorageError, SmartPlantsStore, _utcnow_iso
@@ -920,9 +921,7 @@ class SmartPlantsManager:
         cleaned_category = _validate_optional_short_string(
             category, "category", _CATEGORY_MAX_LEN
         )
-        cleaned_acquired_at = _validate_optional_iso_timestamp(
-            acquired_at, "acquired_at"
-        )
+        cleaned_acquired_at = _validate_acquired_at(acquired_at)
         cleaned_area_id = _validate_optional_area_id(area_id)
         cleaned_species = _validate_species(species, allow_provider=_accepted_provider)
         cleaned_placement = _validate_placement(placement)
@@ -1000,9 +999,7 @@ class SmartPlantsManager:
         if name is not _UNSET:
             changes["name"] = _validate_name(name)
         if acquired_at is not _UNSET:
-            changes["acquired_at"] = _validate_optional_iso_timestamp(
-                acquired_at, "acquired_at"
-            )
+            changes["acquired_at"] = _validate_acquired_at(acquired_at)
         if species is not _UNSET:
             changes["species"] = _validate_species(species)
         if placement is not _UNSET:
@@ -2689,3 +2686,8 @@ def _validate_optional_iso_timestamp(value: object, field_name: str) -> str | No
             f"plant {field_name} must be an ISO 8601 timestamp"
         ) from err
     return value
+
+
+def _validate_acquired_at(value: object) -> str | None:
+    cleaned = _validate_optional_iso_timestamp(value, "acquired_at")
+    return None if cleaned is None else normalize_acquired_at(cleaned)

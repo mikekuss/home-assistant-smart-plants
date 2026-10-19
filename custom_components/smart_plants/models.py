@@ -4,7 +4,7 @@ import json
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import UTC, date, datetime, time
 from types import MappingProxyType
 from typing import Any, Final, Literal, Self, TypeGuard, cast
 
@@ -244,6 +244,29 @@ def _optional_iso8601(value: object, field_name: str) -> str | None:
     if value is None:
         return None
     return _require_iso8601(value, field_name)
+
+
+def normalize_acquired_at(value: str) -> str:
+    """
+    Expand a calendar date such as ``2024-03-01`` to midnight UTC.
+
+    ``acquired_at`` is a full timezone-aware timestamp everywhere it is read
+    (the panel writes ``Date.toISOString()``), but the websocket API and older
+    stored data could carry a bare date. Midnight UTC matches what the panel
+    itself sends for a picked date, so both paths store the same value and the
+    displayed calendar date is unchanged. Anything that is not a bare date is
+    returned as-is; callers validate it separately.
+    """
+    try:
+        day = date.fromisoformat(value)
+    except ValueError:
+        return value
+    return datetime.combine(day, time.min, tzinfo=UTC).isoformat()
+
+
+def _optional_acquired_at(value: object, field_name: str) -> str | None:
+    timestamp = _optional_iso8601(value, field_name)
+    return None if timestamp is None else normalize_acquired_at(timestamp)
 
 
 def _optional_str(value: object, field_name: str) -> str | None:
@@ -2634,7 +2657,9 @@ class PlantRecord:
             name=_require_bounded_trimmed_str(data.get("name"), "plant name", 200),
             created_at=_require_iso8601(data.get("created_at"), "plant created_at"),
             lifecycle_state=lifecycle_state,
-            acquired_at=_optional_iso8601(data.get("acquired_at"), "plant acquired_at"),
+            acquired_at=_optional_acquired_at(
+                data.get("acquired_at"), "plant acquired_at"
+            ),
             species=PlantSpecies.from_storage(species_data)
             if species_data is not None
             else None,
