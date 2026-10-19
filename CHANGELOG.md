@@ -8,6 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Care plan on the plant's **Care** tab: reminders for fertilizing, pruning, repotting, pest
+  checks and your own tasks, repeating or once a year, with **Done**, **Skip this time** and
+  **Undo**, and an **Automate…** sheet with the task's entities. See
+  [Getting started](docs/getting-started.md#care-plan).
 - Two actions for automations and scripts: `smart_plants.log_care` logs care for one or more
   plants or marks care tasks as done, and `smart_plants.skip_care_task` skips a care task's
   current occurrence. Use them, for example, to log a watering when you scan an NFC tag or
@@ -20,6 +24,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- Care entries that mark a care task as done keep their care type when edited, and entries of
+  pest checks and custom tasks show the task's name. Their note and time can now be edited.
+- A change made elsewhere that only affects care, such as a task marked as done by an
+  automation, no longer pauses saving on the plant page.
 - Every logged watering now keeps *Needs water* off for 24 hours, including waterings logged
   with the `smart_plants.log_care` action, exactly like the panel's **Watered** button.
 - Plainer wording in the panel, in English and German: error messages, the notice shown when

@@ -228,6 +228,9 @@ export interface HomeAssistantLike {
     is_admin?: boolean;
     name?: string;
   };
+  // Core configuration; the panel reads the Home Assistant time zone so care
+  // dates match the dates the backend computes.
+  config?: { time_zone?: unknown };
   // Home Assistant frontend supplies `localize` on the hass object. It may
   // return the empty string when a key is unknown; callers must fall back.
   localize?: (key: string, ...args: unknown[]) => string;

@@ -58,7 +58,7 @@ describe("manual watering", () => {
     note = [...panel.shadowRoot!.querySelectorAll("label")].find(label => label.textContent?.includes("Note (optional)"))!.querySelector("input")!;
     note.value = "Retry me"; note.dispatchEvent(new Event("input", { bubbles: true }));
     await settle(panel);
-    plant.revision++; // another admin edited this plant
+    plant.revision++; plant.category = "succulent"; // another admin edited this plant
     await click(panel, "Refresh"); await settle(panel);
     expect(panel.shadowRoot?.textContent).toContain("This plant was changed somewhere else");
     note = [...panel.shadowRoot!.querySelectorAll("label")].find(label => label.textContent?.includes("Note (optional)"))!.querySelector("input")!;

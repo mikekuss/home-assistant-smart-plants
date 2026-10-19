@@ -120,6 +120,47 @@ state.seedDiagnostics = () => {
     state.states.push({ entity_id: eid, state: value, attributes: { friendly_name: `Diagnostics ${role}`, ...attrs }, last_updated: now });
   });
 };
+// Opt-in care plan for the first plant: a Fertilize task that was never done
+// (due today), a pest check done three days ago and a yearly pruning task,
+// plus the registry entries of their entities for the Automate sheet.
+const taskId = n => `${String(n).padStart(32, "0")}`;
+const today = () => new Date().toISOString().slice(0, 10);
+state.seedCare = () => {
+  const p = state.plants[0];
+  const done = new Date(Date.now() - 3 * 86400000).toISOString().replace(/\.\d+Z$/, "Z");
+  const task = (n, type, schedule, changes = {}) => ({ id: taskId(n), type, name: null, schedule, instructions: null, baseline_done_on: null, last_done_at: null, last_skipped_on: null, created_on: today(), ...changes });
+  p.care_tasks = [
+    task(1, "fertilize", { kind: "interval", every: 4, unit: "weeks", growing_season_only: true }),
+    task(2, "pests", { kind: "interval", every: 2, unit: "weeks", growing_season_only: false }, { last_done_at: done }),
+    task(3, "prune", { kind: "yearly", start_month: 3, end_month: 4 }),
+  ];
+  const registry = (n, entityId, uniqueId) => state.entities.push({ id: uuid(n), entity_id: entityId, device_id: `device-${p.id}`, unique_id: `smart_plants:${p.id}:${uniqueId}`, platform: "smart_plants" });
+  registry(610, "binary_sensor.office_aloe_fertilize", `care_task:${taskId(1)}:due`);
+  registry(611, "sensor.office_aloe_fertilize_next_due", `care_task:${taskId(1)}:next`);
+  registry(612, "binary_sensor.office_aloe_care_due", "care_due");
+};
+// A small stand-in for the backend schedule engine, enough for the panel's
+// chips: never done is due today, then every interval counts from the latest
+// Done or Skip; yearly tasks open on the first day of their first month.
+const UNIT_DAYS = { days: 1, weeks: 7, months: 30, years: 365 };
+const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 86400000);
+function careStateOf(task) {
+  const base = { task_id: task.id, type: task.type, name: task.name, window_end: null, resume_on: null };
+  const now = today();
+  if (task.schedule.kind === "yearly") {
+    const year = Number(now.slice(0, 4)); const start = `${year}-${String(task.schedule.start_month).padStart(2, "0")}-01`;
+    const next = start > now ? start : `${year + 1}${start.slice(4)}`;
+    return { ...base, status: "scheduled", is_due: false, next_due: next, days: dayDiff(next, now) };
+  }
+  const anchors = [task.last_done_at?.slice(0, 10), task.last_skipped_on, task.baseline_done_on].filter(Boolean).sort();
+  const anchor = anchors.at(-1);
+  if (!anchor) return { ...base, status: "due", is_due: true, next_due: task.created_on, days: null };
+  const next = new Date(Date.parse(anchor) + task.schedule.every * UNIT_DAYS[task.schedule.unit] * 86400000).toISOString().slice(0, 10);
+  const days = dayDiff(next, now);
+  if (days > 0) return { ...base, status: "scheduled", is_due: false, next_due: next, days };
+  if (days === 0) return { ...base, status: "due", is_due: true, next_due: next, days: null };
+  return { ...base, status: "overdue", is_due: true, next_due: next, days: -days };
+}
 // Mirrors the backend overview: one status per plant from the same evaluation
 // the entities use, plus the moisture reading and the last watering.
 function overviewOf(p) {
@@ -136,7 +177,7 @@ function overviewOf(p) {
     roles: sources.length ? { moisture: { value: e.computed_available ? e.computed_percent : null, unit: "%", state: e.needs_water ? "low" : e.too_wet ? "high" : e.sensor_stale ? "stale" : e.computed_available ? "ok" : "unavailable", range: { min: bound("min"), target: bound("target"), max: bound("max") }, last_reported: e.computed_available ? now : null, sources: sources.map(s => s.entity_id) } } : {},
     last_watered_at: watered?.occurred_at ?? null,
     image: p.image ? { id: p.image.id } : null,
-    care: [],
+    care: (p.care_tasks ?? []).map(careStateOf).sort((a, b) => ({ overdue: 0, due: 1 }[a.status] ?? 2) - ({ overdue: 0, due: 1 }[b.status] ?? 2) || (a.next_due ?? "").localeCompare(b.next_due ?? "")),
     rest_period: p.rest_period ?? null,
     resting: false,
   };
@@ -145,6 +186,7 @@ const params = new URLSearchParams(location.search);
 if (params.has("seed") || params.has("diagnostics")) state.seed();
 if (params.has("diagnostics")) state.seedDiagnostics();
 if (params.has("history")) state.seedHistory();
+if (params.has("care")) state.seedCare();
 const drafts = new Map();
 const previews = new Map();
 function preview(message) {
@@ -222,6 +264,38 @@ async function respond(message) {
       const updated = revise(p, {});
       const waterings = p.care_events.filter(e => e.kind === "watering").sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at) || a.id.localeCompare(b.id));
       return { plant: updated, summary: { watering_count: waterings.length, last_watered_at: waterings[0]?.occurred_at ?? null, last_watered_local_date: waterings[0]?.local_date ?? null } };
+    }
+    case "smart_plants/care_tasks/create": {
+      const task = { id: taskId(100 + p.care_tasks.length), type: message.task_type, name: message.name, schedule: copy(message.schedule), instructions: message.instructions, baseline_done_on: message.baseline_done_on, last_done_at: null, last_skipped_on: null, created_on: today() };
+      p.care_tasks.push(task);
+      return { plant: revise(p, {}), task_id: task.id };
+    }
+    case "smart_plants/care_tasks/update": {
+      const task = p.care_tasks.find(t => t.id === message.task_id); if (!task) reject("invalid_format");
+      for (const key of ["name", "schedule", "instructions", "baseline_done_on"]) if (Object.hasOwn(message, key)) task[key] = copy(message[key]);
+      return { plant: revise(p, {}) };
+    }
+    case "smart_plants/care_tasks/delete": p.care_tasks = p.care_tasks.filter(t => t.id !== message.task_id); return { plant: revise(p, {}) };
+    case "smart_plants/care_tasks/complete": {
+      const task = p.care_tasks.find(t => t.id === message.task_id); if (!task) reject("invalid_format");
+      const kind = { fertilize: "fertilizing", prune: "pruning", repot: "repotting" }[task.type] ?? "task";
+      const note = message.note ?? null;
+      const occurred = message.occurred_at ?? new Date().toISOString().replace(/\.\d+Z$/, "+00:00");
+      const payload = { fertilizing: { product: null, amount: null, unit: null, note }, pruning: { part: null, note }, repotting: { container: null, medium: null, note } }[kind] ?? { note };
+      const event = { schema_version: 2, id: uuid(900 + p.care_events.length), kind, provenance: "manual", task_id: task.id, occurred_at: occurred, local_date: occurred.slice(0, 10), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), payload };
+      p.care_events.push(event);
+      task.last_done_at = new Date(occurred).toISOString().replace(/\.\d+Z$/, "Z");
+      return { plant: revise(p, {}), event_id: event.id };
+    }
+    case "smart_plants/care_tasks/skip": {
+      const task = p.care_tasks.find(t => t.id === message.task_id); if (!task) reject("invalid_format");
+      const previous = task.last_skipped_on; task.last_skipped_on = today();
+      return { plant: revise(p, {}), previous_skipped_on: previous };
+    }
+    case "smart_plants/care_tasks/undo_skip": {
+      const task = p.care_tasks.find(t => t.id === message.task_id); if (!task) reject("invalid_format");
+      task.last_skipped_on = message.previous_skipped_on;
+      return { plant: revise(p, {}) };
     }
     case "smart_plants/wizard/start": {
       const draft = { draft_id: uuid(500 + drafts.size), draft_token: "d".repeat(43), revision: 0, expires_in: 600 };

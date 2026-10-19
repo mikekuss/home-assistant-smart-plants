@@ -103,7 +103,7 @@ The page has four tabs:
   *Automations* (links to the device page and to a new automation for this device).
 - **Sensors** – the sensors in use, the settings for readings with several sensors, and
   *Troubleshooting*.
-- **Care** – the care log.
+- **Care** – the care plan with your care reminders, and the care log.
 - **Settings** – name, area, photo, species, soil moisture targets, other targets, more
   details, and pausing or deleting the plant.
 
@@ -195,13 +195,54 @@ Pruning, Repotting, Notes) filter the entries.
 | Note | Text (required, up to 1000 characters) |
 
 Notes can be up to 500 characters and other details up to 120. The **⋮** menu of an entry
-edits or deletes it. Each plant keeps up to 256 care entries; after that, the oldest
+edits or deletes it. An entry that marks a care task as done keeps its care type when you edit
+it; pest checks and custom tasks appear under the task's name. Each plant keeps up to 256 care entries; after that, the oldest
 waterings are removed to make room (see
 [Troubleshooting](troubleshooting.md#old-care-entries-disappeared)).
 
 Logging a **watering** pauses the plant's *Needs water* alert for 24 hours from the time you
 entered, giving the soil sensor time to catch up. See
 [Sensors and health](sensors-and-health.md#manual-watering-grace).
+
+When the plant has a care task of the same type, a fertilizing, pruning or repotting entry
+also marks that task as done; the form says so below the care type.
+
+## Care plan
+
+The **Care plan** card at the top of the **Care** tab holds reminders for recurring care:
+fertilizing, pruning, repotting, checking for pests, and tasks of your own. A plant can have
+one task of each type plus any number of custom tasks, up to 20 in total. Care tasks never
+change the plant's health status.
+
+Select **Add task**, pick what you want to be reminded of, then choose when it is due:
+
+- **Repeating** – every so many days, weeks, months or years. The next date counts from the
+  day you last marked the task as done or skipped it, early or late.
+- **Once a year** – a range of months, for example March to April. Select the first month,
+  then the last; a range can run past December, such as November to February. The task is due
+  from the first day of the range to its end. If the range passes without a Done, the task
+  shows *Missed this year* and opens again the next year.
+
+A custom task needs a name; other tasks can keep their default name. **Instructions** are
+optional. Under **More options** you can enter when the task was last done; without a date, a
+repeating task is due right away.
+
+Each task shows its schedule, when it was last done, and its state, for example *Due today*,
+*Overdue 3 days*, *In 2 weeks*, *From Mar 1* or *Done for this year*. Dates are calendar dates
+in your Home Assistant time zone. When a task is due, **Done** marks it as done now, with
+**Undo** in the notification. The task's **⋮** menu offers:
+
+- **Mark as done…** – opens the care form, where you can pick another date and add a note.
+- **Skip this time** – the task counts as handled for now, with **Undo** in the notification.
+- **Edit** – change the name, schedule, instructions or last done date. The task type stays.
+- **Automate…** – the entity IDs of the task, a hint for the `smart_plants.log_care` action, and
+  a button that opens the automation editor.
+- **Delete** – asks first. The task's entities are removed, so automations that use them stop
+  working; its entries in the care history are kept.
+
+Every task has its own entities for automations; see [Entities](entities.md#care-tasks). To mark
+a task as done from an automation, for example from an NFC tag, use the
+[`smart_plants.log_care`](automations.md#log-care-with-actions) action.
 
 ## Plant photos
 

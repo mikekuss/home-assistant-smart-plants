@@ -349,7 +349,7 @@ describe("reviewed species and accessible destructive actions", () => {
     let plant = { ...sample, species: { provider: "openplantbook", snapshot } };
     const h = harness([plant], msg => msg.type === "smart_plants/plants/list" ? { plants: [plant] } : undefined);
     const el = await detail(h.hass); const trigger = button(el.shadowRoot!, "Preview species refresh"); trigger.focus(); await click(el, "Preview species refresh");
-    button(el.shadowRoot!, "Accept and apply reviewed species").focus(); plant = { ...plant, revision: 2 }; h.events.get("ready")!(); await settle(el);
+    button(el.shadowRoot!, "Accept and apply reviewed species").focus(); plant = { ...plant, revision: 2, category: "succulent" }; h.events.get("ready")!(); await settle(el);
     expect(el.shadowRoot?.activeElement).toBe(dialogCancel(el)); await cancelDialog(el);
     // Conflict disables the original trigger, so a subsequent review is required.
     await click(el, "Keep my edits"); trigger.focus(); await click(el, "Preview species refresh"); await cancelDialog(el); expect(el.shadowRoot?.activeElement).toBe(trigger);
@@ -382,7 +382,7 @@ describe("reviewed species and accessible destructive actions", () => {
   it("invalidates a species preview on revision change and never applies a stale token", async () => {
     let plant = { ...sample, species: { provider: "openplantbook", snapshot } };
     const h = harness([plant], msg => msg.type === "smart_plants/plants/list" ? { plants: [plant] } : undefined); const el = await detail(h.hass); await click(el, "Preview species refresh");
-    plant = { ...plant, revision: 2 }; h.events.get("ready")!(); await settle(el);
+    plant = { ...plant, revision: 2, category: "succulent" }; h.events.get("ready")!(); await settle(el);
     expect(button(el.shadowRoot!, "Accept and apply reviewed species").disabled).toBe(true); expect(h.calls.some(c => c.type === "smart_plants/species/apply")).toBe(false);
   });
 });
