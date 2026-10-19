@@ -1,4 +1,43 @@
 {
+  "entity": {
+    "binary_sensor": {
+      "care_task_fertilize": {
+        "default": "mdi:flask-outline"
+      },
+      "care_task_prune": {
+        "default": "mdi:content-cut"
+      },
+      "care_task_repot": {
+        "default": "mdi:pot-mix-outline"
+      },
+      "care_task_pests": {
+        "default": "mdi:bug-outline"
+      },
+      "care_task_custom": {
+        "default": "mdi:checkbox-marked-circle-outline"
+      },
+      "care_due": {
+        "default": "mdi:calendar-check-outline"
+      }
+    },
+    "sensor": {
+      "care_task_fertilize_next": {
+        "default": "mdi:flask-outline"
+      },
+      "care_task_prune_next": {
+        "default": "mdi:content-cut"
+      },
+      "care_task_repot_next": {
+        "default": "mdi:pot-mix-outline"
+      },
+      "care_task_pests_next": {
+        "default": "mdi:bug-outline"
+      },
+      "care_task_custom_next": {
+        "default": "mdi:checkbox-marked-circle-outline"
+      }
+    }
+  },
   "services": {
     "log_care": {
       "service": "mdi:watering-can"

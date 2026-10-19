@@ -9,11 +9,14 @@ Smart Plants ``sensor`` platform.
 Both entities become ``unavailable`` when the plant's moisture
 evaluation cannot produce a valid computed percent; they never emit a
 synthetic healthy value.
+
+Each care task also gets a "next due" timestamp sensor, managed by
+``CareEntityLifecycle`` and disabled by default.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -27,7 +30,16 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 
+from .care_entities import (
+    TASK_SUFFIX_NEXT,
+    CareEntityLifecycle,
+    compute_task_state,
+    next_due_timestamp,
+    task_role,
+    task_translation_key,
+)
 from .co2_evaluator import CO2_PARTS_PER_MILLION
+from .const import DOMAIN
 from .entity import (
     EntityFactory,
     SmartPlantsEntity,
@@ -37,13 +49,20 @@ from .illuminance_evaluator import LIGHT_LUX
 from .roles import EntityRole, RoleDefinition, entity_factories
 
 if TYPE_CHECKING:
+    import asyncio
+    from datetime import datetime
+
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+    from homeassistant.helpers.entity_platform import (
+        AddEntitiesCallback,
+        EntityPlatform,
+    )
 
+    from .events import PlantEvent
     from .health_evaluator import HealthEvaluation
     from .manager import SmartPlantsManager
-    from .models import PlantRecord
+    from .models import CareTask, PlantRecord
 
 
 PLATFORM = "sensor"
@@ -59,6 +78,11 @@ ROLE_BATTERY = "battery"
 ROLE_CONDUCTIVITY = "conductivity"
 ROLE_SOIL_TEMPERATURE = "soil_temperature"
 ROLE_CO2 = "co2"
+
+# Name of a "next due" sensor whose task has its own name. The translated
+# pattern is used once the platform translations are loaded.
+_NAMED_NEXT_DUE_KEY: Final = "care_task_named_next"
+_NAMED_NEXT_DUE_DEFAULT: Final = "{task_name} next due"
 
 
 class SmartPlantsSensorEntity(SmartPlantsEntity, SensorEntity):
@@ -689,6 +713,80 @@ class _Co2Sensor(SmartPlantsSensorEntity):
         return int(result.computed_ppm)
 
 
+class _CareTaskNextDueSensor(SmartPlantsSensorEntity):
+    """Local midnight of the day a care task is next due."""
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(
+        self, manager: SmartPlantsManager, plant_id: str, task: CareTask
+    ) -> None:
+        super().__init__(
+            manager,
+            plant_id,
+            task_role(task.id, TASK_SUFFIX_NEXT),
+            f"{task_translation_key(task.type)}_next",
+        )
+        self._task_id = task.id
+        self._sync_name(task)
+
+    def _task(self) -> tuple[PlantRecord, CareTask] | None:
+        plant = self._manager.snapshot.plants.get(self._plant_id)
+        if plant is None:
+            return None
+        task = plant.care_task(self._task_id)
+        return None if task is None else (plant, task)
+
+    def _sync_name(self, task: CareTask) -> None:
+        # A task's own name replaces the translated name of its type.
+        if task.name is None:
+            if hasattr(self, "_attr_name"):
+                del self._attr_name
+            return
+        platform_data = getattr(self, "platform_data", None)
+        pattern = None
+        if platform_data is not None:
+            pattern = platform_data.platform_translations.get(
+                f"component.{DOMAIN}.entity.{PLATFORM}.{_NAMED_NEXT_DUE_KEY}.name"
+            )
+        self._attr_name = (pattern or _NAMED_NEXT_DUE_DEFAULT).replace(
+            "{task_name}", task.name
+        )
+
+    def add_to_platform_start(
+        self,
+        hass: HomeAssistant,
+        platform: EntityPlatform,
+        parallel_updates: asyncio.Semaphore | None,
+    ) -> None:
+        super().add_to_platform_start(hass, platform, parallel_updates)
+        # Translations become available here, before the entity id and the
+        # registry name are derived from the entity name.
+        current = self._task()
+        if current is not None:
+            self._sync_name(current[1])
+
+    def _handle_manager_event(self, event: PlantEvent) -> None:
+        current = self._task()
+        if current is None:
+            # The task is gone; the care lifecycle removes this entity.
+            return
+        self._sync_name(current[1])
+        super()._handle_manager_event(event)
+
+    @property
+    def available(self) -> bool:
+        return super().available and self._task() is not None
+
+    @property
+    def native_value(self) -> datetime | None:
+        current = self._task()
+        if current is None:
+            return None
+        return next_due_timestamp(compute_task_state(*current).next_due)
+
+
 def _factory_moisture(
     manager: SmartPlantsManager, plant: PlantRecord
 ) -> SmartPlantsEntity:
@@ -766,15 +864,31 @@ def _factory_role(
 ROLE_FACTORIES = entity_factories(PLATFORM)
 
 
+def _factory_care_task_next(
+    manager: SmartPlantsManager, plant: PlantRecord, task: CareTask
+) -> SmartPlantsEntity:
+    return _CareTaskNextDueSensor(manager, plant.id, task)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    await async_setup_platform_lifecycle(
+    lifecycle = await async_setup_platform_lifecycle(
         hass,
         entry,
         async_add_entities,
         PLATFORM,
         ROLE_FACTORIES,
     )
+    care = CareEntityLifecycle(
+        hass,
+        entry.runtime_data.manager,
+        PLATFORM,
+        {TASK_SUFFIX_NEXT: _factory_care_task_next},
+        {},
+        async_add_entities,
+    )
+    lifecycle.async_on_unload(care.async_unload)
+    await care.async_setup()

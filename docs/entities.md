@@ -43,10 +43,14 @@ them in automations. You can rename entity IDs in Home Assistant like any other 
   battery) get their sensor and problem indicator the first time you assign a source to that
   role. If you later remove all sources, the entities stay (and read unavailable) so their
   history and your customizations are kept.
+- **Care task entities** are created when you add a care task and removed when you delete
+  it. *Care due* exists while the plant has at least one care task (see
+  [Care tasks](#care-tasks)).
 
-All entities are enabled by default, except the three moisture number entities, which are
-created disabled (see [Number entities](#number-entities)). Deleting a plant removes its device
-and all of its entities.
+All entities are enabled by default, except the three moisture number entities and the
+*next due* sensors of care tasks, which are created disabled (see
+[Number entities](#number-entities) and [Care tasks](#care-tasks)). Deleting a plant removes
+its device and all of its entities.
 
 ## Sensors
 
@@ -68,7 +72,8 @@ statistics for them. A sensor is unavailable when its role has no valid value (s
 
 ## Binary sensors
 
-All binary sensors use the *problem* device class: **on** means there is a problem.
+All binary sensors on this table use the *problem* device class: **on** means there is a
+problem. The care task binary sensors are described under [Care tasks](#care-tasks).
 
 | Entity name | Created | Category | Attributes |
 | --- | --- | --- | --- |
@@ -113,6 +118,63 @@ These show the effective moisture thresholds. Setting a value stores it as a per
 override, the same as editing it in the panel. A value that would break
 minimum < target < maximum (with at least 4 points between minimum and maximum) is rejected.
 
+## Care tasks
+
+Each care task gets its own entities. They are identified by the task, not by its name or
+type, so renaming a task or changing its schedule keeps the same entities, entity IDs, and
+history.
+
+| Entity | Platform | Created | Enabled | Device class | Attributes |
+| --- | --- | --- | --- | --- | --- |
+| Task (for example *Fertilize*) | Binary sensor | Per care task | Yes | – | `status`, `next_due`, `last_done`, `task_type` |
+| Task *next due* | Sensor | Per care task | No | timestamp | – |
+| Care due | Binary sensor | While the plant has a care task | Yes | – | `due_tasks`, `resting` |
+
+**Task binary sensor.** Named after the task type (*Fertilize*, *Prune*, *Repot*, *Check for
+pests*), or after the task's own name when it has one (always for custom tasks). Its state
+reads *Due* (on) on the day the task is due and while it is overdue, and *Not due* (off)
+otherwise. It has no device class, because a due task is a reminder rather than a problem.
+
+- `status`: `scheduled` (not due yet), `due` (due today, or inside its yearly window),
+  `overdue`, `resting` (paused during the rest period), `done` or `skipped` (this year's
+  window of a yearly task is handled), or `missed` (a yearly window closed without being
+  handled).
+- `next_due`: the date the task is next due (`YYYY-MM-DD`), or `null`.
+- `last_done`: the local date the task was last done (`YYYY-MM-DD`), or `null`.
+- `task_type`: `fertilize`, `prune`, `repot`, `pests`, or `custom`.
+
+**Next due sensor.** A timestamp sensor whose value is midnight, in the Home Assistant time
+zone, of the day the task is next due. It reads unknown when there is no next due date. It is
+**disabled by default**; enable it on the plant's device page like the
+[number entities](#number-entities) when you want to use it in an automation or a dashboard.
+
+**Care due.** On while any of the plant's care tasks is due or overdue.
+
+- `due_tasks`: the names of the tasks that are due, in the Home Assistant language.
+- `resting`: `true` while today is inside the plant's rest period.
+
+The states are recomputed when a task, the care history, or the rest period changes, just
+after midnight every day, and when the Home Assistant time zone changes. Tasks and the rest
+period are edited in the panel.
+
+Example: a reminder two days before fertilizing is due, using the enabled next due sensor
+(check the actual entity IDs on the device page). The time trigger's `offset` takes a
+duration such as `"-48:00:00"` for two days before:
+
+```yaml
+automation:
+  - alias: "Fertilizer reminder"
+    triggers:
+      - trigger: time
+        at:
+          entity_id: sensor.monstera_fertilize_next_due
+          offset: "-48:00:00"
+    actions:
+      - action: notify.notify
+        data:
+          message: "The Monstera needs fertilizer in two days."
+```
+
 ## Paused plants
 
 When you pause a plant in the panel (**Pause monitoring**), all of its entities stay
@@ -122,4 +184,5 @@ is kept.
 ## Not exposed as entities
 
 Care history (watering, fertilizing, and so on), species information, and photos are managed
-in the panel and are not exposed as entities.
+in the panel and are not exposed as entities. Care tasks are exposed as described under
+[Care tasks](#care-tasks).

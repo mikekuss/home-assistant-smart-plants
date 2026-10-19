@@ -169,6 +169,8 @@ async def test_reauthentication_updates_credentials(hass: HomeAssistant) -> None
     assert result["type"] == "abort"
     assert result["reason"] == "reauth_successful"
     assert entry.data[CONF_OPENPLANTBOOK_CLIENT_ID] == "new-client"
+    # The flow schedules a reload; let it finish before the test ends.
+    await hass.async_block_till_done()
 
 
 async def test_password_selector_never_prefills_existing_secret(

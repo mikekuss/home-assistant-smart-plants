@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from collections.abc import Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from typing import TYPE_CHECKING
 
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -244,6 +244,7 @@ class SmartPlantsPlatformLifecycle:
         self._owner: EntityPlatform | None = None
         self._operation_lock = asyncio.Lock()
         self._closing = False
+        self._on_unload: list[Callable[[], Awaitable[None]]] = []
 
     @property
     def platform(self) -> str:
@@ -276,11 +277,17 @@ class SmartPlantsPlatformLifecycle:
             self._handle_manager_event
         )
 
+    def async_on_unload(self, func: Callable[[], Awaitable[None]]) -> None:
+        """Run ``func`` when this lifecycle unloads, for helpers it owns."""
+        self._on_unload.append(func)
+
     async def async_unload(self) -> None:
         self._closing = True
         if self._unsub_manager is not None:
             self._unsub_manager()
             self._unsub_manager = None
+        while self._on_unload:
+            await self._on_unload.pop()()
         # The entities themselves are unregistered by HA via
         # ``async_will_remove_from_hass``; clear the local dedupe set
         # so a subsequent reload starts fresh without leaking a stale

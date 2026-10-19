@@ -12,12 +12,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   plants or marks care tasks as done, and `smart_plants.skip_care_task` skips a care task's
   current occurrence. Use them, for example, to log a watering when you scan an NFC tag or
   after your irrigation valve ran. See [Automations](docs/automations.md#log-care-with-actions).
+- Care task entities: a *due* binary sensor for every care task, a *next due* timestamp
+  sensor for every care task (disabled by default), and a *Care due* binary sensor per plant
+  that is on while any of its tasks is due. They update just after midnight, when a task, the
+  care history, or the rest period changes, and when the time zone changes. See
+  [Entities](docs/entities.md#care-tasks).
 
 ### Changed
 
 - Every logged watering now keeps *Needs water* off for 24 hours, including waterings logged
   with the `smart_plants.log_care` action, exactly like the panel's **Watered** button.
-
 - Plainer wording in the panel, in English and German: error messages, the notice shown when
   a plant was changed somewhere else, the threshold editor introductions and errors, the
   "no update for a while" reasons, and the **Show all sensors** option.
