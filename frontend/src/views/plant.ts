@@ -20,6 +20,8 @@ export const SECTION_LABELS: Record<DetailSection, MessageKey> = {
   settings: "detail.tab_settings",
 };
 
+// Kinds a person can log or filter by. Care task completions use the "task"
+// kind, which is only ever created by completing a task.
 export const CARE_KINDS: readonly CareEvent["kind"][] = ["watering", "fertilizing", "pruning", "repotting", "note"];
 export const CARE_ICONS: Record<CareEvent["kind"], string> = {
   watering: "mdi:water",
@@ -27,6 +29,7 @@ export const CARE_ICONS: Record<CareEvent["kind"], string> = {
   pruning: "mdi:content-cut",
   repotting: "mdi:shovel",
   note: "mdi:note-text-outline",
+  task: "mdi:clipboard-check-outline",
 };
 
 // The sensor's name as Home Assistant shows it, never its entity ID.

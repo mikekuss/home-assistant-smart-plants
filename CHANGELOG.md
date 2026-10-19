@@ -17,6 +17,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Assigned sensors** shows when each sensor last reported, the same time used to decide
   whether it is not updating.
 - The delete confirmation now says that the plant's care history is deleted too.
+- Care history no longer stops at 256 entries. When it is full, the oldest watering entries
+  are removed to make room (never the latest watering), then the oldest notes.
+- Integration diagnostics also count care tasks per type and plants with a rest period. Task
+  names and instructions are never included.
+- Storage moves to a new format that can hold care tasks and a rest period for each plant.
+  Existing data, including every care entry, is migrated automatically on the first start;
+  earlier versions cannot read the migrated data.
 
 ### Fixed
 

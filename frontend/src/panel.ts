@@ -642,7 +642,7 @@ export class SmartPlantsPanel extends LitElement {
   private _carePayload(): CareEvent["payload"] {
     const note = this._careNote.trim() || null;
     switch (this._careKind) {
-      case "watering": return { note };
+      case "watering": case "task": return { note };
       case "fertilizing": {
         const amount = this._careFields.amount?.trim() ? Number(this._careFields.amount) : null;
         return { product: this._careFields.product?.trim() || null, amount, unit: amount === null ? null : this._careFields.unit || null, note };
@@ -739,9 +739,9 @@ export class SmartPlantsPanel extends LitElement {
           const when = l.recordedDateTime(event.occurred_at);
           return html`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${CARE_ICONS[event.kind]}></ha-icon></span>
             <span class="li-main"><span class="li-title">${kindLabel(event.kind)}</span><span class="li-sub"><time datetime=${event.occurred_at}>${when}</time>${extra.map(part => html` · <span class="prose">${part}</span>`)}</span></span>
-            <ha-dropdown @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => { if (e.detail.item.value === "edit") { this._editCare(event); this._goTo("care", "#care-form select"); } else if (e.detail.item.value === "delete") void this._deleteCare(plant, event); }}>
+            <ha-dropdown @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => { if (e.detail.item.value === "edit" && event.kind !== "task") { this._editCare(event); this._goTo("care", "#care-form select"); } else if (e.detail.item.value === "delete") void this._deleteCare(plant, event); }}>
               <button slot="trigger" type="button" class="icon-btn" ?disabled=${busy} aria-label=${l.t("care.event_menu", { kind: kindLabel(event.kind), date: when })}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
-              <ha-dropdown-item value="edit" ?disabled=${busy}>${l.t("care.edit_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>
+              ${event.kind !== "task" ? html`<ha-dropdown-item value="edit" ?disabled=${busy}>${l.t("care.edit_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>` : nothing}
               <ha-dropdown-item value="delete" ?disabled=${busy}>${l.t("care.delete_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>
             </ha-dropdown></li>`;
         })}</ul>`}</section>

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "./api.js";
+import { validCareEvent, validCareTask, validPlant } from "./validation.js";
 import { draft, evaluation, harness, preview, sample, snapshot } from "./test-helpers.js";
-import type { CareEvent, WizardDraft } from "./types.js";
+import type { CareEvent, CareTask, WizardDraft } from "./types.js";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("untrusted runtime responses", () => {
@@ -16,7 +17,7 @@ describe("untrusted runtime responses", () => {
     await expect(api.createWizard(harness([], () => ({ plant: sample })).hass, withoutRoles)).resolves.toMatchObject({ id: sample.id });
   });
   it("accepts a second, newer watering even when the plant stores insertion order", async () => {
-    const first: CareEvent = { schema_version: 1, id: "e6e6553a-f34c-4d88-864c-c94a74f97dfa", kind: "watering", provenance: "manual", occurred_at: "2026-01-01T00:30:00+02:00", local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { note: null } };
+    const first: CareEvent = { schema_version: 2, id: "e6e6553a-f34c-4d88-864c-c94a74f97dfa", kind: "watering", provenance: "manual", task_id: null, occurred_at: "2026-01-01T00:30:00+02:00", local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { note: null } };
     const second: CareEvent = { ...first, id: "d4dab649-96a8-4daa-baa1-0a5b310cbfd7", occurred_at: "2026-01-02T12:00:00Z", local_date: "2026-01-02" };
     const plant = { ...sample, revision: 3, care_events: [first, second] };
     const summary = { watering_count: 2, last_watered_at: second.occurred_at, last_watered_local_date: second.local_date };
@@ -27,7 +28,7 @@ describe("untrusted runtime responses", () => {
     await expect(api.careHistory(harness([], () => ({ revision: 3, events: [first, second], summary })).hass, plant.id)).rejects.toMatchObject({ code: "invalid_response" });
   });
   it("orders distinct instants within one millisecond without using IDs as time", async () => {
-    const newer: CareEvent = { schema_version: 1, id: "00000000-0000-4000-8000-000000000001", kind: "watering", provenance: "manual", occurred_at: "2026-01-01T12:00:00.000002Z", local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { note: null } };
+    const newer: CareEvent = { schema_version: 2, id: "00000000-0000-4000-8000-000000000001", kind: "watering", provenance: "manual", task_id: null, occurred_at: "2026-01-01T12:00:00.000002Z", local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { note: null } };
     const older: CareEvent = { ...newer, id: "ffffffff-ffff-4fff-8fff-ffffffffffff", occurred_at: "2026-01-01T12:00:00.000001Z" };
     const summary = { watering_count: 2, last_watered_at: newer.occurred_at, last_watered_local_date: newer.local_date };
     const plant = { ...sample, revision: 3, care_events: [older, newer] };
@@ -36,7 +37,7 @@ describe("untrusted runtime responses", () => {
     await expect(api.careHistory(harness([], () => ({ revision: 3, events: [older, newer], summary })).hass, plant.id)).rejects.toMatchObject({ code: "invalid_response" });
   });
   it("uses ascending IDs to break equal-instant care event ties", async () => {
-    const lower: CareEvent = { schema_version: 1, id: "11111111-1111-4111-8111-111111111111", kind: "watering", provenance: "manual", occurred_at: "2026-01-01T00:30:00+02:00", local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { note: null } };
+    const lower: CareEvent = { schema_version: 2, id: "11111111-1111-4111-8111-111111111111", kind: "watering", provenance: "manual", task_id: null, occurred_at: "2026-01-01T00:30:00+02:00", local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { note: null } };
     const higher: CareEvent = { ...lower, id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee", occurred_at: "2025-12-31T22:30:00Z", local_date: "2025-12-31" };
     const summary = { watering_count: 2, last_watered_at: lower.occurred_at, last_watered_local_date: lower.local_date };
     const result = { revision: 3, events: [lower, higher], summary };
@@ -45,7 +46,7 @@ describe("untrusted runtime responses", () => {
   });
   it("binds care mutation replies to the requested payload, identity and revision", async () => {
     const occurredAt = "2026-01-01T12:00:00Z";
-    const event: CareEvent = { schema_version: 1, id: "e6e6553a-f34c-4d88-864c-c94a74f97dfa", kind: "pruning", provenance: "manual", occurred_at: occurredAt, local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { part: "tip", note: null } };
+    const event: CareEvent = { schema_version: 2, id: "e6e6553a-f34c-4d88-864c-c94a74f97dfa", kind: "pruning", provenance: "manual", task_id: null, occurred_at: occurredAt, local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { part: "tip", note: null } };
     const plant = { ...sample, revision: 2, care_events: [event] };
     const summary = { watering_count: 0, last_watered_at: null, last_watered_local_date: null };
     const requestPayload = { part: "tip", note: null };
@@ -124,5 +125,38 @@ describe("untrusted runtime responses", () => {
   it.each([{ code: "unknown_error", message: "Bearer private-token" }, { error: { code: "invalid_format", message: "client_secret=private" } }, new Error("private path"), { error: null }])("never exposes transport error details %#", async failure => {
     const h = harness([], () => { throw failure; });
     await expect(api.list(h.hass)).rejects.not.toHaveProperty("message", expect.stringContaining("private"));
+  });
+});
+
+describe("care tasks and linked care events", () => {
+  const task: CareTask = { id: "0f8fad5bd9cb469fa16570867728950e", type: "fertilize", name: null, schedule: { kind: "interval", every: 4, unit: "weeks", growing_season_only: true },
+    instructions: null, baseline_done_on: null, last_done_at: "2026-01-02T03:04:05Z", last_skipped_on: null, created_on: "2026-01-01" };
+  const event: CareEvent = { schema_version: 2, id: "e6e6553a-f34c-4d88-864c-c94a74f97dfa", kind: "task", provenance: "automation", task_id: task.id, occurred_at: "2026-01-01T00:30:00+02:00",
+    local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { note: "Sprayed" } };
+  it("accepts schema 2 events with task links, the task kind and every provenance", () => {
+    expect(validCareEvent(event)).toBe(true);
+    for (const provenance of ["manual", "action", "automation"]) expect(validCareEvent({ ...event, provenance })).toBe(true);
+    expect(validCareEvent({ ...event, kind: "watering", task_id: null, payload: { note: null } })).toBe(true);
+  });
+  it.each([{ schema_version: 1 }, { provenance: "provider" }, { task_id: "not-a-task" }, { task_id: undefined }, { payload: {} }, { payload: { text: "x" } }, { payload: { note: " x" } }])("rejects malformed care event %#", change => {
+    expect(validCareEvent({ ...event, ...change })).toBe(false);
+  });
+  it("accepts plants with care tasks and a rest period", () => {
+    const custom: CareTask = { ...task, id: "7c9e6679742540de944be07fc1f90ae7", type: "custom", name: "Mist", schedule: { kind: "yearly", start_month: 11, end_month: 2 } };
+    expect(validPlant({ ...sample, care_tasks: [task, custom], rest_period: { start_month: 11, end_month: 2 } })).toBe(true);
+    expect(validPlant({ ...sample, care_tasks: [], rest_period: null })).toBe(true);
+    expect(validPlant(sample)).toBe(true);
+    expect(validPlant({ ...sample, care_tasks: [task, { ...task, id: custom.id }] })).toBe(false);
+    expect(validPlant({ ...sample, care_tasks: [task, task] })).toBe(false);
+    expect(validPlant({ ...sample, care_tasks: Array.from({ length: 21 }, (_, i) => ({ ...custom, id: i.toString(16).padStart(32, "a") })) })).toBe(false);
+    expect(validPlant({ ...sample, care_tasks: {} })).toBe(false);
+    expect(validPlant({ ...sample, rest_period: { start_month: 0, end_month: 2 } })).toBe(false);
+    expect(validPlant({ ...sample, rest_period: { start_month: 1 } })).toBe(false);
+  });
+  it.each([{ id: "short" }, { type: "water" }, { type: "custom", name: null }, { name: " x" }, { name: "x".repeat(61) }, { instructions: "x".repeat(501) },
+    { schedule: { kind: "interval", every: 0, unit: "weeks", growing_season_only: true } }, { schedule: { kind: "interval", every: 2, unit: "hours", growing_season_only: true } },
+    { schedule: { kind: "yearly", start_month: 3, end_month: 13 } }, { schedule: { kind: "yearly", start_month: 3 } }, { last_done_at: "2026-01-02T03:04:05+01:00" },
+    { baseline_done_on: "2026-01-01T00:00:00Z" }, { created_on: null }, { extra: 1 }])("rejects malformed care task %#", change => {
+    expect(validCareTask({ ...task, ...change })).toBe(false);
   });
 });

@@ -16,15 +16,21 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from homeassistant.core import callback, valid_entity_id
+from homeassistant.util import dt as dt_util
 
 from .care import (
-    MAX_CARE_EVENTS,
+    CARE_PROVENANCES,
+    CARE_TASK_TYPES,
     CareEvent,
     care_summary,
     clean_note,
+    kind_for_task_type,
+    newest_matching_occurred_at,
     ordered_events,
     parse_occurred_at,
-    validate_payload,
+    parse_utc_timestamp,
+    rotate_for_append,
+    task_matches_event,
 )
 from .events import (
     EventCallback,
@@ -43,6 +49,9 @@ from .images import (
     write_image_file,
 )
 from .models import (
+    CARE_TASK_MAX_COUNT,
+    CareTask,
+    IntervalSchedule,
     InventorySnapshot,
     MoistureConfig,
     PendingOperation,
@@ -51,9 +60,16 @@ from .models import (
     PlantPlacement,
     PlantRecord,
     PlantSpecies,
+    RestPeriod,
     SensorSource,
     Tombstone,
+    YearlySchedule,
     normalize_acquired_at,
+    parse_care_schedule,
+    require_iso_date,
+    validate_care_task_instructions,
+    validate_care_task_name,
+    validate_care_tasks,
 )
 from .roles import require_role, role_definitions
 from .storage import SmartPlantsStorageError, SmartPlantsStore, _utcnow_iso
@@ -713,105 +729,87 @@ class SmartPlantsManager:
             "summary": care_summary(plant.care_events),
         }
 
-    async def async_add_watering(
+    async def async_add_watering(  # noqa: PLR0913
         self,
         plant_id: str,
         *,
-        expected_revision: int,
+        expected_revision: int | None,
         occurred_at: str,
         note: str | None,
+        provenance: str = "manual",
+        task_id: str | None = None,
     ) -> tuple[PlantRecord, CareEvent]:
-        self._raise_if_unavailable()
-        async with self._mutation_lock:
-            self._raise_if_unavailable()
-            current = self._require_plant(plant_id)
-            self._require_expected_revision(current, expected_revision)
-            try:
-                occurred = parse_occurred_at(occurred_at)
-                cleaned_note = clean_note(note)
-            except ValueError as err:
-                raise SmartPlantsValidationError(str(err)) from err
-            now = _utcnow_iso()
-            if occurred.astimezone(UTC) > datetime.fromisoformat(now):
-                raise SmartPlantsValidationError("care event cannot be in the future")
-            if len(current.care_events) >= MAX_CARE_EVENTS:
-                raise SmartPlantsValidationError("care history is full")
-            event = CareEvent(
-                id=str(uuid4()),
-                occurred_at=occurred_at,
-                local_date=occurred.date().isoformat(),
-                created_at=now,
-                updated_at=now,
-                payload={"note": cleaned_note},
-            )
-            updated = current.with_next_revision(
-                care_events=(*current.care_events, event)
-            )
-            await self._async_publish(self._snapshot.with_plant(updated))
-            change = PlantUpdatedEvent(
-                kind="plant_updated", plant=updated, previous=current
-            )
-            self._prepare_event(change)
-        await self._dispatch_event(change)
-        return updated, event
+        try:
+            cleaned_note = clean_note(note)
+        except ValueError as err:
+            raise SmartPlantsValidationError(str(err)) from err
+        return await self._async_append_care_event(
+            plant_id,
+            expected_revision=expected_revision,
+            kind="watering",
+            occurred_at=occurred_at,
+            payload={"note": cleaned_note},
+            provenance=provenance,
+            task_id=task_id,
+        )
 
-    async def async_add_care_event(
+    async def async_add_care_event(  # noqa: PLR0913
         self,
         plant_id: str,
         *,
-        expected_revision: int,
+        expected_revision: int | None,
         kind: str,
         occurred_at: str,
         payload: Mapping[str, Any],
+        provenance: str = "manual",
+        task_id: str | None = None,
     ) -> tuple[PlantRecord, CareEvent]:
-        """Validate and durably append any supported manual care event."""
-        if kind == "watering":
-            try:
-                validate_payload(kind, dict(payload))
-            except ValueError as err:
-                raise SmartPlantsValidationError(str(err)) from err
-            note = payload["note"]
-            return await self.async_add_watering(
-                plant_id,
-                expected_revision=expected_revision,
-                occurred_at=occurred_at,
-                note=note,
-            )
+        """Validate and durably append any supported care event."""
+        return await self._async_append_care_event(
+            plant_id,
+            expected_revision=expected_revision,
+            kind=kind,
+            occurred_at=occurred_at,
+            payload=payload,
+            provenance=provenance,
+            task_id=task_id,
+        )
+
+    async def _async_append_care_event(  # noqa: PLR0913
+        self,
+        plant_id: str,
+        *,
+        expected_revision: int | None,
+        kind: str,
+        occurred_at: str,
+        payload: Mapping[str, Any],
+        provenance: str,
+        task_id: str | None,
+    ) -> tuple[PlantRecord, CareEvent]:
         self._raise_if_unavailable()
         async with self._mutation_lock:
             self._raise_if_unavailable()
             current = self._require_plant(plant_id)
-            self._require_expected_revision(current, expected_revision)
-            if len(current.care_events) >= MAX_CARE_EVENTS:
-                raise SmartPlantsValidationError("care history is full")
-            try:
-                occurred = parse_occurred_at(occurred_at)
-                now = _utcnow_iso()
-                event = CareEvent.from_storage(
-                    {
-                        "schema_version": 1,
-                        "id": str(uuid4()),
-                        "kind": kind,
-                        "provenance": "manual",
-                        "occurred_at": occurred_at,
-                        "local_date": occurred.date().isoformat(),
-                        "created_at": now,
-                        "updated_at": now,
-                        "payload": dict(payload),
-                    }
+            self._require_optional_expected_revision(current, expected_revision)
+            if provenance not in CARE_PROVENANCES:
+                raise SmartPlantsValidationError(
+                    "care event provenance is not supported"
                 )
-            except ValueError as err:
-                raise SmartPlantsValidationError(str(err)) from err
-            if occurred.astimezone(UTC) > datetime.fromisoformat(now):
-                raise SmartPlantsValidationError("care event cannot be in the future")
-            updated = current.with_next_revision(
-                care_events=(*current.care_events, event)
+            if task_id is not None:
+                task = _require_care_task(current, task_id)
+                if kind_for_task_type(task.type) != kind:
+                    raise SmartPlantsValidationError(
+                        "care event kind does not match the care task"
+                    )
+            event = _build_care_event(
+                kind=kind,
+                occurred_at=occurred_at,
+                payload=payload,
+                provenance=provenance,
+                task_id=task_id,
             )
-            await self._async_publish(self._snapshot.with_plant(updated))
-            change = PlantUpdatedEvent(
-                kind="plant_updated", plant=updated, previous=current
-            )
-            self._prepare_event(change)
+            updated = current.with_next_revision(**_care_append_changes(current, event))
+            change = await self._async_publish_plant_change(current, updated)
         await self._dispatch_event(change)
         return updated, event
 
@@ -835,37 +833,25 @@ class SmartPlantsManager:
             )
             if existing is None:
                 raise SmartPlantsValidationError("care event not found")
-            try:
-                occurred = parse_occurred_at(occurred_at)
-                now = _utcnow_iso()
-                edited = CareEvent.from_storage(
-                    {
-                        "schema_version": 1,
-                        "id": existing.id,
-                        "kind": kind,
-                        "provenance": existing.provenance,
-                        "occurred_at": occurred_at,
-                        "local_date": occurred.date().isoformat(),
-                        "created_at": existing.created_at,
-                        "updated_at": now,
-                        "payload": dict(payload),
-                    }
-                )
-            except ValueError as err:
-                raise SmartPlantsValidationError(str(err)) from err
-            if occurred.astimezone(UTC) > datetime.fromisoformat(now):
-                raise SmartPlantsValidationError("care event cannot be in the future")
+            edited = _build_care_event(
+                kind=kind,
+                occurred_at=occurred_at,
+                payload=payload,
+                provenance=existing.provenance,
+                task_id=existing.task_id,
+                existing=existing,
+            )
+            events = tuple(
+                edited if event.id == event_id else event
+                for event in current.care_events
+            )
             updated = current.with_next_revision(
-                care_events=tuple(
-                    edited if event.id == event_id else event
-                    for event in current.care_events
-                )
+                care_events=events,
+                care_tasks=_recompute_last_done(
+                    current.care_tasks, events, (existing, edited)
+                ),
             )
-            await self._async_publish(self._snapshot.with_plant(updated))
-            change = PlantUpdatedEvent(
-                kind="plant_updated", plant=updated, previous=current
-            )
-            self._prepare_event(change)
+            change = await self._async_publish_plant_change(current, updated)
         await self._dispatch_event(change)
         return updated, edited
 
@@ -881,20 +867,248 @@ class SmartPlantsManager:
             self._raise_if_unavailable()
             current = self._require_plant(plant_id)
             self._require_expected_revision(current, expected_revision)
-            if not any(event.id == event_id for event in current.care_events):
+            existing = next(
+                (event for event in current.care_events if event.id == event_id), None
+            )
+            if existing is None:
                 raise SmartPlantsValidationError("care event not found")
+            events = tuple(
+                event for event in current.care_events if event.id != event_id
+            )
             updated = current.with_next_revision(
-                care_events=tuple(
-                    event for event in current.care_events if event.id != event_id
-                )
+                care_events=events,
+                care_tasks=_recompute_last_done(
+                    current.care_tasks, events, (existing,)
+                ),
             )
-            await self._async_publish(self._snapshot.with_plant(updated))
-            change = PlantUpdatedEvent(
-                kind="plant_updated", plant=updated, previous=current
-            )
-            self._prepare_event(change)
+            change = await self._async_publish_plant_change(current, updated)
         await self._dispatch_event(change)
         return updated
+
+    async def async_create_care_task(  # noqa: PLR0913
+        self,
+        plant_id: str,
+        *,
+        expected_revision: int,
+        task_type: str,
+        name: str | None,
+        schedule: Mapping[str, Any],
+        instructions: str | None,
+        baseline_done_on: str | None,
+    ) -> tuple[PlantRecord, CareTask]:
+        if task_type not in CARE_TASK_TYPES:
+            raise SmartPlantsValidationError("care task type is not supported")
+        self._raise_if_unavailable()
+        async with self._mutation_lock:
+            self._raise_if_unavailable()
+            current = self._require_plant(plant_id)
+            self._require_expected_revision(current, expected_revision)
+            if len(current.care_tasks) >= CARE_TASK_MAX_COUNT:
+                raise SmartPlantsValidationError(
+                    f"a plant can have at most {CARE_TASK_MAX_COUNT} care tasks"
+                )
+            task = CareTask(
+                id=uuid4().hex,
+                type=task_type,
+                name=_validate_task_name(task_type, name),
+                schedule=_validate_task_schedule(schedule),
+                instructions=_validate_task_instructions(instructions),
+                baseline_done_on=_validate_past_date(
+                    baseline_done_on, "baseline_done_on"
+                ),
+                last_done_at=None,
+                last_skipped_on=None,
+                created_on=_local_today(),
+            )
+            task = replace(
+                task,
+                last_done_at=newest_matching_occurred_at(task, current.care_events),
+            )
+            updated = current.with_next_revision(
+                care_tasks=_checked_tasks((*current.care_tasks, task))
+            )
+            change = await self._async_publish_plant_change(current, updated)
+        await self._dispatch_event(change)
+        return updated, task
+
+    async def async_update_care_task(  # noqa: PLR0913
+        self,
+        plant_id: str,
+        task_id: str,
+        *,
+        expected_revision: int,
+        name: str | None = _UNSET,
+        schedule: Mapping[str, Any] = _UNSET,
+        instructions: str | None = _UNSET,
+        baseline_done_on: str | None = _UNSET,
+    ) -> PlantRecord:
+        def change(task: CareTask) -> CareTask:
+            changes: dict[str, Any] = {}
+            if name is not _UNSET:
+                changes["name"] = _validate_task_name(task.type, name)
+            if schedule is not _UNSET:
+                changes["schedule"] = _validate_task_schedule(schedule)
+            if instructions is not _UNSET:
+                changes["instructions"] = _validate_task_instructions(instructions)
+            if baseline_done_on is not _UNSET:
+                changes["baseline_done_on"] = _validate_past_date(
+                    baseline_done_on, "baseline_done_on"
+                )
+            return replace(task, **changes)
+
+        updated, _previous = await self._async_change_care_task(
+            plant_id, task_id, expected_revision=expected_revision, change=change
+        )
+        return updated
+
+    async def async_delete_care_task(
+        self, plant_id: str, task_id: str, *, expected_revision: int
+    ) -> PlantRecord:
+        # Care events keep their task link so the history stays intact; a link
+        # to a deleted task simply matches no task any more.
+        self._raise_if_unavailable()
+        async with self._mutation_lock:
+            self._raise_if_unavailable()
+            current = self._require_plant(plant_id)
+            self._require_expected_revision(current, expected_revision)
+            _require_care_task(current, task_id)
+            updated = current.with_next_revision(
+                care_tasks=tuple(
+                    task for task in current.care_tasks if task.id != task_id
+                )
+            )
+            change = await self._async_publish_plant_change(current, updated)
+        await self._dispatch_event(change)
+        return updated
+
+    async def async_complete_care_task(  # noqa: PLR0913
+        self,
+        plant_id: str,
+        task_id: str,
+        *,
+        expected_revision: int | None,
+        occurred_at: str | None = None,
+        note: str | None = None,
+        provenance: str = "manual",
+    ) -> tuple[PlantRecord, CareEvent]:
+        """Log a care event that marks ``task_id`` as done."""
+        try:
+            cleaned_note = clean_note(note)
+        except ValueError as err:
+            raise SmartPlantsValidationError(str(err)) from err
+        task = _require_care_task(self._require_plant(plant_id), task_id)
+        kind = kind_for_task_type(task.type)
+        return await self._async_append_care_event(
+            plant_id,
+            expected_revision=expected_revision,
+            kind=kind,
+            occurred_at=occurred_at
+            if occurred_at is not None
+            else dt_util.now().replace(microsecond=0).isoformat(),
+            payload=_minimal_task_payload(kind, cleaned_note),
+            provenance=provenance,
+            task_id=task_id,
+        )
+
+    async def async_skip_care_task(
+        self, plant_id: str, task_id: str, *, expected_revision: int | None
+    ) -> tuple[PlantRecord, str | None]:
+        """Skip the current occurrence; return the previous skip date for undo."""
+        today = _local_today()
+        return await self._async_change_care_task(
+            plant_id,
+            task_id,
+            expected_revision=expected_revision,
+            change=lambda task: replace(task, last_skipped_on=today),
+        )
+
+    async def async_undo_skip_care_task(
+        self,
+        plant_id: str,
+        task_id: str,
+        *,
+        expected_revision: int,
+        previous_skipped_on: str | None,
+    ) -> PlantRecord:
+        try:
+            previous = (
+                None
+                if previous_skipped_on is None
+                else require_iso_date(previous_skipped_on, "previous_skipped_on")
+            )
+        except ValueError as err:
+            raise SmartPlantsValidationError(str(err)) from err
+        updated, _previous = await self._async_change_care_task(
+            plant_id,
+            task_id,
+            expected_revision=expected_revision,
+            change=lambda task: replace(task, last_skipped_on=previous),
+        )
+        return updated
+
+    async def async_set_rest_period(
+        self,
+        plant_id: str,
+        *,
+        expected_revision: int,
+        rest_period: Mapping[str, int] | None,
+    ) -> PlantRecord:
+        try:
+            parsed = (
+                None
+                if rest_period is None
+                else RestPeriod.from_storage(dict(rest_period))
+            )
+        except (TypeError, ValueError) as err:
+            raise SmartPlantsValidationError(str(err)) from err
+        self._raise_if_unavailable()
+        async with self._mutation_lock:
+            self._raise_if_unavailable()
+            current = self._require_plant(plant_id)
+            self._require_expected_revision(current, expected_revision)
+            updated = current.with_next_revision(rest_period=parsed)
+            change = await self._async_publish_plant_change(current, updated)
+        await self._dispatch_event(change)
+        return updated
+
+    async def _async_change_care_task(
+        self,
+        plant_id: str,
+        task_id: str,
+        *,
+        expected_revision: int | None,
+        change: Callable[[CareTask], CareTask],
+    ) -> tuple[PlantRecord, str | None]:
+        """Replace one task; return the new record and the old skip date."""
+        self._raise_if_unavailable()
+        async with self._mutation_lock:
+            self._raise_if_unavailable()
+            current = self._require_plant(plant_id)
+            self._require_optional_expected_revision(current, expected_revision)
+            task = _require_care_task(current, task_id)
+            replacement = change(task)
+            updated = current.with_next_revision(
+                care_tasks=_checked_tasks(
+                    tuple(
+                        replacement if item.id == task_id else item
+                        for item in current.care_tasks
+                    )
+                )
+            )
+            plant_change = await self._async_publish_plant_change(current, updated)
+        await self._dispatch_event(plant_change)
+        return updated, task.last_skipped_on
+
+    async def _async_publish_plant_change(
+        self, current: PlantRecord, updated: PlantRecord
+    ) -> PlantUpdatedEvent:
+        """Persist ``updated`` and queue its change event; call under the lock."""
+        await self._async_publish(self._snapshot.with_plant(updated))
+        change = PlantUpdatedEvent(
+            kind="plant_updated", plant=updated, previous=current
+        )
+        self._prepare_event(change)
+        return change
 
     async def async_create_plant(  # noqa: PLR0913
         self,
@@ -2226,6 +2440,14 @@ class SmartPlantsManager:
                 current.id, expected, current.revision
             )
 
+    @classmethod
+    def _require_optional_expected_revision(
+        cls, current: PlantRecord, expected: int | None
+    ) -> None:
+        """Check ``expected`` unless it is ``None`` (callers that cannot know it)."""
+        if expected is not None:
+            cls._require_expected_revision(current, expected)
+
     def _raise_if_unavailable(self) -> None:
         if self._closing or self._unavailable:
             raise SmartPlantsManagerUnavailableError(
@@ -2315,6 +2537,152 @@ class SmartPlantsManager:
                 "Smart Plants failed to persist snapshot"
             ) from err
         self._snapshot = snapshot
+
+
+def _local_today() -> str:
+    return dt_util.now().date().isoformat()
+
+
+def _require_care_task(plant: PlantRecord, task_id: object) -> CareTask:
+    task = plant.care_task(task_id) if isinstance(task_id, str) else None
+    if task is None:
+        raise SmartPlantsValidationError("care task not found")
+    return task
+
+
+def _checked_tasks(tasks: tuple[CareTask, ...]) -> tuple[CareTask, ...]:
+    try:
+        validate_care_tasks(tasks)
+    except ValueError as err:
+        raise SmartPlantsValidationError(str(err)) from err
+    return tasks
+
+
+def _clean_task_text(value: object) -> object:
+    """Trim submitted task text; blank text means "not set"."""
+    if isinstance(value, str):
+        return value.strip() or None
+    return value
+
+
+def _validate_task_name(task_type: str, name: object) -> str | None:
+    try:
+        return validate_care_task_name(task_type, _clean_task_text(name))
+    except ValueError as err:
+        raise SmartPlantsValidationError(str(err)) from err
+
+
+def _validate_task_instructions(value: object) -> str | None:
+    try:
+        return validate_care_task_instructions(_clean_task_text(value))
+    except ValueError as err:
+        raise SmartPlantsValidationError(str(err)) from err
+
+
+def _validate_task_schedule(value: object) -> IntervalSchedule | YearlySchedule:
+    try:
+        return parse_care_schedule(dict(value) if isinstance(value, Mapping) else value)
+    except ValueError as err:
+        raise SmartPlantsValidationError(str(err)) from err
+
+
+def _validate_past_date(value: object, field_name: str) -> str | None:
+    if value is None:
+        return None
+    try:
+        result = require_iso_date(value, field_name)
+    except ValueError as err:
+        raise SmartPlantsValidationError(str(err)) from err
+    if result > _local_today():
+        raise SmartPlantsValidationError(f"{field_name} cannot be in the future")
+    return result
+
+
+def _minimal_task_payload(kind: str, note: str | None) -> dict[str, Any]:
+    """Return the smallest valid payload of ``kind`` that carries ``note``."""
+    if kind == "fertilizing":
+        return {"product": None, "amount": None, "unit": None, "note": note}
+    if kind == "pruning":
+        return {"part": None, "note": note}
+    if kind == "repotting":
+        return {"container": None, "medium": None, "note": note}
+    return {"note": note}
+
+
+def _build_care_event(  # noqa: PLR0913
+    *,
+    kind: str,
+    occurred_at: str,
+    payload: Mapping[str, Any],
+    provenance: str,
+    task_id: str | None,
+    existing: CareEvent | None = None,
+) -> CareEvent:
+    """Validate a new or edited care event; edits keep identity and creation."""
+    try:
+        occurred = parse_occurred_at(occurred_at)
+        now = _utcnow_iso()
+        event = CareEvent.from_storage(
+            {
+                "schema_version": 2,
+                "id": existing.id if existing is not None else str(uuid4()),
+                "kind": kind,
+                "provenance": provenance,
+                "task_id": task_id,
+                "occurred_at": occurred_at,
+                "local_date": occurred.date().isoformat(),
+                "created_at": existing.created_at if existing is not None else now,
+                "updated_at": now,
+                "payload": dict(payload),
+            }
+        )
+    except (TypeError, ValueError) as err:
+        raise SmartPlantsValidationError(str(err)) from err
+    if occurred.astimezone(UTC) > parse_utc_timestamp(now, "now"):
+        raise SmartPlantsValidationError("care event cannot be in the future")
+    return event
+
+
+def _care_append_changes(current: PlantRecord, event: CareEvent) -> dict[str, Any]:
+    """
+    Return the record changes that append ``event`` to a plant's history.
+
+    A full history drops one old event first instead of refusing the new one.
+    Tasks the new event completes move ``last_done_at`` forward; a dropped
+    event never moves it back.
+    """
+    events = (*rotate_for_append(current.care_events), event)
+    tasks = tuple(
+        _later_done(task, newest_matching_occurred_at(task, events))
+        if task_matches_event(task, event)
+        else task
+        for task in current.care_tasks
+    )
+    return {"care_events": events, "care_tasks": tasks}
+
+
+def _later_done(task: CareTask, candidate: str | None) -> CareTask:
+    if candidate is None:
+        return task
+    if task.last_done_at is not None and parse_utc_timestamp(
+        task.last_done_at, "last_done_at"
+    ) >= parse_utc_timestamp(candidate, "last_done_at"):
+        return task
+    return replace(task, last_done_at=candidate)
+
+
+def _recompute_last_done(
+    tasks: tuple[CareTask, ...],
+    events: tuple[CareEvent, ...],
+    changed: tuple[CareEvent, ...],
+) -> tuple[CareTask, ...]:
+    """Recompute ``last_done_at`` for tasks an edited or deleted event touched."""
+    return tuple(
+        replace(task, last_done_at=newest_matching_occurred_at(task, events))
+        if any(task_matches_event(task, event) for event in changed)
+        else task
+        for task in tasks
+    )
 
 
 def _validate_primary_shape(primary_entity_id: object) -> None:

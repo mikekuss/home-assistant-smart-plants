@@ -122,3 +122,50 @@ async def test_diagnostics_count_sources_for_every_role(
     rendered = repr(diagnostics)
     for entity_id in entity_ids:
         assert entity_id not in rendered
+
+
+async def test_diagnostics_count_care_tasks_without_task_text(
+    hass: HomeAssistant,
+) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, unique_id=SINGLETON_UNIQUE_ID, data={})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    manager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    plant, task = await manager.async_create_care_task(
+        plant.id,
+        expected_revision=plant.revision,
+        task_type="custom",
+        name="Private task name",
+        schedule={"kind": "yearly", "start_month": 3, "end_month": 4},
+        instructions="Private task instructions",
+        baseline_done_on=None,
+    )
+    plant, _task = await manager.async_create_care_task(
+        plant.id,
+        expected_revision=plant.revision,
+        task_type="fertilize",
+        name=None,
+        schedule={
+            "kind": "interval",
+            "every": 4,
+            "unit": "weeks",
+            "growing_season_only": True,
+        },
+        instructions=None,
+        baseline_done_on=None,
+    )
+    await manager.async_set_rest_period(
+        plant.id,
+        expected_revision=plant.revision,
+        rest_period={"start_month": 11, "end_month": 2},
+    )
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    rendered = repr(diagnostics)
+    for private_value in ("Private task name", "Private task instructions", task.id):
+        assert private_value not in rendered
+    inventory = diagnostics["inventory"]
+    assert inventory["care_task_count"] == 2
+    assert inventory["care_task_type_counts"] == {"custom": 1, "fertilize": 1}
+    assert inventory["rest_period_count"] == 1

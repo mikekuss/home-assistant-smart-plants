@@ -6,9 +6,15 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, time
 from types import MappingProxyType
-from typing import Any, Final, Literal, Self, TypeGuard, cast
+from typing import Any, ClassVar, Final, Literal, Self, TypeGuard, cast
 
-from .care import MAX_CARE_EVENTS, CareEvent
+from .care import (
+    CARE_TASK_TYPES,
+    MAX_CARE_EVENTS,
+    CareEvent,
+    parse_utc_timestamp,
+    validate_task_id,
+)
 from .const import IMAGE_MAX_DIMENSION, IMAGE_OUTPUT_CONTENT_TYPE
 
 # Server-generated image ids are 32 lowercase hex chars (uuid4().hex).
@@ -2519,6 +2525,246 @@ def validate_moisture_threshold_order(
         )
 
 
+CARE_TASK_MAX_COUNT: Final = 20
+CARE_TASK_NAME_MAX_LEN: Final = 60
+CARE_TASK_INSTRUCTIONS_MAX_LEN: Final = 500
+CARE_INTERVAL_UNITS: Final = ("days", "weeks", "months", "years")
+CARE_INTERVAL_MAX_EVERY: Final = 999
+_FIRST_MONTH: Final = 1
+_LAST_MONTH: Final = 12
+_ISO_DATE_RE: Final = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _require_month(value: object, field_name: str) -> int:
+    if not _is_pure_int(value) or not _FIRST_MONTH <= value <= _LAST_MONTH:
+        raise ValueError(f"{field_name} must be a month number from 1 to 12")
+    return value
+
+
+def require_iso_date(value: object, field_name: str) -> str:
+    """Return ``value`` if it is a calendar date such as ``2026-03-01``."""
+    if not isinstance(value, str) or not _ISO_DATE_RE.fullmatch(value):
+        raise ValueError(f"{field_name} must be an ISO date (YYYY-MM-DD)")
+    try:
+        date.fromisoformat(value)
+    except ValueError as err:
+        raise ValueError(f"{field_name} must be an ISO date (YYYY-MM-DD)") from err
+    return value
+
+
+def _optional_iso_date(value: object, field_name: str) -> str | None:
+    return None if value is None else require_iso_date(value, field_name)
+
+
+def _parse_month_range(
+    data: object, context: str, extra_keys: frozenset[str] = frozenset()
+) -> tuple[int, int]:
+    if not isinstance(data, dict) or set(data) != {
+        "start_month",
+        "end_month",
+        *extra_keys,
+    }:
+        raise ValueError(f"{context} has invalid fields")
+    return (
+        _require_month(data["start_month"], f"{context} start_month"),
+        _require_month(data["end_month"], f"{context} end_month"),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class RestPeriod:
+    """
+    Months of the year a plant rests, inclusive at both ends.
+
+    The range may wrap past December (``11`` to ``2`` is November through
+    February); equal months mean a single month.
+    """
+
+    start_month: int
+    end_month: int
+
+    @classmethod
+    def from_storage(cls, data: object) -> Self:
+        start, end = _parse_month_range(data, "rest period")
+        return cls(start_month=start, end_month=end)
+
+    def as_storage(self) -> dict[str, Any]:
+        return {"start_month": self.start_month, "end_month": self.end_month}
+
+
+@dataclass(frozen=True, slots=True)
+class IntervalSchedule:
+    """Repeat a care task every ``every`` ``unit`` after it was last done."""
+
+    kind: ClassVar[Literal["interval"]] = "interval"
+    every: int
+    unit: str
+    growing_season_only: bool
+
+    @classmethod
+    def from_storage(cls, data: object) -> Self:
+        if not isinstance(data, dict) or set(data) != {
+            "kind",
+            "every",
+            "unit",
+            "growing_season_only",
+        }:
+            raise ValueError("interval schedule has invalid fields")
+        if data["kind"] != cls.kind:
+            raise ValueError("interval schedule kind must be interval")
+        every = data["every"]
+        if not _is_pure_int(every) or not 1 <= every <= CARE_INTERVAL_MAX_EVERY:
+            raise ValueError("interval schedule every must be from 1 to 999")
+        unit = data["unit"]
+        if unit not in CARE_INTERVAL_UNITS:
+            raise ValueError("interval schedule unit is not supported")
+        growing_season_only = data["growing_season_only"]
+        if not isinstance(growing_season_only, bool):
+            raise ValueError("interval schedule growing_season_only must be a boolean")
+        return cls(every=every, unit=unit, growing_season_only=growing_season_only)
+
+    def as_storage(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "every": self.every,
+            "unit": self.unit,
+            "growing_season_only": self.growing_season_only,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class YearlySchedule:
+    """Do a care task once a year within an inclusive, possibly wrapping, window."""
+
+    kind: ClassVar[Literal["yearly"]] = "yearly"
+    start_month: int
+    end_month: int
+
+    @classmethod
+    def from_storage(cls, data: object) -> Self:
+        start, end = _parse_month_range(data, "yearly schedule", frozenset({"kind"}))
+        if cast("dict[str, Any]", data)["kind"] != cls.kind:
+            raise ValueError("yearly schedule kind must be yearly")
+        return cls(start_month=start, end_month=end)
+
+    def as_storage(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "start_month": self.start_month,
+            "end_month": self.end_month,
+        }
+
+
+CareSchedule = IntervalSchedule | YearlySchedule
+
+
+def parse_care_schedule(data: object) -> CareSchedule:
+    """Parse a stored or submitted care task schedule by its ``kind``."""
+    kind = data.get("kind") if isinstance(data, dict) else None
+    if kind == IntervalSchedule.kind:
+        return IntervalSchedule.from_storage(data)
+    if kind == YearlySchedule.kind:
+        return YearlySchedule.from_storage(data)
+    raise ValueError("care task schedule kind must be interval or yearly")
+
+
+def validate_care_task_name(task_type: str, name: object) -> str | None:
+    if name is None:
+        if task_type == "custom":
+            raise ValueError("custom care tasks require a name")
+        return None
+    return _require_bounded_trimmed_str(name, "care task name", CARE_TASK_NAME_MAX_LEN)
+
+
+def validate_care_task_instructions(value: object) -> str | None:
+    if value is None:
+        return None
+    return _require_bounded_trimmed_str(
+        value, "care task instructions", CARE_TASK_INSTRUCTIONS_MAX_LEN
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class CareTask:
+    """
+    A recurring or yearly care reminder that belongs to one plant.
+
+    ``name`` is ``None`` when the translated default name for ``type`` should
+    be shown. ``baseline_done_on`` is the "last done" date the user entered;
+    ``last_done_at`` is maintained from the plant's care history.
+    """
+
+    id: str
+    type: str
+    name: str | None
+    schedule: CareSchedule
+    instructions: str | None
+    baseline_done_on: str | None
+    last_done_at: str | None
+    last_skipped_on: str | None
+    created_on: str
+
+    @classmethod
+    def from_storage(cls, data: object) -> Self:
+        if not isinstance(data, dict) or set(data) != {
+            "id",
+            "type",
+            "name",
+            "schedule",
+            "instructions",
+            "baseline_done_on",
+            "last_done_at",
+            "last_skipped_on",
+            "created_on",
+        }:
+            raise ValueError("care task has invalid fields")
+        task_type = data["type"]
+        if task_type not in CARE_TASK_TYPES:
+            raise ValueError("care task type is not supported")
+        last_done_at = data["last_done_at"]
+        if last_done_at is not None:
+            parse_utc_timestamp(last_done_at, "care task last_done_at")
+        return cls(
+            id=validate_task_id(data["id"]),
+            type=task_type,
+            name=validate_care_task_name(task_type, data["name"]),
+            schedule=parse_care_schedule(data["schedule"]),
+            instructions=validate_care_task_instructions(data["instructions"]),
+            baseline_done_on=_optional_iso_date(
+                data["baseline_done_on"], "care task baseline_done_on"
+            ),
+            last_done_at=last_done_at,
+            last_skipped_on=_optional_iso_date(
+                data["last_skipped_on"], "care task last_skipped_on"
+            ),
+            created_on=require_iso_date(data["created_on"], "care task created_on"),
+        )
+
+    def as_storage(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "type": self.type,
+            "name": self.name,
+            "schedule": self.schedule.as_storage(),
+            "instructions": self.instructions,
+            "baseline_done_on": self.baseline_done_on,
+            "last_done_at": self.last_done_at,
+            "last_skipped_on": self.last_skipped_on,
+            "created_on": self.created_on,
+        }
+
+
+def validate_care_tasks(tasks: tuple[CareTask, ...]) -> None:
+    """Enforce the per-plant task limits: count, unique ids, one task per type."""
+    if len(tasks) > CARE_TASK_MAX_COUNT:
+        raise ValueError(f"a plant can have at most {CARE_TASK_MAX_COUNT} care tasks")
+    if len({task.id for task in tasks}) != len(tasks):
+        raise ValueError("duplicate care task id")
+    typed = [task.type for task in tasks if task.type != "custom"]
+    if len(set(typed)) != len(typed):
+        raise ValueError("a plant can have only one care task of each type")
+
+
 @dataclass(frozen=True, slots=True)
 class PlantRecord:
     id: str
@@ -2535,10 +2781,16 @@ class PlantRecord:
     moisture: MoistureConfig = field(default_factory=MoistureConfig)
     extra_roles: Mapping[str, Any] = field(default_factory=dict)
     care_events: tuple[CareEvent, ...] = ()
+    care_tasks: tuple[CareTask, ...] = ()
+    rest_period: RestPeriod | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "extra_roles", _deep_freeze(self.extra_roles))
         object.__setattr__(self, "care_events", tuple(self.care_events))
+        object.__setattr__(self, "care_tasks", tuple(self.care_tasks))
+
+    def care_task(self, task_id: str) -> CareTask | None:
+        return next((task for task in self.care_tasks if task.id == task_id), None)
 
     def role_config(self, role: str) -> Any | None:
         if role == "moisture":
@@ -2553,7 +2805,7 @@ class PlantRecord:
         return replace(self, extra_roles=roles)
 
     @classmethod
-    def from_storage(cls, data: object, *, require_roles: bool = False) -> Self:  # noqa: PLR0912
+    def from_storage(cls, data: object, *, require_roles: bool = False) -> Self:  # noqa: PLR0912, PLR0915
         if not isinstance(data, dict):
             raise ValueError("plant record must be an object")
         _require_no_extra_keys(
@@ -2574,6 +2826,8 @@ class PlantRecord:
                     "moisture",
                     "roles",
                     "care_events",
+                    "care_tasks",
+                    "rest_period",
                 }
             ),
             "plant record",
@@ -2621,6 +2875,17 @@ class PlantRecord:
         care_events = tuple(CareEvent.from_storage(row) for row in raw_events)
         if len({event.id for event in care_events}) != len(care_events):
             raise ValueError("duplicate care event id")
+        if require_roles and ("care_tasks" not in data or "rest_period" not in data):
+            raise ValueError("plant care_tasks and rest_period are required")
+        raw_tasks = data.get("care_tasks", [])
+        if not isinstance(raw_tasks, list) or len(raw_tasks) > CARE_TASK_MAX_COUNT:
+            raise ValueError("plant care_tasks exceeds its limit or is invalid")
+        care_tasks = tuple(CareTask.from_storage(row) for row in raw_tasks)
+        validate_care_tasks(care_tasks)
+        rest_data = data.get("rest_period")
+        rest_period = (
+            RestPeriod.from_storage(rest_data) if rest_data is not None else None
+        )
         from .roles import ROLE_METADATA  # noqa: PLC0415
 
         for key, value in raw_roles.items():
@@ -2676,6 +2941,8 @@ class PlantRecord:
             moisture=moisture,
             extra_roles=extra_roles,
             care_events=care_events,
+            care_tasks=care_tasks,
+            rest_period=rest_period,
         )
 
     def as_storage(self) -> dict[str, Any]:
@@ -2704,6 +2971,10 @@ class PlantRecord:
             "category": self.category,
             "image": self.image.as_storage() if self.image is not None else None,
             "care_events": [event.as_storage() for event in self.care_events],
+            "care_tasks": [task.as_storage() for task in self.care_tasks],
+            "rest_period": self.rest_period.as_storage()
+            if self.rest_period is not None
+            else None,
             "roles": {
                 **extra_roles,
                 "moisture": self.moisture.as_storage(),

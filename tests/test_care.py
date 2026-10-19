@@ -37,10 +37,11 @@ from .test_websocket_api import _setup
 
 def _event(occurred: str = "2026-01-01T00:30:00+02:00") -> dict[str, Any]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "id": "e6e6553a-f34c-4d88-864c-c94a74f97dfa",
         "kind": "watering",
         "provenance": "manual",
+        "task_id": None,
         "occurred_at": occurred,
         "local_date": occurred[:10],
         "created_at": "2026-01-03T00:00:00Z",
@@ -64,7 +65,8 @@ def test_local_date_and_corrupt_events_fail_closed() -> None:
     }
     for alteration in (
         {"local_date": "2025-12-31"},
-        {"schema_version": 2},
+        {"schema_version": 1},
+        {"schema_version": 3},
         {"kind": "fertilizing"},
         {"provenance": "provider"},
         {"occurred_at": "2026-01-01T00:30:00"},
@@ -173,7 +175,8 @@ async def test_minor_ten_migration_adds_empty_history(
     plant = PlantRecord(
         id="p", revision=1, name="Aloe", created_at="2026-01-01T00:00:00Z"
     ).as_storage()
-    del plant["care_events"]
+    for key in ("care_events", "care_tasks", "rest_period"):
+        del plant[key]
     hass_storage[STORAGE_KEY] = {
         "key": STORAGE_KEY,
         "version": 1,
@@ -186,7 +189,7 @@ async def test_minor_ten_migration_adds_empty_history(
         },
     }
     loaded = await SmartPlantsStore(hass).async_load()
-    assert STORAGE_MINOR_VERSION == 11
+    assert STORAGE_MINOR_VERSION == 12
     assert loaded.plants["p"].care_events == ()
     assert hass_storage[STORAGE_KEY]["data"]["plants"][0]["care_events"] == []
 
@@ -397,7 +400,7 @@ async def test_edit_and_delete_storage_failures_publish_nothing(
     await manager.async_unload()
 
 
-async def test_full_history_and_future_date_reject_without_write(
+async def test_future_date_rejects_and_full_history_rotates(
     hass: HomeAssistant,
 ) -> None:
     manager = SmartPlantsManager(hass)
@@ -408,6 +411,7 @@ async def test_full_history_and_future_date_reject_without_write(
         await manager.async_add_watering(
             plant.id, expected_revision=plant.revision, occurred_at=future, note=None
         )
+    assert manager.get_plant(plant.id) == plant
     sample = CareEvent.from_storage(_event())
     full = replace(
         plant,
@@ -416,14 +420,14 @@ async def test_full_history_and_future_date_reject_without_write(
         ),
     )
     manager._snapshot = manager.snapshot.with_plant(full)
-    with pytest.raises(SmartPlantsValidationError, match="full"):
-        await manager.async_add_watering(
-            plant.id,
-            expected_revision=plant.revision,
-            occurred_at="2026-01-01T00:00:00Z",
-            note=None,
-        )
-    assert manager.snapshot.plants[plant.id] is full
+    updated, event = await manager.async_add_watering(
+        plant.id,
+        expected_revision=plant.revision,
+        occurred_at="2026-01-02T00:00:00Z",
+        note=None,
+    )
+    assert len(updated.care_events) == MAX_CARE_EVENTS
+    assert event in updated.care_events
     await manager.async_unload()
 
 

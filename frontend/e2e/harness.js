@@ -32,7 +32,7 @@ const viewResult = result => {
   if (Array.isArray(result.plants) && !result.plants.some(p => "plant_id" in p)) return { ...result, plants: result.plants.map(view) };
   return result;
 };
-const plant = (n, name, changes = {}) => ({ id: uuid(n), revision: 1, name, created_at: now, lifecycle_state: "active", acquired_at: null, species: null, placement: null, tags: [], category: null, image: null, care_events: [], roles: { moisture: moisture() }, ...changes });
+const plant = (n, name, changes = {}) => ({ id: uuid(n), revision: 1, name, created_at: now, lifecycle_state: "active", acquired_at: null, species: null, placement: null, tags: [], category: null, image: null, care_events: [], care_tasks: [], rest_period: null, roles: { moisture: moisture() }, ...changes });
 const entity = (n, id) => ({ id: uuid(n), entity_id: id, device_id: null, unique_id: `synthetic-${n}`, platform: "mock" });
 const sensor = (id, value, attributes) => ({ entity_id: id, state: value, attributes, last_updated: now });
 const unavailable = { computed_percent: null, health_score: null, needs_water: null, too_wet: null, sensor_stale: false, computed_available: false, reasons: ["No valid primary moisture source."] };
@@ -89,7 +89,7 @@ state.seedHistory = () => {
     return { start: end - ago * hour, end: end - (ago - 1) * hour, mean, min: mean - 0.6, max: mean + 0.6 };
   });
   const occurred = new Date(end - 150.5 * hour).toISOString().replace(/\.\d+Z$/, "+00:00");
-  p.care_events.push({ schema_version: 1, id: uuid(950), kind: "watering", provenance: "manual", occurred_at: occurred, local_date: occurred.slice(0, 10), created_at: now, updated_at: now, payload: { note: null } });
+  p.care_events.push({ schema_version: 2, id: uuid(950), kind: "watering", provenance: "manual", task_id: null, occurred_at: occurred, local_date: occurred.slice(0, 10), created_at: now, updated_at: now, payload: { note: null } });
 };
 // Register the seven non-moisture problem binaries against one dedicated
 // diagnostics plant. Attribute keys mirror the backend diagnostics attributes
@@ -197,7 +197,7 @@ async function respond(message) {
       if (!p || !message.occurred_at || Date.parse(message.occurred_at) > Date.now()) reject("invalid_format");
       const kind = message.type.endsWith("add_watering") ? "watering" : message.kind;
       const payload = message.type.endsWith("add_watering") ? { note: message.note } : message.payload;
-      const event = { schema_version: 1, id: uuid(900 + p.care_events.length), kind, provenance: "manual", occurred_at: message.occurred_at, local_date: message.occurred_at.slice(0, 10), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), payload };
+      const event = { schema_version: 2, id: uuid(900 + p.care_events.length), kind, provenance: "manual", task_id: null, occurred_at: message.occurred_at, local_date: message.occurred_at.slice(0, 10), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), payload };
       p.care_events.push(event);
       const updated = revise(p, {});
       const waterings = p.care_events.filter(e => e.kind === "watering").sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at) || a.id.localeCompare(b.id));

@@ -8,7 +8,7 @@ afterEach(() => document.body.replaceChildren());
 describe("manual watering", () => {
   it("ignores an older history reply that arrives after a refresh", async () => {
     const first = deferred<unknown>();
-    const event: CareEvent = { schema_version: 1, id: "e6e6553a-f34c-4d88-864c-c94a74f97dfa", kind: "watering", provenance: "manual", occurred_at: "2026-01-01T00:30:00+02:00", local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { note: "Current entry" } };
+    const event: CareEvent = { schema_version: 2, id: "e6e6553a-f34c-4d88-864c-c94a74f97dfa", kind: "watering", provenance: "manual", task_id: null, occurred_at: "2026-01-01T00:30:00+02:00", local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { note: "Current entry" } };
     let reads = 0;
     const h = harness([structuredClone(sample)], msg => {
       if (msg.type === "smart_plants/care/list") {
@@ -32,7 +32,7 @@ describe("manual watering", () => {
     const h = harness([plant], msg => {
       if (msg.type === "smart_plants/care/add") {
         if (msg.expected_revision !== plant.revision) throw { code: "revision_conflict" };
-        const event: CareEvent = { schema_version: 1, id: "e6e6553a-f34c-4d88-864c-c94a74f97dfa", kind: msg.kind as CareEvent["kind"], provenance: "manual", occurred_at: msg.occurred_at as string, local_date: String(msg.occurred_at).slice(0, 10), created_at: "2026-09-24T12:00:00Z", updated_at: "2026-09-24T12:00:00Z", payload: msg.payload as CareEvent["payload"] };
+        const event: CareEvent = { schema_version: 2, id: "e6e6553a-f34c-4d88-864c-c94a74f97dfa", kind: msg.kind as CareEvent["kind"], provenance: "manual", task_id: null, occurred_at: msg.occurred_at as string, local_date: String(msg.occurred_at).slice(0, 10), created_at: "2026-09-24T12:00:00Z", updated_at: "2026-09-24T12:00:00Z", payload: msg.payload as CareEvent["payload"] };
         plant.care_events!.push(event); plant.revision++;
         return { plant: structuredClone(plant), event, summary: { watering_count: 1, last_watered_at: event.occurred_at, last_watered_local_date: event.local_date } };
       }

@@ -115,7 +115,7 @@ describe("overview view", () => {
 // The backend reply for care/add_watering: the event is stored on the plant at the next revision.
 function wateringReply(planted: PlantRecord, msg: Record<string, unknown>, id: string) {
   const occurred = String(msg.occurred_at);
-  const event = { schema_version: 1 as const, id, kind: "watering" as const, provenance: "manual" as const, occurred_at: occurred, local_date: occurred.slice(0, 10), created_at: "2026-09-28T12:00:00+00:00", updated_at: "2026-09-28T12:00:00+00:00", payload: { note: null } };
+  const event = { schema_version: 2 as const, id, kind: "watering" as const, provenance: "manual" as const, task_id: null, occurred_at: occurred, local_date: occurred.slice(0, 10), created_at: "2026-09-28T12:00:00+00:00", updated_at: "2026-09-28T12:00:00+00:00", payload: { note: null } };
   return { plant: { ...planted, revision: Number(msg.expected_revision) + 1, care_events: [event] }, event, summary: { watering_count: 1, last_watered_at: occurred, last_watered_local_date: event.local_date } };
 }
 

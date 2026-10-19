@@ -99,6 +99,8 @@ async def test_synthetic_role_registers_through_controller_seam(
         "synthetic": {"marker": "stored"},
     }
     payload["care_events"] = []
+    payload["care_tasks"] = []
+    payload["rest_period"] = None
     hass_storage[STORAGE_KEY] = {
         "version": STORAGE_MAJOR_VERSION,
         "minor_version": STORAGE_MINOR_VERSION,
