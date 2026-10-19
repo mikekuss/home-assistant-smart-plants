@@ -79,6 +79,24 @@
       },
       "co2": {
         "name": "CO2"
+      },
+      "care_task_fertilize_next": {
+        "name": "Düngen: nächster Termin"
+      },
+      "care_task_prune_next": {
+        "name": "Schneiden: nächster Termin"
+      },
+      "care_task_repot_next": {
+        "name": "Umtopfen: nächster Termin"
+      },
+      "care_task_pests_next": {
+        "name": "Auf Schädlinge prüfen: nächster Termin"
+      },
+      "care_task_custom_next": {
+        "name": "Pflegeaufgabe: nächster Termin"
+      },
+      "care_task_named_next": {
+        "name": "{task_name}: nächster Termin"
       }
     },
     "binary_sensor": {
@@ -111,6 +129,48 @@
       },
       "conductivity_stress": {
         "name": "Leitfähigkeitsstress"
+      },
+      "care_task_fertilize": {
+        "name": "Düngen",
+        "state": {
+          "on": "Fällig",
+          "off": "Nicht fällig"
+        }
+      },
+      "care_task_prune": {
+        "name": "Schneiden",
+        "state": {
+          "on": "Fällig",
+          "off": "Nicht fällig"
+        }
+      },
+      "care_task_repot": {
+        "name": "Umtopfen",
+        "state": {
+          "on": "Fällig",
+          "off": "Nicht fällig"
+        }
+      },
+      "care_task_pests": {
+        "name": "Auf Schädlinge prüfen",
+        "state": {
+          "on": "Fällig",
+          "off": "Nicht fällig"
+        }
+      },
+      "care_task_custom": {
+        "name": "Pflegeaufgabe",
+        "state": {
+          "on": "Fällig",
+          "off": "Nicht fällig"
+        }
+      },
+      "care_due": {
+        "name": "Pflege fällig",
+        "state": {
+          "on": "Fällig",
+          "off": "Nicht fällig"
+        }
       }
     },
     "number": {

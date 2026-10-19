@@ -79,6 +79,24 @@
       },
       "co2": {
         "name": "CO2"
+      },
+      "care_task_fertilize_next": {
+        "name": "Fertilize next due"
+      },
+      "care_task_prune_next": {
+        "name": "Prune next due"
+      },
+      "care_task_repot_next": {
+        "name": "Repot next due"
+      },
+      "care_task_pests_next": {
+        "name": "Check for pests next due"
+      },
+      "care_task_custom_next": {
+        "name": "Care task next due"
+      },
+      "care_task_named_next": {
+        "name": "{task_name} next due"
       }
     },
     "binary_sensor": {
@@ -111,6 +129,48 @@
       },
       "conductivity_stress": {
         "name": "Conductivity stress"
+      },
+      "care_task_fertilize": {
+        "name": "Fertilize",
+        "state": {
+          "on": "Due",
+          "off": "Not due"
+        }
+      },
+      "care_task_prune": {
+        "name": "Prune",
+        "state": {
+          "on": "Due",
+          "off": "Not due"
+        }
+      },
+      "care_task_repot": {
+        "name": "Repot",
+        "state": {
+          "on": "Due",
+          "off": "Not due"
+        }
+      },
+      "care_task_pests": {
+        "name": "Check for pests",
+        "state": {
+          "on": "Due",
+          "off": "Not due"
+        }
+      },
+      "care_task_custom": {
+        "name": "Care task",
+        "state": {
+          "on": "Due",
+          "off": "Not due"
+        }
+      },
+      "care_due": {
+        "name": "Care due",
+        "state": {
+          "on": "Due",
+          "off": "Not due"
+        }
       }
     },
     "number": {

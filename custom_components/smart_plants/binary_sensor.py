@@ -12,6 +12,11 @@ Smart Plants ``binary_sensor`` platform.
 computed moisture aggregate has no valid input. ``sensor_stale`` stays
 available so it can reflect "no assigned source" (off) versus
 "assigned source missing" (on).
+
+Care entities are managed by ``CareEntityLifecycle``: one "due" binary
+sensor per care task and one plant-wide "care due" binary sensor while the
+plant has at least one task. They have no device class, because a due care
+task is a reminder rather than a problem.
 """
 
 from __future__ import annotations
@@ -24,6 +29,17 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.const import EntityCategory
 
+from .care_entities import (
+    ROLE_CARE_DUE,
+    TASK_SUFFIX_DUE,
+    CareEntityLifecycle,
+    compute_task_state,
+    is_resting_today,
+    last_done_date,
+    task_role,
+    task_translation_key,
+    translated_task_name,
+)
 from .entity import (
     EntityFactory,
     SmartPlantsEntity,
@@ -36,8 +52,9 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+    from .events import PlantEvent
     from .manager import SmartPlantsManager
-    from .models import PlantRecord
+    from .models import CareTask, PlantRecord
 
 
 PLATFORM = "binary_sensor"
@@ -704,6 +721,123 @@ class _ConductivityStressBinary(SmartPlantsBinarySensorEntity):
         }
 
 
+class _CareTaskDueBinary(SmartPlantsBinarySensorEntity):
+    """On while one care task is due or overdue."""
+
+    def __init__(
+        self, manager: SmartPlantsManager, plant_id: str, task: CareTask
+    ) -> None:
+        super().__init__(
+            manager,
+            plant_id,
+            task_role(task.id, TASK_SUFFIX_DUE),
+            task_translation_key(task.type),
+        )
+        self._task_id = task.id
+        self._sync_name(task)
+
+    def _task(self) -> tuple[PlantRecord, CareTask] | None:
+        plant = self._manager.snapshot.plants.get(self._plant_id)
+        if plant is None:
+            return None
+        task = plant.care_task(self._task_id)
+        return None if task is None else (plant, task)
+
+    def _sync_name(self, task: CareTask) -> None:
+        # A task's own name replaces the translated name of its type.
+        if task.name is not None:
+            self._attr_name = task.name
+        elif hasattr(self, "_attr_name"):
+            del self._attr_name
+
+    def _handle_manager_event(self, event: PlantEvent) -> None:
+        current = self._task()
+        if current is None:
+            # The task is gone; the care lifecycle removes this entity.
+            return
+        self._sync_name(current[1])
+        super()._handle_manager_event(event)
+
+    @property
+    def available(self) -> bool:
+        return super().available and self._task() is not None
+
+    @property
+    def is_on(self) -> bool | None:
+        current = self._task()
+        if current is None:
+            return None
+        return compute_task_state(*current).is_due
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        current = self._task()
+        if current is None:
+            return {}
+        task = current[1]
+        state = compute_task_state(*current)
+        last_done = last_done_date(task)
+        return {
+            "status": state.status,
+            "next_due": None if state.next_due is None else state.next_due.isoformat(),
+            "last_done": None if last_done is None else last_done.isoformat(),
+            "task_type": task.type,
+        }
+
+
+class _CareDueBinary(SmartPlantsBinarySensorEntity):
+    """On while any of the plant's care tasks is due or overdue."""
+
+    _attr_translation_key = ROLE_CARE_DUE
+
+    def __init__(self, manager: SmartPlantsManager, plant_id: str) -> None:
+        super().__init__(manager, plant_id, ROLE_CARE_DUE, ROLE_CARE_DUE)
+
+    def _plant(self) -> PlantRecord | None:
+        return self._manager.snapshot.plants.get(self._plant_id)
+
+    def _handle_manager_event(self, event: PlantEvent) -> None:
+        plant = self._plant()
+        if plant is not None and not plant.care_tasks:
+            # The last task is gone; the care lifecycle removes this entity.
+            return
+        super()._handle_manager_event(event)
+
+    def _due_tasks(self, plant: PlantRecord) -> list[CareTask]:
+        return [
+            task for task in plant.care_tasks if compute_task_state(plant, task).is_due
+        ]
+
+    @property
+    def available(self) -> bool:
+        plant = self._plant()
+        return super().available and plant is not None and bool(plant.care_tasks)
+
+    @property
+    def is_on(self) -> bool | None:
+        plant = self._plant()
+        if plant is None or not plant.care_tasks:
+            return None
+        return bool(self._due_tasks(plant))
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        plant = self._plant()
+        if plant is None:
+            return {}
+        platform_data = getattr(self, "platform_data", None)
+        translations = (
+            None if platform_data is None else platform_data.platform_translations
+        )
+        return {
+            "due_tasks": [
+                translated_task_name(task, translations)
+                for task in self._due_tasks(plant)
+            ],
+            "resting": is_resting_today(plant),
+        }
+
+
 def _factory_needs_water(
     manager: SmartPlantsManager, plant: PlantRecord
 ) -> SmartPlantsEntity:
@@ -785,6 +919,18 @@ def _factory_role(
     return factories[entity.result_attribute or ""](manager, plant)
 
 
+def _factory_care_task_due(
+    manager: SmartPlantsManager, plant: PlantRecord, task: CareTask
+) -> SmartPlantsEntity:
+    return _CareTaskDueBinary(manager, plant.id, task)
+
+
+def _factory_care_due(
+    manager: SmartPlantsManager, plant: PlantRecord
+) -> SmartPlantsEntity:
+    return _CareDueBinary(manager, plant.id)
+
+
 ROLE_FACTORIES = entity_factories(PLATFORM)
 
 
@@ -793,10 +939,20 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    await async_setup_platform_lifecycle(
+    lifecycle = await async_setup_platform_lifecycle(
         hass,
         entry,
         async_add_entities,
         PLATFORM,
         ROLE_FACTORIES,
     )
+    care = CareEntityLifecycle(
+        hass,
+        entry.runtime_data.manager,
+        PLATFORM,
+        {TASK_SUFFIX_DUE: _factory_care_task_due},
+        {ROLE_CARE_DUE: _factory_care_due},
+        async_add_entities,
+    )
+    lifecycle.async_on_unload(care.async_unload)
+    await care.async_setup()
