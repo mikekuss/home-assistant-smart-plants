@@ -87,7 +87,9 @@ does not mean healthy.
 ### Manual watering grace
 
 When you log a **watering** in the plant's care history, *Needs water* stays off for 24 hours
-from the time you entered. A backdated entry only gives the remaining part of its 24 hours.
+from the time you entered. This applies to every logged watering: from the panel or from the
+[`smart_plants.log_care`](automations.md#log-care-with-actions) action, for example after an
+irrigation valve ran. A backdated entry only gives the remaining part of its 24 hours.
 After the grace period, the normal rules apply to the current moisture reading. The grace
 period doesn't change the moisture value, *Too wet*, *Sensor stale*, or the health score.
 

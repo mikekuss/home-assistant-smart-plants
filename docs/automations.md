@@ -19,8 +19,9 @@ on the plant's device page (see [Entities](entities.md#naming-and-entity-ids)) a
   when a sensor drops out. Use `not_from: [unavailable, unknown]` so a sensor coming back
   doesn't look like a new problem.
 - Add a `for:` duration to avoid reacting to short spikes.
-- Logging a watering in the panel pauses *Needs water* for 24 hours, so a reminder won't
-  repeat right after you've watered.
+- Logging a watering, in the panel or with the [`smart_plants.log_care`](#log-care-with-actions)
+  action, pauses *Needs water* for 24 hours, so a reminder won't repeat right after you've
+  watered.
 
 ## Notify when a plant needs water
 
@@ -186,6 +187,9 @@ mode: single
 max_exceeded: silent
 ```
 
+To record the watering in the plant's care history, add a `smart_plants.log_care` step after
+the valve closes (see [Log a watering after an irrigation valve ran](#log-a-watering-after-an-irrigation-valve-ran)).
+
 Add a separate safety net that closes the valve if it stays open too long for any reason
 (for example a restart during the delay):
 
@@ -209,3 +213,105 @@ mode: single
 If your irrigation hardware is a switch instead of a valve, use `switch.turn_on` /
 `switch.turn_off` and `to: "on"` accordingly. Start with short runtimes and check the soil
 before trusting any automatic watering.
+
+## Log care with actions
+
+Smart Plants provides two actions you can use in automations, scripts, and dashboards. Both
+are listed under **Smart Plants** in the action picker.
+
+| Action | Targets | What it does |
+| --- | --- | --- |
+| `smart_plants.log_care` | Plant devices or care task *due* entities | Adds an entry to the plant's care history. With a care task as the target, the entry marks that task as done. |
+| `smart_plants.skip_care_task` | Care task *due* entities | Skips the task's current occurrence. The task is due again on its next scheduled date. |
+
+`smart_plants.log_care` accepts these fields:
+
+- `kind` – what was done: `watering`, `fertilizing`, `pruning`, `repotting`, `note`, or
+  `task` (another task). Required when you target a plant device. When you target a care
+  task, you can leave it out; if you set it, it must match the task (for example
+  `fertilizing` for a fertilizing task).
+- `occurred_at` – when it happened. Defaults to now and can't be in the future. A time
+  without a time zone is Home Assistant's local time.
+- `note` – an optional note of up to 500 characters. Required for `kind: note`.
+
+You can target several plants or care tasks in one call. If any target is invalid (not a
+Smart Plants plant or care task, deleted, or belonging to a disabled plant), nothing is
+logged and the action reports an error. Areas, floors, and labels aren't supported as
+targets; pick the plants or care tasks directly.
+
+Logging `watering` also keeps *Needs water* off for 24 hours, exactly like the panel's
+**Watered** button.
+
+In the YAML below, `device_id` is a placeholder. The easiest way to get the real value is to
+pick the plant in the visual editor; switching to YAML afterwards shows its ID.
+
+### Log a watering by scanning an NFC tag
+
+Stick an NFC tag on the pot and scan it with the companion app after watering:
+
+```yaml
+alias: "Monstera: watered (NFC tag)"
+triggers:
+  - trigger: tag
+    tag_id: monstera-pot
+actions:
+  - action: smart_plants.log_care
+    target:
+      device_id: 0123456789abcdef0123456789abcdef
+    data:
+      kind: watering
+mode: single
+```
+
+### Log a watering after an irrigation valve ran
+
+When your own irrigation automation has watered several plants, record it for each of them so
+*Needs water* doesn't fire again right away:
+
+```yaml
+alias: "Balcony: log watering after the drip valve ran"
+triggers:
+  - trigger: state
+    entity_id: valve.balcony_drip
+    from: "open"
+    to: "closed"
+actions:
+  - action: smart_plants.log_care
+    target:
+      device_id:
+        - 0123456789abcdef0123456789abcdef
+        - fedcba9876543210fedcba9876543210
+    data:
+      kind: watering
+      note: "Drip irrigation"
+mode: single
+```
+
+### Mark fertilizing as done with a button
+
+Target the care task's *due* entity to mark the task as done. This example uses a helper
+button (`input_button.monstera_fertilized`); a physical button works the same way with its
+own trigger.
+
+```yaml
+alias: "Monstera: fertilizing done"
+triggers:
+  - trigger: state
+    entity_id: input_button.monstera_fertilized
+    not_from:
+      - unavailable
+      - unknown
+actions:
+  - action: smart_plants.log_care
+    target:
+      entity_id: binary_sensor.monstera_fertilize_due
+mode: single
+```
+
+To skip the current occurrence instead, for example while you're away:
+
+```yaml
+action: smart_plants.skip_care_task
+target:
+  entity_id: binary_sensor.monstera_fertilize_due
+```

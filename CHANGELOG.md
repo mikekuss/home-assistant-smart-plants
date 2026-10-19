@@ -6,7 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Two actions for automations and scripts: `smart_plants.log_care` logs care for one or more
+  plants or marks care tasks as done, and `smart_plants.skip_care_task` skips a care task's
+  current occurrence. Use them, for example, to log a watering when you scan an NFC tag or
+  after your irrigation valve ran. See [Automations](docs/automations.md#log-care-with-actions).
+
 ### Changed
+
+- Every logged watering now keeps *Needs water* off for 24 hours, including waterings logged
+  with the `smart_plants.log_care` action, exactly like the panel's **Watered** button.
 
 - Plainer wording in the panel, in English and German: error messages, the notice shown when
   a plant was changed somewhere else, the threshold editor introductions and errors, the

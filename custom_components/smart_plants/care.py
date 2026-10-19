@@ -111,6 +111,22 @@ def kind_for_task_type(task_type: str) -> str:
         raise ValueError("unsupported care task type") from err
 
 
+def minimal_care_payload(kind: str, note: str | None) -> dict[str, Any]:
+    """
+    Return the smallest valid payload of ``kind`` that carries ``note``.
+
+    Only kinds whose payload has a ``note`` field are supported; a ``note``
+    event stores its text under ``text`` instead.
+    """
+    if kind == "fertilizing":
+        return {"product": None, "amount": None, "unit": None, "note": note}
+    if kind == "pruning":
+        return {"part": None, "note": note}
+    if kind == "repotting":
+        return {"container": None, "medium": None, "note": note}
+    return {"note": note}
+
+
 @dataclass(frozen=True, slots=True)
 class CareEvent:
     id: str

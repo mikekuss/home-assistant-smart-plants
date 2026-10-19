@@ -28,6 +28,7 @@ from .panel import (
 from .provider import SpeciesProviderService
 from .providers import build_provider_registry
 from .repairs import MissingSourceRepairMonitor
+from .services import async_setup_services
 from .storage import SmartPlantsStorageError, async_remove_storage
 from .websocket_api import async_register as async_register_websocket
 
@@ -97,11 +98,12 @@ async def _async_unload_platforms(
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    # Process-lifetime registration: WebSocket commands and the static
-    # route that serves the panel bundle. Both survive entry unload; the
-    # handlers themselves reject requests with "integration_not_loaded"
+    # Process-lifetime registration: WebSocket commands, actions, and the
+    # static route that serves the panel bundle. All survive entry unload;
+    # the handlers themselves reject requests with "integration_not_loaded"
     # when the singleton entry is missing or being torn down.
     async_register_websocket(hass)
+    async_setup_services(hass)
     async_register_http(hass)
     await async_register_static(hass)
     await hass.async_add_executor_job(ensure_images_dir, hass)

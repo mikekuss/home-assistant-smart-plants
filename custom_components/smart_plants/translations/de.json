@@ -148,5 +148,82 @@
         }
       }
     }
+  },
+  "selector": {
+    "care_kind": {
+      "options": {
+        "watering": "Gießen",
+        "fertilizing": "Düngen",
+        "pruning": "Rückschnitt",
+        "repotting": "Umtopfen",
+        "note": "Notiz",
+        "task": "Andere Aufgabe"
+      }
+    }
+  },
+  "services": {
+    "log_care": {
+      "name": "Pflege eintragen",
+      "description": "Trägt Pflege für Smart-Plants-Pflanzen ein oder markiert Pflegeaufgaben als erledigt. Ein eingetragenes Gießen hält Braucht Wasser außerdem 24 Stunden lang aus.",
+      "fields": {
+        "kind": {
+          "name": "Pflegeart",
+          "description": "Was gemacht wurde. Erforderlich, wenn Sie Pflanzen auswählen. Bei einer Pflegeaufgabe kann das Feld leer bleiben; wenn gesetzt, muss es zur Aufgabe passen."
+        },
+        "occurred_at": {
+          "name": "Zeitpunkt",
+          "description": "Wann die Pflege stattfand. Standard ist jetzt; der Zeitpunkt darf nicht in der Zukunft liegen."
+        },
+        "note": {
+          "name": "Notiz",
+          "description": "Optionale Notiz mit bis zu 500 Zeichen. Für die Pflegeart Notiz erforderlich."
+        }
+      }
+    },
+    "skip_care_task": {
+      "name": "Pflegeaufgabe überspringen",
+      "description": "Überspringt die aktuelle Fälligkeit von Smart-Plants-Pflegeaufgaben. Die Aufgabe wird zum nächsten geplanten Termin wieder fällig."
+    }
+  },
+  "exceptions": {
+    "integration_not_loaded": {
+      "message": "Smart Plants ist nicht geladen."
+    },
+    "no_target": {
+      "message": "Wählen Sie mindestens eine Pflanze oder Pflegeaufgabe."
+    },
+    "unsupported_target": {
+      "message": "Wählen Sie Pflanzen oder Pflegeaufgaben direkt aus. Bereiche, Etagen und Labels werden nicht unterstützt."
+    },
+    "task_target_required": {
+      "message": "Wählen Sie die Pflegeaufgabe, die übersprungen werden soll, nicht eine ganze Pflanze."
+    },
+    "unknown_target": {
+      "message": "{target} wurde nicht gefunden."
+    },
+    "invalid_target": {
+      "message": "{target} ist keine Pflanze und keine Pflegeaufgabe von Smart Plants."
+    },
+    "plant_disabled": {
+      "message": "{plant} ist deaktiviert. Aktivieren Sie die Pflanze, bevor Sie Pflege eintragen."
+    },
+    "care_task_not_found": {
+      "message": "Die Pflegeaufgabe von {target} existiert nicht mehr."
+    },
+    "kind_required": {
+      "message": "Wählen Sie eine Pflegeart, wenn Sie Pflege für eine Pflanze eintragen."
+    },
+    "note_required": {
+      "message": "Geben Sie für die Pflegeart Notiz einen Notiztext ein."
+    },
+    "kind_mismatch": {
+      "message": "Die Pflegeart {kind} passt nicht zu {target}; diese Aufgabe wird als {task_kind} eingetragen."
+    },
+    "future_time": {
+      "message": "Der Pflegezeitpunkt darf nicht in der Zukunft liegen."
+    },
+    "care_rejected": {
+      "message": "Die Pflege für {target} wurde nicht gespeichert: {reason}"
+    }
   }
 }
