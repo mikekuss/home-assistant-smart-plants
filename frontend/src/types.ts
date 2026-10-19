@@ -149,6 +149,24 @@ export interface CareTask {
   created_on: string;
 }
 
+export type CareTaskStatus = "scheduled" | "due" | "overdue" | "resting" | "done" | "skipped" | "missed";
+// Fields of `smart_plants/care_tasks/create`. Blank text is stored as null.
+export interface CareTaskInput {
+  task_type: CareTaskType;
+  name: string | null;
+  schedule: IntervalSchedule | YearlySchedule;
+  instructions: string | null;
+  baseline_done_on: string | null;
+}
+// Fields of `smart_plants/care_tasks/update`; omitted fields stay unchanged.
+export type CareTaskChanges = Partial<Omit<CareTaskInput, "task_type">>;
+// Optional fields of `smart_plants/care_tasks/complete`; the backend uses the
+// current time when `occurred_at` is omitted.
+export interface CareTaskCompletion {
+  occurred_at?: string;
+  note?: string | null;
+}
+
 export interface CareEvent {
   schema_version: 2;
   id: string;

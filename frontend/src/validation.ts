@@ -111,6 +111,47 @@ function validCareHistory(v: unknown): boolean {
      events.every((event, index) => index === 0 || compareCareEvents(events[index - 1]!, event) <= 0) &&
     summary.last_watered_at === (watering[0]?.occurred_at ?? null) && summary.last_watered_local_date === (watering[0]?.local_date ?? null);
 }
+// Compares JSON values regardless of object key order.
+function sameJson(a: unknown, b: unknown): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((item, index) => sameJson(item, b[index]));
+  if (object(a) || object(b)) return object(a) && object(b) && exactKeys(a, Object.keys(b)) && Object.keys(a).every(key => sameJson(a[key], b[key]));
+  return a === b;
+}
+// The backend trims task text and stores blank text as null.
+const storedText = (v: unknown) => typeof v === "string" ? v.trim() || null : v;
+const TASK_FIELDS = ["name", "schedule", "instructions", "baseline_done_on"] as const;
+function taskFieldsMatch(task: Record<string, unknown>, msg: Record<string, unknown>): boolean {
+  return TASK_FIELDS.every(field => !Object.hasOwn(msg, field) ||
+    sameJson(task[field], field === "name" || field === "instructions" ? storedText(msg[field]) : msg[field]));
+}
+// Care task and rest period replies carry the whole plant one revision later;
+// each reply must show the requested change on the requested plant and task.
+function careTaskResponse(command: string, msg: Record<string, unknown>, v: Record<string, unknown>): boolean {
+  const extra: Record<string, string[]> = { create: ["task_id"], complete: ["event_id"], skip: ["previous_skipped_on"] };
+  const name = command.slice(command.lastIndexOf("/") + 1);
+  if (!exactKeys(v, ["plant", ...(command.startsWith("smart_plants/care_tasks/") ? extra[name] ?? [] : [])])) return false;
+  if (!validPlant(v.plant) || !object(v.plant) || v.plant.id !== msg.plant_id || v.plant.revision !== Number(msg.expected_revision) + 1) return false;
+  const plant = v.plant;
+  if (command === "smart_plants/plants/set_rest_period") return sameJson(plant.rest_period, msg.rest_period);
+  if (!Array.isArray(plant.care_tasks)) return false;
+  const taskId = command === "smart_plants/care_tasks/create" ? v.task_id : msg.task_id;
+  const task = (plant.care_tasks as Record<string, unknown>[]).find(item => item.id === taskId);
+  switch (name) {
+    case "create": return typeof v.task_id === "string" && TASK_ID.test(v.task_id) && task !== undefined && task.type === msg.task_type && taskFieldsMatch(task, msg);
+    case "update": return task !== undefined && taskFieldsMatch(task, msg);
+    case "delete": return task === undefined;
+    case "complete": {
+      if (task === undefined || !text(v.event_id, 36) || !Array.isArray(plant.care_events)) return false;
+      const event = (plant.care_events as Record<string, unknown>[]).find(item => item.id === v.event_id);
+      return event !== undefined && event.task_id === msg.task_id && object(event.payload) && event.payload.note === (msg.note ?? null) &&
+        (msg.occurred_at === undefined || event.occurred_at === msg.occurred_at);
+    }
+    case "skip": return task !== undefined && isoDate(task.last_skipped_on) && (v.previous_skipped_on === null || isoDate(v.previous_skipped_on));
+    case "undo_skip": return task !== undefined && task.last_skipped_on === msg.previous_skipped_on;
+  }
+  return false;
+}
+const CARE_TASK_COMMANDS = new Set(["create", "update", "delete", "complete", "skip", "undo_skip"].map(name => `smart_plants/care_tasks/${name}`));
 function preview(v: unknown, msg: Record<string, unknown>): boolean {
   if (!object(v) || !text(v.preview_token, 200) || !snapshot(v.snapshot) || !object(v.snapshot) || v.provider !== v.snapshot.provider ||
       !object(v.diff) || !Object.entries(v.diff).every(([key, value]) => object(value) && Object.hasOwn(snapshotFields, key) &&
@@ -161,6 +202,7 @@ export function validResponse(msg: Record<string, unknown>, v: unknown): boolean
         v.plant.revision !== Number(msg.expected_revision) + 1) return false;
     return validCareHistory({ revision: v.plant.revision, events: [...events].sort(compareCareEvents), summary: v.summary });
   }
+  if (CARE_TASK_COMMANDS.has(command) || command === "smart_plants/plants/set_rest_period") return careTaskResponse(command, msg, v);
   if (command === "smart_plants/care/delete") {
     if (!validPlant(v.plant) || !object(v.plant) || v.plant.id !== msg.plant_id || !Array.isArray(v.plant.care_events)) return false;
     return v.plant.revision === Number(msg.expected_revision) + 1 &&

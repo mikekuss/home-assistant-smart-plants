@@ -112,8 +112,9 @@ def _plant_row(**changes: Any) -> dict[str, Any]:
 
 def test_rest_period_and_yearly_ranges_allow_wrap_and_single_month() -> None:
     for start, end in ((11, 2), (3, 3), (1, 12), (12, 1)):
-        period = RestPeriod.from_storage({"start_month": start, "end_month": end})
-        assert period.as_storage() == {"start_month": start, "end_month": end}
+        if (start, end) != (1, 12):
+            period = RestPeriod.from_storage({"start_month": start, "end_month": end})
+            assert period.as_storage() == {"start_month": start, "end_month": end}
         yearly = YearlySchedule.from_storage(
             {"kind": "yearly", "start_month": start, "end_month": end}
         )
@@ -132,6 +133,18 @@ def test_rest_period_and_yearly_ranges_allow_wrap_and_single_month() -> None:
             RestPeriod.from_storage(invalid)
     with pytest.raises(ValueError, match="yearly"):
         YearlySchedule.from_storage({"start_month": 3, "end_month": 4})
+
+
+def test_rest_period_cannot_cover_the_whole_year() -> None:
+    for start, end in ((1, 12), (3, 2), (12, 11)):
+        with pytest.raises(ValueError, match="all 12 months"):
+            RestPeriod.from_storage({"start_month": start, "end_month": end})
+    assert RestPeriod.from_storage({"start_month": 2, "end_month": 12}) == RestPeriod(
+        2, 12
+    )
+    assert RestPeriod.from_storage({"start_month": 3, "end_month": 1}) == RestPeriod(
+        3, 1
+    )
     with pytest.raises(ValueError, match="kind"):
         YearlySchedule.from_storage({**YEARLY, "kind": "interval"})
 
@@ -640,6 +653,12 @@ async def test_set_rest_period(hass: HomeAssistant) -> None:
         {"start_month": 1},
         {"start_month": 1, "end_month": 2, "kind": 1},
     )
+    with pytest.raises(SmartPlantsValidationError, match="all 12 months"):
+        await manager.async_set_rest_period(
+            plant.id,
+            expected_revision=updated.revision,
+            rest_period={"start_month": 4, "end_month": 3},
+        )
     for invalid in invalid_periods:
         with pytest.raises(SmartPlantsValidationError, match="rest period"):
             await manager.async_set_rest_period(

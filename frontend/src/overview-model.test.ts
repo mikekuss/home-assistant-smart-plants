@@ -12,7 +12,7 @@ function reading(value: number | null, unit: string, range: RoleReading["range"]
   return { value, unit, state, range, last_reported: lastReported, sources: ["sensor.mock_probe"] };
 }
 function entry(status: PlantStatus, problems: PlantOverview["problems"], roles: PlantOverview["roles"] = {}): PlantOverview {
-  return { plant_id: "p1", revision: 3, lifecycle_state: "active", status, problems, roles, last_watered_at: "2026-09-26T12:00:00+00:00", image: null };
+  return { plant_id: "p1", revision: 3, lifecycle_state: "active", status, problems, roles, last_watered_at: "2026-09-26T12:00:00+00:00", image: null, care: [], rest_period: null, resting: false };
 }
 
 describe("parseOverview", () => {
@@ -23,7 +23,7 @@ describe("parseOverview", () => {
       moisture: { value: 34, unit: "%", state: "low", range: { min: 60, target: 70, max: 85 }, last_reported: "2026-09-28T11:58:00+00:00", sources: ["sensor.mock_basil_moisture"] },
       future_role: { anything: true },
     },
-    last_watered_at: null, image: { id: "img-1" },
+    last_watered_at: null, image: { id: "img-1" }, care: [], rest_period: null, resting: false,
   };
   it("accepts the backend shape and skips unknown roles", () => {
     const parsed = parseOverview(raw)!;
@@ -39,6 +39,35 @@ describe("parseOverview", () => {
     expect(parseOverview({ ...raw, roles: { moisture: { ...raw.roles.moisture, state: "wet" } } })).toBeNull();
     expect(parseOverview({ ...raw, roles: { moisture: { ...raw.roles.moisture, range: { min: "60" } } } })).toBeNull();
     expect(parseOverview(null)).toBeNull();
+  });
+});
+
+describe("parseOverview care fields", () => {
+  const due = { task_id: "0f8fad5bd9cb469fa16570867728950e", type: "fertilize", name: null, status: "overdue", is_due: true, next_due: "2026-06-08", days: 7, window_end: null, resume_on: null };
+  const resting = { task_id: "7c9e6679742540de944be07fc1f90ae7", type: "custom", name: "Mist leaves", status: "resting", is_due: false, next_due: "2026-09-01", days: null, window_end: null, resume_on: "2026-09-01" };
+  const yearly = { task_id: "1c9e6679742540de944be07fc1f90ae7", type: "repot", name: null, status: "scheduled", is_due: false, next_due: "2027-03-01", days: 259, window_end: "2027-04-30", resume_on: null };
+  const raw = { plant_id: "p1", revision: 3, lifecycle_state: "active", status: "healthy", problems: [], roles: {}, last_watered_at: null, image: null,
+    care: [due, resting, yearly], rest_period: { start_month: 6, end_month: 8 }, resting: true };
+  it("keeps the backend order of care tasks and the rest period", () => {
+    const parsed = parseOverview(raw)!;
+    expect(parsed.care).toEqual([due, resting, yearly]);
+    expect(parsed.rest_period).toEqual({ start_month: 6, end_month: 8 });
+    expect(parsed.resting).toBe(true);
+    expect(parseOverview({ ...raw, care: [], rest_period: null, resting: false })).toMatchObject({ care: [], rest_period: null, resting: false });
+  });
+  it.each([
+    { care: undefined }, { care: {} }, { care: [due, due] }, { rest_period: undefined }, { resting: undefined }, { resting: "yes" },
+    { rest_period: null, resting: true }, { rest_period: { start_month: 0, end_month: 8 } }, { rest_period: { start_month: 6 } },
+    { rest_period: { start_month: 6, end_month: 8, kind: "yearly" } },
+  ])("rejects malformed overview care fields %#", change => {
+    expect(parseOverview({ ...raw, ...change })).toBeNull();
+  });
+  it.each([
+    { task_id: "short" }, { type: "water" }, { type: "custom", name: null }, { name: "" }, { name: "x".repeat(61) }, { status: "late" },
+    { is_due: false }, { status: "due", is_due: false }, { status: "scheduled", is_due: true }, { next_due: "2026-06-08T00:00:00Z" },
+    { window_end: "2026-13-01" }, { resume_on: 20260901 }, { days: -1 }, { days: 1.5 }, { days: "7" },
+  ])("rejects a malformed care task summary %#", change => {
+    expect(parseOverview({ ...raw, care: [{ ...due, ...change }] })).toBeNull();
   });
 });
 

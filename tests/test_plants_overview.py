@@ -19,7 +19,10 @@ from homeassistant.const import PERCENTAGE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from PIL import Image
-from pytest_homeassistant_custom_component.typing import WebSocketGenerator
+from pytest_homeassistant_custom_component.typing import (
+    MockHAClientWebSocket,
+    WebSocketGenerator,
+)
 
 from .test_websocket_api import _setup
 from .test_wizard import ThresholdProvider, _credentials, _moisture
@@ -37,6 +40,13 @@ async def _overview(hass: HomeAssistant, ws: WebSocketGenerator) -> dict[str, An
 
 async def _plants(hass: HomeAssistant, ws: WebSocketGenerator) -> dict[str, Any]:
     response = await _overview(hass, ws)
+    assert response["success"], response
+    return {plant["plant_id"]: plant for plant in response["result"]["plants"]}
+
+
+async def _client_plants(client: MockHAClientWebSocket) -> dict[str, Any]:
+    await client.send_json_auto_id({"type": "smart_plants/plants/overview"})
+    response: dict[str, Any] = await client.receive_json()
     assert response["success"], response
     return {plant["plant_id"]: plant for plant in response["result"]["plants"]}
 
@@ -121,6 +131,9 @@ async def test_overview_plant_without_sensors(
             "roles": {},
             "last_watered_at": None,
             "image": None,
+            "care": [],
+            "rest_period": None,
+            "resting": False,
         }
     }
 
@@ -355,4 +368,153 @@ async def test_overview_payload_has_no_provider_data(
         "roles",
         "last_watered_at",
         "image",
+        "care",
+        "rest_period",
+        "resting",
     }
+
+
+async def test_overview_care_order_and_statuses(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
+) -> None:
+    # Connect before moving the clock: the client's access token is issued at
+    # the real time and would not be valid at the frozen date.
+    client = await hass_ws_client(hass)
+    # 22:30 UTC on June 14 is already June 15 in Berlin; the overview must use
+    # the Home Assistant time zone's date.
+    await hass.config.async_set_time_zone("Europe/Berlin")
+    freezer.move_to("2026-06-14T22:30:00+00:00")
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+
+    async def create(
+        task_type: str, schedule: dict[str, Any], baseline: str | None
+    ) -> str:
+        nonlocal plant
+        plant, task = await manager.async_create_care_task(
+            plant.id,
+            expected_revision=plant.revision,
+            task_type=task_type,
+            name="Mist leaves" if task_type == "custom" else None,
+            schedule=schedule,
+            instructions=None,
+            baseline_done_on=baseline,
+        )
+        return task.id
+
+    def interval(every: int, unit: str, *, growing: bool = False) -> dict[str, Any]:
+        return {
+            "kind": "interval",
+            "every": every,
+            "unit": unit,
+            "growing_season_only": growing,
+        }
+
+    # Created in an order different from the expected result.
+    repot = await create(
+        "repot", {"kind": "yearly", "start_month": 3, "end_month": 4}, None
+    )
+    pests = await create("pests", interval(1, "weeks", growing=True), "2026-06-01")
+    prune = await create("prune", interval(1, "months"), "2026-06-10")
+    mist = await create("custom", interval(2, "days"), "2026-06-13")
+    feed = await create("fertilize", interval(1, "weeks"), "2026-06-01")
+    plant = await manager.async_set_rest_period(
+        plant.id,
+        expected_revision=plant.revision,
+        rest_period={"start_month": 6, "end_month": 8},
+    )
+    await hass.async_block_till_done()
+
+    overview = (await _client_plants(client))[plant.id]
+    assert overview["rest_period"] == {"start_month": 6, "end_month": 8}
+    assert overview["resting"] is True
+    assert overview["care"] == [
+        {
+            "task_id": feed,
+            "type": "fertilize",
+            "name": None,
+            "status": "overdue",
+            "is_due": True,
+            "next_due": "2026-06-08",
+            "days": 7,
+            "window_end": None,
+            "resume_on": None,
+        },
+        {
+            "task_id": mist,
+            "type": "custom",
+            "name": "Mist leaves",
+            "status": "due",
+            "is_due": True,
+            "next_due": "2026-06-15",
+            "days": None,
+            "window_end": None,
+            "resume_on": None,
+        },
+        {
+            "task_id": prune,
+            "type": "prune",
+            "name": None,
+            "status": "scheduled",
+            "is_due": False,
+            "next_due": "2026-07-10",
+            "days": 25,
+            "window_end": None,
+            "resume_on": None,
+        },
+        {
+            "task_id": pests,
+            "type": "pests",
+            "name": None,
+            "status": "resting",
+            "is_due": False,
+            "next_due": "2026-09-01",
+            "days": None,
+            "window_end": None,
+            "resume_on": "2026-09-01",
+        },
+        {
+            "task_id": repot,
+            "type": "repot",
+            "name": None,
+            "status": "scheduled",
+            "is_due": False,
+            "next_due": "2027-03-01",
+            "days": 259,
+            "window_end": "2027-04-30",
+            "resume_on": None,
+        },
+    ]
+
+    # Completing the overdue task moves it behind the due one.
+    plant, _event = await manager.async_complete_care_task(
+        plant.id, feed, expected_revision=plant.revision
+    )
+    care = (await _client_plants(client))[plant.id]["care"]
+    assert [item["task_id"] for item in care] == [mist, feed, prune, pests, repot]
+    assert care[1]["status"] == "scheduled"
+    assert care[1]["next_due"] == "2026-06-22"
+    assert care[1]["days"] == 7
+
+
+async def test_overview_without_rest_period_is_not_resting(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
+) -> None:
+    client = await hass_ws_client(hass)
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to("2026-01-15T12:00:00+00:00")
+    entry = await _setup(hass)
+    manager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    plant = await manager.async_set_rest_period(
+        plant.id,
+        expected_revision=plant.revision,
+        rest_period={"start_month": 11, "end_month": 2},
+    )
+    overview = (await _client_plants(client))[plant.id]
+    assert overview["resting"] is True
+    freezer.move_to("2026-03-01T12:00:00+00:00")
+    overview = (await _client_plants(client))[plant.id]
+    assert overview["rest_period"] == {"start_month": 11, "end_month": 2}
+    assert overview["resting"] is False

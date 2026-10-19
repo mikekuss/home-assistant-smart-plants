@@ -21,6 +21,16 @@ Commands (all admin-only):
 * ``smart_plants/roles/set_primary`` -> ``{"plant": PlantView}``
 * ``smart_plants/roles/set_aggregation`` -> ``{"plant": PlantView}``
 * ``smart_plants/roles/set_stale_after`` -> ``{"plant": PlantView}``
+* ``smart_plants/care_tasks/create`` -> ``{"plant": PlantView, "task_id"}``
+* ``smart_plants/care_tasks/update`` -> ``{"plant": PlantView}``
+* ``smart_plants/care_tasks/delete`` -> ``{"plant": PlantView}``
+* ``smart_plants/care_tasks/complete`` -> ``{"plant": PlantView, "event_id"}``;
+  the logged care event can be removed again with ``smart_plants/care/delete``.
+* ``smart_plants/care_tasks/skip`` -> ``{"plant": PlantView,
+  "previous_skipped_on"}``; pass ``previous_skipped_on`` to
+  ``smart_plants/care_tasks/undo_skip`` to restore the earlier skip date.
+* ``smart_plants/care_tasks/undo_skip`` -> ``{"plant": PlantView}``
+* ``smart_plants/plants/set_rest_period`` -> ``{"plant": PlantView}``
 
 The generic ``smart_plants/roles/*`` source commands take an additional
 ``role`` field and delegate to the same manager methods as the
@@ -54,6 +64,13 @@ call, derived on the server from the same evaluations the entities read:
   reading.
 * ``last_watered_at`` -- the latest watering care event, or ``null``.
 * ``image`` -- ``{"id"}`` when the plant has a photo, otherwise ``null``.
+* ``care`` -- one entry per care task: ``{"task_id", "type", "name",
+  "status", "is_due", "next_due", "days", "window_end", "resume_on"}`` as
+  computed by ``care_schedule.task_state`` for today's date in the Home
+  Assistant time zone; dates are ISO dates or ``null``. Overdue tasks come
+  first, then due tasks, then the rest by ``next_due``.
+* ``rest_period`` -- ``{"start_month", "end_month"}`` or ``null``.
+* ``resting`` -- whether today lies inside the rest period.
 
 ``smart_plants/wizard/create`` takes a required ``moisture`` configuration
 and an optional ``roles`` object mapping any other source-accepting role to
@@ -74,13 +91,15 @@ Error codes:
   full detail is logged, only the message is returned.
 
 ``expected_revision`` is required on every mutation of an existing plant
-(update, disable, reenable, delete) and is compared against
+(update, disable, reenable, delete, care and care task commands) and is
+compared against
 ``PlantRecord.revision``. Handlers never trust client-supplied ids.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
@@ -93,7 +112,7 @@ from homeassistant.components.websocket_api.decorators import (
 )
 from homeassistant.config_entries import ConfigEntryState
 
-from .care import care_summary
+from .care import CARE_TASK_TYPES, care_summary
 from .const import DOMAIN
 from .manager import (
     SmartPlantsManager,
@@ -639,7 +658,7 @@ async def _handle_care_add(
         vol.Required("expected_revision"): _positive_int,
         vol.Required("event_id"): vol.All(str, vol.Length(min=36, max=36)),
         vol.Required("kind"): vol.In(
-            ("watering", "fertilizing", "pruning", "repotting", "note")
+            ("watering", "fertilizing", "pruning", "repotting", "note", "task")
         ),
         vol.Required("occurred_at"): vol.All(str, vol.Length(min=20, max=64)),
         vol.Required("payload"): dict,
@@ -724,6 +743,238 @@ async def _handle_care_delete(
             msg["id"],
             {"plant": _plant_view(plant), "summary": care_summary(plant.care_events)},
         )
+
+
+# --- Care tasks and rest period -------------------------------------------
+
+
+_TASK_ID_SCHEMA = vol.All(str, vol.Length(min=32, max=32))
+_ISO_DATE_SCHEMA = vol.All(str, vol.Length(min=10, max=10))
+_TASK_NAME_SCHEMA = vol.Any(vol.All(str, vol.Length(min=1, max=60)), None)
+_TASK_SCHEDULE_SCHEMA = vol.All(dict, vol.Length(max=4))
+_TASK_INSTRUCTIONS_SCHEMA = vol.Any(
+    vol.All(str, vol.Length(min=1, max=_SHORT_TEXT_MAX_LEN)), None
+)
+_REST_PERIOD_SCHEMA = vol.Any(
+    vol.Schema({vol.Required("start_month"): int, vol.Required("end_month"): int}),
+    None,
+)
+
+
+async def _run_mutation(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+    mutate: Callable[[SmartPlantsManager], Awaitable[dict[str, Any]]],
+) -> None:
+    """Run one plant mutation and map manager errors to WebSocket errors."""
+    manager = _current_manager(hass)
+    if manager is None:
+        _reply_not_loaded(connection, msg["id"])
+        return
+    try:
+        result = await mutate(manager)
+    except SmartPlantsPlantNotFoundError:
+        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
+    except SmartPlantsRevisionConflictError as err:
+        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
+    except SmartPlantsValidationError as err:
+        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
+    except SmartPlantsManagerUnavailableError:
+        _reply_not_loaded(connection, msg["id"])
+    except Exception:
+        _LOGGER.exception("Unhandled error in %s", msg["type"])
+        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    else:
+        connection.send_result(msg["id"], result)
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/care_tasks/create",
+        vol.Required("plant_id"): _plant_id,
+        vol.Required("expected_revision"): _positive_int,
+        vol.Required("task_type"): vol.In(CARE_TASK_TYPES),
+        vol.Required("name"): _TASK_NAME_SCHEMA,
+        vol.Required("schedule"): _TASK_SCHEDULE_SCHEMA,
+        vol.Required("instructions"): _TASK_INSTRUCTIONS_SCHEMA,
+        vol.Required("baseline_done_on"): vol.Any(_ISO_DATE_SCHEMA, None),
+    }
+)
+@require_admin
+@async_response
+async def _handle_care_task_create(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> None:
+    async def mutate(manager: SmartPlantsManager) -> dict[str, Any]:
+        plant, task = await manager.async_create_care_task(
+            msg["plant_id"],
+            expected_revision=msg["expected_revision"],
+            task_type=msg["task_type"],
+            name=msg["name"],
+            schedule=msg["schedule"],
+            instructions=msg["instructions"],
+            baseline_done_on=msg["baseline_done_on"],
+        )
+        return {"plant": _plant_view(plant), "task_id": task.id}
+
+    await _run_mutation(hass, connection, msg, mutate)
+
+
+_TASK_UPDATE_FIELDS = ("name", "schedule", "instructions", "baseline_done_on")
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/care_tasks/update",
+        vol.Required("plant_id"): _plant_id,
+        vol.Required("task_id"): _TASK_ID_SCHEMA,
+        vol.Required("expected_revision"): _positive_int,
+        vol.Optional("name"): _TASK_NAME_SCHEMA,
+        vol.Optional("schedule"): _TASK_SCHEDULE_SCHEMA,
+        vol.Optional("instructions"): _TASK_INSTRUCTIONS_SCHEMA,
+        vol.Optional("baseline_done_on"): vol.Any(_ISO_DATE_SCHEMA, None),
+    }
+)
+@require_admin
+@async_response
+async def _handle_care_task_update(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> None:
+    async def mutate(manager: SmartPlantsManager) -> dict[str, Any]:
+        plant = await manager.async_update_care_task(
+            msg["plant_id"],
+            msg["task_id"],
+            expected_revision=msg["expected_revision"],
+            **{key: msg[key] for key in _TASK_UPDATE_FIELDS if key in msg},
+        )
+        return {"plant": _plant_view(plant)}
+
+    await _run_mutation(hass, connection, msg, mutate)
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/care_tasks/delete",
+        vol.Required("plant_id"): _plant_id,
+        vol.Required("task_id"): _TASK_ID_SCHEMA,
+        vol.Required("expected_revision"): _positive_int,
+    }
+)
+@require_admin
+@async_response
+async def _handle_care_task_delete(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> None:
+    async def mutate(manager: SmartPlantsManager) -> dict[str, Any]:
+        plant = await manager.async_delete_care_task(
+            msg["plant_id"], msg["task_id"], expected_revision=msg["expected_revision"]
+        )
+        return {"plant": _plant_view(plant)}
+
+    await _run_mutation(hass, connection, msg, mutate)
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/care_tasks/complete",
+        vol.Required("plant_id"): _plant_id,
+        vol.Required("task_id"): _TASK_ID_SCHEMA,
+        vol.Required("expected_revision"): _positive_int,
+        vol.Optional("occurred_at"): vol.All(str, vol.Length(min=20, max=64)),
+        vol.Optional("note"): vol.Any(
+            vol.All(str, vol.Length(min=1, max=_SHORT_TEXT_MAX_LEN)), None
+        ),
+    }
+)
+@require_admin
+@async_response
+async def _handle_care_task_complete(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> None:
+    async def mutate(manager: SmartPlantsManager) -> dict[str, Any]:
+        plant, event = await manager.async_complete_care_task(
+            msg["plant_id"],
+            msg["task_id"],
+            expected_revision=msg["expected_revision"],
+            occurred_at=msg.get("occurred_at"),
+            note=msg.get("note"),
+        )
+        return {"plant": _plant_view(plant), "event_id": event.id}
+
+    await _run_mutation(hass, connection, msg, mutate)
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/care_tasks/skip",
+        vol.Required("plant_id"): _plant_id,
+        vol.Required("task_id"): _TASK_ID_SCHEMA,
+        vol.Required("expected_revision"): _positive_int,
+    }
+)
+@require_admin
+@async_response
+async def _handle_care_task_skip(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> None:
+    async def mutate(manager: SmartPlantsManager) -> dict[str, Any]:
+        plant, previous = await manager.async_skip_care_task(
+            msg["plant_id"], msg["task_id"], expected_revision=msg["expected_revision"]
+        )
+        return {"plant": _plant_view(plant), "previous_skipped_on": previous}
+
+    await _run_mutation(hass, connection, msg, mutate)
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/care_tasks/undo_skip",
+        vol.Required("plant_id"): _plant_id,
+        vol.Required("task_id"): _TASK_ID_SCHEMA,
+        vol.Required("expected_revision"): _positive_int,
+        vol.Required("previous_skipped_on"): vol.Any(_ISO_DATE_SCHEMA, None),
+    }
+)
+@require_admin
+@async_response
+async def _handle_care_task_undo_skip(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> None:
+    async def mutate(manager: SmartPlantsManager) -> dict[str, Any]:
+        plant = await manager.async_undo_skip_care_task(
+            msg["plant_id"],
+            msg["task_id"],
+            expected_revision=msg["expected_revision"],
+            previous_skipped_on=msg["previous_skipped_on"],
+        )
+        return {"plant": _plant_view(plant)}
+
+    await _run_mutation(hass, connection, msg, mutate)
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/plants/set_rest_period",
+        vol.Required("plant_id"): _plant_id,
+        vol.Required("expected_revision"): _positive_int,
+        vol.Required("rest_period"): _REST_PERIOD_SCHEMA,
+    }
+)
+@require_admin
+@async_response
+async def _handle_set_rest_period(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> None:
+    async def mutate(manager: SmartPlantsManager) -> dict[str, Any]:
+        plant = await manager.async_set_rest_period(
+            msg["plant_id"],
+            expected_revision=msg["expected_revision"],
+            rest_period=msg["rest_period"],
+        )
+        return {"plant": _plant_view(plant)}
+
+    await _run_mutation(hass, connection, msg, mutate)
 
 
 @websocket_command(
@@ -1846,6 +2097,13 @@ def async_register(hass: HomeAssistant) -> None:
     async_register_command(hass, _handle_care_add)
     async_register_command(hass, _handle_care_edit)
     async_register_command(hass, _handle_care_delete)
+    async_register_command(hass, _handle_care_task_create)
+    async_register_command(hass, _handle_care_task_update)
+    async_register_command(hass, _handle_care_task_delete)
+    async_register_command(hass, _handle_care_task_complete)
+    async_register_command(hass, _handle_care_task_skip)
+    async_register_command(hass, _handle_care_task_undo_skip)
+    async_register_command(hass, _handle_set_rest_period)
     async_register_command(hass, _handle_create)
     async_register_command(hass, _handle_update)
     async_register_command(hass, _handle_disable)

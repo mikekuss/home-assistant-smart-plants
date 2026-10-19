@@ -833,6 +833,13 @@ class SmartPlantsManager:
             )
             if existing is None:
                 raise SmartPlantsValidationError("care event not found")
+            # An event that completes a task, or a generic task event, keeps
+            # its kind: changing it would detach the event from the task it
+            # records or produce a task event without a matching task.
+            if kind != existing.kind and (
+                existing.task_id is not None or "task" in (kind, existing.kind)
+            ):
+                raise SmartPlantsValidationError("care event kind cannot change")
             edited = _build_care_event(
                 kind=kind,
                 occurred_at=occurred_at,
