@@ -67,9 +67,29 @@ describe("untrusted runtime responses", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ plant: { ...sample, id: "another-plant" } }))));
     await expect(api.deleteImage(harness().hass, sample.id, 1)).rejects.toMatchObject({ code: "invalid_response" });
   });
-  it.each([null, [], {}, { ...sample, revision: true }, { ...sample, revision: 0 }, { ...sample, tags: [null] }, { ...sample, lifecycle_state: "deleted" }, { ...sample, acquired_at: "yesterday" }, { ...sample, placement: { mode: "unknown" } }, { ...sample, species: { provider: "other", snapshot } }, { ...sample, image: { id: "x", width: 2049, height: 1, content_type: "image/webp", created_at: sample.created_at } }])("rejects malformed inventory %#", async plant => {
-    const h = harness([], () => ({ plants: [plant] }));
-    await expect(api.list(h.hass)).rejects.toMatchObject({ code: "invalid_response" });
+  it.each([null, [], {}, { ...sample, revision: true }, { ...sample, revision: 0 }, { ...sample, tags: [null] }, { ...sample, lifecycle_state: "deleted" }, { ...sample, acquired_at: "yesterday" }, { ...sample, placement: { mode: "unknown" } }, { ...sample, species: { provider: "other", snapshot } }, { ...sample, image: { id: "x", width: 2049, height: 1, content_type: "image/webp", created_at: sample.created_at } }])("skips a malformed plant record and keeps the rest of the inventory %#", async plant => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const h = harness([], () => ({ plants: [plant, sample] }));
+      expect(await api.list(h.hass)).toEqual([sample]);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0]?.[0])).toContain("skipping malformed plant record");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+  it.each([[null], [{}], ["plants"], [undefined]])("rejects a plant list response without a plant array %#", async plants => {
+    await expect(api.list(harness([], () => ({ plants })).hass)).rejects.toMatchObject({ code: "invalid_response" });
+  });
+  it("accepts a date-only acquired_at and keeps it unchanged", async () => {
+    const plant = { ...sample, acquired_at: "2024-03-01" };
+    expect(await api.list(harness([], () => ({ plants: [plant] })).hass)).toEqual([plant]);
+    await expect(api.update(harness([], () => ({ plant })).hass, { plant_id: sample.id, expected_revision: 1, name: "New" })).resolves.toEqual(plant);
+    for (const bad of ["2024-13-45", "2024-03", "03/01/2024", "2024-03-01 "]) {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      expect(await api.list(harness([], () => ({ plants: [{ ...sample, acquired_at: bad }] })).hass)).toEqual([]);
+      warn.mockRestore();
+    }
   });
   it("rejects duplicate identities and wrongly bound mutation results", async () => {
     await expect(api.list(harness([], () => ({ plants: [sample, sample] })).hass)).rejects.toMatchObject({ code: "invalid_response" });

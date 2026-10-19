@@ -5,6 +5,9 @@ const text = (v: unknown, max = 500): v is string => typeof v === "string" && v.
 const nullableText = (v: unknown, max = 500) => v === null || text(v, max);
 const integer = (v: unknown, min: number, max: number) => typeof v === "number" && Number.isSafeInteger(v) && v >= min && v <= max;
 const timestamp = (v: unknown) => text(v, 64) && /^\d{4}-\d\d-\d\dT/.test(v) && Number.isFinite(Date.parse(v));
+// The backend stores acquired_at as a full timestamp, but older or API-written
+// records may still carry a calendar date such as "2024-03-01".
+const acquiredAt = (v: unknown) => v === null || timestamp(v) || (typeof v === "string" && /^\d{4}-\d\d-\d\d$/.test(v) && Number.isFinite(Date.parse(v)));
 const map = (v: unknown, valid: (v: unknown) => boolean) => object(v) && Object.keys(v).length <= 32 && Object.entries(v).every(([k, value]) => text(k, 60) && valid(value));
 const snapshotFields: Record<string, (v: unknown) => boolean> = {
   provider: v => text(v, 60), provider_id: v => nullableText(v, 200), provider_ref: v => nullableText(v, 200),
@@ -27,12 +30,22 @@ export function validPlant(v: unknown): boolean {
   if (!object(v)) return false;
   const p = v.placement; const s = v.species; const i = v.image;
   return text(v.id, 200) && integer(v.revision, 1, Number.MAX_SAFE_INTEGER) && text(v.name, 200) && timestamp(v.created_at) &&
-    (v.acquired_at === null || timestamp(v.acquired_at)) && ["active", "disabled"].includes(String(v.lifecycle_state)) &&
+    acquiredAt(v.acquired_at) && ["active", "disabled"].includes(String(v.lifecycle_state)) &&
     nullableText(v.category, 60) && Array.isArray(v.tags) && v.tags.length <= 32 && v.tags.every(t => text(t, 60)) && new Set(v.tags).size === v.tags.length &&
     (p === null || (object(p) && text(p.mode, 60) && nullableText(p.exposure, 60) && nullableText(p.rain_exposure, 60) && (p.container === null || typeof p.container === "boolean"))) &&
     (s === null || (object(s) && snapshot(s.snapshot) && object(s.snapshot) && s.provider === s.snapshot.provider)) &&
     (i === null || (object(i) && text(i.id, 200) && i.content_type === "image/webp" && integer(i.width, 1, 2048) && integer(i.height, 1, 2048) && timestamp(i.created_at))) &&
     (v.care_events === undefined || (Array.isArray(v.care_events) && v.care_events.length <= 256 && v.care_events.every(validCareEvent)));
+}
+// One malformed plant must not blank the whole panel: skip it with a console
+// warning and keep the rest of the inventory.
+export function validPlantList(plants: unknown[]): unknown[] {
+  return plants.filter((plant, index) => {
+    if (validPlant(plant)) return true;
+    const id = object(plant) && typeof plant.id === "string" ? plant.id.slice(0, 200) : `#${index}`;
+    console.warn(`Smart Plants: skipping malformed plant record ${id}`);
+    return false;
+  });
 }
 export function validCareEvent(v: unknown): boolean {
   if (!object(v) || v.schema_version !== 1 || !text(v.id, 36) || !["watering", "fertilizing", "pruning", "repotting", "note"].includes(String(v.kind)) || v.provenance !== "manual" ||
@@ -126,7 +139,13 @@ export function validResponse(msg: Record<string, unknown>, v: unknown): boolean
       !v.plant.care_events.some(event => object(event) && event.id === msg.event_id) &&
       validCareHistory({ revision: v.plant.revision, events: [...v.plant.care_events].sort((a, b) => compareCareEvents(a as Record<string, unknown>, b as Record<string, unknown>)), summary: v.summary });
   }
-  if (command === "smart_plants/plants/list") return Array.isArray(v.plants) && v.plants.every(validPlant) && new Set(v.plants.map(p => (p as Record<string, unknown>).id)).size === v.plants.length;
+  if (command === "smart_plants/plants/list") {
+    // Individual malformed records are dropped by validPlantList; the list
+    // itself and the identities of the records it keeps stay strict.
+    if (!Array.isArray(v.plants)) return false;
+    const kept = v.plants.filter(validPlant) as Record<string, unknown>[];
+    return new Set(kept.map(p => p.id)).size === kept.length;
+  }
   if (command === "smart_plants/roles/list") return Array.isArray(v.roles) && v.roles.every(r => object(r) && text(r.role) && text(r.source_domain) && Array.isArray(r.aggregations) && r.aggregations.every(a => text(a)) && Array.isArray(r.thresholds) && r.thresholds.every(t => object(t) && text(t.key) && text(t.entity_role) && text(t.translation_key)) && Array.isArray(r.entities) && r.entities.every(e => object(e) && text(e.role) && text(e.platform) && text(e.translation_key)));
   if (command === "smart_plants/plants/delete") return Object.keys(v).length === 0;
   // Entries are validated one by one when parsed; malformed entries are dropped.

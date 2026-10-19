@@ -13,7 +13,7 @@ import type {
   HealthEvaluation, PlantPlacement, PlantSpecies, SensorSource,
   CareHistory, CareEvent,
 } from "./types.js";
-import { validPlant, validResponse, validState } from "./validation.js";
+import { validPlant, validPlantList, validResponse, validState } from "./validation.js";
 import { parseOverview } from "./overview-model.js";
 import type { PlantOverview } from "./overview-model.js";
 import { parseStatistics } from "./history-model.js";
@@ -276,7 +276,7 @@ export const api = {
     const result = await send<{ plants: PlantRecord[] }>(hass, {
       type: "smart_plants/plants/list",
     });
-    return result.plants;
+    return validPlantList(result.plants) as PlantRecord[];
   },
 
   async create(

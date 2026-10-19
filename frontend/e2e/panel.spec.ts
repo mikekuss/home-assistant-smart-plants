@@ -1081,7 +1081,7 @@ test("malformed plant, registry, evaluation and API-version responses fail close
   await expand(page, "Troubleshooting");
   await expect(page.getByText("No evaluation is available right now.", { exact: true })).toBeVisible();
   await show(page, "Settings");
-  await page.evaluate(() => { window.__smartPlantsHarness.malformed["smart_plants/plants/list"] = { plants: [{ name: "PRIVATE_SENTINEL" }] }; });
+  await page.evaluate(() => { window.__smartPlantsHarness.malformed["smart_plants/plants/list"] = { plants: { name: "PRIVATE_SENTINEL" } }; });
   await refreshData(page);
   await expect(page.getByRole("alert")).toContainText("response is incompatible");
   await expect(button(page, "Save name")).toBeDisabled();

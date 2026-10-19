@@ -306,7 +306,40 @@ async def test_manager_rejects_invalid_acquired_at(
         await manager.async_create_plant(name="Aloe", acquired_at=bad_timestamp)
 
 
-async def test_manager_accepts_iso_acquired_date(hass: HomeAssistant) -> None:
+async def test_manager_normalizes_date_only_acquired_at_on_create(
+    hass: HomeAssistant,
+) -> None:
     manager = await _loaded_manager(hass)
     plant = await manager.async_create_plant(name="Aloe", acquired_at="2026-08-01")
-    assert plant.acquired_at == "2026-08-01"
+    assert plant.acquired_at == "2026-08-01T00:00:00+00:00"
+
+
+async def test_manager_normalizes_date_only_acquired_at_on_update(
+    hass: HomeAssistant,
+) -> None:
+    manager = await _loaded_manager(hass)
+    plant = await manager.async_create_plant(name="Aloe")
+    updated = await manager.async_update_plant(
+        plant.id, expected_revision=1, acquired_at="2024-03-01"
+    )
+    assert updated.acquired_at == "2024-03-01T00:00:00+00:00"
+    assert manager.snapshot.plants[plant.id].acquired_at == updated.acquired_at
+
+    # Full timestamps are stored exactly as sent.
+    timestamped = await manager.async_update_plant(
+        plant.id, expected_revision=2, acquired_at="2024-03-01T08:30:00+02:00"
+    )
+    assert timestamped.acquired_at == "2024-03-01T08:30:00+02:00"
+
+
+@pytest.mark.parametrize("bad_date", ["2024-02-30", "2024-13-01", "2024-03-01 "])
+async def test_manager_update_rejects_invalid_acquired_date(
+    hass: HomeAssistant, bad_date: str
+) -> None:
+    manager = await _loaded_manager(hass)
+    plant = await manager.async_create_plant(name="Aloe")
+    with pytest.raises(SmartPlantsValidationError, match="acquired_at"):
+        await manager.async_update_plant(
+            plant.id, expected_revision=1, acquired_at=bad_date
+        )
+    assert manager.snapshot.plants[plant.id].acquired_at is None
