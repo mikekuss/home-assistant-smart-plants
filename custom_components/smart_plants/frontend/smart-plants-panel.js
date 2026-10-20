@@ -7056,6 +7056,11 @@ No = Q, No.styles = [Li, o`
     .fab ha-icon { --mdc-icon-size: 24px; }
     .fab:disabled { opacity: .6; cursor: default; }
 
+    /* Five tiles need more room than four: medium widths use three columns so labels such as
+       "Sensor issues" (German "Sensorprobleme") never break inside a word. */
+    @container (min-width: 601px) and (max-width: 900px) {
+      .summary.five { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
     @container (max-width: 600px) {
       .summary, .summary.five { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
       .summary.five .tile:last-child { grid-column: 1 / -1; }
