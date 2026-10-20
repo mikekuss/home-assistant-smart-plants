@@ -200,11 +200,14 @@ export function secondaryReadings(overview: PlantOverview): [ReadingRole, RoleRe
 
 // ---- Filtering, search and sorting ----
 
-export type OverviewFilter = "all" | "water" | "problems" | "sensors";
-export const OVERVIEW_FILTERS: readonly OverviewFilter[] = ["all", "water", "problems", "sensors"];
-export function matchesFilter(filter: OverviewFilter, status: PlantStatus | undefined): boolean {
+export type OverviewFilter = "all" | "water" | "problems" | "sensors" | "care";
+// "care" lists plants with a care task due today or overdue. Care never changes
+// a plant's status, so it is a filter of its own.
+export const OVERVIEW_FILTERS: readonly OverviewFilter[] = ["all", "water", "problems", "sensors", "care"];
+export function matchesFilter(filter: OverviewFilter, status: PlantStatus | undefined, careDue = false): boolean {
   switch (filter) {
     case "all": return true;
+    case "care": return careDue;
     case "water": return status === "needs_water";
     case "problems": return status === "too_wet" || status === "problem";
     case "sensors": return status === "stale" || status === "no_sensors";

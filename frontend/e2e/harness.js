@@ -144,9 +144,15 @@ state.seedCare = () => {
 // Done or Skip; yearly tasks open on the first day of their first month.
 const UNIT_DAYS = { days: 1, weeks: 7, months: 30, years: 365 };
 const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 86400000);
-function careStateOf(task) {
+const restMonths = rest => { const months = []; for (let m = rest.start_month; ; m = m % 12 + 1) { months.push(m); if (m === rest.end_month || months.length === 12) return months; } };
+function careStateOf(task, rest) {
   const base = { task_id: task.id, type: task.type, name: task.name, window_end: null, resume_on: null };
   const now = today();
+  if (rest && task.schedule.kind === "interval" && task.schedule.growing_season_only && restMonths(rest).includes(Number(now.slice(5, 7)))) {
+    const resume = rest.end_month % 12 + 1; const year = Number(now.slice(0, 4)) + (resume > Number(now.slice(5, 7)) ? 0 : 1);
+    const date = `${year}-${String(resume).padStart(2, "0")}-01`;
+    return { ...base, status: "resting", is_due: false, next_due: date, days: null, resume_on: date };
+  }
   if (task.schedule.kind === "yearly") {
     const year = Number(now.slice(0, 4)); const start = `${year}-${String(task.schedule.start_month).padStart(2, "0")}-01`;
     const next = start > now ? start : `${year + 1}${start.slice(4)}`;
@@ -177,9 +183,9 @@ function overviewOf(p) {
     roles: sources.length ? { moisture: { value: e.computed_available ? e.computed_percent : null, unit: "%", state: e.needs_water ? "low" : e.too_wet ? "high" : e.sensor_stale ? "stale" : e.computed_available ? "ok" : "unavailable", range: { min: bound("min"), target: bound("target"), max: bound("max") }, last_reported: e.computed_available ? now : null, sources: sources.map(s => s.entity_id) } } : {},
     last_watered_at: watered?.occurred_at ?? null,
     image: p.image ? { id: p.image.id } : null,
-    care: (p.care_tasks ?? []).map(careStateOf).sort((a, b) => ({ overdue: 0, due: 1 }[a.status] ?? 2) - ({ overdue: 0, due: 1 }[b.status] ?? 2) || (a.next_due ?? "").localeCompare(b.next_due ?? "")),
+    care: (p.care_tasks ?? []).map(task => careStateOf(task, p.rest_period)).sort((a, b) => ({ overdue: 0, due: 1 }[a.status] ?? 2) - ({ overdue: 0, due: 1 }[b.status] ?? 2) || (a.next_due ?? "").localeCompare(b.next_due ?? "")),
     rest_period: p.rest_period ?? null,
-    resting: false,
+    resting: !!p.rest_period && restMonths(p.rest_period).includes(Number(today().slice(5, 7))),
   };
 }
 const params = new URLSearchParams(location.search);
@@ -286,6 +292,10 @@ async function respond(message) {
       p.care_events.push(event);
       task.last_done_at = new Date(occurred).toISOString().replace(/\.\d+Z$/, "Z");
       return { plant: revise(p, {}), event_id: event.id };
+    }
+    case "smart_plants/plants/set_rest_period": {
+      if (message.rest_period && restMonths(message.rest_period).length === 12) reject("invalid_format");
+      return { plant: revise(p, { rest_period: message.rest_period }) };
     }
     case "smart_plants/care_tasks/skip": {
       const task = p.care_tasks.find(t => t.id === message.task_id); if (!task) reject("invalid_format");

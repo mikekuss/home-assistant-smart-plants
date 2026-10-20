@@ -2,8 +2,8 @@
 // Automate… sheet. Pure render functions: the panel owns state and writes.
 import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
-import { CARE_TASK_TYPES, INTERVAL_UNITS, MAX_CARE_TASKS, TASK_ICONS, TASK_INSTRUCTIONS_MAX, TASK_NAME_MAX, draftSummary, existingTypes, lastDone, monthName, monthRange, monthsInRange, presetDraft, scheduleText, shortDate, taskChip, taskName } from "../care-plan.js";
-import type { DraftErrors, TaskDraft } from "../care-plan.js";
+import { CARE_TASK_TYPES, INTERVAL_UNITS, MAX_CARE_TASKS, TASK_ICONS, TASK_INSTRUCTIONS_MAX, TASK_NAME_MAX, draftSummary, existingTypes, inRestPeriod, lastDone, monthName, monthRange, monthsInRange, presetDraft, restSentence, scheduleText, shortDate, taskChip, taskName } from "../care-plan.js";
+import type { DraftErrors, RestDraft, TaskDraft } from "../care-plan.js";
 import type { Localizer } from "../localize.js";
 import type { PlantOverview } from "../overview-model.js";
 import type { CareTask, CareTaskType, PlantRecord } from "../types.js";
@@ -21,6 +21,7 @@ export interface CarePlanContext {
   // Tasks with a write in flight.
   pending: ReadonlySet<string>;
   onAdd: () => void;
+  onRest: () => void;
   onDone: (task: CareTask) => void;
   onAction: (task: CareTask, action: TaskAction) => void;
 }
@@ -31,12 +32,32 @@ export function renderCarePlan(ctx: CarePlanContext): TemplateResult {
   const full = tasks.length >= MAX_CARE_TASKS;
   return html`<section class="sp-card care-plan" aria-labelledby="care-plan-heading">
     <div class="card-h"><h3 id="care-plan-heading">${l.t("care_plan.heading")}</h3>
-      ${tasks.length ? html`<button type="button" class="btn text sm" ?disabled=${ctx.disabled || full} title=${full ? l.t("care_plan.full") : ""} @click=${ctx.onAdd}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("care_plan.add_task")}</button>` : nothing}</div>
+      <span class="row care-plan-actions">${tasks.length ? html`<button type="button" class="btn text sm" ?disabled=${ctx.disabled || full} title=${full ? l.t("care_plan.full") : ""} @click=${ctx.onAdd}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("care_plan.add_task")}</button>` : nothing}
+        <ha-dropdown @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => { if (e.detail.item.value === "rest") ctx.onRest(); }}>
+          <button slot="trigger" type="button" class="icon-btn" ?disabled=${ctx.disabled} aria-label=${l.t("care_plan.plan_menu")}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
+          <ha-dropdown-item value="rest" ?disabled=${ctx.disabled}>${l.t(plant.rest_period ? "care_plan.rest_edit" : "care_plan.rest_set")}<ha-icon slot="icon" icon="mdi:weather-night"></ha-icon></ha-dropdown-item>
+        </ha-dropdown></span></div>
+    ${plant.rest_period ? restRow(ctx, plant.rest_period) : nothing}
     ${tasks.length
       ? html`<ul class="list task-list" aria-label=${l.t("care_plan.tasks_label")}>${tasks.map(task => taskRow(ctx, task))}</ul>`
       : html`<div class="card-b"><p class="muted">${l.t("care_plan.empty")}</p>
           <div><button type="button" class="btn filled" ?disabled=${ctx.disabled} @click=${ctx.onAdd}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("care_plan.add_task")}</button></div></div>`}
   </section>`;
+}
+
+function restRow(ctx: CarePlanContext, rest: NonNullable<PlantRecord["rest_period"]>): TemplateResult {
+  const { l } = ctx;
+  const month = Number(ctx.today.slice(5, 7));
+  const sentence = restSentence(l, rest, ctx.plant.care_tasks ?? [], ctx.today);
+  const range = monthRange(l, rest.start_month, rest.end_month, "short");
+  return html`<div class="restline">
+    <ha-icon aria-hidden="true" icon="mdi:weather-night"></ha-icon>
+    <div class="restline-main"><div class="restline-top"><span class="restline-title">${l.t("care_plan.rest_period")}</span>
+        <span class="months" role="img" aria-label=${l.t("care_plan.rest_months_label", { months: monthRange(l, rest.start_month, rest.end_month) })}>${Array.from({ length: 12 }, (_, index) => index + 1).map(m => html`<i class="${inRestPeriod(rest, m) ? "on" : ""} ${m === month ? "now" : ""}">${monthName(l, m, "narrow")}</i>`)}</span>
+        <span aria-hidden="true">${range}</span></div>
+      <div class="restline-text"><b>${sentence.season}</b> · ${sentence.tasks}</div></div>
+    <button type="button" class="btn text sm" ?disabled=${ctx.disabled} aria-label=${l.t("care_plan.rest_edit")} @click=${ctx.onRest}>${l.t("care_plan.edit")}</button>
+  </div>`;
 }
 
 function taskRow(ctx: CarePlanContext, task: CareTask): TemplateResult {
@@ -182,6 +203,44 @@ function detailsStep(ctx: TaskEditorContext): TemplateResult {
       <button type="button" class="primary" ?disabled=${ctx.busy} @click=${ctx.onSave}>${l.t(state.taskId ? "care_plan.save" : "care_plan.add_task")}</button></div>`;
 }
 
+// ---- Rest period editor ----
+
+export interface RestEditorContext {
+  l: Localizer;
+  plant: PlantRecord;
+  draft: RestDraft;
+  error: string;
+  busy: boolean;
+  onMonth: (month: number) => void;
+  onToggle: (taskId: string, off: boolean) => void;
+  onSave: () => void;
+  onRemove: () => void;
+  onCancel: () => void;
+}
+
+export function renderRestEditor(ctx: RestEditorContext): TemplateResult {
+  const { l, plant, draft } = ctx;
+  const repeating = (plant.care_tasks ?? []).filter(task => task.schedule.kind === "interval");
+  const selected = draft.startMonth !== null && draft.endMonth !== null ? new Set(monthsInRange(draft.startMonth, draft.endMonth)) : new Set<number>();
+  return html`<p class="muted">${l.t("care_plan.rest_intro")}</p>
+    <p class="small muted">${l.t("care_plan.rest_watering")}</p>
+    <div class="field-group"><span class="field-label" id="rest-months-label">${l.t("care_plan.rest_months")}</span>
+      <div class="monthpick" role="group" aria-labelledby="rest-months-label" aria-describedby=${ctx.error ? "rest-error rest-months-hint" : "rest-months-hint"}>
+        ${Array.from({ length: 12 }, (_, index) => index + 1).map(month => html`<button type="button" aria-pressed=${selected.has(month) ? "true" : "false"} aria-label=${monthName(l, month)} @click=${() => ctx.onMonth(month)}>${monthName(l, month, "short")}</button>`)}</div>
+      <span class="small muted" id="rest-months-hint">${l.t("care_plan.months_hint")}</span>
+      ${ctx.error ? html`<span class="error-text small" id="rest-error">${ctx.error}</span>` : nothing}</div>
+    <fieldset class="rest-tasks"><legend class="field-label">${l.t("care_plan.rest_off_heading")}</legend>
+      ${repeating.length ? repeating.map(task => html`<div><label class="check"><input type="checkbox" .checked=${draft.off.has(task.id)} aria-describedby="rest-task-${task.id}"
+          @change=${(e: Event) => ctx.onToggle(task.id, (e.target as HTMLInputElement).checked)}><span>${taskName(l, task)}</span></label>
+          <span class="small muted growing-hint" id="rest-task-${task.id}">${scheduleText(l, task.schedule, null)}</span></div>`)
+        : html`<p class="small muted">${l.t("care_plan.rest_no_repeating")}</p>`}
+      <p class="small muted">${l.t("care_plan.rest_yearly_note")}</p></fieldset>
+    <div class="actions dialog-actions">
+      ${plant.rest_period ? html`<button type="button" class="danger-text" ?disabled=${ctx.busy} @click=${ctx.onRemove}>${l.t("care_plan.rest_remove")}</button>` : nothing}<span class="spacer"></span>
+      <button type="button" ?disabled=${ctx.busy} @click=${ctx.onCancel}>${l.t("common.cancel")}</button>
+      <button type="button" class="primary" ?disabled=${ctx.busy} @click=${ctx.onSave}>${l.t("care_plan.save")}</button></div>`;
+}
+
 // ---- Automate… ----
 
 export interface AutomateRow { icon: string; entityId: string | null; description: string; note?: string }
@@ -206,7 +265,6 @@ export function renderAutomate(ctx: AutomateContext): TemplateResult {
 }
 
 export const carePlanStyles = css`
-  .pd { --sp-care: var(--purple-color, #8f5bd1); }
   .care-plan .task { grid-template-columns: 40px minmax(0, 1fr) auto 40px; }
   .care-plan .task-side { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
   .cchip { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 2px 10px 2px 7px; border-radius: 13px; font-size: 13px; font-weight: 500; line-height: 1.3; max-width: 100%; }
@@ -216,6 +274,17 @@ export const carePlanStyles = css`
   .cchip.tone-later, .cchip.tone-resting { background: color-mix(in srgb, var(--sp-text) 7%, transparent); color: color-mix(in srgb, var(--sp-text-secondary) 55%, var(--sp-text)); }
   .cchip.tone-done { background: color-mix(in srgb, var(--sp-success) 15%, transparent); color: color-mix(in srgb, var(--sp-success) 55%, var(--sp-text)); }
   .care-note { display: flex; align-items: center; gap: 6px; }
+  .care-plan-actions { gap: 0; }
+  .restline { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 4px 10px; align-items: start; padding: 0 8px 12px 16px; font-size: 13px; color: var(--sp-text-secondary); }
+  .restline > ha-icon { --mdc-icon-size: 18px; margin-top: 2px; }
+  .restline-top { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; }
+  .restline-title, .restline-text b { font-weight: 500; color: var(--sp-text); }
+  .restline-text { margin-top: 4px; }
+  .months { display: inline-flex; gap: 2px; }
+  .months i { font-style: normal; width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; font-size: 10.5px; background: color-mix(in srgb, var(--sp-text) 7%, transparent); color: color-mix(in srgb, var(--sp-text-secondary) 55%, var(--sp-text)); }
+  .months i.on { background: color-mix(in srgb, var(--sp-care) 18%, transparent); color: color-mix(in srgb, var(--sp-care) 55%, var(--sp-text)); font-weight: 500; }
+  .months i.now { box-shadow: inset 0 0 0 1.5px var(--sp-text-secondary); }
+  .pd .care-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .care-kind { display: flex; flex-direction: column; gap: 2px; margin: 8px 0; }
   .care-note ha-icon { --mdc-icon-size: 18px; color: color-mix(in srgb, var(--sp-care) 55%, var(--sp-text)); }
 
@@ -247,6 +316,8 @@ export const carePlanStyles = css`
   .care-dialog .growing-hint { display: block; margin-inline-start: 34px; }
   .care-dialog #task-more { display: flex; flex-direction: column; gap: 4px; }
   .care-dialog .more-options .btn { margin-inline-start: -14px; }
+  .care-dialog .rest-tasks { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .care-dialog .rest-tasks legend { padding: 0; margin-bottom: 6px; }
   .care-dialog .automate-list { border: 1px solid var(--divider-color, #e0e0e0); border-radius: 12px; }
   .care-dialog .automate-hint { display: flex; gap: 8px; align-items: flex-start; }
   @media (max-width: 600px) {
@@ -257,5 +328,7 @@ export const carePlanStyles = css`
     .care-plan .task { grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: start; }
     .care-plan .task-side { grid-column: 2; grid-row: 2; justify-content: flex-start; }
     .care-plan .task-menu { grid-column: 3; grid-row: 1; }
+    .restline { grid-template-columns: 20px minmax(0, 1fr); }
+    .restline > .btn { grid-column: 2; justify-self: start; margin-inline-start: -12px; }
   }
 `;

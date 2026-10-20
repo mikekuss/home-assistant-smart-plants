@@ -77,9 +77,41 @@ test("care task editor is accessible in every step and validates inline", async 
   expect(created).toMatchObject({ task_type: "custom", name: "Mist leaves", schedule: { kind: "yearly", start_month: 11, end_month: 2 } });
 });
 
+test("rest period editor sets the months and shows the rest row", async ({ page }, info) => {
+  await openCare(page);
+  await page.locator("smart-plants-panel .care-plan .card-h ha-dropdown").evaluate(menu => menu.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value: "rest" } } })));
+  await expect(dialog(page)).toContainText("Watering alerts are not affected.");
+  await dialogButton(page, "Save").click();
+  await expect(dialog(page)).toContainText("Pick the rest months.");
+  await audit(page, info, "rest-editor-error");
+  await dialogButton(page, "November").click();
+  await dialogButton(page, "February").click();
+  await expect(dialog(page).getByRole("checkbox", { name: "Fertilize", exact: true })).toBeChecked();
+  await dialogButton(page, "Save").click();
+  await expect(dialog(page)).toHaveCount(0);
+  const row = page.locator("smart-plants-panel .care-plan .restline");
+  await expect(row).toContainText("Rest period");
+  await expect(row.getByRole("img", { name: "Rest months: November–February" })).toBeVisible();
+  await audit(page, info, "rest-row");
+});
+
+test("due care shows in the plant header and on the overview", async ({ page }, info) => {
+  await page.goto(`${url}?seed&care`);
+  await expect(button(page, "Menu")).toBeVisible();
+  const careTile = page.locator("smart-plants-overview .tile", { hasText: "Care due" });
+  await expect(careTile).toContainText("1");
+  await expect(page.locator("smart-plants-overview .care")).toContainText("Care: Fertilize");
+  await audit(page, info, "overview-care");
+  await careTile.click();
+  await expect(page.locator("smart-plants-overview article.card")).toHaveCount(1);
+  await button(page, "Office Aloe").click();
+  await expect(page.getByRole("list", { name: "Care due", exact: true })).toContainText("Fertilize");
+  await audit(page, info, "header-care-chips");
+});
+
 test("automate sheet lists the task entities", async ({ page }, info) => {
   await openCare(page);
-  await page.locator("smart-plants-panel .care-plan ha-dropdown").first().evaluate(menu => menu.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value: "automate" } } })));
+  await page.locator("smart-plants-panel .care-plan ha-dropdown.task-menu").first().evaluate(menu => menu.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value: "automate" } } })));
   await expect(dialog(page)).toContainText("binary_sensor.office_aloe_fertilize");
   await expect(dialog(page)).toContainText("sensor.office_aloe_fertilize_next_due");
   await expect(dialog(page)).toContainText("binary_sensor.office_aloe_care_due");

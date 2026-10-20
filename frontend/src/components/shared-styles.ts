@@ -13,6 +13,8 @@ export const themeFallbacks = css`
     --sp-text-secondary: var(--secondary-text-color, #727272);
     --sp-primary: var(--primary-color, #009ac7);
     --sp-card: var(--card-background-color, #fff);
+    /* Care reminders have their own colour, apart from the watering palette. */
+    --sp-care: var(--purple-color, #8f5bd1);
   }
 `;
 

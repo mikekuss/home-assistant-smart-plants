@@ -7,6 +7,7 @@ import type { Localizer, MessageKey } from "../localize.js";
 import { OVERVIEW_FILTERS, OVERVIEW_SORTS, cardReason, chipText, groupByArea, matchesFilter, matchesSearch, secondaryReadings, sortItems, wateredText } from "../overview-model.js";
 import type { OverviewFilter, OverviewItem, OverviewSort, PlantOverview } from "../overview-model.js";
 import type { PlantRecord } from "../types.js";
+import { careLine, dueTasks } from "../care-plan.js";
 
 export const DOCUMENTATION_URL = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md";
 
@@ -15,11 +16,12 @@ const TILES: Record<OverviewFilter, { label: MessageKey; icon: string; tone: str
   water: { label: "overview.tile_water", icon: "mdi:water-alert", tone: "var(--sp-warning)" },
   problems: { label: "overview.tile_problems", icon: "mdi:alert-circle", tone: "var(--sp-error)" },
   sensors: { label: "overview.tile_sensors", icon: "mdi:clock-alert-outline", tone: "var(--sp-disabled)" },
+  care: { label: "overview.tile_care", icon: "mdi:calendar-check-outline", tone: "var(--sp-care)" },
 };
 const SORT_LABELS: Record<OverviewSort, MessageKey> = { attention: "overview.sort_attention", name: "overview.sort_name", area: "overview.sort_area" };
 const SORT_ICONS: Record<OverviewSort, string> = { attention: "mdi:alert-circle-outline", name: "mdi:sort-alphabetical-ascending", area: "mdi:texture-box" };
 
-interface CardItem extends OverviewItem { plant: PlantRecord; overview: PlantOverview | undefined; species: string | null }
+interface CardItem extends OverviewItem { plant: PlantRecord; overview: PlantOverview | undefined; species: string | null; careDue: boolean }
 
 export interface OpenPlantDetail { plantId: string; section?: "sensors" }
 
@@ -47,6 +49,12 @@ export class SmartPlantsOverview extends LitElement {
     .tile .num { display: block; font-size: 22px; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
     .tile .lbl { display: block; font-size: 13px; color: var(--sp-text-secondary); overflow-wrap: anywhere; hyphens: auto; }
     .tile.zero .num { color: var(--sp-text-secondary); }
+    .summary.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .care { display: flex; align-items: center; gap: 6px; margin: 0 14px 10px; font-size: 13px; min-width: 0; color: color-mix(in srgb, var(--sp-care) 55%, var(--sp-text)); }
+    .care.overdue { color: color-mix(in srgb, var(--sp-error) 60%, var(--sp-text)); }
+    .care ha-icon { --mdc-icon-size: 17px; }
+    .care > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
     .listbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
     .search { flex: 1 1 220px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 20px; color: var(--sp-text-secondary);
@@ -107,7 +115,8 @@ export class SmartPlantsOverview extends LitElement {
     .fab:disabled { opacity: .6; cursor: default; }
 
     @container (max-width: 600px) {
-      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .summary, .summary.five { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .summary.five .tile:last-child { grid-column: 1 / -1; }
       .tile { padding: 10px; gap: 10px; }
       .tile .ico { width: 34px; height: 34px; }
       .grid { grid-template-columns: 1fr; }
@@ -140,7 +149,7 @@ export class SmartPlantsOverview extends LitElement {
       const areaName = this.areaNames[plant.id] ?? null;
       const overview = this.overview[plant.id];
       return {
-        id: plant.id, name: plant.name, areaName, status: overview?.status, plant, overview, species,
+        id: plant.id, name: plant.name, areaName, status: overview?.status, plant, overview, species, careDue: dueTasks(overview).length > 0,
         searchText: [plant.name, areaName, plant.species?.snapshot.common_name, plant.species?.snapshot.latin_name, plant.category, ...plant.tags].filter(Boolean).join(" "),
       };
     });
@@ -154,10 +163,12 @@ export class SmartPlantsOverview extends LitElement {
     if (this.loading && !this.plants.length) return html`<p class="loading" role="status">${l.t("list.loading")}</p>`;
     if (!this.plants.length) return this._renderEmpty();
     const items = this._items();
-    const shown = items.filter(item => matchesFilter(this._filter, item.status) && matchesSearch(item, this._query));
+    const shown = items.filter(item => matchesFilter(this._filter, item.status, item.careDue) && matchesSearch(item, this._query));
+    // The Care due tile appears once any plant has a care task.
+    const filters = OVERVIEW_FILTERS.filter(filter => filter !== "care" || items.some(item => item.overview?.care.length) || this._filter === "care");
     const filtered = this._filter !== "all";
     return html`<div class="content">
-      <div class="summary" role="group" aria-label=${l.t("overview.filter_label")}>${OVERVIEW_FILTERS.map(filter => this._renderTile(filter, items.filter(item => matchesFilter(filter, item.status)).length))}</div>
+      <div class="summary ${filters.length === 5 ? "five" : ""}" role="group" aria-label=${l.t("overview.filter_label")}>${filters.map(filter => this._renderTile(filter, items.filter(item => matchesFilter(filter, item.status, item.careDue)).length))}</div>
       <div class="listbar">
         <label class="search"><ha-icon aria-hidden="true" icon="mdi:magnify"></ha-icon>
           <input type="search" .value=${this._query} placeholder=${l.t("overview.search")} aria-label=${l.t("overview.search")} @input=${(e: Event) => { this._query = (e.target as HTMLInputElement).value; }}></label>
@@ -200,6 +211,7 @@ export class SmartPlantsOverview extends LitElement {
         <div class="title"><div role="heading" aria-level=${this._sort === "area" ? "3" : "2"}><button type="button" class="name" id=${headingId} @click=${() => this._emit("open-plant", { plantId: plant.id } satisfies OpenPlantDetail)}>${plant.name}</button></div>
           <span class="sub">${item.areaName ? html`<ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${item.areaName}` : nothing}${item.areaName && item.species ? " · " : ""}${item.species ? html`<i>${item.species}</i>` : nothing}</span></div></div>
       ${o && chip ? html`<div class="status"><sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip>${reason ? html`<span class="reason">${reason}</span>` : nothing}</div>` : nothing}
+      ${this._renderCare(o)}
       ${o && o.status === "no_sensors" && !others.length
         ? html`<div class="empty-box"><span>${l.t("card.no_sensors")}</span><button type="button" class="text-button" @click=${() => this._emit("open-plant", { plantId: plant.id, section: "sensors" } satisfies OpenPlantDetail)} aria-label=${l.t("card.assign_label", { name: plant.name })}>${l.t("card.assign")}</button></div>`
         : moisture || others.length ? html`<div class="readings">
@@ -209,6 +221,15 @@ export class SmartPlantsOverview extends LitElement {
       <div class="foot"><span class="last"><ha-icon aria-hidden="true" icon="mdi:history"></ha-icon>${wateredText(l, o?.last_watered_at ?? null, this.now)}</span>
         <button type="button" class="tonal" ?disabled=${this.blocked || this.watering.has(plant.id)} aria-label=${l.t("card.log_watering_label", { name: plant.name })} @click=${() => this._emit("log-watering", { plantId: plant.id })}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${l.t("card.log_watering")}</button></div>
     </article>`;
+  }
+
+  // One line naming the due care tasks: "Care: Prune, Fertilize +1".
+  private _renderCare(o: PlantOverview | undefined) {
+    const due = dueTasks(o);
+    if (!due.length) return nothing;
+    const l = this.l; const overdue = due.some(task => task.status === "overdue");
+    return html`<p class="care ${overdue ? "overdue" : ""}"><ha-icon aria-hidden="true" icon=${overdue ? "mdi:alarm" : "mdi:calendar-check-outline"}></ha-icon>
+      <span>${l.t("card.care_due", { tasks: careLine(l, due) })}${overdue ? html`<span class="sr-only"> (${l.t("card.care_overdue")})</span>` : nothing}</span></p>`;
   }
 
   private _renderEmpty() {

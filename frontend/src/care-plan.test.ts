@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SmartPlantsPanel } from "./panel.js";
 import { ENGLISH, createLocalizer } from "./localize.js";
-import { careOnlyChange, draftFromTask, lastDone, localDate, matchingTask, monthsInRange, pickMonth, presetDraft, scheduleText, shortDate, taskChanges, taskChip, validateDraft } from "./care-plan.js";
+import { careLine, careOnlyChange, draftFromTask, lastDone, localDate, matchingTask, monthsInRange, pickMonth, presetDraft, restDraft, restSentence, restTaskChanges, resumeDate, scheduleText, shortDate, taskChanges, taskChip, validateDraft, validateRest } from "./care-plan.js";
+import { matchesFilter } from "./overview-model.js";
 import type { CareTaskSummary, PlantOverview } from "./overview-model.js";
-import type { CareEvent, CareTask, PlantRecord } from "./types.js";
+import type { CareEvent, CareTask, PlantRecord, RestPeriod } from "./types.js";
 import { click, harness, overviewFor, sample, settle } from "./test-helpers.js";
 
 const l = ENGLISH;
@@ -120,6 +121,7 @@ function careBackend(initial: PlantRecord, states: (plant: PlantRecord) => CareT
         const changes = Object.fromEntries(["name", "schedule", "instructions", "baseline_done_on"].filter(key => Object.hasOwn(msg, key)).map(key => [key, msg[key]]));
         return { plant: bump({ care_tasks: tasks.map(task => task.id === msg.task_id ? { ...task, ...changes } : task) }) };
       }
+      case "smart_plants/plants/set_rest_period": return { plant: bump({ rest_period: msg.rest_period as RestPeriod | null }) };
       case "smart_plants/care_tasks/delete": return { plant: bump({ care_tasks: tasks.filter(task => task.id !== msg.task_id) }) };
       case "smart_plants/care_tasks/complete": {
         const task = tasks.find(item => item.id === msg.task_id)!;
@@ -155,7 +157,7 @@ const carePlan = (el: SmartPlantsPanel) => el.shadowRoot!.querySelector<HTMLElem
 const dialog = (el: SmartPlantsPanel) => el.shadowRoot!.querySelector<HTMLDialogElement>("dialog.care-dialog");
 const dialogButton = (el: SmartPlantsPanel, name: string) => [...dialog(el)!.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === name || b.getAttribute("aria-label") === name)!;
 const menu = async (el: SmartPlantsPanel, index: number, value: string) => {
-  carePlan(el).querySelectorAll("ha-dropdown")[index]!.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value } } })); await settle(el);
+  carePlan(el).querySelectorAll("ha-dropdown.task-menu")[index]!.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value } } })); await settle(el);
 };
 const typeInto = async (el: SmartPlantsPanel, input: HTMLInputElement | HTMLTextAreaElement, value: string) => {
   input.value = value; input.dispatchEvent(new Event("input", { bubbles: true })); await settle(el);
@@ -307,5 +309,115 @@ describe("care plan card", () => {
     backend.h.events.get("ready")!(); await settle(el); await settle(el);
     expect(el.shadowRoot!.textContent).not.toContain("This plant was changed somewhere else");
     expect(carePlan(el).textContent).toContain("Last done: Oct 19");
+  });
+});
+
+describe("rest period and care summaries", () => {
+  const rest = { start_month: 11, end_month: 2 };
+  it("describes the season and the tasks that wait", () => {
+    const tasks = [fertilize, pests];
+    expect(restSentence(l, rest, tasks, "2026-10-19")).toEqual({ resting: false, season: "Growing season", tasks: "1 task off during rest" });
+    expect(restSentence(l, rest, tasks, "2026-12-10")).toEqual({ resting: true, season: "Resting until Mar 1, 2027", tasks: "1 task off" });
+    expect(restSentence(l, rest, tasks, "2027-01-10").season).toBe("Resting until Mar 1");
+    expect(restSentence(l, rest, [pests], "2026-10-19").tasks).toBe("all tasks keep running");
+    expect(resumeDate({ start_month: 6, end_month: 6 }, "2026-06-15")).toBe("2026-07-01");
+  });
+
+  it("drafts, validates and diffs rest period settings", () => {
+    const manualFertilize: CareTask = { ...fertilize, schedule: { kind: "interval", every: 4, unit: "weeks", growing_season_only: false } };
+    // A new rest period pauses fertilizing by default.
+    expect([...restDraft(null, [manualFertilize, pests]).off]).toEqual([FERTILIZE_ID]);
+    expect(restDraft(rest, [manualFertilize]).off.size).toBe(0);
+    expect(validateRest({ startMonth: null, endMonth: null, off: new Set() }).error).toBe("care_plan.rest_error_months");
+    expect(validateRest({ startMonth: 1, endMonth: 12, off: new Set() }).error).toBe("care_plan.rest_error_whole_year");
+    expect(validateRest({ startMonth: 11, endMonth: 2, off: new Set() }).rest).toEqual(rest);
+    expect(restTaskChanges([fertilize, pests], new Set([PESTS_ID]))).toEqual([
+      { task: fertilize, schedule: { ...fertilize.schedule, growing_season_only: false } },
+      { task: pests, schedule: { ...pests.schedule, growing_season_only: true } },
+    ]);
+  });
+
+  it("names due tasks in one line", () => {
+    const due = [state(PESTS_ID, { type: "pests", status: "overdue", is_due: true }), state(FERTILIZE_ID, { status: "due", is_due: true }), state("c".repeat(32), { type: "custom", name: "Mist leaves", status: "due", is_due: true })];
+    expect(careLine(l, due)).toBe("Check for pests, Fertilize +1");
+    expect(careLine(l, due.slice(0, 1))).toBe("Check for pests");
+    expect(matchesFilter("care", "healthy", true)).toBe(true);
+    expect(matchesFilter("care", "needs_water", false)).toBe(false);
+  });
+});
+
+describe("rest period editor, header chips and overview", () => {
+  afterEach(() => { vi.useRealTimers(); });
+  const at = (iso: string) => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date(iso)); };
+
+  it("sets a rest period with the tasks that wait, and removes it again", async () => {
+    at("2026-10-19T10:00:00Z");
+    const backend = careBackend(plantWith({ care_tasks: [fertilize, pests] }));
+    const toasts: string[] = [];
+    const el = await openCare(backend);
+    el.addEventListener("hass-notification", e => toasts.push((e as CustomEvent<{ message: string }>).detail.message));
+    expect(carePlan(el).querySelector(".restline")).toBeNull();
+    carePlan(el).querySelector("ha-dropdown:not(.task-menu)")!.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value: "rest" } } })); await settle(el);
+    expect(dialog(el)!.textContent).toContain("Watering alerts are not affected.");
+    const box = (name: string) => [...dialog(el)!.querySelectorAll<HTMLLabelElement>("label.check")].find(label => label.textContent?.includes(name))!.querySelector("input")!;
+    expect(box("Fertilize").checked).toBe(true);
+    expect(box("Check for pests").checked).toBe(false);
+    dialogButton(el, "Save").click(); await settle(el);
+    expect(dialog(el)!.textContent).toContain("Pick the rest months.");
+    dialogButton(el, "January").click(); await settle(el); dialogButton(el, "December").click(); await settle(el);
+    dialogButton(el, "Save").click(); await settle(el);
+    expect(dialog(el)!.textContent).toContain("A rest period can't cover the whole year.");
+    dialogButton(el, "November").click(); await settle(el); dialogButton(el, "February").click(); await settle(el);
+    box("Check for pests").click(); await settle(el);
+    dialogButton(el, "Save").click(); await settle(el); await settle(el);
+    expect(backend.h.calls.filter(c => c.type === "smart_plants/plants/set_rest_period" || c.type === "smart_plants/care_tasks/update")).toEqual([
+      { type: "smart_plants/plants/set_rest_period", plant_id: sample.id, expected_revision: 1, rest_period: { start_month: 11, end_month: 2 } },
+      { type: "smart_plants/care_tasks/update", plant_id: sample.id, task_id: PESTS_ID, expected_revision: 2, schedule: { ...pests.schedule, growing_season_only: true } },
+    ]);
+    expect(toasts).toContain("Rest period saved");
+    const row = carePlan(el).querySelector<HTMLElement>(".restline")!;
+    expect(row.textContent?.replace(/\s+/g, " ")).toContain("Growing season · 2 tasks off during rest");
+    expect(row.querySelector(".months")!.getAttribute("aria-label")).toBe("Rest months: November–February");
+    expect([...row.querySelectorAll(".months i.on")].map(i => i.textContent)).toEqual(["J", "F", "N", "D"]);
+    expect(row.querySelector(".months i.now")!.textContent).toBe("O");
+
+    row.querySelector<HTMLButtonElement>("button")!.click(); await settle(el);
+    dialogButton(el, "Remove").click(); await settle(el); await settle(el);
+    expect(backend.h.calls.filter(c => c.type === "smart_plants/plants/set_rest_period").at(-1)).toMatchObject({ rest_period: null });
+    expect(carePlan(el).querySelector(".restline")).toBeNull();
+  });
+
+  it("says when the plant rests and until when", async () => {
+    at("2026-12-10T10:00:00Z");
+    const backend = careBackend(plantWith({ care_tasks: [fertilize], rest_period: { start_month: 11, end_month: 2 } }));
+    const el = await openCare(backend);
+    expect(carePlan(el).querySelector(".restline")!.textContent?.replace(/\s+/g, " ")).toContain("Resting until Mar 1, 2027 · 1 task off");
+  });
+
+  it("shows due tasks in the header and on the overview with a Care due filter", async () => {
+    const custom: CareTask = { ...pests, id: "c".repeat(32), type: "custom", name: "Mist leaves" };
+    const states = () => [state(PESTS_ID, { type: "pests", status: "overdue", is_due: true, days: 2 }), state(FERTILIZE_ID, { status: "due", is_due: true, days: null }), state(custom.id, { type: "custom", name: "Mist leaves", status: "due", is_due: true, days: null })];
+    const backend = careBackend(plantWith({ care_tasks: [fertilize, pests, custom] }), states);
+    const el = new SmartPlantsPanel(); el.hass = backend.h.hass; document.body.append(el); await settle(el);
+    const overview = el.shadowRoot!.querySelector("smart-plants-overview")!; await settle(overview);
+    const tiles = [...overview.shadowRoot!.querySelectorAll<HTMLButtonElement>(".tile")];
+    expect(tiles.map(tile => tile.textContent?.replace(/\s+/g, " ").trim())).toContain("1Care due");
+    expect(overview.shadowRoot!.querySelector(".care")!.textContent).toContain("Care: Check for pests, Fertilize +1");
+    tiles.find(tile => tile.textContent?.includes("Care due"))!.click(); await settle(overview);
+    expect(overview.shadowRoot!.textContent).toContain("Care due");
+    expect(overview.shadowRoot!.querySelectorAll("article.card")).toHaveLength(1);
+    await click(el, "Aloe"); await settle(el);
+    const chips = el.shadowRoot!.querySelector<HTMLElement>(".care-chips")!;
+    expect(chips.getAttribute("aria-label")).toBe("Care due");
+    expect([...chips.querySelectorAll("li")].map(li => li.textContent?.replace(/\s+/g, " ").trim())).toEqual(["Check for pests (Overdue 2 days)", "Fertilize", "+1and 1 more due"]);
+    expect(chips.querySelector("li")!.className).toContain("tone-overdue");
+  });
+
+  it("leaves the overview tiles alone while no plant has care tasks", async () => {
+    const backend = careBackend(plantWith({}));
+    const el = new SmartPlantsPanel(); el.hass = backend.h.hass; document.body.append(el); await settle(el);
+    const overview = el.shadowRoot!.querySelector("smart-plants-overview")!; await settle(overview);
+    expect(overview.shadowRoot!.querySelectorAll(".tile")).toHaveLength(4);
+    expect(overview.shadowRoot!.querySelector(".care")).toBeNull();
   });
 });

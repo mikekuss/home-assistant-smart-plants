@@ -12,6 +12,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   checks and your own tasks, repeating or once a year, with **Done**, **Skip this time** and
   **Undo**, and an **Automate…** sheet with the task's entities. See
   [Getting started](docs/getting-started.md#care-plan).
+- Optional rest period per plant, set from the Care plan card: a row with the rest months and
+  the current season, and repeating tasks that wait during rest. Due care tasks appear as
+  chips in the plant header, as a line on overview cards, and in a new **Care due** tile that
+  filters the overview. See [Getting started](docs/getting-started.md#rest-period).
 - Two actions for automations and scripts: `smart_plants.log_care` logs care for one or more
   plants or marks care tasks as done, and `smart_plants.skip_care_task` skips a care task's
   current occurrence. Use them, for example, to log a watering when you scan an NFC tag or
