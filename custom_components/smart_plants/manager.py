@@ -11,7 +11,7 @@ import time
 from collections import OrderedDict
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -110,6 +110,9 @@ _TAG_MAX_LEN = 60
 _NAME_MAX_LEN = 200
 _CATEGORY_MAX_LEN = 60
 _AREA_ID_MAX_LEN = 200
+# How far a care event may lie ahead of the server clock before it counts as
+# "in the future"; covers browsers and phones whose clocks drift.
+CARE_CLOCK_SKEW = timedelta(minutes=5)
 WIZARD_MAX_DRAFTS = 64
 WIZARD_MAX_AGE = 600
 WIZARD_ID_LENGTH = 36
@@ -2619,6 +2622,15 @@ def _build_care_event(  # noqa: PLR0913
     try:
         occurred = parse_occurred_at(occurred_at)
         now = _utcnow_iso()
+        now_at = parse_utc_timestamp(now, "now")
+        if occurred.astimezone(UTC) > now_at + CARE_CLOCK_SKEW:
+            raise SmartPlantsValidationError("care event cannot be in the future")
+        # The panel stamps quick actions with the browser's clock, which can run
+        # slightly ahead of the server's. Such an event means "now": store the
+        # server's time in the caller's offset so the local date stays theirs.
+        if occurred.astimezone(UTC) > now_at:
+            occurred = now_at.astimezone(occurred.tzinfo).replace(microsecond=0)
+            occurred_at = occurred.isoformat()
         event = CareEvent.from_storage(
             {
                 "schema_version": 2,
@@ -2635,8 +2647,6 @@ def _build_care_event(  # noqa: PLR0913
         )
     except (TypeError, ValueError) as err:
         raise SmartPlantsValidationError(str(err)) from err
-    if occurred.astimezone(UTC) > parse_utc_timestamp(now, "now"):
-        raise SmartPlantsValidationError("care event cannot be in the future")
     return event
 
 

@@ -59,6 +59,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   through the websocket API or older data) no longer leaves the panel blank. The integration
   now stores such dates as midnight UTC, and the panel skips a single malformed plant record
   with a console warning instead of rejecting the whole plant list.
+- **Watered** no longer fails when the phone's or browser's clock runs slightly ahead of
+  Home Assistant's. A care time up to five minutes ahead is saved as the current time; later
+  times are still refused.
+- Error messages for rejected input no longer mention photo limits unless a photo was
+  uploaded. The photo rules now appear only for photo errors.
 
 ## [0.6.1] - 2026-10-06
 

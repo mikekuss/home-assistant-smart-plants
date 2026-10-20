@@ -230,7 +230,7 @@ describe("api.uploadImage", () => {
         api.uploadImage(hass, "plt-1", 2, file),
       ).rejects.toMatchObject({
         name: "ApiError",
-        code: "invalid_format",
+        code: "invalid_image",
       });
     } finally {
       global.fetch = originalFetch;

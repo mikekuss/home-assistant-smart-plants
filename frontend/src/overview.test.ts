@@ -179,6 +179,12 @@ describe("panel watering from the overview", () => {
     waterButton(el).click();
     await vi.waitFor(() => { expect(el.shadowRoot!.querySelector(".error")?.textContent).toContain("This plant or species no longer exists"); });
   });
+  it("does not blame the photo when the server rejects a watering", async () => {
+    const { el } = await mountPanel(msg => msg.type === "smart_plants/care/add_watering" ? Promise.reject({ code: "invalid_format", message: "care event cannot be in the future" }) : undefined);
+    waterButton(el).click();
+    await vi.waitFor(() => { expect(el.shadowRoot!.querySelector(".error")?.textContent).toContain("Some of the details couldn't be saved"); });
+    expect(el.shadowRoot!.querySelector(".error")?.textContent).not.toContain("Photos");
+  });
   it("keeps edits possible when the status read fails", async () => {
     const { el } = await mountPanel(msg => msg.type === "smart_plants/plants/overview" ? Promise.reject({ code: "unknown_error", message: "boom" }) : undefined);
     await vi.waitFor(() => { expect(el.shadowRoot!.querySelector(".error")?.textContent).toContain("Plant status is unavailable"); });

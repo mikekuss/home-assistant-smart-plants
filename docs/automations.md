@@ -230,7 +230,8 @@ are listed under **Smart Plants** in the action picker.
   `task` (another task). Required when you target a plant device. When you target a care
   task, you can leave it out; if you set it, it must match the task (for example
   `fertilizing` for a fertilizing task).
-- `occurred_at` – when it happened. Defaults to now and can't be in the future. A time
+- `occurred_at` – when it happened. Defaults to now and can't be in the future; a time up to
+  five minutes ahead of Home Assistant's clock is saved as now. A time
   without a time zone is Home Assistant's local time.
 - `note` – an optional note of up to 500 characters. Required for `kind: note`.
 
