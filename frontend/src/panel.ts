@@ -18,6 +18,10 @@ import { RANGE_SPECS, isHistoryRange } from "./history-model.js";
 import type { HistoryPoint, HistoryRange } from "./history-model.js";
 import { CARE_ICONS, CARE_KINDS, DETAIL_SECTIONS, SECTION_LABELS, careDetails, expander, formatDuration, friendlyName, headerReason, readingPhrase, plantStyles, readingsInOrder, renderHistoryCard, renderKeyReadings, renderReadingRow, reportedAt } from "./views/plant.js";
 import type { DetailSection, HistoryStatus } from "./views/plant.js";
+import { TASK_KINDS, careOnlyChange, draftFromTask, localDate, matchingTask, pickMonth, presetDraft, taskChanges, taskEntityUniqueIds, taskName, validateDraft } from "./care-plan.js";
+import type { TaskDraft } from "./care-plan.js";
+import { carePlanStyles, renderAutomate, renderCarePlan, renderTaskEditor, taskEditorTitle } from "./views/care-plan.js";
+import type { AutomateRow, TaskAction, TaskEditorState } from "./views/care-plan.js";
 
 // Per-role editable-threshold configuration. Adding a role here + wiring
 // _persistedOverrides + validator + seeder registers a reviewed editor.
@@ -130,7 +134,7 @@ import "./wizard.js";
 import { DOCUMENTATION_URL } from "./views/overview.js";
 import type { OpenPlantDetail } from "./views/overview.js";
 import type { PlantOverview } from "./overview-model.js";
-import type { CareEvent, CareHistory, Evaluation, HAArea, HADevice, HAEntity, HAState, HealthEvaluation, HomeAssistantLike, MoistureInput, PanelCapabilities, PanelInfo, PlantPlacement, PlantRecord, RoleSourceInput, SpeciesPreview, SpeciesSearchResult } from "./types.js";
+import type { CareEvent, CareHistory, CareTask, Evaluation, HAArea, HADevice, HAEntity, HAState, HealthEvaluation, HomeAssistantLike, MoistureInput, PanelCapabilities, PanelInfo, PlantPlacement, PlantRecord, RoleSourceInput, SpeciesPreview, SpeciesSearchResult } from "./types.js";
 
 type View = { kind: "list" } | { kind: "create" } | { kind: "detail"; plantId: string };
 interface Edits { name: string; acquired: string; placement: PlantPlacement | null; category: string; tagText: string; area: string; common: string; latin: string; moisture: MoistureInput | null }
@@ -153,7 +157,7 @@ function stored(key: string): string | null { try { return localStorage.getItem(
 function store(key: string, value: string): void { try { localStorage.setItem(key, value); } catch { /* not persisted */ } }
 
 export class SmartPlantsPanel extends LitElement {
-  static styles = [themeFallbacks, styles, plantStyles];
+  static styles = [themeFallbacks, styles, plantStyles, carePlanStyles];
   // The bundle this document is running, taken from the URL it was loaded from.
   static bundleVersion: string | null = loadedBundleVersion(import.meta.url);
   @property({ attribute: false }) public hass?: HomeAssistantLike;
@@ -206,7 +210,14 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _imageUrl: string | null = null;
   @state() private _imageLoading = false;
   @state() private _imageError: string | null = null;
-  @state() private _dialog: "delete" | "species" | null = null;
+  @state() private _dialog: "delete" | "species" | "care_task" | "care_automate" | null = null;
+  // Care task editor and the task shown in the Automate… sheet.
+  @state() private _taskEditor: TaskEditorState | null = null;
+  @state() private _automateTaskId: string | null = null;
+  // Care tasks with a Done or Skip in flight.
+  @state() private _carePending: ReadonlySet<string> = new Set();
+  // The care task the Log care form marks as done, for tasks logged as generic task entries.
+  @state() private _careTaskId: string | null = null;
   @state() private _wizardStarted = false;
   @state() private _creationNotice = "";
   // Photo part of the creation notice, shown on the wizard's confirmation.
@@ -375,7 +386,12 @@ export class SmartPlantsPanel extends LitElement {
       if (showLoading) this._error = "";
       if (this._base) {
         const latest = plants.find(p => p.id === this._base?.id);
-        if (latest && latest.revision !== this._base.revision) this._setConflict(this._base, latest);
+        if (latest && latest.revision !== this._base.revision) {
+          // Care-only changes (a task marked done by an automation, for example)
+          // are taken over silently; a save in flight refreshes again when done.
+          if (careOnlyChange(this._base, latest) && !this._conflict) { if (!this._formBusy) this._rebaseEdits(this._base, latest); }
+          else this._setConflict(this._base, latest);
+        }
         if (!latest) { this._context++; this._formBusy = false; this._closeDialog(); this._base = null; this._conflict = null; this._edits = null; this._notice = this._l.t("notice.deleted_elsewhere"); void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("h1")?.focus()); }
       }
       this._syncImage();
@@ -452,7 +468,7 @@ export class SmartPlantsPanel extends LitElement {
     if (view.kind === "create") this._wizardStarted = true;
     if (view.kind === "detail") {
       this._detailSection = "overview"; this._expanded = new Set(); this._settingsOpen = new Set(); this._moistureMode = null;
-      this._careFilter = "all"; this._careFormOpen = false; this._careEditingId = null; this._careKind = "watering"; this._careFields = {};
+      this._careFilter = "all"; this._careFormOpen = false; this._careEditingId = null; this._careTaskId = null; this._careKind = "watering"; this._careFields = {};
       const now = new Date(); this._careDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16); this._careNote = "";
       const plant = this._plantById(view.plantId); if (plant) this._beginEdit(plant);
       const targetId = view.plantId; const hass = this.hass; const context = this._context;
@@ -673,7 +689,7 @@ export class SmartPlantsPanel extends LitElement {
     const fields = this._careFields;
     const payload = this._carePayload();
     const note = typeof payload.note === "string" ? payload.note : null;
-    if ((this._careKind === "watering" || this._careKind === "fertilizing" || this._careKind === "pruning" || this._careKind === "repotting") && note && note.length > 500) {
+    if (this._careKind !== "note" && note && note.length > 500) {
       this._careError = this._l.t("care.error_note_length"); return;
     }
     if (this._careKind === "fertilizing" && payload.amount !== null && (!Number.isFinite(payload.amount) || Number(payload.amount) <= 0 || Number(payload.amount) > 100000 || !payload.unit)) {
@@ -684,13 +700,16 @@ export class SmartPlantsPanel extends LitElement {
     const offset = -date.getTimezoneOffset();
     const suffix = `${offset < 0 ? "-" : "+"}${String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0")}:${String(Math.abs(offset) % 60).padStart(2, "0")}`;
     const occurredAt = `${this._careDate}:00${suffix}`; const hass = this.hass; this._careError = "";
+    const taskId = this._careTaskId;
     await this._mutate(async () => {
       const result = this._careEditingId
         ? await api.editCareEvent(hass, plant.id, plant.revision, this._careEditingId, this._careKind, occurredAt, payload)
-        : await api.addCareEvent(hass, plant.id, plant.revision, this._careKind, occurredAt, payload);
+        : taskId
+          ? await api.completeCareTask(hass, plant.id, taskId, plant.revision, { occurred_at: occurredAt, note })
+          : await api.addCareEvent(hass, plant.id, plant.revision, this._careKind, occurredAt, payload);
       return result.plant;
     });
-    if (!this._error) { this._careEditingId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; }
+    if (!this._error) { this._careEditingId = null; this._careTaskId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; }
   }
   private async _deleteCare(plant: PlantRecord, event: CareEvent): Promise<void> {
     if (!this.hass || !this._careHistory || this._careHistory.revision !== plant.revision) { this._careError = this._l.t("care.error_refresh_delete"); return; }
@@ -699,11 +718,12 @@ export class SmartPlantsPanel extends LitElement {
     await this._mutate(async () => (await api.deleteCareEvent(hass, plant.id, plant.revision, event.id)).plant);
   }
   private _openCareForm(): void {
+    if (this._careTaskId) { this._careTaskId = null; this._careKind = "watering"; this._careFields = {}; }
     this._careFormOpen = true;
-    this._goTo("care", "#care-form select");
+    this._goTo("care", "#care-form select, #care-form input");
   }
   private _closeCareForm(): void {
-    this._careFormOpen = false; this._careEditingId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; this._careError = "";
+    this._careFormOpen = false; this._careEditingId = null; this._careTaskId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; this._careError = "";
   }
   private _renderCare(plant: PlantRecord) {
     const l = this._l;
@@ -716,7 +736,19 @@ export class SmartPlantsPanel extends LitElement {
     const events = history?.events.filter(event => this._careFilter === "all" || event.kind === this._careFilter) ?? [];
     const filters: [CareEvent["kind"] | "all", string][] = [["all", l.t("care.filter_all")], ...CARE_KINDS.map(kind => [kind, kind === "note" ? l.t("care.filter_notes") : kindLabel(kind)] as [CareEvent["kind"], string])];
     const formOpen = this._careFormOpen || this._careEditingId !== null;
-    return html`<div class="care-bar"><div class="row" role="group" aria-label=${l.t("care.filter_label")}>${filters.map(([kind, label]) => html`<button type="button" class="fchip" aria-pressed=${this._careFilter === kind ? "true" : "false"} @click=${() => { this._careFilter = kind; }}>${label}</button>`)}</div>
+    const formTask = this._careTaskId ? (plant.care_tasks ?? []).find(task => task.id === this._careTaskId) : undefined;
+    const editedEvent = this._careEditingId ? history?.events.find(event => event.id === this._careEditingId) : undefined;
+    // An entry linked to a care task, or a generic task entry, keeps its kind.
+    const kindLocked = !formTask && !!editedEvent && (editedEvent.kind === "task" || !!editedEvent.task_id);
+    const alsoCompletes = !this._careEditingId && !formTask ? matchingTask(plant.care_tasks ?? [], this._careKind) : undefined;
+    const eventTitle = (event: CareEvent) => {
+      const task = event.task_id ? (plant.care_tasks ?? []).find(item => item.id === event.task_id) : undefined;
+      return event.kind === "task" && task ? taskName(l, task) : kindLabel(event.kind);
+    };
+    const today = this._today();
+    return html`${renderCarePlan({ l, plant, overview: this._overview[plant.id], today, timeZone: this._timeZone(), disabled: busy || this._blocked, pending: this._carePending,
+        onAdd: () => this._openTaskEditor(), onDone: task => void this._completeTask(plant.id, task), onAction: (task, action) => this._taskAction(plant, task, action) })}
+      <div class="care-bar"><div class="row" role="group" aria-label=${l.t("care.filter_label")}>${filters.map(([kind, label]) => html`<button type="button" class="fchip" aria-pressed=${this._careFilter === kind ? "true" : "false"} @click=${() => { this._careFilter = kind; }}>${label}</button>`)}</div>
         <span class="spacer"></span><button type="button" class="btn filled" ?disabled=${this._blocked} @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("detail.log_care")}</button></div>
       ${this._careError ? html`<p class="error" role="alert">${this._careError}</p>` : nothing}
       ${history ? html`<p class="small muted" role="status">${l.tn(history.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${history.summary.last_watered_local_date ? l.t("care.last_watered", { date: l.date(history.summary.last_watered_local_date) }) : l.t("care.never_watered")}</p>` : nothing}
@@ -724,7 +756,10 @@ export class SmartPlantsPanel extends LitElement {
           <button type="button" class="icon-btn" aria-label=${l.t("care.close_form")} @click=${() => this._closeCareForm()}><ha-icon aria-hidden="true" icon="mdi:close"></ha-icon></button></div>
         <div class="card-b care-form"><fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict || !history || history.revision !== plant.revision}>
         <legend class="sr-only">${this._careEditingId ? l.t("care.edit_kind", { kind: kindPhrase(this._careKind) }) : l.t("care.record")}</legend>
-        <label>${l.t("care.type")}<select aria-label=${l.t("care.type")} .value=${this._careKind} @change=${(e: Event) => { this._careKind = (e.target as HTMLSelectElement).value as CareEvent["kind"]; this._careFields = {}; }}>${CARE_KINDS.map(kind => html`<option value=${kind} ?selected=${kind === this._careKind}>${kindLabel(kind)}</option>`)}</select></label>
+        ${formTask ? html`<p class="care-note"><ha-icon aria-hidden="true" .icon=${"mdi:check-circle-outline"}></ha-icon><span>${l.t("care_plan.form_marks_done", { name: taskName(l, formTask) })}</span></p>`
+          : kindLocked ? html`<p class="care-kind"><span class="small muted">${l.t("care.type")}</span><span>${eventTitle({ ...editedEvent!, kind: this._careKind })}</span></p>`
+          : html`<label>${l.t("care.type")}<select aria-label=${l.t("care.type")} .value=${this._careKind} @change=${(e: Event) => { this._careKind = (e.target as HTMLSelectElement).value as CareEvent["kind"]; this._careFields = {}; }}>${CARE_KINDS.map(kind => html`<option value=${kind} ?selected=${kind === this._careKind}>${kindLabel(kind)}</option>`)}</select></label>`}
+        ${alsoCompletes ? html`<p class="small care-note"><ha-icon aria-hidden="true" .icon=${"mdi:check-circle-outline"}></ha-icon><span>${l.t("care_plan.form_also_marks", { name: taskName(l, alsoCompletes) })}</span></p>` : nothing}
         <label>${l.t("care.when")}<input type="datetime-local" .value=${this._careDate} @input=${(e: Event) => this._careDate = (e.target as HTMLInputElement).value}></label>
         ${(details[this._careKind] ?? []).map(key => html`<label>${fieldLabel(key)}<input aria-label=${fieldLabel(key)} type=${key === "amount" ? "number" : "text"} maxlength=${key === "text" ? 1000 : 120} .value=${this._careFields[key] ?? ""} @input=${(e: Event) => this._careFields = { ...this._careFields, [key]: (e.target as HTMLInputElement).value }}></label>`)}
         ${this._careKind !== "note" ? html`<label>${l.t("care.note_optional")}<input type="text" maxlength="500" .value=${this._careNote} @input=${(e: Event) => this._careNote = (e.target as HTMLInputElement).value}></label>` : nothing}
@@ -738,10 +773,10 @@ export class SmartPlantsPanel extends LitElement {
           const extra = careDetails(l, event, fieldLabel);
           const when = l.recordedDateTime(event.occurred_at);
           return html`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${CARE_ICONS[event.kind]}></ha-icon></span>
-            <span class="li-main"><span class="li-title">${kindLabel(event.kind)}</span><span class="li-sub"><time datetime=${event.occurred_at}>${when}</time>${extra.map(part => html` · <span class="prose">${part}</span>`)}</span></span>
-            <ha-dropdown @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => { if (e.detail.item.value === "edit" && event.kind !== "task") { this._editCare(event); this._goTo("care", "#care-form select"); } else if (e.detail.item.value === "delete") void this._deleteCare(plant, event); }}>
+            <span class="li-main"><span class="li-title">${eventTitle(event)}</span><span class="li-sub"><time datetime=${event.occurred_at}>${when}</time>${extra.map(part => html` · <span class="prose">${part}</span>`)}</span></span>
+            <ha-dropdown @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => { if (e.detail.item.value === "edit") { this._careTaskId = null; this._editCare(event); this._goTo("care", "#care-form select, #care-form input"); } else if (e.detail.item.value === "delete") void this._deleteCare(plant, event); }}>
               <button slot="trigger" type="button" class="icon-btn" ?disabled=${busy} aria-label=${l.t("care.event_menu", { kind: kindLabel(event.kind), date: when })}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
-              ${event.kind !== "task" ? html`<ha-dropdown-item value="edit" ?disabled=${busy}>${l.t("care.edit_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>` : nothing}
+              <ha-dropdown-item value="edit" ?disabled=${busy}>${l.t("care.edit_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>
               <ha-dropdown-item value="delete" ?disabled=${busy}>${l.t("care.delete_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>
             </ha-dropdown></li>`;
         })}</ul>`}</section>
@@ -895,26 +930,21 @@ export class SmartPlantsPanel extends LitElement {
     } catch (e) { if (request === this._providerRequest) this._error = this._friendly(e); }
     finally { if (context === this._context) this._formBusy = false; }
   }
-  private _openDialog(kind: "delete" | "species", trigger = this.shadowRoot?.activeElement as HTMLElement | null): void {
+  private _openDialog(kind: NonNullable<typeof this._dialog>, trigger = this.shadowRoot?.activeElement as HTMLElement | null): void {
     this._focusReturn = trigger; this._dialog = kind;
     const context = this._context;
-    void this.updateComplete.then(() => { if (context !== this._context || this._dialog !== kind) return; const dialog = this.shadowRoot?.querySelector("dialog"); if (dialog && !dialog.open) dialog.showModal(); dialog?.querySelector<HTMLElement>(kind === "species" ? "h2" : "button")?.focus(); });
+    void this.updateComplete.then(() => { if (context !== this._context || this._dialog !== kind) return; const dialog = this.shadowRoot?.querySelector("dialog"); if (dialog && !dialog.open) dialog.showModal(); dialog?.querySelector<HTMLElement>(kind === "delete" ? "button" : "h2")?.focus(); });
   }
   private _closeDialog(): void {
-    this.shadowRoot?.querySelector("dialog")?.close(); this._dialog = null;
+    this.shadowRoot?.querySelector("dialog")?.close(); this._dialog = null; this._taskEditor = null; this._automateTaskId = null;
     const target = this._focusReturn?.isConnected && !this._focusReturn.matches(":disabled") ? this._focusReturn : this.shadowRoot?.querySelector<HTMLElement>("h1");
     target?.focus(); this._focusReturn = null;
   }
   private _renderDialog() {
     if (!this._dialog || !this._base) return nothing;
+    if (this._dialog === "care_task" || this._dialog === "care_automate") return this._renderCareDialog(this._base.id);
     const base = this._base; const preview = this._preview; const l = this._l;
-    return html`<dialog aria-labelledby="dialog-title" @cancel=${(e: Event) => { e.preventDefault(); this._closeDialog(); }} @keydown=${(e: KeyboardEvent) => {
-      if (e.key !== "Tab") return;
-      const nodes = [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>("button:not([disabled]),a[href],input:not([disabled]),summary")];
-      const first = nodes[0]; const last = nodes.at(-1);
-      if (e.shiftKey && (this.shadowRoot?.activeElement === first || this.shadowRoot?.activeElement?.matches("#dialog-title"))) { e.preventDefault(); last?.focus(); }
-      else if (!e.shiftKey && this.shadowRoot?.activeElement === last) { e.preventDefault(); first?.focus(); }
-    }}><h2 id="dialog-title" tabindex="-1">${this._dialog === "delete" ? l.t("dialog.delete_title", { name: base.name }) : l.t("dialog.species_title")}</h2>
+    return html`<dialog aria-labelledby="dialog-title" @cancel=${(e: Event) => { e.preventDefault(); this._closeDialog(); }} @keydown=${(e: KeyboardEvent) => this._trapFocus(e)}><h2 id="dialog-title" tabindex="-1">${this._dialog === "delete" ? l.t("dialog.delete_title", { name: base.name }) : l.t("dialog.species_title")}</h2>
       ${this._dialog === "delete" ? html`<p>${l.t("dialog.delete_body")}</p>` : preview ? snapshotView(l, preview.snapshot, preview) : html`<p>${l.t("dialog.preview_invalid")}</p>`}
       <div class="actions"><button @click=${() => this._closeDialog()}>${l.t("common.cancel")}</button><button class="primary" ?disabled=${this._formBusy || this._blocked || !!this._conflict || (this._dialog === "species" && !preview)} @click=${() => {
         const kind = this._dialog; this._closeDialog();
@@ -923,6 +953,176 @@ export class SmartPlantsPanel extends LitElement {
         if (kind === "delete") void this._mutate(() => api.delete(hass, base.id, base.revision), true);
         else if (preview) void this._mutate(() => api.applySpecies(hass, base.id, base.revision, preview.preview_token, preview.provider, preview.operation), false, "species");
       }}>${this._dialog === "delete" ? l.t("dialog.delete_confirm") : l.t("dialog.species_confirm")}</button></div></dialog>`;
+  }
+  // Keeps Tab inside an open dialog.
+  private _trapFocus(e: KeyboardEvent): void {
+    if (e.key !== "Tab") return;
+    const nodes = [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>("button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary")];
+    const first = nodes[0]; const last = nodes.at(-1);
+    if (e.shiftKey && (this.shadowRoot?.activeElement === first || this.shadowRoot?.activeElement?.matches("#dialog-title"))) { e.preventDefault(); last?.focus(); }
+    else if (!e.shiftKey && this.shadowRoot?.activeElement === last) { e.preventDefault(); first?.focus(); }
+  }
+
+  // ---- Care plan ----
+
+  private _timeZone(): string | undefined {
+    const zone = this.hass?.config?.time_zone;
+    return typeof zone === "string" && zone ? zone : undefined;
+  }
+  // Today in the Home Assistant time zone.
+  private _today(): string {
+    return localDate(new Date().toISOString(), this._timeZone()) ?? new Date().toISOString().slice(0, 10);
+  }
+  private _openTaskEditor(task?: CareTask): void {
+    this._taskEditor = task
+      ? { step: 2, taskId: task.id, draft: draftFromTask(task), errors: {}, error: "", moreOpen: task.baseline_done_on !== null }
+      : { step: 1, taskId: null, draft: presetDraft("custom"), errors: {}, error: "", moreOpen: false };
+    this._openDialog("care_task");
+  }
+  private _setTaskEditor(changes: Partial<TaskEditorState>, focusTitle = false): void {
+    if (!this._taskEditor) return;
+    this._taskEditor = { ...this._taskEditor, ...changes };
+    if (focusTitle) void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("#dialog-title")?.focus());
+  }
+  // Updates the draft; once a save found errors, they follow the edits live.
+  private _editTaskDraft(changes: Partial<TaskDraft>): void {
+    const editor = this._taskEditor;
+    if (!editor) return;
+    const draft = { ...editor.draft, ...changes };
+    const errors = Object.keys(editor.errors).length ? validateDraft(draft, this._today()).errors ?? {} : {};
+    this._taskEditor = { ...editor, draft, errors };
+  }
+  private async _saveTask(plantId: string): Promise<void> {
+    const editor = this._taskEditor; const hass = this.hass; const l = this._l;
+    if (!editor || !hass || this._formBusy || this._blocked) return;
+    const checked = validateDraft(editor.draft, this._today());
+    if (!checked.input) {
+      this._setTaskEditor({ errors: checked.errors, moreOpen: editor.moreOpen || !!checked.errors.lastDone });
+      void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("dialog [aria-invalid=true], dialog .monthpick button")?.focus());
+      return;
+    }
+    const input = checked.input; const context = this._context;
+    const name = taskName(l, { type: input.task_type, name: input.name });
+    this._formBusy = true; this._setTaskEditor({ errors: {}, error: "" }); this._request++;
+    try {
+      let plant: PlantRecord | undefined;
+      if (editor.taskId) {
+        const task = this._plantById(plantId)?.care_tasks?.find(item => item.id === editor.taskId);
+        if (!task) { this._setTaskEditor({ error: l.t("care_plan.error_task_gone") }); return; }
+        const changes = taskChanges(task, input);
+        if (Object.keys(changes).length) plant = await this._withRevision(plantId, revision => api.updateCareTask(hass, plantId, task.id, revision, changes));
+      } else {
+        plant = (await this._withRevision(plantId, revision => api.createCareTask(hass, plantId, revision, input))).plant;
+      }
+      if (context !== this._context) return;
+      if (plant) { this._adopt(plant); this._followQuickWrite(plant); }
+      this._formBusy = false; this._closeDialog();
+      this._toast(l.t(editor.taskId ? "care_plan.saved_toast" : "care_plan.added_toast", { name }));
+    } catch (e) {
+      if (context === this._context) this._setTaskEditor({ error: this._friendly(e) });
+    } finally {
+      if (context === this._context) { this._formBusy = false; void this._refresh(false); }
+    }
+  }
+  private _setCarePending(taskId: string, busy: boolean): void {
+    const next = new Set(this._carePending); if (busy) next.add(taskId); else next.delete(taskId); this._carePending = next;
+  }
+  // Runs one care task write with the current revision, takes over the
+  // returned plant and refreshes the task states. Returns null on failure.
+  private async _careTaskWrite<T>(plantId: string, taskId: string, operation: (hass: HomeAssistantLike, revision: number) => Promise<T>, plantOf: (result: T) => PlantRecord): Promise<T | null> {
+    const hass = this.hass;
+    if (!hass || this._blocked || this._formBusy || this._carePending.has(taskId)) return null;
+    const context = this._context;
+    this._setCarePending(taskId, true); this._careError = ""; this._request++;
+    try {
+      const result = await this._withRevision(plantId, revision => operation(hass, revision));
+      if (context === this._context) { const plant = plantOf(result); this._adopt(plant); this._followQuickWrite(plant); }
+      return result;
+    } catch (e) {
+      if (context === this._context) this._careError = this._friendly(e);
+      return null;
+    } finally {
+      this._setCarePending(taskId, false);
+      if (context === this._context) void this._refresh(false);
+    }
+  }
+  private async _completeTask(plantId: string, task: CareTask): Promise<void> {
+    const l = this._l; const name = taskName(l, task);
+    const result = await this._careTaskWrite(plantId, task.id, (hass, revision) => api.completeCareTask(hass, plantId, task.id, revision), r => r.plant);
+    if (result) this._toast(l.t("care_plan.done_toast", { name }), { text: l.t("care_plan.undo"), action: () => void this._careTaskWrite(plantId, task.id, (hass, revision) => api.deleteCareEvent(hass, plantId, revision, result.event_id), r => r.plant) });
+  }
+  private async _skipTask(plantId: string, task: CareTask): Promise<void> {
+    const l = this._l; const name = taskName(l, task);
+    const result = await this._careTaskWrite(plantId, task.id, (hass, revision) => api.skipCareTask(hass, plantId, task.id, revision), r => r.plant);
+    if (result) this._toast(l.t("care_plan.skipped_toast", { name }), { text: l.t("care_plan.undo"), action: () => void this._careTaskWrite(plantId, task.id, (hass, revision) => api.undoSkipCareTask(hass, plantId, task.id, revision, result.previous_skipped_on), plant => plant) });
+  }
+  private async _deleteTask(plantId: string, task: CareTask): Promise<void> {
+    const l = this._l; const name = taskName(l, task);
+    if (!window.confirm(l.t("care_plan.confirm_delete", { name }))) return;
+    if (this._dialog) this._closeDialog();
+    const result = await this._careTaskWrite(plantId, task.id, (hass, revision) => api.deleteCareTask(hass, plantId, task.id, revision), plant => plant);
+    if (result) this._toast(l.t("care_plan.deleted_toast", { name }));
+  }
+  private _taskAction(plant: PlantRecord, task: CareTask, action: TaskAction): void {
+    switch (action) {
+      case "mark_done": {
+        // Fertilizing, pruning and repotting entries complete their task on
+        // their own and keep their details; other tasks are logged as linked
+        // task entries.
+        const kind = TASK_KINDS[task.type];
+        this._careEditingId = null; this._careFields = {}; this._careNote = ""; this._careError = "";
+        this._careTaskId = kind === "task" ? task.id : null; this._careKind = kind;
+        const now = new Date(); this._careDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        this._careFormOpen = true; this._goTo("care", "#care-form input, #care-form select");
+        return;
+      }
+      case "skip": void this._skipTask(plant.id, task); return;
+      case "edit": this._openTaskEditor(task); return;
+      case "automate": this._automateTaskId = task.id; this._openDialog("care_automate"); return;
+      case "delete": void this._deleteTask(plant.id, task); return;
+    }
+  }
+  private _automateRows(plant: PlantRecord, task: CareTask): AutomateRow[] {
+    const l = this._l; const ids = taskEntityUniqueIds(plant.id, task.id);
+    const entityId = (uniqueId: string) => this._entities.find(entity => entity.platform === "smart_plants" && entity.unique_id === uniqueId)?.entity_id ?? null;
+    return [
+      { icon: "mdi:toggle-switch-outline", entityId: entityId(ids.due), description: l.t("care_plan.automate_due", { name: taskName(l, task) }) },
+      { icon: "mdi:calendar-clock", entityId: entityId(ids.next), description: l.t("care_plan.automate_next"), note: l.t("care_plan.automate_next_disabled") },
+      { icon: "mdi:calendar-check-outline", entityId: entityId(ids.careDue), description: l.t("care_plan.automate_care_due") },
+    ];
+  }
+  private _copyEntityId(entityId: string): void {
+    const l = this._l;
+    const clipboard = typeof navigator === "undefined" ? undefined : navigator.clipboard;
+    if (!clipboard) { this._toast(l.t("care_plan.copy_failed")); return; }
+    clipboard.writeText(entityId).then(() => this._toast(l.t("care_plan.copied", { entity: entityId })), () => this._toast(l.t("care_plan.copy_failed")));
+  }
+  private _renderCareDialog(plantId: string) {
+    const l = this._l; const plant = this._plantById(plantId);
+    if (!plant) return nothing;
+    let title = ""; let body: unknown = nothing;
+    if (this._dialog === "care_task" && this._taskEditor) {
+      const editor = this._taskEditor;
+      title = taskEditorTitle(l, editor);
+      body = renderTaskEditor({ l, plant, state: editor, today: this._today(), busy: this._formBusy || this._blocked,
+        onPreset: type => this._setTaskEditor({ step: 2, draft: presetDraft(type), errors: {}, error: "", moreOpen: false }, true),
+        onBack: () => this._setTaskEditor({ step: 1, errors: {}, error: "" }, true),
+        onChange: changes => this._editTaskDraft(changes),
+        onMonth: month => { const draft = this._taskEditor?.draft; if (draft) this._editTaskDraft(pickMonth(draft.startMonth, draft.endMonth, month)); },
+        onToggleMore: () => this._setTaskEditor({ moreOpen: !this._taskEditor?.moreOpen }),
+        onSave: () => void this._saveTask(plant.id),
+        onCancel: () => this._closeDialog(),
+        onDelete: () => { const task = plant.care_tasks?.find(item => item.id === editor.taskId); if (task) void this._deleteTask(plant.id, task); } });
+    } else if (this._dialog === "care_automate") {
+      const task = plant.care_tasks?.find(item => item.id === this._automateTaskId);
+      if (task) {
+        title = l.t("care_plan.automate_title", { name: taskName(l, task) });
+        body = renderAutomate({ l, rows: this._automateRows(plant, task), onCopy: entityId => this._copyEntityId(entityId),
+          onOpenEditor: () => { this._closeDialog(); this._navigate("/config/automation/edit/new"); }, onClose: () => this._closeDialog() });
+      } else body = html`<p>${l.t("care_plan.error_task_gone")}</p><div class="actions dialog-actions"><span class="spacer"></span><button type="button" @click=${() => this._closeDialog()}>${l.t("care_plan.close")}</button></div>`;
+    }
+    return html`<dialog class="care-dialog" aria-labelledby="dialog-title" @cancel=${(e: Event) => { e.preventDefault(); if (!this._formBusy) this._closeDialog(); }} @keydown=${(e: KeyboardEvent) => this._trapFocus(e)}>
+      <h2 id="dialog-title" tabindex="-1">${title}</h2><div class="dialog-body">${body}</div></dialog>`;
   }
   private async _uploadImage(plant: PlantRecord, file: File): Promise<void> {
     if (!this.hass || this._formBusy || this._blocked) return;

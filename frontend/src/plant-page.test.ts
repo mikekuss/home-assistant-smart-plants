@@ -134,7 +134,7 @@ describe("plant page", () => {
     await click(el, "Log care");
     expect(root(el).querySelector("#care-form select")).not.toBeNull();
   });
-  it("shows a care task entry like a note that can be deleted but not edited", async () => {
+  it("shows a care task entry like a note whose note and time can be edited", async () => {
     const task: CareEvent = { ...watered("t1", "task", "22"), provenance: "action", task_id: "0f8fad5bd9cb469fa16570867728950e", payload: { note: "Sprayed" } };
     const events = [task, watered("w1", "watering", "20")];
     const plant = { ...plantWithSensors(), care_events: events };
@@ -145,9 +145,16 @@ describe("plant page", () => {
     expect(entries).toHaveLength(2);
     expect(entries[0]!.textContent).toContain("Care task");
     expect(entries[0]!.textContent).toContain("Sprayed");
-    expect(entries[0]!.querySelector('ha-dropdown-item[value="edit"]')).toBeNull();
+    expect(entries[0]!.querySelector('ha-dropdown-item[value="edit"]')).not.toBeNull();
     expect(entries[0]!.querySelector('ha-dropdown-item[value="delete"]')).not.toBeNull();
     expect(entries[1]!.querySelector('ha-dropdown-item[value="edit"]')).not.toBeNull();
+    // Editing keeps the entry's kind: a task entry stays a task entry.
+    entries[0]!.querySelector("ha-dropdown")!.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value: "edit" } } })); await settle(el);
+    const form = tabPanel(el).querySelector("#care-form")!;
+    expect(form.querySelector("select")).toBeNull();
+    expect(form.querySelector(".care-kind")?.textContent).toContain("Care task");
+    const note = [...tabPanel(el).querySelectorAll("#care-form label")].find(label => label.textContent?.includes("Note (optional)"))!.querySelector("input")!;
+    expect(note.value).toBe("Sprayed");
   });
   it("removes a sensor and picks the main sensor from the row menu", async () => {
     const plant = plantWithSensors();
