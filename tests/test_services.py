@@ -361,6 +361,28 @@ async def test_log_care_rejects_future_time(hass: HomeAssistant) -> None:
     assert _plant_record(entry, plant_id).care_events == ()
 
 
+async def test_log_care_stores_a_slightly_future_time_as_now(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    plant_id = await _plant(hass, entry, "Aloe")
+    ahead = dt_util.now() + timedelta(minutes=2)
+    await _call(
+        hass,
+        SERVICE_LOG_CARE,
+        {
+            "device_id": _device_id(hass, plant_id),
+            "kind": "watering",
+            "occurred_at": ahead.isoformat(),
+        },
+    )
+    (event,) = _plant_record(entry, plant_id).care_events
+    stored = dt_util.parse_datetime(event.occurred_at)
+    assert stored is not None
+    assert stored <= dt_util.now()
+    assert stored > dt_util.now() - timedelta(minutes=1)
+
+
 async def test_log_care_rejects_disabled_plant(hass: HomeAssistant) -> None:
     entry = await _setup(hass)
     plant_id = await _plant(hass, entry, "Aloe")
