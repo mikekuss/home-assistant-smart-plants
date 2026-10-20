@@ -216,6 +216,8 @@ fertilizing, pruning, repotting, checking for pests, and tasks of your own. A pl
 one task of each type plus any number of custom tasks, up to 20 in total. Care tasks never
 change the plant's health status.
 
+![Care plan with a rest period and three care tasks on a plant's Care tab](images/care-plan.png)
+
 Select **Add task**, pick what you want to be reminded of, then choose when it is due:
 
 - **Repeating** – every so many days, weeks, months or years. The next date counts from the
