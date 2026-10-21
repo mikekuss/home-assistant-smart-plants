@@ -1781,8 +1781,8 @@ async function An(e, t, n) {
 		s = null;
 	}
 	if (!a.ok) {
-		let e = s?.error?.code ?? "unknown_error";
-		throw new P(typeof e == "string" ? e : "unknown_error", "Image request failed. Use a valid JPEG, PNG or WebP up to 5 MiB and 2048 × 2048 pixels.");
+		let e = s?.error?.code ?? "unknown_error", t = e === "invalid_format" ? "invalid_image" : e;
+		throw new P(typeof t == "string" ? t : "unknown_error", "Image request failed. Use a valid JPEG, PNG or WebP up to 5 MiB and 2048 × 2048 pixels.");
 	}
 	let c = s;
 	if (!c || !$e(c.plant) || c.plant.id !== n.plantId) throw new P("invalid_response", "The image response is incompatible. Refresh before retrying.");
@@ -1820,7 +1820,8 @@ var jn = {
 	"api_error.provider_malformed_response": "OpenPlantBook hat eine Antwort geschickt, die Smart Plants nicht lesen kann. Versuche es später erneut oder fahre ohne fort.",
 	"api_error.version_mismatch": "Das Smart-Plants-Panel passt nicht zur installierten Version. Starte Home Assistant neu und lade diese Seite dann neu (leere bei Bedarf den Browser-Cache).",
 	"api_error.invalid_response": "Smart Plants hat eine unerwartete Antwort erhalten. Lade die Seite neu und versuche es erneut.",
-	"api_error.invalid_format": "Einige Angaben konnten nicht gespeichert werden. Prüfe die Felder und versuche es erneut. Fotos müssen JPEG, PNG oder WebP sein, höchstens 5 MiB groß und höchstens 2048 × 2048 Pixel. Wenn du gerade eine Art auswählst, suche sie erneut.",
+	"api_error.invalid_format": "Einige Angaben konnten nicht gespeichert werden. Prüfe die Felder und versuche es erneut. Wenn du gerade eine Art auswählst, suche sie erneut.",
+	"api_error.invalid_image": "Das Foto konnte nicht gespeichert werden. Fotos müssen JPEG, PNG oder WebP sein, höchstens 5 MiB groß und höchstens 2048 × 2048 Pixel.",
 	"error.disconnected": "Verbindung getrennt. Lokale Änderungen und Wiederholungen beim Erstellen bleiben erhalten. Stelle die Verbindung vor dem Speichern wieder her.",
 	"error.registry_updates": "Registrierungsaktualisierungen nicht verfügbar; stelle die Verbindung wieder her, um native Änderungen erneut zu laden.",
 	"error.area_reconnect": "Stelle die Verbindung wieder her, um die aktuellen Home-Assistant-Bereiche zu laden, und wähle dann einen Bereich oder „Kein Bereich“.",
@@ -2729,7 +2730,8 @@ var jn = {
 	"api_error.provider_malformed_response": "OpenPlantBook sent an answer Smart Plants can't read. Try again later, or continue without it.",
 	"api_error.version_mismatch": "The Smart Plants panel doesn't match the installed version. Restart Home Assistant, then reload this page (clear the browser cache if needed).",
 	"api_error.invalid_response": "Smart Plants got an unexpected answer. Refresh the page and try again.",
-	"api_error.invalid_format": "Some of the details couldn't be saved. Check the fields and try again. Photos must be JPEG, PNG or WebP, at most 5 MiB and 2048 × 2048 pixels. If you were choosing a species, search for it again.",
+	"api_error.invalid_format": "Some of the details couldn't be saved. Check the fields and try again. If you were choosing a species, search for it again.",
+	"api_error.invalid_image": "The photo couldn't be saved. Photos must be JPEG, PNG or WebP, at most 5 MiB and 2048 × 2048 pixels.",
 	"error.disconnected": "Disconnected. Local edits and creation retries are retained. Reconnect before saving.",
 	"error.registry_updates": "Registry updates unavailable; reconnect to retry native changes.",
 	"error.area_reconnect": "Reconnect to load current Home Assistant areas, then choose an area or No area.",

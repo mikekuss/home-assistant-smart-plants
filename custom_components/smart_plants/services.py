@@ -41,6 +41,7 @@ from homeassistant.util import dt as dt_util
 from .care import CARE_EVENT_KINDS, kind_for_task_type, minimal_care_payload
 from .const import DOMAIN
 from .manager import (
+    CARE_CLOCK_SKEW,
     SmartPlantsManager,
     SmartPlantsManagerUnavailableError,
     SmartPlantsPlantNotFoundError,
@@ -203,7 +204,8 @@ def _occurred_at(call: ServiceCall) -> str:
     # A time without a zone (the action editor's date and time picker) is
     # Home Assistant local time.
     occurred = dt_util.now() if value is None else dt_util.as_local(value)
-    if occurred > dt_util.now():
+    # A time slightly ahead passes through; the manager stores it as now.
+    if occurred > dt_util.now() + CARE_CLOCK_SKEW:
         raise _error("future_time")
     return occurred.replace(microsecond=0).isoformat()
 

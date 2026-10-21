@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- **Watered** no longer fails when the phone's or browser's clock runs slightly ahead of
+  Home Assistant's. A care time up to five minutes ahead is saved as the current time, also
+  for the `smart_plants.log_care` action; later times are still refused.
+- Error messages for rejected input no longer mention photo limits unless a photo was
+  uploaded. The photo rules now appear only for photo errors.
+
 ## [0.7.0] - 2026-10-20
 
 ### Added

@@ -34,7 +34,8 @@ export const en = {
   "api_error.provider_malformed_response": "OpenPlantBook sent an answer Smart Plants can't read. Try again later, or continue without it.",
   "api_error.version_mismatch": "The Smart Plants panel doesn't match the installed version. Restart Home Assistant, then reload this page (clear the browser cache if needed).",
   "api_error.invalid_response": "Smart Plants got an unexpected answer. Refresh the page and try again.",
-  "api_error.invalid_format": "Some of the details couldn't be saved. Check the fields and try again. Photos must be JPEG, PNG or WebP, at most 5 MiB and 2048 × 2048 pixels. If you were choosing a species, search for it again.",
+  "api_error.invalid_format": "Some of the details couldn't be saved. Check the fields and try again. If you were choosing a species, search for it again.",
+  "api_error.invalid_image": "The photo couldn't be saved. Photos must be JPEG, PNG or WebP, at most 5 MiB and 2048 × 2048 pixels.",
 
   "error.disconnected": "Disconnected. Local edits and creation retries are retained. Reconnect before saving.",
   "error.registry_updates": "Registry updates unavailable; reconnect to retry native changes.",

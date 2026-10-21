@@ -431,6 +431,37 @@ async def test_future_date_rejects_and_full_history_rotates(
     await manager.async_unload()
 
 
+async def test_slightly_future_time_from_a_fast_clock_is_stored_as_now(
+    hass: HomeAssistant,
+) -> None:
+    manager = SmartPlantsManager(hass)
+    await manager.async_load()
+    plant = await manager.async_create_plant(name="Aloe")
+    offset = timezone(timedelta(hours=2))
+    ahead = (datetime.now(offset) + timedelta(seconds=30)).replace(microsecond=0)
+    updated, event = await manager.async_add_watering(
+        plant.id,
+        expected_revision=plant.revision,
+        occurred_at=ahead.isoformat(),
+        note=None,
+    )
+    stored = datetime.fromisoformat(event.occurred_at)
+    assert stored.utcoffset() == timedelta(hours=2)
+    assert stored <= datetime.now(UTC)
+    assert stored > datetime.now(UTC) - timedelta(minutes=1)
+    assert event.local_date == stored.date().isoformat()
+    assert event in updated.care_events
+    too_far = (datetime.now(offset) + timedelta(minutes=10)).replace(microsecond=0)
+    with pytest.raises(SmartPlantsValidationError, match="future"):
+        await manager.async_add_watering(
+            plant.id,
+            expected_revision=updated.revision,
+            occurred_at=too_far.isoformat(),
+            note=None,
+        )
+    await manager.async_unload()
+
+
 async def test_care_websocket_admin_revision_and_summary(
     hass: HomeAssistant,
     hass_ws_client: WebSocketGenerator,

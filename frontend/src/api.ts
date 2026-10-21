@@ -500,7 +500,9 @@ async function sendHttp<T>(
   if (!response.ok) {
     const err = parsed as { error?: { code?: string; message?: string } } | null;
     const code = err?.error?.code ?? "unknown_error";
-    throw new ApiError(typeof code === "string" ? code : "unknown_error", "Image request failed. Use a valid JPEG, PNG or WebP up to 5 MiB and 2048 × 2048 pixels.");
+    // Only photo requests use this path, so a rejected field is the photo itself.
+    const mapped = code === "invalid_format" ? "invalid_image" : code;
+    throw new ApiError(typeof mapped === "string" ? mapped : "unknown_error", "Image request failed. Use a valid JPEG, PNG or WebP up to 5 MiB and 2048 × 2048 pixels.");
   }
   const body = parsed as { plant?: T } | null;
   if (!body || !validPlant(body.plant) || (body.plant as PlantRecord).id !== args.plantId) {
