@@ -121,7 +121,12 @@ from .manager import (
     SmartPlantsRevisionConflictError,
     SmartPlantsValidationError,
 )
-from .models import PlantPlacement, PlantRecord, PlantSpecies
+from .models import (
+    CARE_TASK_INSTRUCTIONS_MAX_LEN,
+    PlantPlacement,
+    PlantRecord,
+    PlantSpecies,
+)
 from .overview import plant_overview
 from .panel import PANEL_BUNDLE_VERSION
 from .provider import (
@@ -753,7 +758,7 @@ _ISO_DATE_SCHEMA = vol.All(str, vol.Length(min=10, max=10))
 _TASK_NAME_SCHEMA = vol.Any(vol.All(str, vol.Length(min=1, max=60)), None)
 _TASK_SCHEDULE_SCHEMA = vol.All(dict, vol.Length(max=4))
 _TASK_INSTRUCTIONS_SCHEMA = vol.Any(
-    vol.All(str, vol.Length(min=1, max=_SHORT_TEXT_MAX_LEN)), None
+    vol.All(str, vol.Length(min=1, max=CARE_TASK_INSTRUCTIONS_MAX_LEN)), None
 )
 _REST_PERIOD_SCHEMA = vol.Any(
     vol.Schema({vol.Required("start_month"): int, vol.Required("end_month"): int}),

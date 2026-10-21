@@ -24,12 +24,16 @@ from custom_components.smart_plants.manager import (
     SmartPlantsValidationError,
 )
 from custom_components.smart_plants.models import (
+    CARE_TASK_INSTRUCTIONS_MAX_LEN,
     CareTask,
     IntervalSchedule,
     PlantRecord,
     RestPeriod,
     YearlySchedule,
     parse_care_schedule,
+)
+from custom_components.smart_plants.providers.openplantbook import (
+    API_CARE_TEXT_MAX,
 )
 from custom_components.smart_plants.storage import (
     SmartPlantsInvalidStorageError,
@@ -195,7 +199,7 @@ def test_care_task_storage_is_strict() -> None:
         {"name": ""},
         {"name": " Feed"},
         {"name": "x" * 61},
-        {"instructions": "x" * 501},
+        {"instructions": "x" * (CARE_TASK_INSTRUCTIONS_MAX_LEN + 1)},
         {"instructions": " padded "},
         {"baseline_done_on": "2026-13-01"},
         {"baseline_done_on": "2026-01-01T00:00:00Z"},
@@ -209,6 +213,13 @@ def test_care_task_storage_is_strict() -> None:
     with pytest.raises(ValueError, match="fields"):
         CareTask.from_storage({**_task_row(), "extra": 1})
     assert _task(name="x" * 60, instructions="x" * 500).name == "x" * 60
+    longest = "x" * CARE_TASK_INSTRUCTIONS_MAX_LEN
+    assert _task(instructions=longest).instructions == longest
+
+
+def test_instructions_fit_a_full_provider_care_note() -> None:
+    # A species care note can be copied into a task's instructions unchanged.
+    assert CARE_TASK_INSTRUCTIONS_MAX_LEN == API_CARE_TEXT_MAX == 4_000
 
 
 def test_plant_record_care_task_rules_and_view() -> None:
@@ -429,7 +440,7 @@ async def test_create_care_task(hass: HomeAssistant, freezer: Any) -> None:
         ("water", {}),
         ("custom", {"name": None}),
         ("custom", {"name": "x" * 61}),
-        ("prune", {"instructions": "x" * 501}),
+        ("prune", {"instructions": "x" * (CARE_TASK_INSTRUCTIONS_MAX_LEN + 1)}),
         ("prune", {"schedule": {"kind": "interval", "every": 0}}),
         ("prune", {"schedule": "weekly"}),
         ("prune", {"baseline_done_on": "2026-06-16"}),
@@ -963,3 +974,25 @@ async def test_minor_eleven_migration_fails_closed(
     hass_storage[STORAGE_KEY]["data"]["plants"] = [_minor_eleven_plant("p", [event])]
     with pytest.raises(SmartPlantsInvalidStorageError, match="care event"):
         await SmartPlantsStore(hass).async_load()
+
+
+async def test_stored_task_with_short_instructions_still_loads(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    # Tasks saved under the earlier 500-character limit stay valid.
+    instructions = "x" * 500
+    plant = _plant_row(id="p", care_tasks=[_task_row(instructions=instructions)])
+    hass_storage[STORAGE_KEY] = {
+        "key": STORAGE_KEY,
+        "version": 1,
+        "minor_version": STORAGE_MINOR_VERSION,
+        "data": {
+            "revision": 1,
+            "plants": [plant],
+            "pending_operations": [],
+            "tombstones": [],
+        },
+    }
+    loaded = await SmartPlantsStore(hass).async_load()
+    (task,) = loaded.plants["p"].care_tasks
+    assert task.instructions == instructions
