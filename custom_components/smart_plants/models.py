@@ -2621,7 +2621,7 @@ def validate_moisture_threshold_order(
 
 CARE_TASK_MAX_COUNT: Final = 20
 CARE_TASK_NAME_MAX_LEN: Final = 60
-CARE_TASK_INSTRUCTIONS_MAX_LEN: Final = 500
+CARE_TASK_INSTRUCTIONS_MAX_LEN: Final = 4_000
 CARE_INTERVAL_UNITS: Final = ("days", "weeks", "months", "years")
 CARE_INTERVAL_MAX_EVERY: Final = 999
 _FIRST_MONTH: Final = 1

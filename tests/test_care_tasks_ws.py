@@ -7,7 +7,10 @@ from typing import Any
 
 import pytest
 from custom_components.smart_plants.manager import SmartPlantsManager
-from custom_components.smart_plants.models import PlantRecord
+from custom_components.smart_plants.models import (
+    CARE_TASK_INSTRUCTIONS_MAX_LEN,
+    PlantRecord,
+)
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.typing import (
@@ -195,7 +198,7 @@ async def test_create_and_update_reject_invalid_tasks(
         {"schedule": {"kind": "interval", "every": 0, "unit": "days"}},
         {"schedule": {**INTERVAL, "every": 1000}},
         {"schedule": "weekly"},
-        {"instructions": "x" * 501},
+        {"instructions": "x" * (CARE_TASK_INSTRUCTIONS_MAX_LEN + 1)},
         {"baseline_done_on": "2026-06-16"},
         {"baseline_done_on": "15.06.2026"},
         {"expected_revision": 0},
@@ -217,11 +220,52 @@ async def test_create_and_update_reject_invalid_tasks(
         {"task_id": "short"},
         {"schedule": {"kind": "yearly", "start_month": 13, "end_month": 1}},
         {"baseline_done_on": "2026-06-16"},
+        {"instructions": "x" * (CARE_TASK_INSTRUCTIONS_MAX_LEN + 1)},
         {"unknown": 1},
     ]
     for changes in invalid_updates:
         assert await _error(client, {**update, **changes}) == "invalid_format", changes
     assert manager.get_plant(plant.id) == plant
+
+
+async def test_create_and_update_accept_longest_instructions(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
+) -> None:
+    client = await hass_ws_client(hass)
+    freezer.move_to(NOW)
+    _entry, manager, plant, task_id = await _plant_with_task(hass)
+    longest = "x" * CARE_TASK_INSTRUCTIONS_MAX_LEN
+    assert CARE_TASK_INSTRUCTIONS_MAX_LEN == 4_000
+    created = await _result(
+        client,
+        {
+            "type": "smart_plants/care_tasks/create",
+            "plant_id": plant.id,
+            "expected_revision": plant.revision,
+            "task_type": "prune",
+            "name": None,
+            "schedule": INTERVAL,
+            "instructions": longest,
+            "baseline_done_on": None,
+        },
+    )
+    by_id = {task["id"]: task for task in created["plant"]["care_tasks"]}
+    assert by_id[created["task_id"]]["instructions"] == longest
+
+    updated = await _result(
+        client,
+        {
+            "type": "smart_plants/care_tasks/update",
+            "plant_id": plant.id,
+            "task_id": task_id,
+            "expected_revision": created["plant"]["revision"],
+            "instructions": longest,
+        },
+    )
+    by_id = {task["id"]: task for task in updated["plant"]["care_tasks"]}
+    assert by_id[task_id]["instructions"] == longest
+    stored = manager.get_plant(plant.id).care_tasks
+    assert all(task.instructions == longest for task in stored)
 
 
 async def test_complete_returns_event_for_undo(
