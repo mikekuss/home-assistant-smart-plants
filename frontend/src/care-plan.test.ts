@@ -4,7 +4,7 @@ import { ENGLISH, createLocalizer } from "./localize.js";
 import { careLine, careNote, careOnlyChange, careSuggestions, draftFromTask, lastDone, localDate, matchingTask, monthsInRange, pickMonth, presetDraft, restDraft, restSentence, restTaskChanges, resumeDate, scheduleText, shortDate, taskChanges, taskChip, validateDraft, validateRest } from "./care-plan.js";
 import { matchesFilter } from "./overview-model.js";
 import type { CareTaskSummary, PlantOverview } from "./overview-model.js";
-import type { CareEvent, CareTask, PlantRecord, PlantSpecies, RestPeriod } from "./types.js";
+import type { CareEvent, CareTask, HAEntity, HAState, HomeAssistantLike, PlantRecord, PlantSpecies, RestPeriod } from "./types.js";
 import { click, harness, overviewFor, sample, settle } from "./test-helpers.js";
 
 const l = ENGLISH;
@@ -99,7 +99,7 @@ describe("care task draft", () => {
 
 // A small care task backend: every write bumps the revision and returns the
 // whole plant, like Home Assistant does.
-function careBackend(initial: PlantRecord, states: (plant: PlantRecord) => CareTaskSummary[] = () => []) {
+function careBackend(initial: PlantRecord, states: (plant: PlantRecord) => CareTaskSummary[] = () => [], entities: HAEntity[] = []) {
   let plant = structuredClone(initial);
   let nextEvent = 1;
   const bump = (changes: Partial<PlantRecord>) => { plant = { ...plant, ...changes, revision: plant.revision + 1 }; return structuredClone(plant); };
@@ -108,6 +108,7 @@ function careBackend(initial: PlantRecord, states: (plant: PlantRecord) => CareT
     const tasks = plant.care_tasks ?? [];
     switch (msg.type) {
       case "smart_plants/plants/list": return { plants: [plant] };
+      case "config/entity_registry/list": return entities;
       case "smart_plants/plants/overview": return { plants: [overview(plant)] };
       case "smart_plants/care/list": {
         const events = plant.care_events ?? [];
@@ -501,5 +502,91 @@ describe("care suggestions", () => {
     const draft = { ...presetDraft("custom"), name: "Notes", instructions: "x".repeat(4000) };
     expect(validateDraft(draft, TODAY).errors).toBeNull();
     expect(validateDraft({ ...draft, instructions: "x".repeat(4001) }, TODAY).errors).toEqual({ instructions: "care_plan.error_instructions_length" });
+  });
+});
+
+describe("care changes made elsewhere", () => {
+  const registry: HAEntity[] = [
+    { id: "1", entity_id: "binary_sensor.mock_aloe_fertilize_due", device_id: "device-plant-1", unique_id: `smart_plants:plant-1:care_task:${FERTILIZE_ID}:due`, platform: "smart_plants" },
+    { id: "2", entity_id: "binary_sensor.mock_aloe_care_due", device_id: "device-plant-1", unique_id: "smart_plants:plant-1:care_due", platform: "smart_plants" },
+    { id: "3", entity_id: "sensor.mock_aloe_moisture", device_id: "device-plant-1", unique_id: "smart_plants:plant-1:moisture", platform: "smart_plants" },
+  ];
+  const entityState = (entity_id: string, value: string, attributes: Record<string, unknown> = {}): HAState => ({ entity_id, state: value, attributes, last_updated: "2026-10-19T09:00:00Z" });
+  const initialStates = () => Object.fromEntries([
+    entityState("binary_sensor.mock_aloe_fertilize_due", "on", { next_due: "2026-10-19" }),
+    entityState("binary_sensor.mock_aloe_care_due", "on"),
+    entityState("sensor.mock_aloe_moisture", "40"),
+  ].map(s => [s.entity_id, s]));
+  const reads = (backend: ReturnType<typeof careBackend>) => backend.h.calls.filter(c => c.type === "smart_plants/plants/list").length;
+  const withStates = async (el: SmartPlantsPanel, hass: HomeAssistantLike, changes: HAState[]) => {
+    el.hass = { ...hass, states: { ...el.hass!.states, ...Object.fromEntries(changes.map(s => [s.entity_id, s])) } }; await el.updateComplete;
+  };
+  const open = async () => {
+    const backend = careBackend(plantWith({ care_tasks: [fertilize] }), plant => plant.care_tasks![0]!.last_done_at ? [state(FERTILIZE_ID, { next_due: "2026-11-16", days: 28 })] : [state(FERTILIZE_ID, { status: "due", is_due: true, next_due: TODAY, days: null })], registry);
+    const el = await openCare(backend);
+    el.hass = { ...backend.h.hass, states: initialStates() }; await settle(el);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    return { backend, el };
+  };
+  afterEach(() => { vi.useRealTimers(); });
+
+  it("refreshes once after a burst of care entity changes", async () => {
+    const { backend, el } = await open();
+    const before = reads(backend);
+    await withStates(el, backend.h.hass, [entityState("binary_sensor.mock_aloe_fertilize_due", "off", { next_due: "2026-11-16" })]);
+    vi.advanceTimersByTime(200);
+    await withStates(el, backend.h.hass, [entityState("binary_sensor.mock_aloe_care_due", "off")]);
+    vi.advanceTimersByTime(399);
+    expect(reads(backend)).toBe(before);
+    vi.advanceTimersByTime(1);
+    await vi.waitFor(() => expect(reads(backend)).toBe(before + 1));
+    vi.advanceTimersByTime(5000);
+    expect(reads(backend)).toBe(before + 1);
+  });
+
+  it("refreshes when only the attributes of a care entity change", async () => {
+    const { backend, el } = await open();
+    const before = reads(backend);
+    await withStates(el, backend.h.hass, [entityState("binary_sensor.mock_aloe_fertilize_due", "on", { next_due: "2026-10-20" })]);
+    vi.advanceTimersByTime(400);
+    await vi.waitFor(() => expect(reads(backend)).toBe(before + 1));
+  });
+
+  it("ignores changes of other entities and unchanged care states", async () => {
+    const { backend, el } = await open();
+    const before = reads(backend);
+    await withStates(el, backend.h.hass, [entityState("sensor.mock_aloe_moisture", "35"), entityState("binary_sensor.mock_aloe_care_due", "on")]);
+    vi.advanceTimersByTime(5000);
+    expect(reads(backend)).toBe(before);
+  });
+
+  it("waits while an editor dialog is saving", async () => {
+    const { backend, el } = await open();
+    const before = reads(backend);
+    (el as unknown as { _formBusy: boolean })._formBusy = true;
+    await withStates(el, backend.h.hass, [entityState("binary_sensor.mock_aloe_fertilize_due", "off")]);
+    vi.advanceTimersByTime(5000);
+    expect(reads(backend)).toBe(before);
+  });
+
+  it("does not read again for the echo of its own write", async () => {
+    const { backend, el } = await open();
+    const before = reads(backend);
+    [...carePlan(el).querySelectorAll<HTMLButtonElement>("button")].find(b => b.getAttribute("aria-label") === "Mark Fertilize as done")!.click();
+    await vi.waitFor(() => expect(backend.h.calls.some(c => c.type === "smart_plants/care_tasks/complete")).toBe(true));
+    await vi.waitFor(() => expect(reads(backend)).toBe(before + 1));
+    await withStates(el, backend.h.hass, [entityState("binary_sensor.mock_aloe_fertilize_due", "off")]);
+    vi.advanceTimersByTime(5000);
+    expect(reads(backend)).toBe(before + 1);
+  });
+
+  it("stops the pending refresh when the panel is removed", async () => {
+    const { backend, el } = await open();
+    const before = reads(backend);
+    await withStates(el, backend.h.hass, [entityState("binary_sensor.mock_aloe_fertilize_due", "off")]);
+    el.remove();
+    vi.advanceTimersByTime(5000);
+    expect(reads(backend)).toBe(before);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

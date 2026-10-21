@@ -153,6 +153,14 @@ function localTimestamp(date: Date): string {
 const HISTORY_ROLE_KEY = "smart_plants.history_role";
 const HISTORY_RANGE_KEY = "smart_plants.history_range";
 const HISTORY_REFRESH_MS = 5 * 60_000;
+// Care entity changes made elsewhere (an automation, another browser) are read
+// back after this delay, so a burst of state updates causes one refresh.
+const CARE_REFRESH_DELAY_MS = 400;
+// State updates arriving this soon after the panel's own write are its echo;
+// that write refreshes by itself when it finishes.
+const OWN_WRITE_ECHO_MS = 2000;
+const careStateChanged = (before: HAState | undefined, after: HAState | undefined): boolean =>
+  before !== after && (before?.state !== after?.state || JSON.stringify(before?.attributes) !== JSON.stringify(after?.attributes));
 function stored(key: string): string | null { try { return localStorage.getItem(key); } catch { return null; } }
 function store(key: string, value: string): void { try { localStorage.setItem(key, value); } catch { /* not persisted */ } }
 
@@ -267,6 +275,8 @@ export class SmartPlantsPanel extends LitElement {
   private _subscriptionGeneration = 0;
   private _focusReturn: HTMLElement | null = null;
   private _timer: ReturnType<typeof setInterval> | undefined;
+  private _careTimer: ReturnType<typeof setTimeout> | undefined;
+  private _ownWriteAt = Number.NEGATIVE_INFINITY;
   private get _l(): Localizer { return createLocalizer(this.hass); }
   private readonly _ready = () => { void this._refresh(); };
   private readonly _disconnected = () => { this._context++; this._formBusy = false; this._blocked = true; this._request++; this._providerRequest++; this._preview = null; this._clearImage(); this._error = this._l.t("error.disconnected"); };
@@ -282,6 +292,7 @@ export class SmartPlantsPanel extends LitElement {
     if (changed.has("hass")) {
       if (this.hass?.connection !== this._connection) { this._unbind(); this._bind(); void this._refresh(); }
       if (this.hass?.user?.is_admin === false) this._unbind();
+      this._watchCare(changed.get("hass") as HomeAssistantLike | undefined);
     }
     const dialog = this.shadowRoot?.querySelector("dialog");
     let active: Element | null | undefined = null;
@@ -298,8 +309,29 @@ export class SmartPlantsPanel extends LitElement {
     this._timer = setInterval(() => { if (!this._formBusy && !this._loading && this.isConnected) void this._refresh(false); }, 30000);
   }
   disconnectedCallback(): void {
-    this._context++; this._formBusy = false; this._request++; this._providerRequest++; this._clearImage(); this._clearThumbnails(); this._unbind(); clearInterval(this._timer); super.disconnectedCallback();
+    this._context++; this._formBusy = false; this._request++; this._providerRequest++; this._clearImage(); this._clearThumbnails(); this._unbind(); clearInterval(this._timer); this._clearCareTimer(); super.disconnectedCallback();
   }
+  // Schedules one refresh when a care entity of the open plant changed state or
+  // attributes, for example after the log_care or skip_care_task action.
+  private _watchCare(previous: HomeAssistantLike | undefined): void {
+    const before = previous?.states; const after = this.hass?.states;
+    if (!before || !after || before === after || this._view.kind !== "detail") return;
+    const prefix = `smart_plants:${this._view.plantId}:care`;
+    if (!this._entities.some(e => e.platform === "smart_plants" && e.unique_id.startsWith(prefix) && careStateChanged(before[e.entity_id], after[e.entity_id]))) return;
+    if (this._carePending.size || this._watering.size || Date.now() - this._ownWriteAt < OWN_WRITE_ECHO_MS) return;
+    this._scheduleCareRefresh();
+  }
+  private _scheduleCareRefresh(): void {
+    if (this._careTimer !== undefined) return;
+    this._careTimer = setTimeout(() => {
+      this._careTimer = undefined;
+      if (!this.isConnected) return;
+      // An editor dialog is saving; it refreshes when done, or this tries again.
+      if (this._formBusy) { this._scheduleCareRefresh(); return; }
+      void this._refresh(false);
+    }, CARE_REFRESH_DELAY_MS);
+  }
+  private _clearCareTimer(): void { clearTimeout(this._careTimer); this._careTimer = undefined; }
   private _bind(): void {
     if (!this.hass || this.hass.user?.is_admin === false || this._connection) return;
     const connection = this.hass.connection; this._connection = connection;
@@ -378,6 +410,8 @@ export class SmartPlantsPanel extends LitElement {
     if (!this.isConnected) return;
     if (!this.hass || this.hass.user?.is_admin === false) return;
     const request = ++this._request; const hass = this.hass;
+    // This read already covers any care change seen so far.
+    this._clearCareTimer();
     if (showLoading) this._loading = true;
     try {
       const info = await api.info(hass);
@@ -552,6 +586,7 @@ export class SmartPlantsPanel extends LitElement {
     const next = new Set(this._watering); if (busy) next.add(plantId); else next.delete(plantId); this._watering = next;
   }
   private _adopt(plant: PlantRecord): void {
+    this._ownWriteAt = Date.now();
     const latest = this._plantById(plant.id);
     if (!latest || latest.revision <= plant.revision) this._plants = this._plants.map(p => p.id === plant.id ? plant : p);
     const entry = this._overview[plant.id];
