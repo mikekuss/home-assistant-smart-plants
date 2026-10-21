@@ -1,5 +1,5 @@
 import { html, nothing } from "lit";
-import { builtin, keys, placements, resolveSource, rolePhrase, roleSourceWarning, sourceWarning } from "./model.js";
+import { builtin, keys, placements, resolveSource, rolePhrase, roleSourceWarning, sourceWarning, speciesCommonName } from "./model.js";
 import type { RoleSourceSpec } from "./model.js";
 import { isMessageKey } from "./localize.js";
 import type { Localizer } from "./localize.js";
@@ -100,7 +100,8 @@ export function snapshotView(l: Localizer, snapshot: SpeciesSnapshot, preview?: 
     const text = value === null || value === undefined ? "—" : typeof value === "string" ? value : JSON.stringify(value);
     return text.length > 80 ? `${text.slice(0, 79)}…` : text;
   };
-  return html`<article><h3>${snapshot.common_name ?? snapshot.latin_name ?? l.t("snapshot.species")}</h3>${snapshot.latin_name && snapshot.latin_name !== snapshot.common_name ? html`<p><i>${snapshot.latin_name}</i></p>` : nothing}
+  const commonName = speciesCommonName(snapshot, l.language);
+  return html`<article><h3>${commonName ?? snapshot.latin_name ?? l.t("snapshot.species")}</h3>${snapshot.latin_name && snapshot.latin_name !== commonName ? html`<p><i>${snapshot.latin_name}</i></p>` : nothing}
     <p class="snapshot-targets">${l.t("snapshot.imported_defaults")}: ${keys.map(k => `${thresholdKeyLabel(l, k)} ${moisture?.[k] === undefined ? "—" : l.percent(moisture[k])}`).join(" · ")}</p>
     ${keys.some(k => moisture?.[k] === undefined) ? html`<p class="small muted">${l.t("snapshot.default_not_supplied")}</p>` : nothing}
     ${care.length ? html`<details><summary>${l.t("snapshot.care_notes")}</summary>${care.map(([k, v]) => html`<h4>${k}</h4><p class="prose">${v}</p>`)}</details>` : nothing}

@@ -18,7 +18,8 @@ The overview shows:
   **Sensor issues** (no recent data, or no soil moisture sensor assigned). Once a plant has a
   care task, a fifth tile, **Care due**, counts the plants with a care task due today or
   overdue. Select a tile to show only those plants; select it again to show all plants.
-- a search field that matches plant name, area, species, category and tags, and a sort menu:
+- a search field that matches plant name, area, species (scientific name and common names in
+  English and German), category and tags, and a sort menu:
   **Needs attention first** (the default), **Name**, or **Group by area**.
 - one card per plant with its photo, area and species, a status label with a short
   explanation (for example *Soil moisture 34% is below the minimum of 60%*), the soil
