@@ -229,8 +229,17 @@ Select **Add task**, pick what you want to be reminded of, then choose when it i
   shows *Missed this year* and opens again the next year.
 
 A custom task needs a name; other tasks can keep their default name. **Instructions** are
-optional. Under **More options** you can enter when the task was last done; without a date, a
-repeating task is due right away.
+optional and can hold up to 4,000 characters. Under **More options** you can enter when the
+task was last done; without a date, a repeating task is due right away.
+
+When the plant's species comes from OpenPlantBook and has care notes, **Add task** first shows
+**Suggestions** with the species' fertilizing and pruning notes. **Add Fertilize task** or
+**Add Prune task** opens the task with the default schedule and the note as its instructions;
+you can change both before saving. Long notes show three lines with **Show more**. While you
+add or edit a fertilizing, pruning or repotting task with empty instructions, **Use as
+instructions** copies the matching note (for repotting, the soil note). The notes are stored
+with the species, so suggestions work without a new OpenPlantBook request, and nothing is
+added to a task until you select it.
 
 Each task shows its schedule, when it was last done, and its state, for example *Due today*,
 *Overdue 3 days*, *In 2 weeks*, *From Mar 1* or *Done for this year*. Dates are calendar dates

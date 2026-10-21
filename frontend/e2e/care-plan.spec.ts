@@ -77,6 +77,31 @@ test("care task editor is accessible in every step and validates inline", async 
   expect(created).toMatchObject({ task_type: "custom", name: "Mist leaves", schedule: { kind: "yearly", start_month: 11, end_month: 2 } });
 });
 
+test("care suggestions are accessible and fill a new task", async ({ page }, info) => {
+  await page.goto(`${url}?seed&suggest`);
+  await expect(button(page, "Menu")).toBeVisible();
+  await button(page, "Office Aloe").click();
+  await page.getByRole("tab", { name: "Care", exact: true }).click();
+  const plan = page.locator("smart-plants-panel .care-plan");
+  await expect(plan).toContainText("They show up as suggestions when you add a task.");
+  await plan.getByRole("button", { name: "Add task", exact: true }).click();
+  const box = dialog(page).locator(".suggestions");
+  await expect(box).toContainText("Suggestions for Aloe vera");
+  await expect(box.locator("q.clamped")).toHaveCount(1);
+  await audit(page, info, "care-task-suggestions");
+  await dialogButton(page, "Show more").click();
+  await expect(box.locator("q.clamped")).toHaveCount(0);
+  await dialogButton(page, "Add Prune task").click();
+  await expect(dialog(page).getByRole("textbox", { name: "Instructions (optional)", exact: true })).toHaveValue(/^Remove dead or damaged leaves/);
+  await expect(dialog(page)).toContainText("From OpenPlantBook. Edit the text to make it your own.");
+  await audit(page, info, "care-task-from-suggestion");
+  await dialogButton(page, "Add task").click();
+  await expect(dialog(page)).toHaveCount(0);
+  const created = await page.evaluate(() => (window as unknown as { __smartPlantsHarness: { messages: Record<string, unknown>[] } }).__smartPlantsHarness.messages.find(m => m.type === "smart_plants/care_tasks/create"));
+  expect(created).toMatchObject({ task_type: "prune", schedule: { kind: "yearly", start_month: 3, end_month: 4 } });
+  expect(String((created as { instructions: string }).instructions)).toMatch(/^Remove dead or damaged leaves/);
+});
+
 test("rest period editor sets the months and shows the rest row", async ({ page }, info) => {
   await openCare(page);
   await page.locator("smart-plants-panel .care-plan .card-h ha-dropdown").evaluate(menu => menu.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value: "rest" } } })));

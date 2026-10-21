@@ -62,7 +62,7 @@ export function validCareTask(v: unknown): boolean {
   return object(v) && exactKeys(v, ["id", "type", "name", "schedule", "instructions", "baseline_done_on", "last_done_at", "last_skipped_on", "created_on"]) &&
     typeof v.id === "string" && TASK_ID.test(v.id) && ["fertilize", "prune", "repot", "pests", "custom"].includes(String(v.type)) &&
     (v.name === null ? v.type !== "custom" : trimmed(v.name, 60)) && validSchedule(v.schedule) &&
-    (v.instructions === null || trimmed(v.instructions, 500)) && (v.baseline_done_on === null || isoDate(v.baseline_done_on)) &&
+    (v.instructions === null || trimmed(v.instructions, 4000)) && (v.baseline_done_on === null || isoDate(v.baseline_done_on)) &&
     (v.last_done_at === null || (timestamp(v.last_done_at) && String(v.last_done_at).endsWith("Z"))) &&
     (v.last_skipped_on === null || isoDate(v.last_skipped_on)) && isoDate(v.created_on);
 }

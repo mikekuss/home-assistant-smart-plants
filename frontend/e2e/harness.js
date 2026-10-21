@@ -192,7 +192,18 @@ const params = new URLSearchParams(location.search);
 if (params.has("seed") || params.has("diagnostics")) state.seed();
 if (params.has("diagnostics")) state.seedDiagnostics();
 if (params.has("history")) state.seedHistory();
+// Opt-in OpenPlantBook care texts for the first plant, shown as suggestions
+// while adding a care task. The pruning text is long enough to be clamped.
+state.seedSuggestions = () => {
+  const snap = state.plants[0].species.snapshot;
+  snap.care_text = { ...snap.care_text,
+    fertilization: "Feed every 3-4 weeks in spring and summer with a cactus fertilizer; none in winter.",
+    pruning: "Remove dead or damaged leaves at the base with a clean knife. Take offsets off once they have a few leaves of their own and pot them separately, and cut spent flower stalks back to the rosette after flowering.",
+    soil: "Free-draining cactus mix with added grit." };
+  snap.field_sources = { ...snap.field_sources, fertilization: attribution, pruning: attribution, soil: attribution };
+};
 if (params.has("care")) state.seedCare();
+if (params.has("suggest")) state.seedSuggestions();
 const drafts = new Map();
 const previews = new Map();
 function preview(message) {

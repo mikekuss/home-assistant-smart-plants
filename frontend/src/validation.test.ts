@@ -176,7 +176,7 @@ describe("care tasks and linked care events", () => {
     expect(validPlant({ ...sample, rest_period: { start_month: 0, end_month: 2 } })).toBe(false);
     expect(validPlant({ ...sample, rest_period: { start_month: 1 } })).toBe(false);
   });
-  it.each([{ id: "short" }, { type: "water" }, { type: "custom", name: null }, { name: " x" }, { name: "x".repeat(61) }, { instructions: "x".repeat(501) },
+  it.each([{ id: "short" }, { type: "water" }, { type: "custom", name: null }, { name: " x" }, { name: "x".repeat(61) }, { instructions: "x".repeat(4001) },
     { schedule: { kind: "interval", every: 0, unit: "weeks", growing_season_only: true } }, { schedule: { kind: "interval", every: 2, unit: "hours", growing_season_only: true } },
     { schedule: { kind: "yearly", start_month: 3, end_month: 13 } }, { schedule: { kind: "yearly", start_month: 3 } }, { last_done_at: "2026-01-02T03:04:05+01:00" },
     { baseline_done_on: "2026-01-01T00:00:00Z" }, { created_on: null }, { extra: 1 }])("rejects malformed care task %#", change => {

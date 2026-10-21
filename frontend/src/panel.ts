@@ -18,7 +18,7 @@ import { RANGE_SPECS, isHistoryRange } from "./history-model.js";
 import type { HistoryPoint, HistoryRange } from "./history-model.js";
 import { CARE_ICONS, CARE_KINDS, DETAIL_SECTIONS, SECTION_LABELS, careDetails, expander, formatDuration, friendlyName, headerReason, readingPhrase, plantStyles, readingsInOrder, renderHistoryCard, renderKeyReadings, renderReadingRow, reportedAt } from "./views/plant.js";
 import type { DetailSection, HistoryStatus } from "./views/plant.js";
-import { TASK_KINDS, careOnlyChange, draftFromTask, dueTasks, localDate, matchingTask, pickMonth, presetDraft, restDraft, restTaskChanges, summaryName, taskChanges, taskChip, taskEntityUniqueIds, taskName, validateDraft, validateRest } from "./care-plan.js";
+import { TASK_KINDS, careOnlyChange, draftFromTask, dueTasks, localDate, matchingTask, pickMonth, presetDraft, restDraft, restTaskChanges, suggestionDraft, summaryName, taskChanges, taskChip, taskEntityUniqueIds, taskName, validateDraft, validateRest } from "./care-plan.js";
 import type { RestDraft, TaskDraft } from "./care-plan.js";
 import { carePlanStyles, renderAutomate, renderCarePlan, renderRestEditor, renderTaskEditor, taskEditorTitle } from "./views/care-plan.js";
 import type { AutomateRow, TaskAction, TaskEditorState } from "./views/care-plan.js";
@@ -1154,6 +1154,8 @@ export class SmartPlantsPanel extends LitElement {
       title = taskEditorTitle(l, editor);
       body = renderTaskEditor({ l, plant, state: editor, today: this._today(), busy: this._formBusy || this._blocked,
         onPreset: type => this._setTaskEditor({ step: 2, draft: presetDraft(type), errors: {}, error: "", moreOpen: false }, true),
+        onSuggestion: (type, text) => this._setTaskEditor({ step: 2, draft: suggestionDraft(type, text), errors: {}, error: "", moreOpen: false }, true),
+        onExpand: type => this._setTaskEditor({ expanded: type }),
         onBack: () => this._setTaskEditor({ step: 1, errors: {}, error: "" }, true),
         onChange: changes => this._editTaskDraft(changes),
         onMonth: month => { const draft = this._taskEditor?.draft; if (draft) this._editTaskDraft(pickMonth(draft.startMonth, draft.endMonth, month)); },
