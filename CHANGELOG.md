@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- Smart Plants is now in the HACS default store. The installation guide and README describe
+  searching for it in HACS; adding it as a custom repository remains a fallback.
+
 ## [0.7.1] - 2026-10-21
 
 ### Fixed

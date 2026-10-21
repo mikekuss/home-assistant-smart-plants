@@ -1,6 +1,6 @@
 # Smart Plants for Home Assistant
 
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://hacs.xyz/)
 [![GitHub release](https://img.shields.io/github/v/release/mikekuss/home-assistant-smart-plants)](https://github.com/mikekuss/home-assistant-smart-plants/releases)
 [![CI](https://github.com/mikekuss/home-assistant-smart-plants/actions/workflows/ci.yml/badge.svg)](https://github.com/mikekuss/home-assistant-smart-plants/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -50,10 +50,8 @@ native Home Assistant automations — no YAML or template sensors required.
 
 [![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mikekuss&repository=home-assistant-smart-plants&category=integration)
 
-1. In HACS, open **⋮ → Custom repositories**, add
-   `https://github.com/mikekuss/home-assistant-smart-plants` with category **Integration**
-   (or use the button above).
-2. Download **Smart Plants** and restart Home Assistant.
+1. In HACS, search for **Smart Plants** (or use the button above).
+2. Download it and restart Home Assistant.
 3. Add the integration:
 
    [![Open your Home Assistant instance and start setting up Smart Plants.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=smart_plants)
