@@ -12,18 +12,26 @@ back up its data.
 
 ## Install with HACS
 
-Smart Plants is currently distributed through HACS as a custom repository.
+Smart Plants is part of the HACS default store, so you don't need to add a custom repository.
 
 [![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mikekuss&repository=home-assistant-smart-plants&category=integration)
 
-If you prefer to add it by hand:
+If you prefer to find it by hand:
 
 1. Open **HACS** in the sidebar.
-2. Open the **⋮** menu in the top-right corner and choose **Custom repositories**.
-3. Enter `https://github.com/mikekuss/home-assistant-smart-plants` as the repository and
+2. Search for **Smart Plants**, open it, and select **Download**.
+3. Restart Home Assistant.
+
+If Smart Plants doesn't show up in the search, your HACS installation may not have refreshed
+its repository list yet. You can add it as a custom repository instead:
+
+1. In HACS, open the **⋮** menu in the top-right corner and choose **Custom repositories**.
+2. Enter `https://github.com/mikekuss/home-assistant-smart-plants` as the repository and
    choose **Integration** as the category. Select **Add**.
-4. Search for **Smart Plants** in HACS, open it, and select **Download**.
-5. Restart Home Assistant.
+3. Continue with step 2 above.
+
+If you added Smart Plants as a custom repository before it joined the default store, you
+don't need to change anything. Updates keep arriving the same way.
 
 ## Install manually
 
