@@ -67,6 +67,15 @@ describe("overview view", () => {
     qa(el, "button").find(b => b.textContent?.trim() === "Show all plants")!.click(); await settle(el);
     expect(cardNames(el)).toHaveLength(3);
   });
+  it("finds a plant by the species' common names in every language", async () => {
+    const named = { ...basil.species!.snapshot, common_names: { en: ["Sweet basil"], de: ["Basilikum"] } };
+    const el = await mountView({ plants: [{ ...basil, species: { provider: "openplantbook", snapshot: named } }, monstera, lily] });
+    const input = q(el, "input[type=search]") as HTMLInputElement;
+    for (const query of ["basilikum", "sweet"]) {
+      input.value = query; input.dispatchEvent(new Event("input")); await settle(el);
+      expect(cardNames(el), query).toEqual(["Basil"]);
+    }
+  });
   it("renders a card per plant with status, readings and last watering", async () => {
     const el = await mountView();
     const card = qa(el, ".card")[0]!;

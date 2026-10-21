@@ -4,7 +4,8 @@ import { createLocalizer, ENGLISH } from "./localize.js";
 import { formatDuration, friendlyName, headerReason, readingPhrase, readingStateText, reportedAt } from "./views/plant.js";
 import type { PlantOverview } from "./overview-model.js";
 import type { CareEvent, HAState, PlantRecord } from "./types.js";
-import { button, click, deferred, harness, overviewFor, panelText, role, sample, settle } from "./test-helpers.js";
+import { speciesCommonName, speciesSearchNames } from "./model.js";
+import { button, click, deferred, harness, overviewFor, panelText, role, sample, settle, snapshot } from "./test-helpers.js";
 
 const NOW = "2026-09-28T12:00:00+00:00";
 const soil: HAState = { entity_id: "sensor.mock_soil", state: "12", attributes: { friendly_name: "Kitchen Soil Probe", unit_of_measurement: "%", device_class: "moisture" }, last_updated: NOW };
@@ -286,4 +287,26 @@ describe("plant history", () => {
     // Only the current reading: the late hourly statistics were dropped.
     expect(history(el)!.querySelector("sp-history-chart")!.points).toHaveLength(1);
   });
+});
+
+describe("species common names", () => {
+  const named = { ...snapshot, common_names: { en: ["Aloe vera", "Burn plant"], de: ["Echte Aloe"] }, field_sources: { ...snapshot.field_sources, common_names: "OpenPlantBook" } };
+  const plantNamed = (): PlantRecord => ({ ...structuredClone(sample), species: { provider: "openplantbook", snapshot: structuredClone(named) } });
+
+  it("picks the name for the panel language and falls back to the display name", () => {
+    expect(speciesCommonName(named, "de")).toBe("Echte Aloe");
+    expect(speciesCommonName(named, "en")).toBe("Aloe");
+    expect(speciesCommonName({ ...named, common_name: null }, "en")).toBe("Aloe vera");
+    expect(speciesCommonName(snapshot, "de")).toBe("Aloe");
+    expect(speciesCommonName({ ...named, common_names: { en: ["Aloe vera"] } }, "de")).toBe("Aloe");
+    expect(speciesSearchNames(named)).toEqual(["Aloe", "Aloe vera", "Aloe vera", "Burn plant", "Echte Aloe"]);
+  });
+
+  it("shows the German name on the plant page when the panel is German", async () => {
+    const { el } = await mount(plantNamed());
+    expect(tabPanel(el).textContent).toContain("Aloe vera · Aloe");
+    el.hass = { ...el.hass!, language: "de" }; await settle(el);
+    expect(tabPanel(el).textContent).toContain("Aloe vera · Echte Aloe");
+  });
+
 });

@@ -8,6 +8,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- The panel shows a species' German common name from OpenPlantBook when it is shown in German,
+  and the overview search also finds plants by their English and German common names. See
+  [OpenPlantBook](docs/openplantbook.md).
 - Care suggestions from OpenPlantBook: when adding a care task, the species' fertilizing and
   pruning notes appear as suggestions that create the task with the note as its instructions,
   and fertilizing, pruning and repotting tasks offer **Use as instructions** for the matching

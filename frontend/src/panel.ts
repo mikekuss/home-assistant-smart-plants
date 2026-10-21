@@ -6,7 +6,7 @@ import type { UpdatePlantInput } from "./api.js";
 import { aggregationLabel, areaEditor, moistureEditor, placementEditor, placementLabel, roleSourcesEditor, selectField, snapshotView, textField } from "./editors.js";
 import { createLocalizer, isMessageKey } from "./localize.js";
 import type { Localizer, MessageKey } from "./localize.js";
-import { CO2_STRESS_BUILTIN_DEFAULTS, CO2_STRESS_KEYS, CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, CONDUCTIVITY_STRESS_KEYS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_KEYS, LOW_BATTERY_STRESS_BUILTIN_DEFAULTS, LOW_BATTERY_STRESS_KEYS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_KEYS, SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, SOIL_TEMPERATURE_STRESS_KEYS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_KEYS, builtin, canonicalMoisture, co2StressInput, conductivityStressInput, confidenceGloss, confidenceLabel, contributorLabel, effectiveThresholds, humidityStressInput, keys, lowBatteryInput, lowLightInput, manualSpecies, moistureInput, moistureRole, plantDevice, problemBinaries, resolveSource, roleSourceConfig, roleSourceInput, roleSourceSpec, ROLE_SOURCE_SPECS, canonicalRoleSources, validateRoleSources, soilTemperatureStressInput, tags, temperatureStressInput, validateCo2StressOverrides, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowBatteryOverrides, validateLowLightOverrides, validateMoisture, validateSoilTemperatureStressOverrides, validateTaxonomy, validateTemperatureStressOverrides } from "./model.js";
+import { CO2_STRESS_BUILTIN_DEFAULTS, CO2_STRESS_KEYS, CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, CONDUCTIVITY_STRESS_KEYS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_KEYS, LOW_BATTERY_STRESS_BUILTIN_DEFAULTS, LOW_BATTERY_STRESS_KEYS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_KEYS, SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, SOIL_TEMPERATURE_STRESS_KEYS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_KEYS, builtin, canonicalMoisture, co2StressInput, conductivityStressInput, confidenceGloss, confidenceLabel, contributorLabel, effectiveThresholds, humidityStressInput, keys, lowBatteryInput, lowLightInput, manualSpecies, moistureInput, moistureRole, plantDevice, problemBinaries, resolveSource, roleSourceConfig, roleSourceInput, roleSourceSpec, ROLE_SOURCE_SPECS, canonicalRoleSources, validateRoleSources, soilTemperatureStressInput, speciesCommonName, tags, temperatureStressInput, validateCo2StressOverrides, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowBatteryOverrides, validateLowLightOverrides, validateMoisture, validateSoilTemperatureStressOverrides, validateTaxonomy, validateTemperatureStressOverrides } from "./model.js";
 import type { ProblemBinaryRole, SourceRole } from "./model.js";
 import "./components/index.js";
 import { themeFallbacks } from "./components/shared-styles.js";
@@ -1726,6 +1726,7 @@ export class SmartPlantsPanel extends LitElement {
     const device = plantDevice(plant, this._devices);
     const notSet = l.t("about.not_set");
     const snapshot = plant.species?.snapshot;
+    const commonName = snapshot ? speciesCommonName(snapshot, l.language) : null;
     const cap = (text: string) => text.charAt(0).toLocaleUpperCase() + text.slice(1);
     const createPath = device ? `/config/automation/edit/new?add_automation_element=trigger&target_device_id=${encodeURIComponent(device.id)}` : "";
     const devicePath = device ? `/config/devices/device/${encodeURIComponent(device.id)}` : "";
@@ -1748,7 +1749,7 @@ export class SmartPlantsPanel extends LitElement {
         <section class="sp-card" aria-labelledby="about-heading"><div class="card-h"><h3 id="about-heading">${l.t("about.heading")}</h3>
           <button type="button" class="icon-btn" aria-label=${l.t("about.edit")} @click=${() => this._selectSection("settings")}><ha-icon aria-hidden="true" icon="mdi:pencil-outline"></ha-icon></button></div>
           <div class="card-b"><dl class="kv about">
-            <dt>${l.t("about.species")}</dt><dd>${snapshot ? html`${snapshot.latin_name ? html`<i>${snapshot.latin_name}</i>` : nothing}${snapshot.common_name && snapshot.common_name !== snapshot.latin_name ? html`${snapshot.latin_name ? " · " : ""}${snapshot.common_name}` : nothing}
+            <dt>${l.t("about.species")}</dt><dd>${snapshot ? html`${snapshot.latin_name ? html`<i>${snapshot.latin_name}</i>` : nothing}${commonName && commonName !== snapshot.latin_name ? html`${snapshot.latin_name ? " · " : ""}${commonName}` : nothing}
               <div class="small muted">${snapshot.source_status === "provider" ? l.t("about.species_provider", { provider: snapshot.provider === "openplantbook" ? "OpenPlantBook" : snapshot.provider }) : l.t("about.species_manual")}</div>`
               : html`<button type="button" class="btn text sm" @click=${() => this._openSetting("species")}>${l.t("about.add_species")}</button>`}</dd>
             <dt>${l.t("about.area")}</dt><dd>${device?.area_id ? this._areaName(device.area_id) : l.t("area.none")}</dd>

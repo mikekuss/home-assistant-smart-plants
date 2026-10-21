@@ -7,13 +7,13 @@ import { isDefined } from "./ha-elements.js";
 import type { HaElement } from "./ha-elements.js";
 import { createLocalizer } from "./localize.js";
 import type { Localizer } from "./localize.js";
-import { builtin, canonicalMoisture, emptyMoisture, keys, manualSpecies, placements, resolveSource, roleSourceSpec, tags, validateMoisture, validateTaxonomy } from "./model.js";
+import { builtin, canonicalMoisture, emptyMoisture, keys, manualSpecies, placements, resolveSource, roleSourceSpec, speciesCommonName, tags, validateMoisture, validateTaxonomy } from "./model.js";
 import type { SourceRole } from "./model.js";
 import { prepareImage } from "./image.js";
 import { READING_ROLES, ROLE_META, formatValue, readingLabel } from "./status.js";
 import type { ReadingRole } from "./status.js";
 import { srOnly, themeFallbacks } from "./components/shared-styles.js";
-import type { HAArea, HADevice, HAEntity, HAState, HomeAssistantLike, MoistureInput, PanelCapabilities, PlantPlacement, PlantRecord, SensorSource, SpeciesSearchResult, WizardCreateInput, WizardDraft, WizardPreview } from "./types.js";
+import type { HAArea, HADevice, HAEntity, HAState, HomeAssistantLike, MoistureInput, PanelCapabilities, PlantPlacement, PlantRecord, SensorSource, SpeciesSearchResult, SpeciesSnapshot, WizardCreateInput, WizardDraft, WizardPreview } from "./types.js";
 
 // Steps of the add-plant flow; 4 is the confirmation shown after creation.
 type Step = 1 | 2 | 3 | 4;
@@ -277,6 +277,11 @@ export class SmartPlantsWizard extends LitElement {
     try { const draft = await api.startWizard(this.hass); if (lifecycle === this.lifecycle && this.isConnected) this.draft = draft; }
     catch (e) { if (lifecycle === this.lifecycle) this.fail(e); }
     finally { if (lifecycle === this.lifecycle) this.busy = false; }
+  }
+  // The common name shown next to the Latin name, in the panel language.
+  private commonName(snapshot: SpeciesSnapshot): string | null {
+    const name = speciesCommonName(snapshot, this.l.language);
+    return name && name !== snapshot.latin_name ? name : null;
   }
   private message(e: unknown): string {
     const codes = ["integration_not_loaded", "unauthorized", "invalid_format", "invalid_response", "provider_disabled", "provider_authentication", "provider_rate_limit", "provider_timeout", "provider_outage", "provider_malformed_response", "not_found"];
@@ -629,7 +634,7 @@ export class SmartPlantsWizard extends LitElement {
     const overridden = keys.some(k => this.moisture.threshold_overrides[k] !== null);
     const labels = { min: l.t("wizard.target_min"), target: l.t("wizard.target_ideal"), max: l.t("wizard.target_max") };
     const search = provider?.available ? this.accepted && this.preview ? html`<div class="species-chip"><ha-icon aria-hidden="true" icon="mdi:leaf"></ha-icon>
-        <div class="grow"><div><i>${this.preview.snapshot.latin_name}</i>${this.preview.snapshot.common_name && this.preview.snapshot.common_name !== this.preview.snapshot.latin_name ? ` · ${this.preview.snapshot.common_name}` : ""}</div><div class="small muted">${this.preview.snapshot.attribution}</div></div>
+        <div class="grow"><div><i>${this.preview.snapshot.latin_name}</i>${this.commonName(this.preview.snapshot) ? ` · ${this.commonName(this.preview.snapshot)}` : ""}</div><div class="small muted">${this.preview.snapshot.attribution}</div></div>
         <button type="button" class="btn text sm" @click=${() => this.manual()}>${l.t("wizard.remove_species")}</button></div>`
       : html`<div class="search"><label class="field">${l.t("wizard.species_search")}<input type="search" autocomplete="off" aria-describedby="search-hint" .value=${this.query}
           @input=${(e: Event) => { this.query = (e.target as HTMLInputElement).value; this.generation++; this.results = []; this.searched = false; this.preview = null; this.accepted = false; }}

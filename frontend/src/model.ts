@@ -1,6 +1,6 @@
 import { ENGLISH, isMessageKey } from "./localize.js";
 import type { Localizer, MessageKey } from "./localize.js";
-import type { HADevice, HAEntity, HAState, MoistureInput, MoistureRoleConfig, PlantRecord, PlantSpecies, RoleSourceConfig, RoleSourceInput, SensorSource } from "./types.js";
+import type { HADevice, HAEntity, HAState, MoistureInput, MoistureRoleConfig, PlantRecord, PlantSpecies, RoleSourceConfig, RoleSourceInput, SensorSource, SpeciesSnapshot } from "./types.js";
 
 export const keys = ["min", "target", "max"] as const;
 export const builtin = { min: 15, target: 35, max: 55 };
@@ -492,6 +492,20 @@ export function validateMoisture(m: MoistureInput, defaults: typeof builtin, l: 
   if (v.some(n => !Number.isInteger(n) || n < 1 || n > 99) || !(v[0] < v[1] && v[1] < v[2] && v[2] - v[0] >= 4)) return l.t("validation.moisture_thresholds");
   return null;
 }
+// The species' common name in the panel language. The provider's display name
+// is usually English, so other languages use the provider's first name for
+// that language when it has one.
+export function speciesCommonName(snapshot: SpeciesSnapshot, language: string): string | null {
+  const names = language === "en" || language === "de" ? snapshot.common_names?.[language] : undefined;
+  if (language !== "en" && names?.length) return names[0]!;
+  return snapshot.common_name ?? names?.[0] ?? null;
+}
+
+// Every name a plant's species can be found by in the overview search.
+export function speciesSearchNames(snapshot: SpeciesSnapshot): string[] {
+  return [snapshot.common_name, snapshot.latin_name, ...Object.values(snapshot.common_names ?? {}).flat()].filter((name): name is string => !!name);
+}
+
 export function manualSpecies(common: string, latin: string): PlantSpecies | null {
   if (!common.trim() && !latin.trim()) return null;
   return { provider: "manual", snapshot: { provider: "manual", provider_id: null, provider_ref: null, fetched_at: new Date().toISOString(), locale: "und", source_status: "manual", attribution: "User supplied", common_name: common.trim() || null, latin_name: latin.trim() || null, category: null, confidence: null, care_text: {}, field_sources: { ...(common.trim() ? { common_name: "User supplied" } : {}), ...(latin.trim() ? { latin_name: "User supplied" } : {}) }, threshold_defaults: {} } };

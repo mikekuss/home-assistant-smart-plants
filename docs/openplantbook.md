@@ -56,6 +56,11 @@ result opens a **read-only preview** that shows:
 Nothing is changed until you accept the preview. A preview expires after 10 minutes; if it
 has expired, request a new one.
 
+OpenPlantBook can also supply common names in English and German. When the panel is shown in
+German and the species has a German name, the panel shows that name next to the scientific
+name, for example on the plant's **About** card; otherwise it shows OpenPlantBook's display
+name. The overview search finds a plant by any of these names.
+
 ## Apply reviewed data
 
 - **In the wizard:** tick **I reviewed and accept this species information**, then select

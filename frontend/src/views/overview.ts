@@ -6,6 +6,7 @@ import { ENGLISH } from "../localize.js";
 import type { Localizer, MessageKey } from "../localize.js";
 import { OVERVIEW_FILTERS, OVERVIEW_SORTS, cardReason, chipText, groupByArea, matchesFilter, matchesSearch, secondaryReadings, sortItems, wateredText } from "../overview-model.js";
 import type { OverviewFilter, OverviewItem, OverviewSort, PlantOverview } from "../overview-model.js";
+import { speciesSearchNames } from "../model.js";
 import type { PlantRecord } from "../types.js";
 import { careLine, dueTasks } from "../care-plan.js";
 
@@ -155,7 +156,7 @@ export class SmartPlantsOverview extends LitElement {
       const overview = this.overview[plant.id];
       return {
         id: plant.id, name: plant.name, areaName, status: overview?.status, plant, overview, species, careDue: dueTasks(overview).length > 0,
-        searchText: [plant.name, areaName, plant.species?.snapshot.common_name, plant.species?.snapshot.latin_name, plant.category, ...plant.tags].filter(Boolean).join(" "),
+        searchText: [plant.name, areaName, ...(plant.species ? speciesSearchNames(plant.species.snapshot) : []), plant.category, ...plant.tags].filter(Boolean).join(" "),
       };
     });
   }
