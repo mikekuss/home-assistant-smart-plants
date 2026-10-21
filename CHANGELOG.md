@@ -23,6 +23,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Care task instructions can now hold up to 4,000 characters, enough for a full OpenPlantBook
   care note.
 
+### Fixed
+
+- An open plant page now picks up care changes made elsewhere, such as a task marked done by
+  the `smart_plants.log_care` or `smart_plants.skip_care_task` action or from another browser,
+  within a second instead of showing the task as due until the page is reloaded.
+
 ## [0.7.1] - 2026-10-21
 
 ### Fixed

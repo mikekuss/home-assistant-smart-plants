@@ -7296,22 +7296,22 @@ function Qo(e) {
 	let t = -e.getTimezoneOffset();
 	return `${new Date(e.getTime() + t * 6e4).toISOString().slice(0, 19)}${t < 0 ? "-" : "+"}${String(Math.floor(Math.abs(t) / 60)).padStart(2, "0")}:${String(Math.abs(t) % 60).padStart(2, "0")}`;
 }
-var $o = "smart_plants.history_role", es = "smart_plants.history_range", ts = 3e5;
-function ns(e) {
+var $o = "smart_plants.history_role", es = "smart_plants.history_range", ts = 3e5, ns = 400, rs = 2e3, is = (e, t) => e !== t && (e?.state !== t?.state || JSON.stringify(e?.attributes) !== JSON.stringify(t?.attributes));
+function as(e) {
 	try {
 		return localStorage.getItem(e);
 	} catch {
 		return null;
 	}
 }
-function rs(e, t) {
+function os(e, t) {
 	try {
 		localStorage.setItem(e, t);
 	} catch {}
 }
 var $ = class e extends S {
 	constructor(...e) {
-		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => At(e) ? e : "moisture")(ns($o)), this._historyRange = ((e) => dn(e) ? e : "7d")(ns(es)), this._history = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._restEditor = null, this._taskEditor = null, this._automateTaskId = null, this._carePending = /* @__PURE__ */ new Set(), this._careTaskId = null, this._wizardStarted = !1, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ready = () => {
+		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => At(e) ? e : "moisture")(as($o)), this._historyRange = ((e) => dn(e) ? e : "7d")(as(es)), this._history = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._restEditor = null, this._taskEditor = null, this._automateTaskId = null, this._carePending = /* @__PURE__ */ new Set(), this._careTaskId = null, this._wizardStarted = !1, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ownWriteAt = -Infinity, this._ready = () => {
 			this._refresh();
 		}, this._disconnected = () => {
 			this._context++, this._formBusy = !1, this._blocked = !0, this._request++, this._providerRequest++, this._preview = null, this._clearImage(), this._error = this._l.t("error.disconnected");
@@ -7324,7 +7324,7 @@ var $ = class e extends S {
 		e.has("hass") && (this.hass?.states && (this._states = Object.fromEntries(Object.entries(this.hass.states).filter(([e, t]) => yt(t) && t.entity_id === e))), this._syncImage()), this._syncHistory();
 	}
 	updated(e) {
-		e.has("hass") && (this.hass?.connection !== this._connection && (this._unbind(), this._bind(), this._refresh()), this.hass?.user?.is_admin === !1 && this._unbind());
+		e.has("hass") && (this.hass?.connection !== this._connection && (this._unbind(), this._bind(), this._refresh()), this.hass?.user?.is_admin === !1 && this._unbind(), this._watchCare(e.get("hass")));
 		let t = this.shadowRoot?.querySelector("dialog"), n = null;
 		try {
 			n = this.shadowRoot?.activeElement;
@@ -7346,7 +7346,27 @@ var $ = class e extends S {
 		}, 3e4);
 	}
 	disconnectedCallback() {
-		this._context++, this._formBusy = !1, this._request++, this._providerRequest++, this._clearImage(), this._clearThumbnails(), this._unbind(), clearInterval(this._timer), super.disconnectedCallback();
+		this._context++, this._formBusy = !1, this._request++, this._providerRequest++, this._clearImage(), this._clearThumbnails(), this._unbind(), clearInterval(this._timer), this._clearCareTimer(), super.disconnectedCallback();
+	}
+	_watchCare(e) {
+		let t = e?.states, n = this.hass?.states;
+		if (!t || !n || t === n || this._view.kind !== "detail") return;
+		let r = `smart_plants:${this._view.plantId}:care`;
+		this._entities.some((e) => e.platform === "smart_plants" && e.unique_id.startsWith(r) && is(t[e.entity_id], n[e.entity_id])) && (this._carePending.size || this._watering.size || Date.now() - this._ownWriteAt < rs || this._scheduleCareRefresh());
+	}
+	_scheduleCareRefresh() {
+		this._careTimer === void 0 && (this._careTimer = setTimeout(() => {
+			if (this._careTimer = void 0, this.isConnected) {
+				if (this._formBusy) {
+					this._scheduleCareRefresh();
+					return;
+				}
+				this._refresh(!1);
+			}
+		}, ns));
+	}
+	_clearCareTimer() {
+		clearTimeout(this._careTimer), this._careTimer = void 0;
 	}
 	_bind() {
 		if (!this.hass || this.hass.user?.is_admin === !1 || this._connection) return;
@@ -7416,7 +7436,7 @@ var $ = class e extends S {
 	async _refresh(t = !0) {
 		if (!this.isConnected || !this.hass || this.hass.user?.is_admin === !1) return;
 		let n = ++this._request, r = this.hass;
-		t && (this._loading = !0);
+		this._clearCareTimer(), t && (this._loading = !0);
 		try {
 			let i = await I.info(r), a = await I.list(r);
 			if (n !== this._request || !this.isConnected) return;
@@ -7635,6 +7655,7 @@ var $ = class e extends S {
 		t ? n.add(e) : n.delete(e), this._watering = n;
 	}
 	_adopt(e) {
+		this._ownWriteAt = Date.now();
 		let t = this._plantById(e.id);
 		(!t || t.revision <= e.revision) && (this._plants = this._plants.map((t) => t.id === e.id ? e : t));
 		let n = this._overview[e.id];
@@ -7762,10 +7783,10 @@ var $ = class e extends S {
 			lastWatered: Number.isFinite(s) ? s : null,
 			now: Date.now(),
 			onRole: (e) => {
-				this._historyRole = e, rs($o, e);
+				this._historyRole = e, os($o, e);
 			},
 			onRange: (e) => {
-				this._historyRange = e, rs(es, e);
+				this._historyRange = e, os(es, e);
 			},
 			onOpen: () => {
 				this.dispatchEvent(new CustomEvent("hass-more-info", {
