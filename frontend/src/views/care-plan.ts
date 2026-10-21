@@ -2,7 +2,7 @@
 // Automate… sheet. Pure render functions: the panel owns state and writes.
 import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
-import { CARE_TASK_TYPES, INTERVAL_UNITS, MAX_CARE_TASKS, TASK_ICONS, TASK_INSTRUCTIONS_MAX, TASK_NAME_MAX, draftSummary, existingTypes, inRestPeriod, lastDone, monthName, monthRange, monthsInRange, presetDraft, restSentence, scheduleText, shortDate, taskChip, taskName } from "../care-plan.js";
+import { CARE_TASK_TYPES, INTERVAL_UNITS, MAX_CARE_TASKS, TASK_ICONS, TASK_INSTRUCTIONS_MAX, TASK_NAME_MAX, careNote, careSuggestions, draftSummary, existingTypes, inRestPeriod, lastDone, monthName, monthRange, monthsInRange, presetDraft, restSentence, scheduleText, shortDate, taskChip, taskName } from "../care-plan.js";
 import type { DraftErrors, RestDraft, TaskDraft } from "../care-plan.js";
 import type { Localizer } from "../localize.js";
 import type { PlantOverview } from "../overview-model.js";
@@ -41,6 +41,7 @@ export function renderCarePlan(ctx: CarePlanContext): TemplateResult {
     ${tasks.length
       ? html`<ul class="list task-list" aria-label=${l.t("care_plan.tasks_label")}>${tasks.map(task => taskRow(ctx, task))}</ul>`
       : html`<div class="card-b"><p class="muted">${l.t("care_plan.empty")}</p>
+          ${careSuggestions(plant).length ? html`<p class="small muted care-note"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.empty_suggestions")}</span></p>` : nothing}
           <div><button type="button" class="btn filled" ?disabled=${ctx.disabled} @click=${ctx.onAdd}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("care_plan.add_task")}</button></div></div>`}
   </section>`;
 }
@@ -98,6 +99,8 @@ export interface TaskEditorState {
   // Error reported by Home Assistant when saving.
   error: string;
   moreOpen: boolean;
+  // The suggestion whose care text is shown in full in step 1.
+  expanded?: CareTaskType | null;
 }
 
 export interface TaskEditorContext {
@@ -107,6 +110,8 @@ export interface TaskEditorContext {
   today: string;
   busy: boolean;
   onPreset: (type: CareTaskType) => void;
+  onSuggestion: (type: CareTaskType, text: string) => void;
+  onExpand: (type: CareTaskType | null) => void;
   onBack: () => void;
   onChange: (changes: Partial<TaskDraft>) => void;
   onMonth: (month: number) => void;
@@ -127,7 +132,24 @@ export function renderTaskEditor(ctx: TaskEditorContext): TemplateResult {
 function presetStep(ctx: TaskEditorContext): TemplateResult {
   const { l, plant } = ctx;
   const taken = existingTypes(plant.care_tasks ?? []);
+  const suggestions = careSuggestions(plant);
+  const species = plant.species?.snapshot.latin_name ?? plant.species?.snapshot.common_name ?? "";
   return html`<p class="muted">${l.t("care_plan.add_intro")}</p>
+    ${suggestions.length ? html`<section class="suggestions" aria-labelledby="suggestions-heading">
+      <h4 id="suggestions-heading"><ha-icon aria-hidden="true" icon="mdi:auto-fix"></ha-icon><span>${l.t("care_plan.suggestions_for")} <i>${species}</i></span></h4>
+      ${suggestions.map(({ type, text }) => {
+        const name = l.t(`care_task_type.${type}`);
+        const long = text.length > NOTE_CLAMP_CHARS;
+        const open = ctx.state.expanded === type;
+        return html`<div class="suggestion">
+          <div class="suggestion-main"><span class="suggestion-source"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon>${l.t("care_plan.suggestion_source", { topic: l.t(type === "fertilize" ? "care_plan.note_fertilization" : "care_plan.note_pruning") })}</span>
+            <q class=${long && !open ? "clamped" : ""} id="suggestion-${type}">${text}</q>
+            ${long ? html`<button type="button" class="linkbtn" aria-expanded=${open ? "true" : "false"} aria-controls="suggestion-${type}" @click=${() => ctx.onExpand(open ? null : type)}>${l.t(open ? "care_plan.show_less" : "care_plan.show_more")}</button>` : nothing}</div>
+          ${taken.has(type) ? html`<span class="small muted">${l.t("care_plan.preset_exists")}</span>`
+            : html`<button type="button" class="btn tonal sm" ?disabled=${ctx.busy} @click=${() => ctx.onSuggestion(type, text)}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("care_plan.suggestion_add", { name })}</button>`}
+        </div>`;
+      })}</section>
+      <span class="field-label">${l.t("care_plan.from_scratch")}</span>` : nothing}
     <div class="presets" role="list">${CARE_TASK_TYPES.map(type => {
       const exists = taken.has(type);
       const description = exists ? l.t("care_plan.preset_exists")
@@ -138,6 +160,9 @@ function presetStep(ctx: TaskEditorContext): TemplateResult {
     })}</div>
     <div class="actions dialog-actions"><span class="spacer"></span><button type="button" @click=${ctx.onCancel}>${l.t("common.cancel")}</button></div>`;
 }
+
+// Care texts longer than this are clamped to three lines with Show more.
+const NOTE_CLAMP_CHARS = 160;
 
 function scheduleOf(draft: TaskDraft) {
   return draft.mode === "yearly"
@@ -158,6 +183,7 @@ function detailsStep(ctx: TaskEditorContext): TemplateResult {
   const rest = plant.rest_period ?? null;
   const selected = draft.startMonth !== null && draft.endMonth !== null ? new Set(monthsInRange(draft.startMonth, draft.endMonth)) : new Set<number>();
   const input = (e: Event) => (e.target as HTMLInputElement).value;
+  const note = careNote(plant, draft.type);
   return html`${state.error ? html`<p class="error" role="alert">${state.error}</p>` : nothing}
     <div class="task-summary"><ha-icon aria-hidden="true" .icon=${TASK_ICONS[draft.type]}></ha-icon>
       <span><span class="summary-name">${draft.name.trim() || typeName}</span> · ${draftSummary(l, draft, rest)}</span></div>
@@ -185,10 +211,13 @@ function detailsStep(ctx: TaskEditorContext): TemplateResult {
           ${Array.from({ length: 12 }, (_, index) => index + 1).map(month => html`<button type="button" aria-pressed=${selected.has(month) ? "true" : "false"} aria-label=${monthName(l, month)} @click=${() => ctx.onMonth(month)}>${monthName(l, month, "short")}</button>`)}</div>
         <span class="small muted" id="task-months-hint">${l.t("care_plan.months_hint")}</span>
         ${fieldError("task-months-error", err("months"))}</div>`}
-    <label>${l.t("care_plan.instructions")}<textarea rows="3" maxlength=${TASK_INSTRUCTIONS_MAX} .value=${draft.instructions} placeholder=${l.t("care_plan.instructions_placeholder")}
+    <label>${l.t("care_plan.instructions")}<textarea rows=${draft.instructions.length > NOTE_CLAMP_CHARS ? 6 : 3} maxlength=${TASK_INSTRUCTIONS_MAX} .value=${draft.instructions} placeholder=${l.t("care_plan.instructions_placeholder")}
       aria-invalid=${errors.instructions ? "true" : "false"} aria-describedby=${errors.instructions ? "task-instructions-error" : nothing}
       @input=${(e: Event) => ctx.onChange({ instructions: (e.target as HTMLTextAreaElement).value })}></textarea></label>
     ${fieldError("task-instructions-error", err("instructions"))}
+    ${note && !draft.instructions.trim() ? html`<div class="note-hint small"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.note_hint")}</span>
+        <button type="button" class="btn text sm" ?disabled=${ctx.busy} @click=${() => ctx.onChange({ instructions: note })}>${l.t("care_plan.note_use")}</button></div>`
+      : note && draft.instructions === note ? html`<div class="note-hint small"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.note_applied")}</span></div>` : nothing}
     <div class="more-options">
       <button type="button" class="btn text sm" aria-expanded=${state.moreOpen || errors.lastDone ? "true" : "false"} aria-controls="task-more" @click=${ctx.onToggleMore}>
         <ha-icon aria-hidden="true" icon=${state.moreOpen || errors.lastDone ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>${l.t("care_plan.more_options")}</button>
@@ -291,7 +320,20 @@ export const carePlanStyles = css`
   dialog.care-dialog { width: min(560px, calc(100vw - 32px)); }
   .care-dialog .dialog-body { display: flex; flex-direction: column; gap: 12px; }
   .care-dialog label { margin: 0; }
-  .care-dialog textarea { width: 100%; resize: vertical; }
+  .care-dialog textarea { width: 100%; resize: vertical; max-height: 40vh; overflow-y: auto; }
+  .care-dialog .suggestions { border: 1px solid var(--divider-color, #e0e0e0); border-radius: 12px; overflow: hidden; padding: 0; margin: 0; }
+  .care-dialog .suggestions h4 { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 14px; font-size: 13.5px; font-weight: 500; background: color-mix(in srgb, var(--sp-primary) 10%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); }
+  .care-dialog .suggestions h4 ha-icon { --mdc-icon-size: 18px; }
+  .care-dialog .suggestion { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; align-items: start; padding: 12px 14px; }
+  .care-dialog .suggestion + .suggestion { border-top: 1px solid var(--divider-color, #e0e0e0); }
+  .care-dialog .suggestion-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .care-dialog .suggestion-source { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sp-text-secondary); }
+  .care-dialog .suggestion-source ha-icon, .care-dialog .note-hint ha-icon { --mdc-icon-size: 16px; color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); }
+  .care-dialog .suggestion q { font-size: 14px; overflow-wrap: anywhere; }
+  .care-dialog .suggestion q.clamped { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+  .care-dialog .linkbtn { align-self: flex-start; padding: 0; min-height: 24px; border: 0; background: none; color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: underline; }
+  .care-dialog .note-hint { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--sp-text-secondary); margin-top: -4px; }
+  .care-dialog .note-hint .btn { margin-inline-start: -4px; }
   .care-dialog .dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
   .care-dialog .dialog-actions .spacer { flex: 1; }
   .care-dialog .error-text { display: block; color: color-mix(in srgb, var(--sp-error) 75%, var(--sp-text)); }
@@ -322,6 +364,7 @@ export const carePlanStyles = css`
   .care-dialog .automate-hint { display: flex; gap: 8px; align-items: flex-start; }
   @media (max-width: 600px) {
     .care-dialog .presets { grid-template-columns: minmax(0, 1fr); }
+    .care-dialog .suggestion { grid-template-columns: minmax(0, 1fr); }
     .care-dialog .monthpick { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   }
   @container plant (max-width: 700px) {

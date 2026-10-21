@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SmartPlantsPanel } from "./panel.js";
 import { ENGLISH, createLocalizer } from "./localize.js";
-import { careLine, careOnlyChange, draftFromTask, lastDone, localDate, matchingTask, monthsInRange, pickMonth, presetDraft, restDraft, restSentence, restTaskChanges, resumeDate, scheduleText, shortDate, taskChanges, taskChip, validateDraft, validateRest } from "./care-plan.js";
+import { careLine, careNote, careOnlyChange, careSuggestions, draftFromTask, lastDone, localDate, matchingTask, monthsInRange, pickMonth, presetDraft, restDraft, restSentence, restTaskChanges, resumeDate, scheduleText, shortDate, taskChanges, taskChip, validateDraft, validateRest } from "./care-plan.js";
 import { matchesFilter } from "./overview-model.js";
 import type { CareTaskSummary, PlantOverview } from "./overview-model.js";
-import type { CareEvent, CareTask, PlantRecord, RestPeriod } from "./types.js";
+import type { CareEvent, CareTask, PlantRecord, PlantSpecies, RestPeriod } from "./types.js";
 import { click, harness, overviewFor, sample, settle } from "./test-helpers.js";
 
 const l = ENGLISH;
@@ -69,7 +69,7 @@ describe("care task draft", () => {
   });
 
   it("validates like the backend and reports every problem inline", () => {
-    const custom = { ...presetDraft("custom"), every: "0", instructions: "x".repeat(501), lastDone: "2026-10-20" };
+    const custom = { ...presetDraft("custom"), every: "0", instructions: "x".repeat(4001), lastDone: "2026-10-20" };
     expect(validateDraft(custom, TODAY).errors).toEqual({ name: "care_plan.error_name_required", every: "care_plan.error_every", instructions: "care_plan.error_instructions_length", lastDone: "care_plan.error_last_done_future" });
     expect(validateDraft({ ...presetDraft("prune"), startMonth: null, endMonth: null }, TODAY).errors).toEqual({ months: "care_plan.error_months" });
     expect(validateDraft({ ...presetDraft("fertilize"), name: "  " }, TODAY).input).toEqual({ task_type: "fertilize", name: null, schedule: { kind: "interval", every: 4, unit: "weeks", growing_season_only: true }, instructions: null, baseline_done_on: null });
@@ -419,5 +419,87 @@ describe("rest period editor, header chips and overview", () => {
     const overview = el.shadowRoot!.querySelector("smart-plants-overview")!; await settle(overview);
     expect(overview.shadowRoot!.querySelectorAll(".tile")).toHaveLength(4);
     expect(overview.shadowRoot!.querySelector(".care")).toBeNull();
+  });
+});
+
+// An OpenPlantBook species with the given care texts, valid for the panel's
+// plant record checks (every populated field is attributed).
+function openPlantBook(careText: Record<string, string>): PlantSpecies {
+  const attribution = "OpenPlantBook";
+  const populated = ["latin_name", ...Object.keys(careText)];
+  return { provider: "openplantbook", snapshot: { provider: "openplantbook", provider_id: "olea europaea", provider_ref: "olea europaea", fetched_at: "2026-10-01T00:00:00Z", locale: "en", source_status: "provider", attribution, common_name: null, latin_name: "Olea europaea", category: null, confidence: null, care_text: careText, field_sources: Object.fromEntries(populated.map(key => [key, attribution])), threshold_defaults: {} } };
+}
+const FEED = "Feed every 3-4 weeks in spring and summer; none in winter.";
+const PRUNE = "Prune in late winter or early spring to keep the crown open. Remove suckers from the base and any shoots that cross the centre, and shorten long branches by a third so light reaches the inner leaves.";
+const SOIL = "Free-draining mix with grit.";
+
+describe("care suggestions", () => {
+  it("offers fertilizing and pruning texts from OpenPlantBook only", () => {
+    const plant = plantWith({ species: openPlantBook({ fertilization: FEED, pruning: PRUNE, soil: SOIL, watering: "Water when dry." }) });
+    expect(careSuggestions(plant)).toEqual([{ type: "fertilize", text: FEED }, { type: "prune", text: PRUNE }]);
+    expect(careNote(plant, "repot")).toBe(SOIL);
+    expect(careNote(plant, "pests")).toBeNull();
+    expect(careSuggestions(plantWith({ species: openPlantBook({ fertilization: "  " }) }))).toEqual([]);
+    const manual = openPlantBook({ fertilization: FEED });
+    expect(careSuggestions(plantWith({ species: { provider: "manual", snapshot: { ...manual.snapshot, provider: "manual" } } }))).toEqual([]);
+    expect(careSuggestions(plantWith({}))).toEqual([]);
+  });
+
+  it("adds a task from a suggestion with the care text as instructions", async () => {
+    const backend = careBackend(plantWith({ species: openPlantBook({ fertilization: FEED, pruning: PRUNE }) }));
+    const el = await openCare(backend);
+    expect(carePlan(el).textContent).toContain("They show up as suggestions when you add a task.");
+    carePlan(el).querySelector<HTMLButtonElement>("button.btn.filled")!.click(); await settle(el);
+    const box = dialog(el)!.querySelector<HTMLElement>(".suggestions")!;
+    expect(box.textContent).toContain("Suggestions for Olea europaea");
+    expect(box.textContent).toContain("OpenPlantBook · fertilizing");
+    expect(dialog(el)!.textContent).toContain("Or start from scratch");
+    // Long texts are clamped until Show more is pressed; short ones are not.
+    const quotes = box.querySelectorAll("q");
+    expect(quotes[0]!.classList.contains("clamped")).toBe(false);
+    expect(quotes[1]!.classList.contains("clamped")).toBe(true);
+    dialogButton(el, "Show more").click(); await settle(el);
+    expect(box.querySelectorAll("q")[1]!.classList.contains("clamped")).toBe(false);
+    expect(dialogButton(el, "Show less").getAttribute("aria-expanded")).toBe("true");
+    dialogButton(el, "Add Prune task").click(); await settle(el);
+    expect(dialog(el)!.querySelector("textarea")!.value).toBe(PRUNE);
+    expect(dialog(el)!.textContent).toContain("From OpenPlantBook. Edit the text to make it your own.");
+    expect(dialog(el)!.textContent).toContain("Prune · Once a year, March–April");
+    dialogButton(el, "Add task").click(); await settle(el);
+    expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/create")).toMatchObject({ task_type: "prune", instructions: PRUNE, schedule: { kind: "yearly", start_month: 3, end_month: 4 } });
+  });
+
+  it("keeps the text of a task that already exists but offers no second task", async () => {
+    const backend = careBackend(plantWith({ care_tasks: [fertilize], species: openPlantBook({ fertilization: FEED }) }));
+    const el = await openCare(backend);
+    carePlan(el).querySelector<HTMLButtonElement>(".card-h button")!.click(); await settle(el);
+    const row = dialog(el)!.querySelector<HTMLElement>(".suggestion")!;
+    expect(row.textContent).toContain(FEED);
+    expect(row.textContent).toContain("Already in the care plan");
+    expect(row.querySelector("button")).toBeNull();
+  });
+
+  it("hints at the care note under Instructions and stops once the text is edited", async () => {
+    const backend = careBackend(plantWith({ species: openPlantBook({ soil: SOIL }) }));
+    const el = await openCare(backend);
+    // The soil text is not a suggestion of its own.
+    expect(carePlan(el).textContent).not.toContain("They show up as suggestions");
+    carePlan(el).querySelector<HTMLButtonElement>("button.btn.filled")!.click(); await settle(el);
+    expect(dialog(el)!.querySelector(".suggestions")).toBeNull();
+    [...dialog(el)!.querySelectorAll<HTMLButtonElement>("button.preset")].find(b => b.textContent?.includes("Repot"))!.click(); await settle(el);
+    expect(dialog(el)!.textContent).toContain("OpenPlantBook has a care note for this");
+    dialogButton(el, "Use as instructions").click(); await settle(el);
+    const textarea = dialog(el)!.querySelector("textarea")!;
+    expect(textarea.value).toBe(SOIL);
+    expect(dialog(el)!.textContent).toContain("From OpenPlantBook.");
+    await typeInto(el, textarea, `${SOIL} Use a pot one size larger.`);
+    expect(dialog(el)!.textContent).not.toContain("From OpenPlantBook.");
+    expect(dialog(el)!.textContent).not.toContain("OpenPlantBook has a care note for this");
+  });
+
+  it("accepts instructions up to 4,000 characters", () => {
+    const draft = { ...presetDraft("custom"), name: "Notes", instructions: "x".repeat(4000) };
+    expect(validateDraft(draft, TODAY).errors).toBeNull();
+    expect(validateDraft({ ...draft, instructions: "x".repeat(4001) }, TODAY).errors).toEqual({ instructions: "care_plan.error_instructions_length" });
   });
 });

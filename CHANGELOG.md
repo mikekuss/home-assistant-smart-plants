@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Care suggestions from OpenPlantBook: when adding a care task, the species' fertilizing and
+  pruning notes appear as suggestions that create the task with the note as its instructions,
+  and fertilizing, pruning and repotting tasks offer **Use as instructions** for the matching
+  note. See [Getting started](docs/getting-started.md#care-plan).
+
 ### Changed
 
 - Smart Plants is now in the HACS default store. The installation guide and README describe

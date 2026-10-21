@@ -4,7 +4,7 @@
 // recomputes a schedule from browser dates.
 import type { Localizer, MessageKey } from "./localize.js";
 import type { CareTaskSummary, PlantOverview } from "./overview-model.js";
-import type { CareEvent, CareTask, CareTaskChanges, CareTaskInput, CareTaskType, IntervalSchedule, RestPeriod, YearlySchedule } from "./types.js";
+import type { CareEvent, CareTask, CareTaskChanges, CareTaskInput, CareTaskType, IntervalSchedule, PlantRecord, RestPeriod, YearlySchedule } from "./types.js";
 
 export const CARE_TASK_TYPES: readonly CareTaskType[] = ["fertilize", "prune", "repot", "pests", "custom"];
 export const TASK_ICONS: Record<CareTaskType, string> = {
@@ -21,7 +21,7 @@ export const TASK_KINDS: Record<CareTaskType, CareEvent["kind"]> = {
 };
 export const INTERVAL_UNITS: readonly IntervalSchedule["unit"][] = ["days", "weeks", "months", "years"];
 export const TASK_NAME_MAX = 60;
-export const TASK_INSTRUCTIONS_MAX = 500;
+export const TASK_INSTRUCTIONS_MAX = 4000;
 export const MAX_CARE_TASKS = 20;
 
 // Default schedules of the preset tiles.
@@ -154,6 +154,31 @@ function draftFromSchedule(schedule: IntervalSchedule | YearlySchedule): Pick<Ta
 
 export function presetDraft(type: CareTaskType): TaskDraft {
   return { type, name: "", instructions: "", lastDone: "", ...draftFromSchedule(PRESETS[type]) };
+}
+
+// The OpenPlantBook care text that fits each task type. Watering and sunlight
+// texts describe health targets, not tasks, so they never become suggestions.
+const CARE_NOTE_KEYS: Partial<Record<CareTaskType, string>> = { fertilize: "fertilization", prune: "pruning", repot: "soil" };
+// Task types whose care text is offered in the first step of Add task. The
+// soil text only appears as a hint while editing a repotting task.
+const SUGGESTED_TYPES: readonly CareTaskType[] = ["fertilize", "prune"];
+
+// The species' care text for a task type, from an OpenPlantBook species only.
+export function careNote(plant: PlantRecord, type: CareTaskType): string | null {
+  const snapshot = plant.species?.snapshot;
+  const key = CARE_NOTE_KEYS[type];
+  if (!snapshot || snapshot.provider !== "openplantbook" || !key) return null;
+  const text = snapshot.care_text[key]?.trim();
+  return text ? text.slice(0, TASK_INSTRUCTIONS_MAX) : null;
+}
+
+export interface CareSuggestion { type: CareTaskType; text: string }
+export function careSuggestions(plant: PlantRecord): CareSuggestion[] {
+  return SUGGESTED_TYPES.flatMap(type => { const text = careNote(plant, type); return text ? [{ type, text }] : []; });
+}
+
+export function suggestionDraft(type: CareTaskType, text: string): TaskDraft {
+  return { ...presetDraft(type), instructions: text };
 }
 
 export function draftFromTask(task: CareTask): TaskDraft {
