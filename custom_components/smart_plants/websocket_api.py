@@ -21,7 +21,9 @@ Commands (all admin-only):
 * ``smart_plants/roles/set_primary`` -> ``{"plant": PlantView}``
 * ``smart_plants/roles/set_aggregation`` -> ``{"plant": PlantView}``
 * ``smart_plants/roles/set_stale_after`` -> ``{"plant": PlantView}``
-* ``smart_plants/care_tasks/create`` -> ``{"plant": PlantView, "task_id"}``
+* ``smart_plants/care_tasks/create`` -> ``{"plant": PlantView, "task_id"}``;
+  ``schedule`` is an ``interval``, ``yearly`` or ``reading`` schedule (see
+  ``models.ReadingSchedule``), also for ``smart_plants/care_tasks/update``.
 * ``smart_plants/care_tasks/update`` -> ``{"plant": PlantView}``
 * ``smart_plants/care_tasks/delete`` -> ``{"plant": PlantView}``
 * ``smart_plants/care_tasks/complete`` -> ``{"plant": PlantView, "event_id"}``;
@@ -29,6 +31,7 @@ Commands (all admin-only):
 * ``smart_plants/care_tasks/skip`` -> ``{"plant": PlantView,
   "previous_skipped_on"}``; pass ``previous_skipped_on`` to
   ``smart_plants/care_tasks/undo_skip`` to restore the earlier skip date.
+  Reading care tasks cannot be skipped (``invalid_format``).
 * ``smart_plants/care_tasks/undo_skip`` -> ``{"plant": PlantView}``
 * ``smart_plants/plants/set_rest_period`` -> ``{"plant": PlantView}``
 
@@ -67,8 +70,14 @@ call, derived on the server from the same evaluations the entities read:
 * ``care`` -- one entry per care task: ``{"task_id", "type", "name",
   "status", "is_due", "next_due", "days", "window_end", "resume_on"}`` as
   computed by ``care_schedule.task_state`` for today's date in the Home
-  Assistant time zone; dates are ISO dates or ``null``. Overdue tasks come
-  first, then due tasks, then the rest by ``next_due``.
+  Assistant time zone; dates are ISO dates or ``null``. Entries of reading
+  care tasks (schedule kind ``reading``) also carry ``"reading"`` (the
+  current value in the task's unit, or ``null``), ``"unit"``,
+  ``"due_since"`` and ``"due_at"`` (ISO timestamps or ``null``); their status
+  is ``due``, ``waiting``, ``watching`` or ``no_reading`` and their date
+  fields are ``null``. Overdue tasks come first, then due tasks, then waiting
+  reading tasks, then watching reading tasks and reading tasks without a
+  reading, then the rest by ``next_due``.
 * ``rest_period`` -- ``{"start_month", "end_month"}`` or ``null``.
 * ``resting`` -- whether today lies inside the rest period.
 
@@ -756,7 +765,9 @@ async def _handle_care_delete(
 _TASK_ID_SCHEMA = vol.All(str, vol.Length(min=32, max=32))
 _ISO_DATE_SCHEMA = vol.All(str, vol.Length(min=10, max=10))
 _TASK_NAME_SCHEMA = vol.Any(vol.All(str, vol.Length(min=1, max=60)), None)
-_TASK_SCHEDULE_SCHEMA = vol.All(dict, vol.Length(max=4))
+# The reading schedule has the most keys; the manager validates the exact
+# key set of each kind.
+_TASK_SCHEDULE_SCHEMA = vol.All(dict, vol.Length(max=7))
 _TASK_INSTRUCTIONS_SCHEMA = vol.Any(
     vol.All(str, vol.Length(min=1, max=CARE_TASK_INSTRUCTIONS_MAX_LEN)), None
 )

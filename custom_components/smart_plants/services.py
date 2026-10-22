@@ -47,6 +47,7 @@ from .manager import (
     SmartPlantsPlantNotFoundError,
     SmartPlantsValidationError,
 )
+from .models import ReadingSchedule
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -312,7 +313,12 @@ async def _async_skip_care_task(call: ServiceCall) -> None:
         raise _error("task_target_required")
     if not entity_refs:
         raise _error("no_target")
-    for target in _resolve_tasks(hass, entry, manager, entity_refs):
+    targets = _resolve_tasks(hass, entry, manager, entity_refs)
+    # Reject reading tasks before the first write, like other target errors.
+    for target in targets:
+        if isinstance(target.task.schedule, ReadingSchedule):
+            raise _error("reading_task_skip", target=target.entity_id)
+    for target in targets:
         with _manager_errors(target.entity_id):
             await manager.async_skip_care_task(
                 target.plant.id, target.task.id, expected_revision=None

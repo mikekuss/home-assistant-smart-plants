@@ -6,7 +6,7 @@ skipped, or missed on a given day. The module performs no I/O and holds no
 state: callers pass the task attributes and today's date, and every date is
 a calendar date in the Home Assistant time zone.
 
-Two schedule kinds exist, read by attribute name:
+Three schedule kinds exist, read by attribute name:
 
 * ``interval`` -- repeats ``every`` ``unit`` (days, weeks, months, years)
   after the latest Done, Skip, or baseline date. Without any of those the
@@ -19,6 +19,10 @@ Two schedule kinds exist, read by attribute name:
   up to 60 days before the window opens counts for that window. Yearly
   tasks are never overdue: a window that closes without a Done or Skip is
   ``missed`` until the next window opens.
+
+* ``reading`` -- due because of a sensor reading rather than a date; see
+  :func:`reading_task_state`. Reading tasks do not use calendar dates, so
+  :func:`compute_task_state` rejects them.
 
 A rest period is any object with ``start_month`` and ``end_month``
 (inclusive, wrapping allowed). It only affects interval tasks that opt in
@@ -40,10 +44,14 @@ TaskStatus = Literal[
     "done",
     "skipped",
     "missed",
+    "watching",
+    "waiting",
+    "no_reading",
 ]
 
 SCHEDULE_INTERVAL: Final = "interval"
 SCHEDULE_YEARLY: Final = "yearly"
+SCHEDULE_READING: Final = "reading"
 
 # How long before a yearly window opens a Done or Skip still counts for it,
 # so a task finished a little early is not reported as missing.
@@ -340,4 +348,144 @@ def task_state(task: Any, rest_period: Any, *, tz: tzinfo, today: date) -> TaskS
         created_on=date.fromisoformat(task.created_on),
         rest_period=rest_period,
         today=today,
+    )
+
+
+@dataclass(frozen=True)
+class ReadingState:
+    """
+    The state of one reading care task at one moment.
+
+    ``triggered_at`` and ``rearmed_at`` are the values to persist.
+    ``breach_since`` is when the reading last moved to the due side while the
+    task was armed; it is runtime only. ``due_at`` is set while ``watching``
+    with a running "only after" timer and is when the task becomes due if the
+    reading stays on the due side.
+    """
+
+    status: TaskStatus
+    is_due: bool
+    triggered_at: datetime | None
+    rearmed_at: datetime | None
+    breach_since: datetime | None
+    due_at: datetime | None
+
+
+def is_waiting(last_done_at: datetime | None, rearmed_at: datetime | None) -> bool:
+    """Return whether a Done is newer than the latest re-arm."""
+    if last_done_at is None:
+        return False
+    return rearmed_at is None or last_done_at > rearmed_at
+
+
+def _on_due_side(condition: str, reading: float, threshold: float) -> bool:
+    if condition == "below":
+        return reading < threshold
+    return reading > threshold
+
+
+def reading_task_state(  # noqa: PLR0911, PLR0913
+    *,
+    schedule: Any,
+    reading: float | None,
+    now: datetime,
+    triggered_at: datetime | None,
+    rearmed_at: datetime | None,
+    last_done_at: datetime | None,
+    breach_since: datetime | None,
+) -> ReadingState:
+    """
+    Compute a reading care task's state for the current ``reading``.
+
+    ``schedule`` needs ``condition`` (``below`` or ``above``), ``value``,
+    ``reset_value`` (``None`` means ``value``) and ``for_minutes``.
+    ``reading`` is the current value in the schedule's unit, or ``None``
+    when there is no usable reading.
+
+    * Armed, and the reading strictly on the due side of ``value`` for
+      ``for_minutes`` (counted from ``breach_since``): due, ``triggered_at``
+      is set. Until then the status is ``watching`` with ``due_at``. A
+      reading that is not on the due side restarts the count.
+    * Due, and the reading reaches ``reset_value``: no longer due and
+      ``triggered_at`` is cleared. Between ``value`` and ``reset_value`` the
+      task stays due.
+    * A Done newer than ``rearmed_at`` makes the task ``waiting`` (not due)
+      until the reading reaches ``reset_value``; then ``rearmed_at`` is set
+      and the task watches again.
+    * Without a reading nothing changes: a due task stays due, a waiting task
+      stays waiting, the count stops, and the status is ``no_reading``.
+    """
+    waiting = is_waiting(last_done_at, rearmed_at)
+    if reading is None:
+        return ReadingState(
+            status="no_reading",
+            is_due=triggered_at is not None and not waiting,
+            triggered_at=triggered_at,
+            rearmed_at=rearmed_at,
+            breach_since=None,
+            due_at=None,
+        )
+
+    condition = schedule.condition
+    reset_value = (
+        schedule.value if schedule.reset_value is None else schedule.reset_value
+    )
+    if not _on_due_side(condition, reading, reset_value):
+        # The reading reached the reset value: whatever was due is over, and
+        # a Done since the last re-arm has been answered.
+        return ReadingState(
+            status="watching",
+            is_due=False,
+            triggered_at=None,
+            rearmed_at=now if waiting else rearmed_at,
+            breach_since=None,
+            due_at=None,
+        )
+    if waiting:
+        return ReadingState(
+            status="waiting",
+            is_due=False,
+            triggered_at=triggered_at,
+            rearmed_at=rearmed_at,
+            breach_since=None,
+            due_at=None,
+        )
+    if triggered_at is not None:
+        return ReadingState(
+            status="due",
+            is_due=True,
+            triggered_at=triggered_at,
+            rearmed_at=rearmed_at,
+            breach_since=None,
+            due_at=None,
+        )
+    if not _on_due_side(condition, reading, schedule.value):
+        # Between the value and the reset value while armed: not on the due
+        # side, so any running count starts over.
+        return ReadingState(
+            status="watching",
+            is_due=False,
+            triggered_at=None,
+            rearmed_at=rearmed_at,
+            breach_since=None,
+            due_at=None,
+        )
+    since = now if breach_since is None else breach_since
+    due_at = since + timedelta(minutes=schedule.for_minutes)
+    if now >= due_at:
+        return ReadingState(
+            status="due",
+            is_due=True,
+            triggered_at=now,
+            rearmed_at=rearmed_at,
+            breach_since=None,
+            due_at=None,
+        )
+    return ReadingState(
+        status="watching",
+        is_due=False,
+        triggered_at=None,
+        rearmed_at=rearmed_at,
+        breach_since=since,
+        due_at=due_at,
     )

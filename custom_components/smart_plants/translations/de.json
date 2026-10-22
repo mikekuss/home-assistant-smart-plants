@@ -92,6 +92,9 @@
       "care_task_pests_next": {
         "name": "Auf Schädlinge prüfen: nächster Termin"
       },
+      "care_task_winter_protection_next": {
+        "name": "Winterschutz: nächster Termin"
+      },
       "care_task_custom_next": {
         "name": "Pflegeaufgabe: nächster Termin"
       },
@@ -135,6 +138,23 @@
         "state": {
           "on": "Fällig",
           "off": "Nicht fällig"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "scheduled": "Geplant",
+              "due": "Fällig",
+              "overdue": "Überfällig",
+              "resting": "Ruhephase",
+              "done": "Erledigt",
+              "skipped": "Übersprungen",
+              "missed": "Verpasst",
+              "watching": "Wird beobachtet",
+              "waiting": "Wartet auf Erholung des Messwerts",
+              "no_reading": "Kein Messwert"
+            }
+          }
         }
       },
       "care_task_prune": {
@@ -142,6 +162,23 @@
         "state": {
           "on": "Fällig",
           "off": "Nicht fällig"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "scheduled": "Geplant",
+              "due": "Fällig",
+              "overdue": "Überfällig",
+              "resting": "Ruhephase",
+              "done": "Erledigt",
+              "skipped": "Übersprungen",
+              "missed": "Verpasst",
+              "watching": "Wird beobachtet",
+              "waiting": "Wartet auf Erholung des Messwerts",
+              "no_reading": "Kein Messwert"
+            }
+          }
         }
       },
       "care_task_repot": {
@@ -149,6 +186,23 @@
         "state": {
           "on": "Fällig",
           "off": "Nicht fällig"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "scheduled": "Geplant",
+              "due": "Fällig",
+              "overdue": "Überfällig",
+              "resting": "Ruhephase",
+              "done": "Erledigt",
+              "skipped": "Übersprungen",
+              "missed": "Verpasst",
+              "watching": "Wird beobachtet",
+              "waiting": "Wartet auf Erholung des Messwerts",
+              "no_reading": "Kein Messwert"
+            }
+          }
         }
       },
       "care_task_pests": {
@@ -156,6 +210,47 @@
         "state": {
           "on": "Fällig",
           "off": "Nicht fällig"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "scheduled": "Geplant",
+              "due": "Fällig",
+              "overdue": "Überfällig",
+              "resting": "Ruhephase",
+              "done": "Erledigt",
+              "skipped": "Übersprungen",
+              "missed": "Verpasst",
+              "watching": "Wird beobachtet",
+              "waiting": "Wartet auf Erholung des Messwerts",
+              "no_reading": "Kein Messwert"
+            }
+          }
+        }
+      },
+      "care_task_winter_protection": {
+        "name": "Winterschutz",
+        "state": {
+          "on": "Fällig",
+          "off": "Nicht fällig"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "scheduled": "Geplant",
+              "due": "Fällig",
+              "overdue": "Überfällig",
+              "resting": "Ruhephase",
+              "done": "Erledigt",
+              "skipped": "Übersprungen",
+              "missed": "Verpasst",
+              "watching": "Wird beobachtet",
+              "waiting": "Wartet auf Erholung des Messwerts",
+              "no_reading": "Kein Messwert"
+            }
+          }
         }
       },
       "care_task_custom": {
@@ -163,6 +258,23 @@
         "state": {
           "on": "Fällig",
           "off": "Nicht fällig"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "scheduled": "Geplant",
+              "due": "Fällig",
+              "overdue": "Überfällig",
+              "resting": "Ruhephase",
+              "done": "Erledigt",
+              "skipped": "Übersprungen",
+              "missed": "Verpasst",
+              "watching": "Wird beobachtet",
+              "waiting": "Wartet auf Erholung des Messwerts",
+              "no_reading": "Kein Messwert"
+            }
+          }
         }
       },
       "care_due": {
@@ -242,7 +354,7 @@
     },
     "skip_care_task": {
       "name": "Pflegeaufgabe überspringen",
-      "description": "Überspringt die aktuelle Fälligkeit von Smart-Plants-Pflegeaufgaben. Die Aufgabe wird zum nächsten geplanten Termin wieder fällig."
+      "description": "Überspringt die aktuelle Fälligkeit von Smart-Plants-Pflegeaufgaben. Die Aufgabe wird zum nächsten geplanten Termin wieder fällig. Pflegeaufgaben, die sich nach einem Messwert richten, können nicht übersprungen werden."
     }
   },
   "exceptions": {
@@ -284,6 +396,9 @@
     },
     "care_rejected": {
       "message": "Die Pflege für {target} wurde nicht gespeichert: {reason}"
+    },
+    "reading_task_skip": {
+      "message": "{target} richtet sich nach einem Messwert und kann nicht übersprungen werden. Markieren Sie die Aufgabe stattdessen als erledigt."
     }
   }
 }

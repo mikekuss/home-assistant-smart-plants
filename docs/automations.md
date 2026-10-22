@@ -222,7 +222,7 @@ are listed under **Smart Plants** in the action picker.
 | Action | Targets | What it does |
 | --- | --- | --- |
 | `smart_plants.log_care` | Plant devices or care task *due* entities | Adds an entry to the plant's care history. With a care task as the target, the entry marks that task as done. |
-| `smart_plants.skip_care_task` | Care task *due* entities | Skips the task's current occurrence. The task is due again on its next scheduled date. |
+| `smart_plants.skip_care_task` | Care task *due* entities | Skips the task's current occurrence. The task is due again on its next scheduled date. Tasks that follow a sensor reading cannot be skipped. |
 
 `smart_plants.log_care` accepts these fields:
 

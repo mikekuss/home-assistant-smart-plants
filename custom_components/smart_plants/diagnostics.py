@@ -10,6 +10,7 @@ from .const import (
     CONF_OPENPLANTBOOK_ENABLED,
     CONF_PRESERVE_INVENTORY_ON_REMOVAL,
 )
+from .models import ReadingSchedule
 from .roles import role_definitions
 
 if TYPE_CHECKING:
@@ -52,6 +53,7 @@ async def async_get_config_entry_diagnostics(
         },
         "provider": provider,
         "inventory": _inventory_summary(runtime.manager.snapshot),
+        "reading_care_tasks": _reading_task_summary(runtime.manager),
     }
 
 
@@ -79,6 +81,7 @@ def _inventory_summary(snapshot: Any) -> dict[str, Any]:
     # Care tasks carry user-written names and instructions, so only their
     # types are counted; no task text reaches diagnostics.
     care_task_type_counts: dict[str, int] = {}
+    care_task_schedule_counts: dict[str, int] = {}
     rest_period_count = 0
     for plant in snapshot.plants.values():
         lifecycle[plant.lifecycle_state] = lifecycle.get(plant.lifecycle_state, 0) + 1
@@ -94,6 +97,8 @@ def _inventory_summary(snapshot: Any) -> dict[str, Any]:
             care_task_type_counts[task.type] = (
                 care_task_type_counts.get(task.type, 0) + 1
             )
+            kind = task.schedule.kind
+            care_task_schedule_counts[kind] = care_task_schedule_counts.get(kind, 0) + 1
         rest_period_count += plant.rest_period is not None
     return {
         "schema_revision": snapshot.revision,
@@ -105,7 +110,39 @@ def _inventory_summary(snapshot: Any) -> dict[str, Any]:
         "image_count": image_count,
         "care_task_count": sum(care_task_type_counts.values()),
         "care_task_type_counts": care_task_type_counts,
+        "care_task_schedule_counts": care_task_schedule_counts,
         "rest_period_count": rest_period_count,
         "pending_operation_count": len(snapshot.pending_operations),
         "tombstone_count": len(snapshot.tombstones),
     }
+
+
+def _reading_task_summary(manager: Any) -> list[dict[str, Any]]:
+    """
+    Describe each reading care task without names, values or entity ids.
+
+    Only the schedule kind, the condition, which kind of source is set and
+    the current status are reported; a source entity id could identify a
+    device, and readings and thresholds say nothing about a malfunction.
+    """
+    tracker = manager.reading_tracker
+    summary: list[dict[str, Any]] = []
+    for plant in manager.snapshot.plants.values():
+        for task in plant.care_tasks:
+            schedule = task.schedule
+            if not isinstance(schedule, ReadingSchedule):
+                continue
+            summary.append(
+                {
+                    "kind": schedule.kind,
+                    "condition": schedule.condition,
+                    "role_source": schedule.source.role is not None,
+                    "entity_source": schedule.source.entity_id is not None,
+                    "status": (
+                        tracker.task_info(task).state.status
+                        if tracker is not None
+                        else None
+                    ),
+                }
+            )
+    return summary

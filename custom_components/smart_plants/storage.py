@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
 
@@ -10,7 +12,14 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
-from .const import STORAGE_KEY, STORAGE_MAJOR_VERSION, STORAGE_MINOR_VERSION
+from .care import parse_utc_timestamp, validate_task_id
+from .const import (
+    READING_STATE_STORAGE_KEY,
+    READING_STATE_STORAGE_VERSION,
+    STORAGE_KEY,
+    STORAGE_MAJOR_VERSION,
+    STORAGE_MINOR_VERSION,
+)
 from .models import (
     COLLECTION_MAX_COUNT,
     PENDING_OPERATION_SCHEMA_VERSION,
@@ -30,6 +39,8 @@ from .models import (
     _is_pure_int,
 )
 
+_LOGGER = logging.getLogger(__name__)
+
 STORE_VERSION: Final = STORAGE_MAJOR_VERSION
 STORE_MINOR_VERSION: Final = STORAGE_MINOR_VERSION
 
@@ -48,6 +59,7 @@ _MINOR_STRESS_THRESHOLD_OVERRIDES: Final = 9
 _MINOR_CARE_EVENTS: Final = 11
 _MINOR_CARE_TASKS: Final = 12
 _MINOR_SPECIES_CARE_RANGES: Final = 13
+_MINOR_READING_CARE_TASKS: Final = 14
 _SPECIES_CARE_RANGE_KEYS: Final = (
     "min_temperature",
     "max_temperature",
@@ -436,6 +448,25 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                     common_names={},
                 )
 
+        if old_major_version == 1 and old_minor_version < _MINOR_READING_CARE_TASKS:
+            # Minor 14 adds the reading schedule kind and the winter
+            # protection task type. Existing tasks are unchanged. A task that
+            # already uses either cannot come from an older minor, so the
+            # load fails closed instead of guessing.
+            for plant in data["plants"]:
+                tasks = plant.get("care_tasks") if isinstance(plant, dict) else None
+                for task in tasks if isinstance(tasks, list) else ():
+                    if not isinstance(task, dict):
+                        continue
+                    schedule = task.get("schedule")
+                    if task.get("type") == "winter_protection" or (
+                        isinstance(schedule, dict) and schedule.get("kind") == "reading"
+                    ):
+                        raise SmartPlantsInvalidStorageError(
+                            "older storage cannot contain reading care tasks "
+                            "or winter protection tasks"
+                        )
+
         return data
 
 
@@ -544,13 +575,112 @@ class SmartPlantsStore:
 
 async def async_remove_storage(hass: HomeAssistant) -> None:
     """
-    Remove the persisted Smart Plants inventory file, if any.
+    Remove the persisted Smart Plants files, if any.
 
-    Uses a fresh HA Store instance instead of a full manager so removal
+    Uses fresh HA Store instances instead of a full manager so removal
     cannot be raced by an old, still-referenced manager finishing a
     pending write and recreating the file.
     """
     await Store(hass, STORE_VERSION, STORAGE_KEY).async_remove()
+    await Store(
+        hass, READING_STATE_STORAGE_VERSION, READING_STATE_STORAGE_KEY
+    ).async_remove()
+
+
+# Sensor-driven changes arrive in bursts; batch their writes.
+READING_STATE_SAVE_DELAY: Final = 10
+
+
+@dataclass(frozen=True, slots=True)
+class ReadingTimestamps:
+    """When a reading care task last became due and was last re-armed (UTC)."""
+
+    triggered_at: str | None = None
+    rearmed_at: str | None = None
+
+    @classmethod
+    def from_storage(cls, data: object) -> ReadingTimestamps:
+        if not isinstance(data, dict) or set(data) != {"triggered_at", "rearmed_at"}:
+            raise ValueError("reading state entry has invalid fields")
+        for key in ("triggered_at", "rearmed_at"):
+            if data[key] is not None:
+                parse_utc_timestamp(data[key], key)
+        return cls(triggered_at=data["triggered_at"], rearmed_at=data["rearmed_at"])
+
+    def as_storage(self) -> dict[str, Any]:
+        return {"triggered_at": self.triggered_at, "rearmed_at": self.rearmed_at}
+
+    @property
+    def empty(self) -> bool:
+        return self.triggered_at is None and self.rearmed_at is None
+
+
+class ReadingStateStore:
+    """
+    Persist the runtime state of reading care tasks.
+
+    The state lives in its own file so that a sensor reading never writes the
+    inventory or changes a plant revision. Losing it is harmless: a missing
+    or unreadable file means every reading task is armed and not due.
+    """
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self._store: Store[dict[str, Any]] = Store(
+            hass,
+            READING_STATE_STORAGE_VERSION,
+            READING_STATE_STORAGE_KEY,
+            atomic_writes=True,
+        )
+        self._data: dict[str, ReadingTimestamps] = {}
+
+    async def async_load(self) -> dict[str, ReadingTimestamps]:
+        try:
+            stored = await self._store.async_load()
+        except Exception:  # noqa: BLE001 - any failure falls back to empty
+            _LOGGER.warning(
+                "Smart Plants could not read the reading care task state; "
+                "every reading care task starts armed and not due"
+            )
+            return {}
+        if stored is None:
+            return {}
+        tasks = stored.get("tasks") if isinstance(stored, dict) else None
+        if not isinstance(tasks, dict):
+            _LOGGER.warning(
+                "Smart Plants reading care task state is malformed; "
+                "every reading care task starts armed and not due"
+            )
+            return {}
+        result: dict[str, ReadingTimestamps] = {}
+        for task_id, entry in tasks.items():
+            try:
+                validate_task_id(task_id)
+                timestamps = ReadingTimestamps.from_storage(entry)
+            except ValueError:
+                _LOGGER.warning(
+                    "Smart Plants dropped a malformed reading care task state entry"
+                )
+                continue
+            if not timestamps.empty:
+                result[task_id] = timestamps
+        return result
+
+    def async_schedule_save(self, data: dict[str, ReadingTimestamps]) -> None:
+        """Write ``data`` a few seconds from now, batching later changes."""
+        self._data = dict(data)
+        self._store.async_delay_save(self._payload, READING_STATE_SAVE_DELAY)
+
+    async def async_save_now(self, data: dict[str, ReadingTimestamps]) -> None:
+        self._data = dict(data)
+        await self._store.async_save(self._payload())
+
+    def _payload(self) -> dict[str, Any]:
+        return {
+            "tasks": {
+                task_id: timestamps.as_storage()
+                for task_id, timestamps in sorted(self._data.items())
+            }
+        }
 
 
 def _strip_legacy_envelope(data: object) -> dict[str, Any]:

@@ -92,6 +92,9 @@
       "care_task_pests_next": {
         "name": "Check for pests next due"
       },
+      "care_task_winter_protection_next": {
+        "name": "Winter protection next due"
+      },
       "care_task_custom_next": {
         "name": "Care task next due"
       },
@@ -135,6 +138,23 @@
         "state": {
           "on": "Due",
           "off": "Not due"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "scheduled": "Scheduled",
+              "due": "Due",
+              "overdue": "Overdue",
+              "resting": "Resting",
+              "done": "Done",
+              "skipped": "Skipped",
+              "missed": "Missed",
+              "watching": "Watching",
+              "waiting": "Waiting for the reading to recover",
+              "no_reading": "No reading"
+            }
+          }
         }
       },
       "care_task_prune": {
@@ -142,6 +162,23 @@
         "state": {
           "on": "Due",
           "off": "Not due"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "scheduled": "Scheduled",
+              "due": "Due",
+              "overdue": "Overdue",
+              "resting": "Resting",
+              "done": "Done",
+              "skipped": "Skipped",
+              "missed": "Missed",
+              "watching": "Watching",
+              "waiting": "Waiting for the reading to recover",
+              "no_reading": "No reading"
+            }
+          }
         }
       },
       "care_task_repot": {
@@ -149,6 +186,23 @@
         "state": {
           "on": "Due",
           "off": "Not due"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "scheduled": "Scheduled",
+              "due": "Due",
+              "overdue": "Overdue",
+              "resting": "Resting",
+              "done": "Done",
+              "skipped": "Skipped",
+              "missed": "Missed",
+              "watching": "Watching",
+              "waiting": "Waiting for the reading to recover",
+              "no_reading": "No reading"
+            }
+          }
         }
       },
       "care_task_pests": {
@@ -156,6 +210,47 @@
         "state": {
           "on": "Due",
           "off": "Not due"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "scheduled": "Scheduled",
+              "due": "Due",
+              "overdue": "Overdue",
+              "resting": "Resting",
+              "done": "Done",
+              "skipped": "Skipped",
+              "missed": "Missed",
+              "watching": "Watching",
+              "waiting": "Waiting for the reading to recover",
+              "no_reading": "No reading"
+            }
+          }
+        }
+      },
+      "care_task_winter_protection": {
+        "name": "Winter protection",
+        "state": {
+          "on": "Due",
+          "off": "Not due"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "scheduled": "Scheduled",
+              "due": "Due",
+              "overdue": "Overdue",
+              "resting": "Resting",
+              "done": "Done",
+              "skipped": "Skipped",
+              "missed": "Missed",
+              "watching": "Watching",
+              "waiting": "Waiting for the reading to recover",
+              "no_reading": "No reading"
+            }
+          }
         }
       },
       "care_task_custom": {
@@ -163,6 +258,23 @@
         "state": {
           "on": "Due",
           "off": "Not due"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "scheduled": "Scheduled",
+              "due": "Due",
+              "overdue": "Overdue",
+              "resting": "Resting",
+              "done": "Done",
+              "skipped": "Skipped",
+              "missed": "Missed",
+              "watching": "Watching",
+              "waiting": "Waiting for the reading to recover",
+              "no_reading": "No reading"
+            }
+          }
         }
       },
       "care_due": {
@@ -242,7 +354,7 @@
     },
     "skip_care_task": {
       "name": "Skip care task",
-      "description": "Skips the current occurrence of Smart Plants care tasks. The task becomes due again on its next scheduled date."
+      "description": "Skips the current occurrence of Smart Plants care tasks. The task becomes due again on its next scheduled date. Care tasks that follow a sensor reading cannot be skipped."
     }
   },
   "exceptions": {
@@ -284,6 +396,9 @@
     },
     "care_rejected": {
       "message": "Care for {target} was not saved: {reason}"
+    },
+    "reading_task_skip": {
+      "message": "{target} follows a sensor reading and cannot be skipped. Mark it as done instead."
     }
   }
 }

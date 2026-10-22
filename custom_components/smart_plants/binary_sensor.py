@@ -16,12 +16,13 @@ available so it can reflect "no assigned source" (off) versus
 Care entities are managed by ``CareEntityLifecycle``: one "due" binary
 sensor per care task and one plant-wide "care due" binary sensor while the
 plant has at least one task. They have no device class, because a due care
-task is a reminder rather than a problem.
+task is a reminder rather than a problem. The due sensor of a reading care
+task also reports the current reading and the task's condition.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -36,6 +37,7 @@ from .care_entities import (
     compute_task_state,
     is_resting_today,
     last_done_date,
+    reading_task_info,
     task_role,
     task_translation_key,
     translated_task_name,
@@ -48,13 +50,15 @@ from .entity import (
 from .roles import EntityRole, RoleDefinition, entity_factories
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
     from .events import PlantEvent
     from .manager import SmartPlantsManager
-    from .models import CareTask, PlantRecord
+    from .models import CareTask, PlantRecord, ReadingSchedule
 
 
 PLATFORM = "binary_sensor"
@@ -721,8 +725,16 @@ class _ConductivityStressBinary(SmartPlantsBinarySensorEntity):
         }
 
 
+def _iso_timestamp(value: datetime | None) -> str | None:
+    return None if value is None else value.isoformat()
+
+
 class _CareTaskDueBinary(SmartPlantsBinarySensorEntity):
     """On while one care task is due or overdue."""
+
+    # The live reading changes with every sensor update; keep it out of the
+    # recorder so history does not grow with each value.
+    _unrecorded_attributes = frozenset({"reading"})
 
     def __init__(
         self, manager: SmartPlantsManager, plant_id: str, task: CareTask
@@ -767,7 +779,7 @@ class _CareTaskDueBinary(SmartPlantsBinarySensorEntity):
         current = self._task()
         if current is None:
             return None
-        return compute_task_state(*current).is_due
+        return compute_task_state(self._manager, *current).is_due
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -775,14 +787,28 @@ class _CareTaskDueBinary(SmartPlantsBinarySensorEntity):
         if current is None:
             return {}
         task = current[1]
-        state = compute_task_state(*current)
+        state = compute_task_state(self._manager, *current)
         last_done = last_done_date(task)
-        return {
+        attributes: dict[str, Any] = {
             "status": state.status,
             "next_due": None if state.next_due is None else state.next_due.isoformat(),
             "last_done": None if last_done is None else last_done.isoformat(),
             "task_type": task.type,
         }
+        info = reading_task_info(self._manager, task)
+        if info is not None:
+            schedule = cast("ReadingSchedule", task.schedule)
+            attributes.update(
+                reading=info.reading,
+                unit=schedule.unit,
+                condition=schedule.condition,
+                value=schedule.value,
+                reset_value=schedule.effective_reset_value,
+                source=schedule.source.label,
+                due_since=_iso_timestamp(info.state.triggered_at),
+                due_at=_iso_timestamp(info.state.due_at),
+            )
+        return attributes
 
 
 class _CareDueBinary(SmartPlantsBinarySensorEntity):
@@ -805,7 +831,9 @@ class _CareDueBinary(SmartPlantsBinarySensorEntity):
 
     def _due_tasks(self, plant: PlantRecord) -> list[CareTask]:
         return [
-            task for task in plant.care_tasks if compute_task_state(plant, task).is_due
+            task
+            for task in plant.care_tasks
+            if compute_task_state(self._manager, plant, task).is_due
         ]
 
     @property
