@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Backend support for care tasks that follow a sensor reading instead of a date, such as the
+  new *Winter protection* task type: due while a role or sensor reading is below or above a
+  value (optionally only after a number of minutes), with new `watching`, `waiting` and
+  `no_reading` statuses and reading attributes on the task's binary sensor. They can be created
+  through the WebSocket API and completed with `smart_plants.log_care`. See [Entities](docs/entities.md#reading-tasks).
+
 ## [0.8.0] - 2026-10-22
 
 ### Added

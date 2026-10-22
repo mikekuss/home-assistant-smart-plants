@@ -9,6 +9,15 @@ from datetime import UTC, date, datetime, time
 from types import MappingProxyType
 from typing import Any, ClassVar, Final, Literal, Self, TypeGuard, cast
 
+from homeassistant.const import (
+    LIGHT_LUX,
+    PERCENTAGE,
+    UnitOfConductivity,
+    UnitOfRatio,
+    UnitOfTemperature,
+)
+from homeassistant.core import valid_entity_id
+
 from .care import (
     CARE_TASK_TYPES,
     MAX_CARE_EVENTS,
@@ -16,6 +25,7 @@ from .care import (
     parse_utc_timestamp,
     validate_task_id,
 )
+from .conductivity_evaluator import ACCEPTED_MICROSIEMENS_PER_CM_UNITS
 from .const import IMAGE_MAX_DIMENSION, IMAGE_OUTPUT_CONTENT_TYPE
 
 # Server-generated image ids are 32 lowercase hex chars (uuid4().hex).
@@ -2753,7 +2763,185 @@ class YearlySchedule:
         }
 
 
-CareSchedule = IntervalSchedule | YearlySchedule
+# Plant roles a reading care task can watch, with the unit the role's
+# aggregated value is normalized to. Battery is left out on purpose: a low
+# battery is a device problem, not plant care.
+READING_ROLE_UNITS: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        "temperature": UnitOfTemperature.CELSIUS,
+        "humidity": PERCENTAGE,
+        "moisture": PERCENTAGE,
+        "illuminance": LIGHT_LUX,
+        "conductivity": UnitOfConductivity.MICROSIEMENS_PER_CM,
+        "soil_temperature": UnitOfTemperature.CELSIUS,
+        "co2": UnitOfRatio.PARTS_PER_MILLION,
+    }
+)
+READING_CONDITIONS: Final = ("below", "above")
+READING_MAX_FOR_MINUTES: Final = 4_320
+_READING_UNIT_MAX_LEN: Final = 32
+
+
+def _require_finite_number(value: object, field_name: str) -> float:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+    ):
+        raise ValueError(f"{field_name} must be a finite number")
+    return float(value)
+
+
+@dataclass(frozen=True, slots=True)
+class ReadingSource:
+    """
+    What a reading care task watches: a plant role or one sensor entity.
+
+    Exactly one of ``role`` and ``entity_id`` is set. A role reads the
+    plant's aggregated, normalized role value; an entity reads that sensor's
+    own state.
+    """
+
+    role: str | None = None
+    entity_id: str | None = None
+
+    @classmethod
+    def from_storage(cls, data: object) -> Self:
+        if not isinstance(data, dict) or len(data) != 1:
+            raise ValueError("reading source must have exactly one of role, entity_id")
+        if "role" in data:
+            role = data["role"]
+            if not isinstance(role, str) or role not in READING_ROLE_UNITS:
+                raise ValueError("reading source role is not supported")
+            return cls(role=role)
+        if "entity_id" in data:
+            entity_id = data["entity_id"]
+            if (
+                not isinstance(entity_id, str)
+                or len(entity_id) > _ENTITY_ID_MAX_LEN
+                or not valid_entity_id(entity_id)
+                or not entity_id.startswith("sensor.")
+            ):
+                raise ValueError("reading source entity_id must be a sensor entity id")
+            return cls(entity_id=entity_id)
+        raise ValueError("reading source must have exactly one of role, entity_id")
+
+    def as_storage(self) -> dict[str, Any]:
+        if self.role is not None:
+            return {"role": self.role}
+        return {"entity_id": self.entity_id}
+
+    @property
+    def label(self) -> str:
+        """Return the role name or the entity id."""
+        return self.role if self.role is not None else str(self.entity_id)
+
+
+@dataclass(frozen=True, slots=True)
+class ReadingSchedule:
+    """
+    Make a care task due while a sensor reading is below or above a value.
+
+    The task becomes due once the reading has stayed strictly on the due side
+    of ``value`` for ``for_minutes``. It stops being due, or is armed again
+    after a Done, once the reading reaches ``reset_value`` (``value`` when
+    unset). ``unit`` is the unit ``value`` is given in: the role's normalized
+    unit for a role source, the entity's unit for an entity source.
+    """
+
+    kind: ClassVar[Literal["reading"]] = "reading"
+    source: ReadingSource
+    condition: Literal["below", "above"]
+    value: float
+    unit: str | None
+    for_minutes: int
+    reset_value: float | None
+
+    @classmethod
+    def from_storage(cls, data: object) -> Self:
+        if not isinstance(data, dict) or set(data) != {
+            "kind",
+            "source",
+            "condition",
+            "value",
+            "unit",
+            "for_minutes",
+            "reset_value",
+        }:
+            raise ValueError("reading schedule has invalid fields")
+        if data["kind"] != cls.kind:
+            raise ValueError("reading schedule kind must be reading")
+        source = ReadingSource.from_storage(data["source"])
+        condition = data["condition"]
+        if condition not in READING_CONDITIONS:
+            raise ValueError("reading schedule condition must be below or above")
+        value = _require_finite_number(data["value"], "reading schedule value")
+        unit = data["unit"]
+        if unit is not None:
+            unit = _require_str(unit, "reading schedule unit")
+            if unit != unit.strip() or len(unit) > _READING_UNIT_MAX_LEN:
+                raise ValueError(
+                    "reading schedule unit must be trimmed text of at most "
+                    f"{_READING_UNIT_MAX_LEN} characters"
+                )
+        if source.role is not None:
+            role_unit = READING_ROLE_UNITS[source.role]
+            # Conductivity is written with the micro sign, the Greek mu, or
+            # ASCII "u"; any of them names the role's unit, stored as Home
+            # Assistant spells it.
+            if (
+                role_unit in ACCEPTED_MICROSIEMENS_PER_CM_UNITS
+                and unit in ACCEPTED_MICROSIEMENS_PER_CM_UNITS
+            ):
+                unit = role_unit
+            if unit != role_unit:
+                raise ValueError("reading schedule unit must match the role's unit")
+        for_minutes = data["for_minutes"]
+        if (
+            not _is_pure_int(for_minutes)
+            or not 0 <= for_minutes <= READING_MAX_FOR_MINUTES
+        ):
+            raise ValueError(
+                "reading schedule for_minutes must be from 0 to "
+                f"{READING_MAX_FOR_MINUTES}"
+            )
+        reset_value = data["reset_value"]
+        if reset_value is not None:
+            reset_value = _require_finite_number(
+                reset_value, "reading schedule reset_value"
+            )
+            if (condition == "below" and reset_value < value) or (
+                condition == "above" and reset_value > value
+            ):
+                raise ValueError(
+                    "reading schedule reset_value must be on the safe side of value"
+                )
+        return cls(
+            source=source,
+            condition=condition,
+            value=value,
+            unit=unit,
+            for_minutes=for_minutes,
+            reset_value=reset_value,
+        )
+
+    def as_storage(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "source": self.source.as_storage(),
+            "condition": self.condition,
+            "value": self.value,
+            "unit": self.unit,
+            "for_minutes": self.for_minutes,
+            "reset_value": self.reset_value,
+        }
+
+    @property
+    def effective_reset_value(self) -> float:
+        return self.value if self.reset_value is None else self.reset_value
+
+
+CareSchedule = IntervalSchedule | YearlySchedule | ReadingSchedule
 
 
 def parse_care_schedule(data: object) -> CareSchedule:
@@ -2763,7 +2951,9 @@ def parse_care_schedule(data: object) -> CareSchedule:
         return IntervalSchedule.from_storage(data)
     if kind == YearlySchedule.kind:
         return YearlySchedule.from_storage(data)
-    raise ValueError("care task schedule kind must be interval or yearly")
+    if kind == ReadingSchedule.kind:
+        return ReadingSchedule.from_storage(data)
+    raise ValueError("care task schedule kind must be interval, yearly or reading")
 
 
 def validate_care_task_name(task_type: str, name: object) -> str | None:
@@ -2785,7 +2975,7 @@ def validate_care_task_instructions(value: object) -> str | None:
 @dataclass(frozen=True, slots=True)
 class CareTask:
     """
-    A recurring or yearly care reminder that belongs to one plant.
+    A recurring, yearly or reading-driven care reminder of one plant.
 
     ``name`` is ``None`` when the translated default name for ``type`` should
     be shown. ``baseline_done_on`` is the "last done" date the user entered;

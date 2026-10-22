@@ -22,7 +22,14 @@ CARE_EVENT_KINDS: Final = (
     "task",
 )
 CARE_PROVENANCES: Final = ("manual", "action", "automation")
-CARE_TASK_TYPES: Final = ("fertilize", "prune", "repot", "pests", "custom")
+CARE_TASK_TYPES: Final = (
+    "fertilize",
+    "prune",
+    "repot",
+    "pests",
+    "winter_protection",
+    "custom",
+)
 # Care task types without a dedicated event kind log the generic ``task`` kind.
 CARE_TASK_TYPE_KINDS: Final[Mapping[str, str]] = MappingProxyType(
     {
@@ -30,6 +37,7 @@ CARE_TASK_TYPE_KINDS: Final[Mapping[str, str]] = MappingProxyType(
         "prune": "pruning",
         "repot": "repotting",
         "pests": "task",
+        "winter_protection": "task",
         "custom": "task",
     }
 )

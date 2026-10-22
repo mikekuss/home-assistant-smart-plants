@@ -7,14 +7,18 @@ than by a fixed role table. Each platform that exposes care entities builds
 one ``CareEntityLifecycle`` with:
 
 - task factories, called once per care task (the per-task "due" binary
-  sensor and the "next due" sensor);
+  sensor and the "next due" sensor). Reading care tasks have no date, so
+  they get no "next due" sensor; switching a task to or from the reading
+  kind removes or recreates it;
 - plant factories, called once per plant that has at least one task (the
   plant-wide "care due" binary sensor).
 
 The lifecycle adds entities when tasks appear, removes the runtime entity
 and its entity registry entry when a task (or the last task) is deleted, and
 refreshes every care entity just after local midnight and whenever the Home
-Assistant time zone changes, because "due" depends on today's date.
+Assistant time zone changes, because "due" depends on today's date. The care
+entities of a plant also refresh whenever the reading tracker reports a
+change in one of its reading care tasks.
 
 Unique ids use the task id, never its name or type, so renaming a task or
 changing its schedule keeps the same entities and their history.
@@ -37,6 +41,7 @@ from homeassistant.util import dt as dt_util
 from .care_schedule import TaskState, is_resting, task_state
 from .const import DOMAIN
 from .events import PlantDeletedEvent, PlantEvent
+from .models import ReadingSchedule
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -50,6 +55,7 @@ if TYPE_CHECKING:
     from .entity import SmartPlantsEntity
     from .manager import SmartPlantsManager
     from .models import CareTask, PlantRecord
+    from .reading_tracker import ReadingTaskInfo
 
 
 ROLE_CARE_DUE: Final = "care_due"
@@ -64,6 +70,7 @@ DEFAULT_TASK_NAMES: Final[Mapping[str, str]] = {
     "prune": "Prune",
     "repot": "Repot",
     "pests": "Check for pests",
+    "winter_protection": "Winter protection",
     "custom": "Care task",
 }
 
@@ -93,7 +100,41 @@ def local_time_zone() -> tzinfo:
     return dt_util.get_default_time_zone()
 
 
-def compute_task_state(plant: PlantRecord, task: CareTask) -> TaskState:
+def is_reading_task(task: CareTask) -> bool:
+    return isinstance(task.schedule, ReadingSchedule)
+
+
+def task_has_entity(task: CareTask, suffix: str) -> bool:
+    """Return whether ``task`` gets the per-task entity with ``suffix``."""
+    return not (suffix == TASK_SUFFIX_NEXT and is_reading_task(task))
+
+
+def reading_task_info(
+    manager: SmartPlantsManager, task: CareTask
+) -> ReadingTaskInfo | None:
+    """Return the tracked state of a reading care task, if it is one."""
+    tracker = manager.reading_tracker
+    if not is_reading_task(task) or tracker is None:
+        return None
+    return tracker.task_info(task)
+
+
+def compute_task_state(
+    manager: SmartPlantsManager, plant: PlantRecord, task: CareTask
+) -> TaskState:
+    """Return the task's state today; reading tasks come from the tracker."""
+    if is_reading_task(task):
+        info = reading_task_info(manager, task)
+        if info is None:
+            return TaskState(
+                status="no_reading", is_due=False, next_due=None, days=None
+            )
+        return TaskState(
+            status=info.state.status,
+            is_due=info.state.is_due,
+            next_due=None,
+            days=None,
+        )
     return task_state(
         task, plant.rest_period, tz=local_time_zone(), today=local_today()
     )
@@ -181,6 +222,8 @@ class CareEntityLifecycle:
         if entities:
             await self._async_add(entities)
         self._unsubs.append(self._manager.subscribe_required(self._handle_event))
+        if (tracker := self._manager.reading_tracker) is not None:
+            self._unsubs.append(tracker.add_listener(self.refresh_plant))
         self._unsubs.append(
             self._hass.bus.async_listen(
                 EVENT_CORE_CONFIG_UPDATE, self._handle_core_config_update
@@ -251,6 +294,18 @@ class CareEntityLifecycle:
             if entity is not None:
                 entity.async_write_ha_state()
 
+    @callback
+    def refresh_plant(self, plant_id: str) -> None:
+        """Write the current state of one plant's attached care entities."""
+        if self._closing:
+            return
+        for added_plant_id, role in tuple(self._added):
+            if added_plant_id != plant_id:
+                continue
+            entity = self._manager.get_entity(self._platform, plant_id, role)
+            if entity is not None:
+                entity.async_write_ha_state()
+
     # --- Lifecycle -----------------------------------------------------------
 
     async def _handle_event(self, event: PlantEvent) -> None:
@@ -276,6 +331,7 @@ class CareEntityLifecycle:
             task_role(task.id, suffix)
             for task in plant.care_tasks
             for suffix in self._task_factories
+            if task_has_entity(task, suffix)
         }
         if plant.care_tasks:
             roles.update(self._plant_factories)
@@ -286,6 +342,8 @@ class CareEntityLifecycle:
         for plant in plants:
             for task in plant.care_tasks:
                 for suffix, task_factory in self._task_factories.items():
+                    if not task_has_entity(task, suffix):
+                        continue
                     key = (plant.id, task_role(task.id, suffix))
                     if key in self._added:
                         continue

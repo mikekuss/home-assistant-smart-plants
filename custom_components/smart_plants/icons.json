@@ -13,6 +13,9 @@
       "care_task_pests": {
         "default": "mdi:bug-outline"
       },
+      "care_task_winter_protection": {
+        "default": "mdi:snowflake"
+      },
       "care_task_custom": {
         "default": "mdi:checkbox-marked-circle-outline"
       },
@@ -32,6 +35,9 @@
       },
       "care_task_pests_next": {
         "default": "mdi:bug-outline"
+      },
+      "care_task_winter_protection_next": {
+        "default": "mdi:snowflake"
       },
       "care_task_custom_next": {
         "default": "mdi:checkbox-marked-circle-outline"

@@ -10,8 +10,9 @@ Both entities become ``unavailable`` when the plant's moisture
 evaluation cannot produce a valid computed percent; they never emit a
 synthetic healthy value.
 
-Each care task also gets a "next due" timestamp sensor, managed by
-``CareEntityLifecycle`` and disabled by default.
+Each care task with a date schedule also gets a "next due" timestamp sensor,
+managed by ``CareEntityLifecycle`` and disabled by default. Reading care
+tasks have no due date and therefore no such sensor.
 """
 
 from __future__ import annotations
@@ -784,7 +785,7 @@ class _CareTaskNextDueSensor(SmartPlantsSensorEntity):
         current = self._task()
         if current is None:
             return None
-        return next_due_timestamp(compute_task_state(*current).next_due)
+        return next_due_timestamp(compute_task_state(self._manager, *current).next_due)
 
 
 def _factory_moisture(

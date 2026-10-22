@@ -301,6 +301,7 @@ def test_task_type_kind_mapping_and_matching() -> None:
         "prune": "pruning",
         "repot": "repotting",
         "pests": "task",
+        "winter_protection": "task",
         "custom": "task",
     }
     assert kind_for_task_type("prune") == "pruning"
@@ -921,7 +922,7 @@ async def test_minor_eleven_migration_keeps_every_care_event(
             "tombstones": [],
         },
     }
-    assert STORAGE_MINOR_VERSION == 13
+    assert STORAGE_MINOR_VERSION == 14
     loaded = await SmartPlantsStore(hass).async_load()
     plant = loaded.plants["p"]
     assert plant.care_tasks == ()

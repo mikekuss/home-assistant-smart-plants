@@ -126,22 +126,25 @@ history.
 
 | Entity | Platform | Created | Enabled | Device class | Attributes |
 | --- | --- | --- | --- | --- | --- |
-| Task (for example *Fertilize*) | Binary sensor | Per care task | Yes | – | `status`, `next_due`, `last_done`, `task_type` |
-| Task *next due* | Sensor | Per care task | No | timestamp | – |
+| Task (for example *Fertilize*) | Binary sensor | Per care task | Yes | – | `status`, `next_due`, `last_done`, `task_type`; reading tasks also `reading`, `unit`, `condition`, `value`, `reset_value`, `source`, `due_since`, `due_at` |
+| Task *next due* | Sensor | Per care task with a date schedule | No | timestamp | – |
 | Care due | Binary sensor | While the plant has a care task | Yes | – | `due_tasks`, `resting` |
 
 **Task binary sensor.** Named after the task type (*Fertilize*, *Prune*, *Repot*, *Check for
-pests*), or after the task's own name when it has one (always for custom tasks). Its state
+pests*, *Winter protection*), or after the task's own name when it has one (always for custom
+tasks). Its state
 reads *Due* (on) on the day the task is due and while it is overdue, and *Not due* (off)
 otherwise. It has no device class, because a due task is a reminder rather than a problem.
 
 - `status`: `scheduled` (not due yet), `due` (due today, or inside its yearly window),
   `overdue`, `resting` (paused during the rest period), `done` or `skipped` (this year's
   window of a yearly task is handled), or `missed` (a yearly window closed without being
-  handled).
-- `next_due`: the date the task is next due (`YYYY-MM-DD`), or `null`.
+  handled). Reading tasks use `due`, `watching`, `waiting`, and `no_reading` instead (see
+  [Reading tasks](#reading-tasks)).
+- `next_due`: the date the task is next due (`YYYY-MM-DD`), or `null`; always `null` for
+  reading tasks.
 - `last_done`: the local date the task was last done (`YYYY-MM-DD`), or `null`.
-- `task_type`: `fertilize`, `prune`, `repot`, `pests`, or `custom`.
+- `task_type`: `fertilize`, `prune`, `repot`, `pests`, `winter_protection`, or `custom`.
 
 **Next due sensor.** A timestamp sensor whose value is midnight, in the Home Assistant time
 zone, of the day the task is next due. It reads unknown when there is no next due date. It is
@@ -156,6 +159,53 @@ zone, of the day the task is next due. It reads unknown when there is no next du
 The states are recomputed when a task, the care history, or the rest period changes, just
 after midnight every day, and when the Home Assistant time zone changes. Tasks and the rest
 period are edited in the panel.
+
+### Reading tasks
+
+A care task can follow a sensor reading instead of a date, for example *Winter protection*
+when the temperature drops below 5 °C. Such a task watches either one of the plant's roles
+(temperature, humidity, soil moisture, illuminance, conductivity, soil temperature, or CO2,
+using the plant's combined value in °C, %, lx, µS/cm, or ppm) or one sensor entity. Any task
+type can use a reading schedule. The panel editor for reading tasks is not available yet; they
+can be created through the `smart_plants/care_tasks/create` WebSocket command.
+
+How a reading task behaves:
+
+- It becomes due when the reading is strictly below (or above) the value. With *only after*
+  set, the reading has to stay there for that many minutes first; a reading back on the other
+  side starts the count again. While the count runs, `status` is `watching` and `due_at` is
+  when the task becomes due.
+- It stops being due on its own when the reading reaches the reset value (the value itself
+  unless a reset value is set). Between the value and the reset value it stays due.
+- Marking it as done (in the panel or with `smart_plants.log_care` on its entity) turns it
+  off and sets `status` to `waiting` until the reading reaches the reset value. After that it
+  watches again. A Done logged for a time before the task was last armed again does not
+  count. Removing the Done again (Undo) makes the task due at once if the reading is still
+  past the value.
+- It cannot be skipped; `smart_plants.skip_care_task` rejects it.
+- Without a usable reading (the sensor is unavailable, unknown, not a number, in a unit that
+  cannot be converted, or the role has no current value), nothing changes: a due task stays
+  on, a waiting task stays waiting, and `status` is `no_reading`.
+- An entity's reading is converted into the unit the task's value was given in when the
+  sensor's device class allows it, for example from °F to °C.
+- The rest period does not affect reading tasks, and they do not change at midnight.
+- While the plant is disabled, its entities are unavailable and its reading tasks are not
+  tracked; they keep their state and are evaluated again as soon as the plant is enabled.
+- Reading tasks have no *next due* sensor. Switching a task to a reading schedule removes it;
+  switching back creates it again, disabled.
+- Changing the source, condition, value, unit, reset value, or *only after* starts the task
+  over: not due and not waiting. Renaming it or editing its instructions keeps its state.
+
+Additional attributes of a reading task's binary sensor:
+
+- `reading`: the current reading in the task's unit, or `null` without a usable reading.
+- `unit`, `condition` (`below` or `above`), `value`, `reset_value`: the task's settings.
+- `source`: the role name or the entity ID the task watches.
+- `due_since`: when the task last became due, or `null` while it is not due.
+- `due_at`: while an *only after* count runs, when the task becomes due; otherwise `null`.
+
+Whether a reading task is due, waiting, or armed is kept across restarts. The *only after*
+count is not: after a restart it starts again from the first reading past the value.
 
 Example: a reminder two days before fertilizing is due, using the enabled next due sensor
 (check the actual entity IDs on the device page). The time trigger's `offset` takes a

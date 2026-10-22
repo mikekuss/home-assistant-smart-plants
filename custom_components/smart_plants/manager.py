@@ -61,6 +61,7 @@ from .models import (
     PlantPlacement,
     PlantRecord,
     PlantSpecies,
+    ReadingSchedule,
     RestPeriod,
     SensorSource,
     Tombstone,
@@ -72,6 +73,7 @@ from .models import (
     validate_care_task_name,
     validate_care_tasks,
 )
+from .reading_tracker import ReadingTracker
 from .roles import require_role, role_definitions
 from .storage import SmartPlantsStorageError, SmartPlantsStore, _utcnow_iso
 
@@ -168,6 +170,8 @@ class SmartPlantsManager:
         # mutation is followed by an idempotent device reconciliation
         # bracketed by a typed PendingOperation for crash recovery.
         self._reconciler = reconciler
+        # Feeds reading care tasks from their sensors; created on load.
+        self._reading_tracker: ReadingTracker | None = None
         # Ordered list of live event subscribers. A callback added later
         # is fired later, so a consumer can rely on prior subscribers
         # having observed the event before it runs. Unsubscribe uses the
@@ -257,6 +261,11 @@ class SmartPlantsManager:
     def available(self) -> bool:
         return self._loaded and not self._closing and not self._unavailable
 
+    @property
+    def reading_tracker(self) -> ReadingTracker | None:
+        """Return the reading care task tracker while the manager is loaded."""
+        return self._reading_tracker
+
     # --- Event subscription ----------------------------------------------
 
     def subscribe(self, callback: EventCallback) -> Unsubscribe:
@@ -300,6 +309,8 @@ class SmartPlantsManager:
             # this before waiting can let an older concurrent dispatch roll a
             # controller backward after a newer commit has already synced it.
             self._sync_controllers_for(event)
+            if self._reading_tracker is not None:
+                self._reading_tracker.handle_event(event)
             token = _IN_DISPATCH.set(True)
             await self._async_notify_subscribers(event)
         finally:
@@ -398,11 +409,18 @@ class SmartPlantsManager:
             self._start_registry_tracking()
             for plant in self._snapshot.plants.values():
                 self._create_controllers(plant, start=plant.lifecycle_state == "active")
+            tracker = ReadingTracker(self._hass, self)
+            self._reading_tracker = tracker
+            await tracker.async_load()
+            tracker.start()
             self._loaded = True
         except BaseException:
             if self._unsub_registry is not None:
                 self._unsub_registry()
                 self._unsub_registry = None
+            if self._reading_tracker is not None:
+                await self._reading_tracker.async_close()
+                self._reading_tracker = None
             self._close_all_controllers()
             self._loaded = False
             raise
@@ -524,6 +542,12 @@ class SmartPlantsManager:
         # Detach controllers so their source-state subscriptions do not
         # outlive the unload; entity teardown then runs against a manager
         # that is already quiescent.
+        if self._reading_tracker is not None:
+            try:
+                await self._reading_tracker.async_close()
+            except Exception:
+                _LOGGER.exception("Smart Plants reading task tracker close failed")
+            self._reading_tracker = None
         try:
             self._close_all_controllers()
         except Exception:
@@ -1026,11 +1050,17 @@ class SmartPlantsManager:
     ) -> tuple[PlantRecord, str | None]:
         """Skip the current occurrence; return the previous skip date for undo."""
         today = _local_today()
+
+        def skip(task: CareTask) -> CareTask:
+            if isinstance(task.schedule, ReadingSchedule):
+                raise SmartPlantsValidationError(
+                    "a care task that follows a sensor reading cannot be skipped; "
+                    "mark it as done instead"
+                )
+            return replace(task, last_skipped_on=today)
+
         return await self._async_change_care_task(
-            plant_id,
-            task_id,
-            expected_revision=expected_revision,
-            change=lambda task: replace(task, last_skipped_on=today),
+            plant_id, task_id, expected_revision=expected_revision, change=skip
         )
 
     async def async_undo_skip_care_task(
@@ -2590,7 +2620,9 @@ def _validate_task_instructions(value: object) -> str | None:
         raise SmartPlantsValidationError(str(err)) from err
 
 
-def _validate_task_schedule(value: object) -> IntervalSchedule | YearlySchedule:
+def _validate_task_schedule(
+    value: object,
+) -> IntervalSchedule | YearlySchedule | ReadingSchedule:
     try:
         return parse_care_schedule(dict(value) if isinstance(value, Mapping) else value)
     except ValueError as err:

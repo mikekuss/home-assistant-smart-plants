@@ -4,8 +4,9 @@ Build the per-plant overview payload for ``smart_plants/plants/overview``.
 Every value comes from the role controllers' current evaluations and the
 plant's stored role configuration, which are exactly what the entities and
 evaluators use. Care task states come from the pure schedule engine for
-today's date in the Home Assistant time zone. The payload never includes
-species provider data, credentials or tokens.
+today's date in the Home Assistant time zone; reading care tasks come from
+the reading tracker. The payload never includes species provider data,
+credentials or tokens.
 """
 
 from __future__ import annotations
@@ -17,18 +18,19 @@ from homeassistant.const import PERCENTAGE, UnitOfConductivity, UnitOfTemperatur
 from homeassistant.util import dt as dt_util
 
 from .care import care_summary
-from .care_schedule import is_resting, task_state
+from .care_schedule import TaskState, is_resting, task_state
 from .co2_evaluator import CO2_PARTS_PER_MILLION
 from .illuminance_evaluator import LIGHT_LUX
+from .models import ReadingSchedule
 from .plant_status import evaluate_plant_status, role_state
 from .roles import role_definitions
 
 if TYPE_CHECKING:
-    from datetime import date, tzinfo
+    from datetime import date, datetime, tzinfo
 
-    from .care_schedule import TaskState
     from .manager import SmartPlantsManager
-    from .models import PlantRecord
+    from .models import CareTask, PlantRecord
+    from .reading_tracker import ReadingTaskInfo
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +81,21 @@ _ROLE_VIEWS: Final[dict[str, _RoleView]] = {
 _RANGE_FIELDS: Final = ("min", "target", "max")
 
 
+def role_reading(role: str, evaluation: Any) -> float | None:
+    """Return a role's aggregated, normalized value, or ``None`` without one."""
+    view = _ROLE_VIEWS.get(role)
+    if (
+        view is None
+        or evaluation is None
+        or not getattr(evaluation, "computed_available", False)
+    ):
+        return None
+    value = getattr(evaluation, view.value_attribute, None)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
 def _effective_threshold(role: str, config: Any, key: str | None) -> float | None:
     if key is None:
         return None
@@ -124,17 +141,33 @@ def _role_view(
     }
 
 
-# Overdue tasks first, then tasks due today, then everything else.
-_CARE_STATUS_RANK: Final = {"overdue": 0, "due": 1}
+# Overdue tasks first, then due tasks, then reading tasks that wait for the
+# reading to recover, then reading tasks that watch, then date tasks by their
+# next due date.
+_CARE_STATUS_RANK: Final = {
+    "overdue": 0,
+    "due": 1,
+    "waiting": 2,
+    "watching": 3,
+    "no_reading": 3,
+}
+_CARE_OTHER_RANK: Final = 4
 
 
 def _iso(value: date | None) -> str | None:
     return value.isoformat() if value is not None else None
 
 
+def _iso_timestamp(value: datetime | None) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
 def _care_sort_key(item: tuple[int, TaskState]) -> tuple[int, bool, str, int]:
     index, state = item
-    rank = _CARE_STATUS_RANK.get(state.status, 2)
+    # A reading task without a reading can still be due.
+    rank = 1 if state.is_due and state.status != "overdue" else None
+    if rank is None:
+        rank = _CARE_STATUS_RANK.get(state.status, _CARE_OTHER_RANK)
     # Tasks without a next due date sort after every dated task.
     next_due = state.next_due
     return (
@@ -145,12 +178,44 @@ def _care_sort_key(item: tuple[int, TaskState]) -> tuple[int, bool, str, int]:
     )
 
 
-def _care_view(plant: PlantRecord, *, tz: tzinfo, today: date) -> list[dict[str, Any]]:
+def _reading_info(manager: SmartPlantsManager, task: CareTask) -> ReadingTaskInfo:
+    tracker = manager.reading_tracker
+    if tracker is None:
+        msg = "reading care tasks need a loaded manager"
+        raise RuntimeError(msg)
+    return tracker.task_info(task)
+
+
+def _care_view(
+    manager: SmartPlantsManager, plant: PlantRecord, *, tz: tzinfo, today: date
+) -> list[dict[str, Any]]:
     tasks = plant.care_tasks
-    states = [
-        (index, task_state(task, plant.rest_period, tz=tz, today=today))
-        for index, task in enumerate(tasks)
-    ]
+    states: list[tuple[int, TaskState]] = []
+    readings: dict[int, dict[str, Any]] = {}
+    for index, task in enumerate(tasks):
+        if isinstance(task.schedule, ReadingSchedule):
+            info = _reading_info(manager, task)
+            states.append(
+                (
+                    index,
+                    TaskState(
+                        status=info.state.status,
+                        is_due=info.state.is_due,
+                        next_due=None,
+                        days=None,
+                    ),
+                )
+            )
+            readings[index] = {
+                "reading": info.reading,
+                "unit": task.schedule.unit,
+                "due_since": _iso_timestamp(info.state.triggered_at),
+                "due_at": _iso_timestamp(info.state.due_at),
+            }
+        else:
+            states.append(
+                (index, task_state(task, plant.rest_period, tz=tz, today=today))
+            )
     states.sort(key=_care_sort_key)
     return [
         {
@@ -163,6 +228,7 @@ def _care_view(plant: PlantRecord, *, tz: tzinfo, today: date) -> list[dict[str,
             "days": state.days,
             "window_end": _iso(state.window_end),
             "resume_on": _iso(state.resume_on),
+            **readings.get(index, {}),
         }
         for index, state in states
     ]
@@ -196,7 +262,7 @@ def plant_overview(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str,
         "roles": roles,
         "last_watered_at": care_summary(plant.care_events)["last_watered_at"],
         "image": {"id": plant.image.id} if plant.image is not None else None,
-        "care": _care_view(plant, tz=tz, today=today),
+        "care": _care_view(manager, plant, tz=tz, today=today),
         "rest_period": (
             plant.rest_period.as_storage() if plant.rest_period is not None else None
         ),
