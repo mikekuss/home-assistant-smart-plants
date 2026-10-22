@@ -2660,7 +2660,7 @@ var Ln = {
 	"care_plan.show_more": "Mehr anzeigen",
 	"care_plan.show_less": "Weniger anzeigen",
 	"care_plan.from_scratch": "Oder ohne Vorlage beginnen",
-	"care_plan.empty_suggestions": "OpenPlantBook hat Pflegehinweise für diese Art. Sie erscheinen als Vorschläge, wenn du eine Aufgabe hinzufügst.",
+	"care_plan.empty_suggestions": "OpenPlantBook hat Pflegeinformationen für diese Art. Sie erscheinen als Vorschläge, wenn du eine Aufgabe hinzufügst.",
 	"care_plan.note_hint": "OpenPlantBook hat einen Pflegehinweis dazu",
 	"care_plan.note_use": "Als Anleitung übernehmen",
 	"care_plan.note_applied": "Von OpenPlantBook. Bearbeite den Text, um ihn anzupassen.",
@@ -3649,7 +3649,7 @@ var Ln = {
 	"care_plan.show_more": "Show more",
 	"care_plan.show_less": "Show less",
 	"care_plan.from_scratch": "Or start from scratch",
-	"care_plan.empty_suggestions": "OpenPlantBook has care notes for this species. They show up as suggestions when you add a task.",
+	"care_plan.empty_suggestions": "OpenPlantBook has care information for this species. They show up as suggestions when you add a task.",
 	"care_plan.note_hint": "OpenPlantBook has a care note for this",
 	"care_plan.note_use": "Use as instructions",
 	"care_plan.note_applied": "From OpenPlantBook. Edit the text to make it your own.",
@@ -6162,7 +6162,7 @@ function Ro(e) {
         </ha-dropdown></span></div>
     ${n.rest_period ? zo(e, n.rest_period) : b}
     ${r.length ? v`<ul class="list task-list" aria-label=${t.t("care_plan.tasks_label")}>${r.map((t) => Bo(e, t))}</ul>` : v`<div class="card-b"><p class="muted">${t.t("care_plan.empty")}</p>
-          ${uo(n).length ? v`<p class="small muted care-note"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${t.t("care_plan.empty_suggestions")}</span></p>` : b}
+          ${uo(n).length || Wa(n) !== null ? v`<p class="small muted care-note"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${t.t("care_plan.empty_suggestions")}</span></p>` : b}
           <div><button type="button" class="btn filled" ?disabled=${e.disabled} @click=${e.onAdd}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("care_plan.add_task")}</button></div></div>`}
   </section>`;
 }

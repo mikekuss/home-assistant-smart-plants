@@ -207,9 +207,9 @@ def _care_view(
                 )
             )
             readings[index] = {
-                "reading": info.reading,
+                "reading": info.shown_reading,
                 "unit": task.schedule.unit,
-                "due_since": _iso_timestamp(info.state.triggered_at),
+                "due_since": _iso_timestamp(info.due_since),
                 "due_at": _iso_timestamp(info.state.due_at),
             }
         else:

@@ -470,6 +470,13 @@ describe("care suggestions", () => {
     expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/create")).toMatchObject({ task_type: "prune", instructions: PRUNE, schedule: { kind: "yearly", start_month: 3, end_month: 4 } });
   });
 
+  it("mentions the suggestions on an empty plan when only a minimum temperature is known", async () => {
+    const species = openPlantBook({});
+    const snapshot = { ...species.snapshot, min_temperature: 5, field_sources: { ...species.snapshot.field_sources, min_temperature: "OpenPlantBook" } };
+    const el = await openCare(careBackend(plantWith({ species: { ...species, snapshot } })));
+    expect(carePlan(el).textContent).toContain("OpenPlantBook has care information for this species.");
+  });
+
   it("keeps the text of a task that already exists but offers no second task", async () => {
     const backend = careBackend(plantWith({ care_tasks: [fertilize], species: openPlantBook({ fertilization: FEED }) }));
     const el = await openCare(backend);

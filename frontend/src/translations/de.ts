@@ -880,7 +880,7 @@ export const de: Catalog = {
   "care_plan.show_more": "Mehr anzeigen",
   "care_plan.show_less": "Weniger anzeigen",
   "care_plan.from_scratch": "Oder ohne Vorlage beginnen",
-  "care_plan.empty_suggestions": "OpenPlantBook hat Pflegehinweise für diese Art. Sie erscheinen als Vorschläge, wenn du eine Aufgabe hinzufügst.",
+  "care_plan.empty_suggestions": "OpenPlantBook hat Pflegeinformationen für diese Art. Sie erscheinen als Vorschläge, wenn du eine Aufgabe hinzufügst.",
   "care_plan.note_hint": "OpenPlantBook hat einen Pflegehinweis dazu",
   "care_plan.note_use": "Als Anleitung übernehmen",
   "care_plan.note_applied": "Von OpenPlantBook. Bearbeite den Text, um ihn anzupassen.",

@@ -221,6 +221,8 @@ async def test_done_waits_for_the_reading_to_recover(hass: HomeAssistant) -> Non
     assert state.state == "off"
     assert state.attributes["status"] == "waiting"
     assert state.attributes["last_done"] is not None
+    # A waiting task is not due, so it shows no due time.
+    assert state.attributes["due_since"] is None
 
     await _change(hass, 2)
     assert _due_state(hass, plant_id, task_id).attributes["status"] == "waiting"
@@ -248,6 +250,7 @@ async def test_done_on_the_safe_side_rearms(hass: HomeAssistant) -> None:
 async def test_undo_done_rearms_and_is_due_again(hass: HomeAssistant) -> None:
     entry, manager, plant_id = await _plant(hass, temperature=3)
     task_id = await _create(hass, manager, plant_id)
+    due_since = _due_state(hass, plant_id, task_id).attributes["due_since"]
     updated, event = await manager.async_complete_care_task(
         plant_id, task_id, expected_revision=None
     )
@@ -262,6 +265,7 @@ async def test_undo_done_rearms_and_is_due_again(hass: HomeAssistant) -> None:
     assert state.state == "on"
     assert state.attributes["status"] == "due"
     assert state.attributes["last_done"] is None
+    assert state.attributes["due_since"] == due_since
     await _unload(hass, entry)
 
 
@@ -443,6 +447,18 @@ async def test_entity_source_converts_units(hass: HomeAssistant) -> None:
     state = _due_state(hass, plant_id, task_id)
     assert state.state == "on"
     assert state.attributes["reading"] == pytest.approx(4.0)
+
+    # Converted readings are shown with two decimals: 33.1 °F is 0.6111 °C.
+    hass.states.async_set(
+        FROST,
+        "33.1",
+        {
+            "unit_of_measurement": UnitOfTemperature.FAHRENHEIT,
+            "device_class": "temperature",
+        },
+    )
+    await hass.async_block_till_done()
+    assert _due_state(hass, plant_id, task_id).attributes["reading"] == 0.61
 
     # Unavailable or unconvertible readings change nothing but the status.
     hass.states.async_set(FROST, STATE_UNAVAILABLE)
