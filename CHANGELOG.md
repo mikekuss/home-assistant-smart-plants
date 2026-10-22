@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-22
+
 ### Added
 
 - The panel shows a species' German common name from OpenPlantBook when it is shown in German,
@@ -265,7 +267,8 @@ First public release.
 - English and German translations for the integration's entities, setup, and repairs. The
   sidebar panel is English-only.
 
-[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.7.1...HEAD
+[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.8.0...HEAD
+[0.8.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.7.1...0.8.0
 [0.7.1]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.6.1...0.7.0
 [0.6.1]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.6.0...0.6.1
