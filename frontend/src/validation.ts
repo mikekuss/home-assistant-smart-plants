@@ -52,15 +52,28 @@ const isoDate = (v: unknown) => typeof v === "string" && /^\d{4}-\d\d-\d\d$/.tes
 const exactKeys = (v: Record<string, unknown>, keys: string[]) => Object.keys(v).length === keys.length && keys.every(key => Object.hasOwn(v, key));
 const monthRange = (v: unknown, keys: string[]) => object(v) && exactKeys(v, keys) && integer(v.start_month, 1, 12) && integer(v.end_month, 1, 12);
 const trimmed = (v: unknown, max: number) => text(v, max) && v === v.trim();
+const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+// Plant roles a reading task can follow; battery is device health, not care.
+const READING_ROLES = ["temperature", "humidity", "moisture", "illuminance", "conductivity", "soil_temperature", "co2"];
+function validReadingSource(v: unknown): boolean {
+  if (!object(v)) return false;
+  if (exactKeys(v, ["role"])) return READING_ROLES.includes(String(v.role));
+  return exactKeys(v, ["entity_id"]) && typeof v.entity_id === "string" && /^sensor\.[a-z0-9_]+$/.test(v.entity_id);
+}
 function validSchedule(v: unknown): boolean {
   if (!object(v)) return false;
   if (v.kind === "yearly") return monthRange(v, ["kind", "start_month", "end_month"]);
+  if (v.kind === "reading") {
+    return exactKeys(v, ["kind", "source", "condition", "value", "unit", "for_minutes", "reset_value"]) && validReadingSource(v.source) &&
+      (v.condition === "below" || v.condition === "above") && finite(v.value) && (v.unit === null || text(v.unit, 32)) && integer(v.for_minutes, 0, 4320) &&
+      (v.reset_value === null || (finite(v.reset_value) && (v.condition === "below" ? v.reset_value >= v.value : v.reset_value <= v.value)));
+  }
   return v.kind === "interval" && exactKeys(v, ["kind", "every", "unit", "growing_season_only"]) && integer(v.every, 1, 999) &&
     ["days", "weeks", "months", "years"].includes(String(v.unit)) && typeof v.growing_season_only === "boolean";
 }
 export function validCareTask(v: unknown): boolean {
   return object(v) && exactKeys(v, ["id", "type", "name", "schedule", "instructions", "baseline_done_on", "last_done_at", "last_skipped_on", "created_on"]) &&
-    typeof v.id === "string" && TASK_ID.test(v.id) && ["fertilize", "prune", "repot", "pests", "custom"].includes(String(v.type)) &&
+    typeof v.id === "string" && TASK_ID.test(v.id) && ["fertilize", "prune", "repot", "pests", "winter_protection", "custom"].includes(String(v.type)) &&
     (v.name === null ? v.type !== "custom" : trimmed(v.name, 60)) && validSchedule(v.schedule) &&
     (v.instructions === null || trimmed(v.instructions, 4000)) && (v.baseline_done_on === null || isoDate(v.baseline_done_on)) &&
     (v.last_done_at === null || (timestamp(v.last_done_at) && String(v.last_done_at).endsWith("Z"))) &&

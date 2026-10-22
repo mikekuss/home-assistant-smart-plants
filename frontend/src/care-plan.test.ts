@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SmartPlantsPanel } from "./panel.js";
 import { ENGLISH, createLocalizer } from "./localize.js";
-import { careLine, careNote, careOnlyChange, careSuggestions, draftFromTask, lastDone, localDate, matchingTask, monthsInRange, pickMonth, presetDraft, restDraft, restSentence, restTaskChanges, resumeDate, scheduleText, shortDate, taskChanges, taskChip, validateDraft, validateRest } from "./care-plan.js";
+import { careLine, careNote, careOnlyChange, careSuggestions, draftFromTask, draftSummary, fromCelsius, lastDone, localDate, matchingTask, monthsInRange, numericSensor, pickMonth, pickSource, plantReadingRoles, presetDraft, readingSuggestion, restDraft, restSentence, restTaskChanges, resumeDate, scheduleText, shortDate, sourceUnit, taskChanges, taskChip, validateDraft, validateRest, winterDraft } from "./care-plan.js";
 import { matchesFilter } from "./overview-model.js";
 import type { CareTaskSummary, PlantOverview } from "./overview-model.js";
 import type { CareEvent, CareTask, HAEntity, HAState, HomeAssistantLike, PlantRecord, PlantSpecies, RestPeriod } from "./types.js";
@@ -13,7 +13,7 @@ const FERTILIZE_ID = "0f8fad5bd9cb469fa16570867728950e";
 const PESTS_ID = "7c9e6679742540de944be07fc1f90ae7";
 const fertilize: CareTask = { id: FERTILIZE_ID, type: "fertilize", name: null, schedule: { kind: "interval", every: 4, unit: "weeks", growing_season_only: true }, instructions: null, baseline_done_on: null, last_done_at: null, last_skipped_on: null, created_on: "2026-09-01" };
 const pests: CareTask = { id: PESTS_ID, type: "pests", name: null, schedule: { kind: "interval", every: 2, unit: "weeks", growing_season_only: false }, instructions: null, baseline_done_on: null, last_done_at: null, last_skipped_on: null, created_on: "2026-09-01" };
-const state = (task_id: string, changes: Partial<CareTaskSummary> = {}): CareTaskSummary => ({ task_id, type: "fertilize", name: null, status: "scheduled", is_due: false, next_due: "2026-10-22", days: 3, window_end: null, resume_on: null, ...changes });
+const state = (task_id: string, changes: Partial<CareTaskSummary> = {}): CareTaskSummary => ({ task_id, type: "fertilize", name: null, status: "scheduled", is_due: false, next_due: "2026-10-22", days: 3, window_end: null, resume_on: null, reading: null, unit: null, due_since: null, due_at: null, ...changes });
 
 afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); vi.unstubAllGlobals(); localStorage.clear(); });
 
@@ -99,11 +99,11 @@ describe("care task draft", () => {
 
 // A small care task backend: every write bumps the revision and returns the
 // whole plant, like Home Assistant does.
-function careBackend(initial: PlantRecord, states: (plant: PlantRecord) => CareTaskSummary[] = () => [], entities: HAEntity[] = []) {
+function careBackend(initial: PlantRecord, states: (plant: PlantRecord) => CareTaskSummary[] = () => [], entities: HAEntity[] = [], extra: Partial<PlantOverview> = {}) {
   let plant = structuredClone(initial);
   let nextEvent = 1;
   const bump = (changes: Partial<PlantRecord>) => { plant = { ...plant, ...changes, revision: plant.revision + 1 }; return structuredClone(plant); };
-  const overview = (p: PlantRecord): PlantOverview => ({ ...overviewFor(p), care: states(p) });
+  const overview = (p: PlantRecord): PlantOverview => ({ ...overviewFor(p), ...extra, care: states(p) });
   const h = harness([plant], msg => {
     const tasks = plant.care_tasks ?? [];
     switch (msg.type) {
@@ -126,7 +126,7 @@ function careBackend(initial: PlantRecord, states: (plant: PlantRecord) => CareT
       case "smart_plants/care_tasks/delete": return { plant: bump({ care_tasks: tasks.filter(task => task.id !== msg.task_id) }) };
       case "smart_plants/care_tasks/complete": {
         const task = tasks.find(item => item.id === msg.task_id)!;
-        const kind = ({ fertilize: "fertilizing", prune: "pruning", repot: "repotting", pests: "task", custom: "task" } as const)[task.type];
+        const kind = ({ fertilize: "fertilizing", prune: "pruning", repot: "repotting", pests: "task", winter_protection: "task", custom: "task" } as const)[task.type];
         const payload = kind === "fertilizing" ? { product: null, amount: null, unit: null, note: (msg.note as string | undefined) ?? null } : { note: (msg.note as string | undefined) ?? null };
         const occurred = (msg.occurred_at as string | undefined) ?? `${TODAY}T09:00:00+00:00`;
         const event: CareEvent = { schema_version: 2, id: `00000000-0000-4000-8000-00000000000${nextEvent++}`, kind, provenance: "manual", task_id: task.id, occurred_at: occurred, local_date: occurred.slice(0, 10), created_at: occurred, updated_at: occurred, payload };
@@ -588,5 +588,216 @@ describe("care changes made elsewhere", () => {
     vi.advanceTimersByTime(5000);
     expect(reads(backend)).toBe(before);
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+// ---- Reading tasks ----
+
+const WINTER_ID = "3d9e6679742540de944be07fc1f90ae7";
+const winter: CareTask = { id: WINTER_ID, type: "winter_protection", name: null, schedule: { kind: "reading", source: { role: "temperature" }, condition: "below", value: 5, unit: "°C", for_minutes: 0, reset_value: null }, instructions: null, baseline_done_on: null, last_done_at: null, last_skipped_on: null, created_on: "2026-09-01" };
+const temperatureRole = { sources: [{ entity_id: "sensor.mock_balcony_temperature", registry_id: null }], primary_entity_id: null, aggregation: "average", stale_after_seconds: 21600 };
+const withMinimum = (min: number | null): PlantSpecies => {
+  const species = openPlantBook({});
+  species.snapshot.min_temperature = min;
+  if (min !== null) species.snapshot.field_sources.min_temperature = "OpenPlantBook";
+  return species;
+};
+const reading = (changes: Partial<CareTaskSummary> = {}) => state(WINTER_ID, { type: "winter_protection", status: "watching", next_due: null, days: null, reading: 9, unit: "°C", ...changes });
+const fahrenheit: HAState = { entity_id: "sensor.mock_balcony_fahrenheit", state: "48.2", attributes: { friendly_name: "Balcony thermometer", unit_of_measurement: "°F", device_class: "temperature" }, last_updated: "2026-10-19T08:00:00Z" };
+const humidity: HAState = { entity_id: "sensor.mock_balcony_humidity", state: "61", attributes: { friendly_name: "Balcony humidity", unit_of_measurement: "%", device_class: "humidity" }, last_updated: "2026-10-19T08:00:00Z" };
+const states: Record<string, HAState> = { [fahrenheit.entity_id]: fahrenheit, [humidity.entity_id]: humidity, "sensor.mock_text": { ...humidity, entity_id: "sensor.mock_text", state: "on" } };
+
+describe("reading task draft", () => {
+  it("starts winter protection on the plant's temperature, if it has one", () => {
+    expect(presetDraft("winter_protection", plantWith({ roles: { ...sample.roles!, temperature: temperatureRole } }))).toMatchObject({ mode: "reading", role: "temperature", entityId: null, condition: "below", value: "", readingUnit: "°C", forHours: "", resetValue: "" });
+    expect(presetDraft("winter_protection", plantWith({}))).toMatchObject({ mode: "reading", role: null, readingUnit: null });
+    expect(presetDraft("prune", plantWith({})).mode).toBe("yearly");
+  });
+
+  it("fills winter protection with the OpenPlantBook minimum temperature", () => {
+    expect(winterDraft(plantWith({ species: withMinimum(5), roles: { ...sample.roles!, temperature: temperatureRole } }))).toMatchObject({ type: "winter_protection", role: "temperature", value: "5" });
+    expect(winterDraft(plantWith({ species: withMinimum(null) }))).toBeNull();
+    const manual = withMinimum(5); manual.provider = "manual"; manual.snapshot.provider = "manual";
+    expect(winterDraft(plantWith({ species: manual }))).toBeNull();
+  });
+
+  it("validates reading drafts like the backend", () => {
+    const empty = presetDraft("winter_protection", plantWith({}));
+    expect(validateDraft(empty, TODAY).errors).toEqual({ source: "care_plan.error_source", value: "care_plan.error_value" });
+    const draft = { ...empty, role: "temperature", readingUnit: "°C", value: "5" };
+    expect(validateDraft({ ...draft, resetValue: "4" }, TODAY).errors).toEqual({ resetValue: "care_plan.error_reset_below" });
+    expect(validateDraft({ ...draft, condition: "above", resetValue: "6" }, TODAY).errors).toEqual({ resetValue: "care_plan.error_reset_above" });
+    for (const forHours of ["73", "1.5", "-1", "x"]) expect(validateDraft({ ...draft, forHours }, TODAY).errors).toEqual({ forHours: "care_plan.error_for_hours" });
+    for (const value of ["", "abc", "1.2345", "5 °C"]) expect(validateDraft({ ...draft, value }, TODAY).errors).toEqual({ value: "care_plan.error_value" });
+    // "Last done" belongs to date schedules and is not sent for a reading task.
+    expect(validateDraft({ ...draft, value: "4,5", forHours: "2", resetValue: "12", lastDone: "2026-10-01", instructions: " Cover the pot " }, TODAY).input).toEqual({ task_type: "winter_protection", name: null,
+      schedule: { kind: "reading", source: { role: "temperature" }, condition: "below", value: 4.5, unit: "°C", for_minutes: 120, reset_value: 12 }, instructions: "Cover the pot", baseline_done_on: null });
+    expect(validateDraft({ ...draft, entityId: "sensor.mock_x", role: null, readingUnit: null, value: "-3" }, TODAY).input!.schedule).toEqual({ kind: "reading", source: { entity_id: "sensor.mock_x" }, condition: "below", value: -3, unit: null, for_minutes: 0, reset_value: null });
+  });
+
+  it("round-trips a stored reading task and sends nothing when unchanged", () => {
+    const stored: CareTask = { ...winter, schedule: { reset_value: 12, for_minutes: 120, unit: "°C", value: 5, condition: "below", source: { role: "temperature" }, kind: "reading" } };
+    const draft = draftFromTask(stored);
+    expect(draft).toMatchObject({ mode: "reading", role: "temperature", value: "5", forHours: "2", resetValue: "12" });
+    expect(taskChanges(stored, validateDraft(draft, TODAY).input!)).toEqual({});
+    expect(taskChanges(stored, validateDraft({ ...draft, value: "3" }, TODAY).input!)).toEqual({ schedule: { ...stored.schedule, value: 3 } });
+    // Switching to Reading keeps the name and the instructions.
+    const feed = draftFromTask({ ...fertilize, name: "Feed", instructions: "Half dose" });
+    expect(validateDraft({ ...feed, mode: "reading", role: "humidity", readingUnit: "%", value: "40" }, TODAY).input).toMatchObject({ name: "Feed", instructions: "Half dose", schedule: { kind: "reading", unit: "%" } });
+  });
+
+  it("converts the OpenPlantBook suggestion into the unit of the sensor", () => {
+    const plant = plantWith({ species: withMinimum(5), roles: { ...sample.roles!, temperature: temperatureRole } });
+    const draft = presetDraft("winter_protection", plant);
+    expect(readingSuggestion(plant, draft, states)).toBe(5);
+    expect(readingSuggestion(plant, { ...draft, condition: "above" }, states)).toBeNull();
+    expect(readingSuggestion(plant, { ...draft, role: "humidity", readingUnit: "%" }, states)).toBeNull();
+    expect(readingSuggestion(plant, { ...draft, role: "soil_temperature" }, states)).toBe(5);
+    const other = { ...draft, role: null, entityId: fahrenheit.entity_id, readingUnit: "°F" };
+    expect(readingSuggestion(plant, other, states)).toBe(41);
+    expect(readingSuggestion(plant, { ...other, entityId: humidity.entity_id }, states)).toBeNull();
+    expect(fromCelsius(5, "K")).toBe(278.2);
+    expect(fromCelsius(-1.5, "°F")).toBe(29.3);
+    expect(fromCelsius(5, "%")).toBeNull();
+    // A suggested value follows into the new unit; a typed one stays.
+    expect(pickSource({ ...draft, value: "5" }, { entity_id: fahrenheit.entity_id }, "°F", plant)).toEqual({ role: null, entityId: fahrenheit.entity_id, readingUnit: "°F", value: "41" });
+    expect(pickSource({ ...draft, value: "7" }, { entity_id: fahrenheit.entity_id }, "°F", plant)).toEqual({ role: null, entityId: fahrenheit.entity_id, readingUnit: "°F" });
+    expect(pickSource({ ...draft, role: null, readingUnit: null, value: "5" }, { role: "temperature" }, "°C", plant)).toEqual({ role: "temperature", entityId: null, readingUnit: "°C" });
+    expect(sourceUnit({ entity_id: fahrenheit.entity_id }, states)).toBe("°F");
+    expect(sourceUnit({ role: "conductivity" })).toBe("µS/cm");
+    expect(Object.values(states).filter(numericSensor).map(s => s.entity_id)).toEqual([fahrenheit.entity_id, humidity.entity_id]);
+  });
+
+  it("lists the plant's sensor roles without battery", () => {
+    expect(plantReadingRoles(plantWith({ roles: { ...sample.roles!, temperature: temperatureRole, battery: temperatureRole, humidity: { ...temperatureRole, sources: [] } } }))).toEqual(["temperature"]);
+  });
+});
+
+describe("reading task wording", () => {
+  const de = createLocalizer({ language: "de" });
+  it("reads the rule back in the summary and the task row", () => {
+    const draft = { ...presetDraft("winter_protection", plantWith({ roles: { ...sample.roles!, temperature: temperatureRole } })), value: "5" };
+    expect(draftSummary(l, draft, null)).toBe("When the temperature is below 5 °C");
+    expect(draftSummary(l, { ...draft, forHours: "2", resetValue: "12" }, null)).toBe("When the temperature is below 5 °C · for 2 h · due again above 12 °C");
+    expect(draftSummary(l, { ...draft, forHours: "1", resetValue: "5" }, null)).toBe("When the temperature is below 5 °C · for 1 h");
+    expect(draftSummary(l, { ...draft, value: "" }, null)).toBe("When the temperature is below … · enter a value");
+    expect(draftSummary(l, { ...draft, role: null }, null)).toBe("Reading · pick a sensor");
+    expect(draftSummary(l, { ...draft, role: null, entityId: humidity.entity_id, readingUnit: "%", condition: "above", value: "80", resetValue: "70" }, null, states)).toBe("When Balcony humidity is above 80% · due again below 70%");
+    expect(draftSummary(de, { ...draft, forHours: "2", resetValue: "12" }, null)).toBe("Wenn die Temperatur unter 5 °C liegt · für 2 Std. · wieder fällig über 12 °C");
+    expect(scheduleText(l, winter.schedule, null)).toBe("Below 5 °C · Temperature");
+    expect(scheduleText(l, { ...winter.schedule, source: { entity_id: fahrenheit.entity_id }, unit: "°F", value: 41 } as CareTask["schedule"], null, states)).toBe("Below 41 °F · Balcony thermometer");
+    expect(scheduleText(l, { ...winter.schedule, source: { entity_id: "sensor.mock_gone" } } as CareTask["schedule"], null, states)).toBe("Below 5 °C · sensor.mock_gone");
+    expect(scheduleText(de, winter.schedule, null)).toBe("Unter 5 °C · Temperatur");
+  });
+
+  it("labels every reading state", () => {
+    const schedule = winter.schedule as Extract<CareTask["schedule"], { kind: "reading" }>;
+    expect(taskChip(l, reading(), schedule, TODAY)).toEqual({ tone: "later", icon: "mdi:gauge", text: "Not needed · 9 °C" });
+    expect(taskChip(l, reading({ status: "due", is_due: true, reading: 3, due_since: "2026-10-19T20:10:00Z" }), schedule, TODAY)).toMatchObject({ tone: "care", text: "Due · 3 °C" });
+    expect(taskChip(l, reading({ status: "waiting", reading: 3 }), schedule, TODAY, { lastDoneAt: "2026-10-12T08:00:00Z", timeZone: "Europe/Berlin" })).toEqual({ tone: "done", icon: "mdi:check", text: "Done Oct 12 · still cold" });
+    expect(taskChip(l, reading({ status: "waiting", reading: 7 }), { ...schedule, reset_value: 12 }, TODAY, { lastDoneAt: "2026-10-12T08:00:00Z" }).text).toBe("Done Oct 12 · until above 12 °C");
+    expect(taskChip(l, reading({ status: "waiting" }), { ...schedule, source: { role: "humidity" }, unit: "%", condition: "above", value: 80 }, TODAY).text).toBe("Waiting · until below 80%");
+    expect(taskChip(l, reading({ status: "no_reading", reading: null }), schedule, TODAY)).toEqual({ tone: "later", icon: "mdi:help-circle-outline", text: "No reading" });
+    expect(taskChip(l, reading({ due_at: "2026-10-19T22:10:00Z" }), { ...schedule, for_minutes: 120 }, TODAY, { timeZone: "UTC" }).text).toBe("Below 5 °C since 8:10 PM · due 10:10 PM");
+    expect(taskChip(de, reading({ status: "waiting", reading: 3 }), schedule, TODAY, { lastDoneAt: "2026-11-12T08:00:00Z" }).text).toBe("Erledigt am 12. Nov. · noch kalt");
+    expect(taskChip(de, reading(), schedule, TODAY).text).toBe("Nicht nötig · 9 °C");
+  });
+});
+
+describe("reading tasks in the panel", () => {
+  const plant = (changes: Partial<PlantRecord> = {}) => plantWith({ roles: { ...sample.roles!, temperature: temperatureRole }, ...changes });
+  const temperatureReading: Partial<PlantOverview> = { roles: { ...overviewFor(sample).roles, temperature: { value: 9, unit: "°C", state: "ok", range: { min: 10, target: null, max: 30 }, last_reported: "2026-10-19T08:00:00+00:00", sources: ["sensor.mock_balcony_temperature"] } } };
+  const open = async (backend: ReturnType<typeof careBackend>) => { backend.h.hass.states = { ...states }; return openCare(backend); };
+  const field = (el: SmartPlantsPanel, label: string) => [...dialog(el)!.querySelectorAll("label")].find(item => [...item.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join("").trim() === label)!.querySelector<HTMLInputElement & HTMLSelectElement>("input, select")!;
+  const choose = async (el: SmartPlantsPanel, select: HTMLSelectElement, value: string) => { select.value = value; select.dispatchEvent(new Event("change", { bubbles: true })); await settle(el); };
+
+  it("adds winter protection on the plant's temperature", async () => {
+    const backend = careBackend(plant(), () => [], [], temperatureReading);
+    const el = await open(backend);
+    carePlan(el).querySelector<HTMLButtonElement>("button.btn.filled")!.click(); await settle(el);
+    const tile = [...dialog(el)!.querySelectorAll<HTMLButtonElement>("button.preset")].find(b => b.textContent?.includes("Winter protection"))!;
+    expect(tile.textContent).toContain("When it gets cold");
+    tile.click(); await settle(el);
+    expect(dialog(el)!.querySelector(".task-summary")!.textContent).toContain("Winter protection · When the temperature is below … · enter a value");
+    expect(dialogButton(el, "Reading").getAttribute("aria-pressed")).toBe("true");
+    const source = field(el, "Reading");
+    expect([...source.querySelectorAll("optgroup")].map(group => group.label)).toEqual(["This plant's sensors", "Other sensor"]);
+    expect(source.selectedOptions[0]!.textContent).toBe("Temperature · 9 °C");
+    expect(dialog(el)!.querySelector(".suffix")!.textContent).toBe("°C");
+    expect(dialog(el)!.textContent).not.toContain("OpenPlantBook");
+    expect(dialog(el)!.querySelector(".more-options")!.textContent).toContain("· delay, due again");
+    dialogButton(el, "Add task").click(); await settle(el);
+    expect(dialog(el)!.textContent).toContain("Enter a number.");
+    await typeInto(el, field(el, "Value"), "5");
+    dialog(el)!.querySelector<HTMLButtonElement>(".more-options button")!.click(); await settle(el);
+    expect(dialog(el)!.textContent).toContain("Due again after above");
+    await typeInto(el, field(el, "Due again after above"), "3");
+    dialogButton(el, "Add task").click(); await settle(el);
+    expect(dialog(el)!.textContent).toContain("Enter the value or a higher number.");
+    await typeInto(el, field(el, "Due again after above"), "12");
+    await typeInto(el, field(el, "Only after (optional)"), "2");
+    expect(dialog(el)!.querySelector(".task-summary")!.textContent).toContain("When the temperature is below 5 °C · for 2 h · due again above 12 °C");
+    await choose(el, field(el, "Due when"), "above");
+    expect(dialog(el)!.textContent).toContain("Due again after below");
+    dialogButton(el, "Add task").click(); await settle(el);
+    expect(dialog(el)!.textContent).toContain("Enter the value or a lower number.");
+    await choose(el, field(el, "Due when"), "below");
+    expect(dialog(el)!.textContent).not.toContain("Enter the value");
+    dialogButton(el, "Add task").click(); await settle(el);
+    expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/create")).toEqual({ type: "smart_plants/care_tasks/create", plant_id: sample.id, expected_revision: 1, task_type: "winter_protection", name: null,
+      schedule: { kind: "reading", source: { role: "temperature" }, condition: "below", value: 5, unit: "°C", for_minutes: 120, reset_value: 12 }, instructions: null, baseline_done_on: null });
+    expect(dialog(el)).toBeNull();
+  });
+
+  it("suggests winter protection from the OpenPlantBook minimum temperature", async () => {
+    const backend = careBackend(plant({ species: withMinimum(5) }), () => [], [], temperatureReading);
+    const el = await open(backend);
+    carePlan(el).querySelector<HTMLButtonElement>("button.btn.filled")!.click(); await settle(el);
+    const box = dialog(el)!.querySelector(".suggestions")!;
+    expect(box.textContent).toContain("OpenPlantBook · minimum temperature");
+    expect(box.textContent).toContain("Grows above 5 °C");
+    dialogButton(el, "Add winter protection").click(); await settle(el);
+    expect(field(el, "Value").value).toBe("5");
+    expect(dialog(el)!.textContent).toContain("From OpenPlantBook's minimum temperature.");
+    await typeInto(el, field(el, "Value"), "8");
+    expect(dialog(el)!.textContent).toContain("OpenPlantBook: minimum 5 °C");
+    // Another sensor reporting Fahrenheit gets the minimum converted.
+    await typeInto(el, field(el, "Value"), "5");
+    await choose(el, field(el, "Reading"), "other");
+    const sensors = field(el, "Sensor");
+    expect([...sensors.options].map(option => option.value)).toEqual(["", humidity.entity_id, fahrenheit.entity_id]);
+    await choose(el, sensors, fahrenheit.entity_id);
+    expect(field(el, "Value").value).toBe("41");
+    expect(dialog(el)!.querySelector(".suffix")!.textContent).toBe("°F");
+    expect(dialog(el)!.textContent).toContain("From OpenPlantBook's minimum temperature.");
+    await typeInto(el, field(el, "Value"), "40");
+    dialogButton(el, "Use the OpenPlantBook minimum of 41 °F").click(); await settle(el);
+    expect(field(el, "Value").value).toBe("41");
+    dialogButton(el, "Add task").click(); await settle(el);
+    expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/create")).toMatchObject({ schedule: { kind: "reading", source: { entity_id: fahrenheit.entity_id }, condition: "below", value: 41, unit: "°F" } });
+  });
+
+  it("shows a reading task without Skip and without a next due sensor", async () => {
+    const backend = careBackend(plant({ species: withMinimum(5), care_tasks: [{ ...winter, last_done_at: "2026-10-12T08:00:00Z" }] }), () => [reading({ status: "waiting", reading: 3 })], [], temperatureReading);
+    const el = await open(backend);
+    expect(carePlan(el).textContent).toContain("Below 5 °C · Temperature");
+    expect(carePlan(el).textContent).toContain("Done Oct 12 · still cold");
+    expect([...carePlan(el).querySelectorAll("ha-dropdown.task-menu ha-dropdown-item")].map(item => item.getAttribute("value"))).toEqual(["mark_done", "edit", "automate", "delete"]);
+    await menu(el, 0, "automate");
+    expect(dialog(el)!.textContent).not.toContain("Next due date");
+    dialogButton(el, "Close").click(); await settle(el);
+    await menu(el, 0, "edit");
+    expect(field(el, "Value").value).toBe("5");
+    expect(dialog(el)!.textContent).toContain("From OpenPlantBook's minimum temperature.");
+    // Switching the schedule kind keeps the name and the instructions.
+    await typeInto(el, dialog(el)!.querySelector<HTMLInputElement>('input[type="text"]')!, "Cover the pot");
+    dialogButton(el, "Repeating").click(); await settle(el);
+    dialogButton(el, "Reading").click(); await settle(el);
+    expect(dialog(el)!.querySelector<HTMLInputElement>('input[type="text"]')!.value).toBe("Cover the pot");
+    dialogButton(el, "Save").click(); await settle(el);
+    expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/update")).toEqual({ type: "smart_plants/care_tasks/update", plant_id: sample.id, task_id: WINTER_ID, expected_revision: 1, name: "Cover the pot" });
+    // In the add step, the suggestion says the task already exists.
+    carePlan(el).querySelector<HTMLButtonElement>(".card-h button")!.click(); await settle(el);
+    expect(dialog(el)!.querySelector(".suggestions")!.textContent).toContain("Already in the care plan");
   });
 });

@@ -139,13 +139,28 @@ export interface YearlySchedule {
   start_month: number;
   end_month: number;
 }
-export type CareTaskType = "fertilize" | "prune" | "repot" | "pests" | "custom";
+// Due from a sensor reading instead of a date. A role source follows the
+// plant's sensors for that role and compares their normalized value; an
+// entity source compares that sensor converted into `unit`.
+export interface ReadingSchedule {
+  kind: "reading";
+  source: { role: string } | { entity_id: string };
+  condition: "below" | "above";
+  value: number;
+  unit: string | null;
+  // The reading must stay on the due side this long; 0 means at once.
+  for_minutes: number;
+  // Due again only after the reading passed this value; null means `value`.
+  reset_value: number | null;
+}
+export type CareSchedule = IntervalSchedule | YearlySchedule | ReadingSchedule;
+export type CareTaskType = "fertilize" | "prune" | "repot" | "pests" | "winter_protection" | "custom";
 export interface CareTask {
   id: string;
   type: CareTaskType;
   // null means the translated default name for the type.
   name: string | null;
-  schedule: IntervalSchedule | YearlySchedule;
+  schedule: CareSchedule;
   instructions: string | null;
   baseline_done_on: string | null;
   last_done_at: string | null;
@@ -153,12 +168,12 @@ export interface CareTask {
   created_on: string;
 }
 
-export type CareTaskStatus = "scheduled" | "due" | "overdue" | "resting" | "done" | "skipped" | "missed";
+export type CareTaskStatus = "scheduled" | "due" | "overdue" | "resting" | "done" | "skipped" | "missed" | "watching" | "waiting" | "no_reading";
 // Fields of `smart_plants/care_tasks/create`. Blank text is stored as null.
 export interface CareTaskInput {
   task_type: CareTaskType;
   name: string | null;
-  schedule: IntervalSchedule | YearlySchedule;
+  schedule: CareSchedule;
   instructions: string | null;
   baseline_done_on: string | null;
 }

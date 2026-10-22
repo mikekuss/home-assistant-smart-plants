@@ -139,14 +139,55 @@ state.seedCare = () => {
   registry(611, "sensor.office_aloe_fertilize_next_due", `care_task:${taskId(1)}:next`);
   registry(612, "binary_sensor.office_aloe_care_due", "care_due");
 };
+// Opt-in reading setup for the first plant: a balcony temperature sensor on
+// its temperature role (9 °C, or 3 °C with `cold`), an OpenPlantBook minimum
+// of 5 °C and a Fahrenheit sensor to pick as another sensor. `winter` adds a
+// Winter protection task due below 5 °C.
+state.seedReading = (cold = false, winter = false) => {
+  const p = state.plants[0];
+  p.roles.temperature = { ...copy(roleDefaults.temperature), sources: [{ entity_id: "sensor.balcony_temp", registry_id: uuid(106) }] };
+  state.entities.push(entity(106, "sensor.balcony_temp"), entity(107, "sensor.greenhouse_temp"));
+  state.states.push(sensor("sensor.balcony_temp", cold ? "3" : "9", { friendly_name: "Balcony temperature", unit_of_measurement: "°C", device_class: "temperature" }),
+    sensor("sensor.greenhouse_temp", "48.2", { friendly_name: "Greenhouse thermometer", unit_of_measurement: "°F", device_class: "temperature" }));
+  const snap = p.species.snapshot;
+  snap.min_temperature = 5; snap.field_sources = { ...snap.field_sources, min_temperature: attribution };
+  if (!winter) return;
+  p.care_tasks = [{ id: taskId(4), type: "winter_protection", name: null, schedule: { kind: "reading", source: { role: "temperature" }, condition: "below", value: 5, unit: "°C", for_minutes: 0, reset_value: null },
+    instructions: null, baseline_done_on: null, last_done_at: null, last_skipped_on: null, created_on: today() }];
+  const registry = (n, entityId, uniqueId) => state.entities.push({ id: uuid(n), entity_id: entityId, device_id: `device-${p.id}`, unique_id: `smart_plants:${p.id}:${uniqueId}`, platform: "smart_plants" });
+  registry(613, "binary_sensor.office_aloe_winter_protection", `care_task:${taskId(4)}:due`);
+  registry(612, "binary_sensor.office_aloe_care_due", "care_due");
+};
+// The current value of a reading task's source: the role's first sensor or the
+// sensor itself, as a number, else null.
+function sourceValue(p, source) {
+  const entityId = source.role ? p.roles[source.role]?.sources?.[0]?.entity_id : source.entity_id;
+  const raw = state.states.find(s => s.entity_id === entityId)?.state;
+  const value = raw === undefined || raw.trim() === "" ? NaN : Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+// A stand-in for the reading engine: due while the reading is on the due side,
+// waiting after Done until it is back past the value (no "only after" delay).
+function readingStateOf(p, task, base) {
+  const { condition, value, reset_value: reset, unit } = task.schedule;
+  const reading = sourceValue(p, task.schedule.source);
+  const extra = { next_due: null, days: null, reading, unit, due_since: null, due_at: null };
+  if (reading === null) return { ...base, ...extra, status: "no_reading", is_due: false };
+  const dueSide = condition === "below" ? reading < value : reading > value;
+  const safe = condition === "below" ? reading > (reset ?? value) : reading < (reset ?? value);
+  if (task.last_done_at && !safe) return { ...base, ...extra, status: "waiting", is_due: false };
+  if (dueSide) return { ...base, ...extra, status: "due", is_due: true, due_since: now };
+  return { ...base, ...extra, status: "watching", is_due: false };
+}
 // A small stand-in for the backend schedule engine, enough for the panel's
 // chips: never done is due today, then every interval counts from the latest
 // Done or Skip; yearly tasks open on the first day of their first month.
 const UNIT_DAYS = { days: 1, weeks: 7, months: 30, years: 365 };
 const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 86400000);
 const restMonths = rest => { const months = []; for (let m = rest.start_month; ; m = m % 12 + 1) { months.push(m); if (m === rest.end_month || months.length === 12) return months; } };
-function careStateOf(task, rest) {
-  const base = { task_id: task.id, type: task.type, name: task.name, window_end: null, resume_on: null };
+function careStateOf(task, rest, p) {
+  const base = { task_id: task.id, type: task.type, name: task.name, window_end: null, resume_on: null, reading: null, unit: null, due_since: null, due_at: null };
+  if (task.schedule.kind === "reading") return readingStateOf(p, task, base);
   const now = today();
   if (rest && task.schedule.kind === "interval" && task.schedule.growing_season_only && restMonths(rest).includes(Number(now.slice(5, 7)))) {
     const resume = rest.end_month % 12 + 1; const year = Number(now.slice(0, 4)) + (resume > Number(now.slice(5, 7)) ? 0 : 1);
@@ -180,10 +221,13 @@ function overviewOf(p) {
   return {
     plant_id: p.id, revision: p.revision, lifecycle_state: p.lifecycle_state, status,
     problems: kind ? [{ role: "moisture", kind }] : [],
-    roles: sources.length ? { moisture: { value: e.computed_available ? e.computed_percent : null, unit: "%", state: e.needs_water ? "low" : e.too_wet ? "high" : e.sensor_stale ? "stale" : e.computed_available ? "ok" : "unavailable", range: { min: bound("min"), target: bound("target"), max: bound("max") }, last_reported: e.computed_available ? now : null, sources: sources.map(s => s.entity_id) } } : {},
+    roles: {
+      ...sources.length ? { moisture: { value: e.computed_available ? e.computed_percent : null, unit: "%", state: e.needs_water ? "low" : e.too_wet ? "high" : e.sensor_stale ? "stale" : e.computed_available ? "ok" : "unavailable", range: { min: bound("min"), target: bound("target"), max: bound("max") }, last_reported: e.computed_available ? now : null, sources: sources.map(s => s.entity_id) } } : {},
+      ...p.roles.temperature?.sources?.length ? { temperature: { value: sourceValue(p, { role: "temperature" }), unit: "°C", state: "ok", range: { min: 10, target: null, max: 30 }, last_reported: now, sources: p.roles.temperature.sources.map(s => s.entity_id) } } : {},
+    },
     last_watered_at: watered?.occurred_at ?? null,
     image: p.image ? { id: p.image.id } : null,
-    care: (p.care_tasks ?? []).map(task => careStateOf(task, p.rest_period)).sort((a, b) => ({ overdue: 0, due: 1 }[a.status] ?? 2) - ({ overdue: 0, due: 1 }[b.status] ?? 2) || (a.next_due ?? "").localeCompare(b.next_due ?? "")),
+    care: (p.care_tasks ?? []).map(task => careStateOf(task, p.rest_period, p)).sort((a, b) => ({ overdue: 0, due: 1 }[a.status] ?? 2) - ({ overdue: 0, due: 1 }[b.status] ?? 2) || (a.next_due ?? "").localeCompare(b.next_due ?? "")),
     rest_period: p.rest_period ?? null,
     resting: !!p.rest_period && restMonths(p.rest_period).includes(Number(today().slice(5, 7))),
   };
@@ -203,6 +247,7 @@ state.seedSuggestions = () => {
   snap.field_sources = { ...snap.field_sources, fertilization: attribution, pruning: attribution, soil: attribution };
 };
 if (params.has("care")) state.seedCare();
+if (params.has("reading")) state.seedReading(params.has("cold"), params.has("winter"));
 if (params.has("suggest")) state.seedSuggestions();
 const drafts = new Map();
 const previews = new Map();

@@ -144,3 +144,87 @@ test("automate sheet lists the task entities", async ({ page }, info) => {
   await dialogButton(page, "Close").click();
   await expect(dialog(page)).toHaveCount(0);
 });
+
+// Reading tasks: the plant's balcony sensor reads 9 °C (3 °C with `cold`), and
+// OpenPlantBook says the species grows above 5 °C. Mobile runs at 390 px.
+async function openReading(page: Page, info: TestInfo, query: string) {
+  if (info.project.name === "mobile") await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${url}?seed&reading${query}`);
+  await expect(button(page, "Menu")).toBeVisible();
+  await button(page, "Office Aloe").click();
+  await page.getByRole("tab", { name: "Care", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Care plan", exact: true })).toBeVisible();
+}
+const harnessMessages = (page: Page) => page.evaluate(() => (window as unknown as { __smartPlantsHarness: { messages: Record<string, unknown>[] } }).__smartPlantsHarness.messages);
+async function noHorizontalScroll(page: Page) {
+  const overflow = await dialog(page).evaluate(element => element.scrollWidth - element.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+}
+
+test("winter protection is added from the OpenPlantBook minimum temperature", async ({ page }, info) => {
+  await openReading(page, info, "");
+  await page.locator("smart-plants-panel .care-plan").getByRole("button", { name: "Add task", exact: true }).click();
+  const box = dialog(page).locator(".suggestions");
+  await expect(box).toContainText("OpenPlantBook · minimum temperature");
+  await expect(box).toContainText("Grows above 5 °C");
+  await expect(dialogButton(page, "Winter protection When it gets cold")).toBeEnabled();
+  await audit(page, info, "reading-suggestion");
+  await dialogButton(page, "Add winter protection").click();
+  await expect(dialogButton(page, "Reading")).toHaveAttribute("aria-pressed", "true");
+  await expect(dialog(page).getByRole("combobox", { name: "Reading", exact: true })).toHaveValue("role:temperature");
+  await expect(dialog(page).getByRole("textbox", { name: "Value °C", exact: true })).toHaveValue("5");
+  await expect(dialog(page)).toContainText("From OpenPlantBook's minimum temperature.");
+  await expect(dialog(page).locator(".task-summary")).toContainText("Winter protection · When the temperature is below 5 °C");
+  await dialog(page).getByRole("button", { name: /More options/ }).click();
+  await dialog(page).getByRole("textbox", { name: "Due again after above °C", exact: true }).fill("3");
+  await dialogButton(page, "Add task").click();
+  await expect(dialog(page)).toContainText("Enter the value or a higher number.");
+  await noHorizontalScroll(page);
+  await audit(page, info, "reading-editor-error");
+  await dialog(page).getByRole("textbox", { name: "Due again after above °C", exact: true }).fill("8");
+  await dialog(page).getByRole("spinbutton", { name: "Only after (optional) h", exact: true }).fill("2");
+  await expect(dialog(page).locator(".task-summary")).toContainText("When the temperature is below 5 °C · for 2 h · due again above 8 °C");
+  await dialogButton(page, "Add task").click();
+  await expect(dialog(page)).toHaveCount(0);
+  const created = (await harnessMessages(page)).find(m => m.type === "smart_plants/care_tasks/create");
+  expect(created).toMatchObject({ task_type: "winter_protection", name: null, baseline_done_on: null,
+    schedule: { kind: "reading", source: { role: "temperature" }, condition: "below", value: 5, unit: "°C", for_minutes: 120, reset_value: 8 } });
+  const plan = page.locator("smart-plants-panel .care-plan");
+  await expect(plan).toContainText("Below 5 °C · Temperature");
+  await expect(plan).toContainText("Not needed · 9 °C");
+  await audit(page, info, "reading-row");
+});
+
+test("a due reading task is marked done and waits for warmer readings", async ({ page }, info) => {
+  await openReading(page, info, "&winter&cold");
+  const plan = page.locator("smart-plants-panel .care-plan");
+  await expect(plan).toContainText("Due · 3 °C");
+  const items = await plan.locator("ha-dropdown.task-menu ha-dropdown-item").evaluateAll(nodes => nodes.map(node => node.getAttribute("value")));
+  expect(items).toEqual(["mark_done", "edit", "automate", "delete"]);
+  await audit(page, info, "reading-due");
+  await button(page, "Mark Winter protection as done").click();
+  await expect(plan).toContainText("· still cold");
+  await expect(plan).toContainText(/Done \w+ \d+ · still cold/);
+  await expect(button(page, "Mark Winter protection as done")).toHaveCount(0);
+  await plan.locator("ha-dropdown.task-menu").first().evaluate(menu => menu.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value: "automate" } } })));
+  await expect(dialog(page)).toContainText("binary_sensor.office_aloe_winter_protection");
+  await expect(dialog(page)).not.toContainText("Next due date");
+});
+
+test("a reading task can follow another sensor in its own unit", async ({ page }, info) => {
+  await openReading(page, info, "&winter");
+  await page.locator("smart-plants-panel .care-plan ha-dropdown.task-menu").first().evaluate(menu => menu.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value: "edit" } } })));
+  await expect(dialog(page).getByRole("textbox", { name: "Value °C", exact: true })).toHaveValue("5");
+  await dialog(page).getByRole("combobox", { name: "Reading", exact: true }).selectOption("other");
+  await dialog(page).locator("ha-entity-picker").getByRole("combobox").selectOption("sensor.greenhouse_temp");
+  await expect(dialog(page).getByRole("textbox", { name: "Value °F", exact: true })).toHaveValue("41");
+  await expect(dialog(page)).toContainText("From OpenPlantBook's minimum temperature.");
+  await expect(dialog(page)).toContainText("Greenhouse thermometer");
+  await noHorizontalScroll(page);
+  await audit(page, info, "reading-other-sensor");
+  await dialogButton(page, "Save").click();
+  await expect(dialog(page)).toHaveCount(0);
+  const updated = (await harnessMessages(page)).find(m => m.type === "smart_plants/care_tasks/update");
+  expect(updated).toMatchObject({ schedule: { kind: "reading", source: { entity_id: "sensor.greenhouse_temp" }, condition: "below", value: 41, unit: "°F", for_minutes: 0, reset_value: null } });
+  await expect(page.locator("smart-plants-panel .care-plan")).toContainText("Below 41 °F · Greenhouse thermometer");
+});

@@ -50,7 +50,9 @@ describe("parseOverview care fields", () => {
     care: [due, resting, yearly], rest_period: { start_month: 6, end_month: 8 }, resting: true };
   it("keeps the backend order of care tasks and the rest period", () => {
     const parsed = parseOverview(raw)!;
-    expect(parsed.care).toEqual([due, resting, yearly]);
+    // Backends without reading tasks omit the reading fields; they parse as null.
+    const none = { reading: null, unit: null, due_since: null, due_at: null };
+    expect(parsed.care).toEqual([{ ...due, ...none }, { ...resting, ...none }, { ...yearly, ...none }]);
     expect(parsed.rest_period).toEqual({ start_month: 6, end_month: 8 });
     expect(parsed.resting).toBe(true);
     expect(parseOverview({ ...raw, care: [], rest_period: null, resting: false })).toMatchObject({ care: [], rest_period: null, resting: false });
@@ -61,6 +63,18 @@ describe("parseOverview care fields", () => {
     { rest_period: { start_month: 6, end_month: 8, kind: "yearly" } },
   ])("rejects malformed overview care fields %#", change => {
     expect(parseOverview({ ...raw, ...change })).toBeNull();
+  });
+  it("parses the state of a reading task", () => {
+    const watching = { task_id: "2c9e6679742540de944be07fc1f90ae7", type: "winter_protection", name: null, status: "watching", is_due: false, next_due: null, days: null, window_end: null, resume_on: null,
+      reading: 9.5, unit: "°C", due_since: null, due_at: "2026-11-12T22:10:00+00:00" };
+    expect(parseOverview({ ...raw, care: [watching] })!.care).toEqual([watching]);
+    for (const status of ["waiting", "no_reading"]) expect(parseOverview({ ...raw, care: [{ ...watching, status, reading: null }] })).not.toBeNull();
+    expect(parseOverview({ ...raw, care: [{ ...watching, status: "due", is_due: true, due_since: "2026-11-12T20:10:00+00:00" }] })).not.toBeNull();
+  });
+  it.each([
+    { reading: "9" }, { reading: Number.NaN }, { unit: 5 }, { due_since: "yesterday" }, { due_at: 1 }, { status: "watching", is_due: true }, { status: "due", is_due: false },
+  ])("rejects a malformed reading task summary %#", change => {
+    expect(parseOverview({ ...raw, care: [{ ...due, status: "watching", is_due: false, ...change }] })).toBeNull();
   });
   it.each([
     { task_id: "short" }, { type: "water" }, { type: "custom", name: null }, { name: "" }, { name: "x".repeat(61) }, { status: "late" },

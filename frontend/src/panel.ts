@@ -783,7 +783,7 @@ export class SmartPlantsPanel extends LitElement {
       return event.kind === "task" && task ? taskName(l, task) : kindLabel(event.kind);
     };
     const today = this._today();
-    return html`${renderCarePlan({ l, plant, overview: this._overview[plant.id], today, timeZone: this._timeZone(), disabled: busy || this._blocked, pending: this._carePending,
+    return html`${renderCarePlan({ l, plant, overview: this._overview[plant.id], today, timeZone: this._timeZone(), states: this._states, disabled: busy || this._blocked, pending: this._carePending,
         onAdd: () => this._openTaskEditor(), onRest: () => this._openRestEditor(plant), onDone: task => void this._completeTask(plant.id, task), onAction: (task, action) => this._taskAction(plant, task, action) })}
       <div class="care-bar"><div class="row" role="group" aria-label=${l.t("care.filter_label")}>${filters.map(([kind, label]) => html`<button type="button" class="fchip" aria-pressed=${this._careFilter === kind ? "true" : "false"} @click=${() => { this._careFilter = kind; }}>${label}</button>`)}</div>
         <span class="spacer"></span><button type="button" class="btn filled" ?disabled=${this._blocked} @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("detail.log_care")}</button></div>
@@ -1034,7 +1034,7 @@ export class SmartPlantsPanel extends LitElement {
     if (!editor || !hass || this._formBusy || this._blocked) return;
     const checked = validateDraft(editor.draft, this._today());
     if (!checked.input) {
-      this._setTaskEditor({ errors: checked.errors, moreOpen: editor.moreOpen || !!checked.errors.lastDone });
+      this._setTaskEditor({ errors: checked.errors, moreOpen: editor.moreOpen || !!checked.errors.lastDone || !!checked.errors.forHours || !!checked.errors.resetValue });
       void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("dialog [aria-invalid=true], dialog .monthpick button")?.focus());
       return;
     }
@@ -1168,9 +1168,10 @@ export class SmartPlantsPanel extends LitElement {
   private _automateRows(plant: PlantRecord, task: CareTask): AutomateRow[] {
     const l = this._l; const ids = taskEntityUniqueIds(plant.id, task.id);
     const entityId = (uniqueId: string) => this._entities.find(entity => entity.platform === "smart_plants" && entity.unique_id === uniqueId)?.entity_id ?? null;
+    // Reading tasks have no next due date and no next due sensor.
     return [
       { icon: "mdi:toggle-switch-outline", entityId: entityId(ids.due), description: l.t("care_plan.automate_due", { name: taskName(l, task) }) },
-      { icon: "mdi:calendar-clock", entityId: entityId(ids.next), description: l.t("care_plan.automate_next"), note: l.t("care_plan.automate_next_disabled") },
+      ...task.schedule.kind === "reading" ? [] : [{ icon: "mdi:calendar-clock", entityId: entityId(ids.next), description: l.t("care_plan.automate_next"), note: l.t("care_plan.automate_next_disabled") }],
       { icon: "mdi:calendar-check-outline", entityId: entityId(ids.careDue), description: l.t("care_plan.automate_care_due") },
     ];
   }
@@ -1187,9 +1188,11 @@ export class SmartPlantsPanel extends LitElement {
     if (this._dialog === "care_task" && this._taskEditor) {
       const editor = this._taskEditor;
       title = taskEditorTitle(l, editor);
-      body = renderTaskEditor({ l, plant, state: editor, today: this._today(), busy: this._formBusy || this._blocked,
-        onPreset: type => this._setTaskEditor({ step: 2, draft: presetDraft(type), errors: {}, error: "", moreOpen: false }, true),
-        onSuggestion: (type, text) => this._setTaskEditor({ step: 2, draft: suggestionDraft(type, text), errors: {}, error: "", moreOpen: false }, true),
+      body = renderTaskEditor({ l, plant, overview: this._overview[plant.id], hass: this.hass, states: this._states, state: editor, today: this._today(), busy: this._formBusy || this._blocked,
+        onPreset: type => this._setTaskEditor({ step: 2, draft: presetDraft(type, plant), errors: {}, error: "", moreOpen: false, otherSensor: false }, true),
+        onSuggestion: (type, text) => this._setTaskEditor({ step: 2, draft: suggestionDraft(type, text, plant), errors: {}, error: "", moreOpen: false, otherSensor: false }, true),
+        onDraft: draft => this._setTaskEditor({ step: 2, draft, errors: {}, error: "", moreOpen: false, otherSensor: false }, true),
+        onEditor: changes => this._setTaskEditor(changes),
         onExpand: type => this._setTaskEditor({ expanded: type }),
         onBack: () => this._setTaskEditor({ step: 1, errors: {}, error: "" }, true),
         onChange: changes => this._editTaskDraft(changes),
@@ -1732,7 +1735,7 @@ export class SmartPlantsPanel extends LitElement {
     const today = this._today();
     const chips = due.slice(0, 2).map(state => {
       const task = plant.care_tasks?.find(item => item.id === state.task_id);
-      const chip = task ? taskChip(l, state, task.schedule, today) : null;
+      const chip = task ? taskChip(l, state, task.schedule, today, { lastDoneAt: task.last_done_at, timeZone: this._timeZone() }) : null;
       return html`<li class="cchip tone-${chip?.tone ?? "care"}"><ha-icon aria-hidden="true" .icon=${chip?.icon ?? "mdi:calendar-clock"}></ha-icon><span>${summaryName(l, state)}${chip?.tone === "overdue" ? html`<span class="sr-only"> (${chip.text})</span>` : nothing}</span></li>`;
     });
     return html`<ul class="care-chips" aria-label=${l.t("care_plan.due_chips_label")}>${chips}${due.length > 2 ? html`<li class="cchip tone-later"><span aria-hidden="true">+${l.number(due.length - 2)}</span><span class="sr-only">${l.t("care_plan.more_due", { count: due.length - 2 })}</span></li>` : nothing}</ul>`;
