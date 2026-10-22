@@ -2,11 +2,13 @@
 // Automate… sheet. Pure render functions: the panel owns state and writes.
 import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
-import { CARE_TASK_TYPES, INTERVAL_UNITS, MAX_CARE_TASKS, TASK_ICONS, TASK_INSTRUCTIONS_MAX, TASK_NAME_MAX, careNote, careSuggestions, draftSummary, existingTypes, inRestPeriod, lastDone, monthName, monthRange, monthsInRange, presetDraft, restSentence, scheduleText, shortDate, taskChip, taskName } from "../care-plan.js";
-import type { DraftErrors, RestDraft, TaskDraft } from "../care-plan.js";
+import { CARE_TASK_TYPES, INTERVAL_UNITS, MAX_CARE_TASKS, MAX_FOR_HOURS, ROLE_UNITS, TASK_ICONS, TASK_INSTRUCTIONS_MAX, TASK_NAME_MAX, careNote, careSuggestions, draftSummary, existingTypes, inRestPeriod, isSourceRole, lastDone, minTemperature, monthName, monthRange, monthsInRange, numericSensor, parseNumber, pickSource, plantReadingRoles, presetDraft, readingSuggestion, readingValue, restSentence, scheduleText, shortDate, sourceName, sourceUnit, taskChip, taskName, winterDraft } from "../care-plan.js";
+import type { DraftErrors, ReadingSourceRole, RestDraft, TaskDraft } from "../care-plan.js";
+import { isDefined } from "../ha-elements.js";
 import type { Localizer } from "../localize.js";
 import type { PlantOverview } from "../overview-model.js";
-import type { CareTask, CareTaskType, PlantRecord } from "../types.js";
+import { readingLabel } from "../status.js";
+import type { CareTask, CareTaskType, HAState, HomeAssistantLike, PlantRecord } from "../types.js";
 
 export type TaskAction = "mark_done" | "skip" | "edit" | "automate" | "delete";
 
@@ -17,6 +19,8 @@ export interface CarePlanContext {
   // Today in the Home Assistant time zone (YYYY-MM-DD).
   today: string;
   timeZone?: string | undefined;
+  // Home Assistant states, for the names of sensors that reading tasks follow.
+  states?: Record<string, HAState> | undefined;
   disabled: boolean;
   // Tasks with a write in flight.
   pending: ReadonlySet<string>;
@@ -65,12 +69,13 @@ function taskRow(ctx: CarePlanContext, task: CareTask): TemplateResult {
   const { l } = ctx;
   const name = taskName(l, task);
   const state = ctx.overview?.care.find(item => item.task_id === task.id);
-  const chip = state ? taskChip(l, state, task.schedule, ctx.today) : null;
+  const chip = state ? taskChip(l, state, task.schedule, ctx.today, { lastDoneAt: task.last_done_at, timeZone: ctx.timeZone }) : null;
   const done = lastDone(task, ctx.timeZone);
   const busy = ctx.disabled || ctx.pending.has(task.id);
+  // Reading tasks have no Skip: the next reading decides when they are due.
   const actions: [TaskAction, string, string][] = [
     ["mark_done", "care_plan.menu_mark_done", "mdi:check-circle-outline"],
-    ["skip", "care_plan.menu_skip", "mdi:skip-next-outline"],
+    ...task.schedule.kind === "reading" ? [] : [["skip", "care_plan.menu_skip", "mdi:skip-next-outline"] as [TaskAction, string, string]],
     ["edit", "care_plan.menu_edit", "mdi:pencil-outline"],
     ["automate", "care_plan.menu_automate", "mdi:robot-outline"],
     ["delete", "care_plan.menu_delete", "mdi:delete-outline"],
@@ -78,7 +83,7 @@ function taskRow(ctx: CarePlanContext, task: CareTask): TemplateResult {
   return html`<li class="li task">
     <span class="ic tonal" aria-hidden="true"><ha-icon .icon=${TASK_ICONS[task.type]}></ha-icon></span>
     <span class="li-main"><span class="li-title">${name}</span>
-      <span class="li-sub">${scheduleText(l, task.schedule, ctx.plant.rest_period ?? null)} · ${done ? l.t("care_plan.last_done", { date: shortDate(l, done, ctx.today) }) : l.t("care_plan.never_done")}</span></span>
+      <span class="li-sub">${scheduleText(l, task.schedule, ctx.plant.rest_period ?? null, ctx.states)} · ${done ? l.t("care_plan.last_done", { date: shortDate(l, done, ctx.today) }) : l.t("care_plan.never_done")}</span></span>
     <span class="task-side">${chip ? html`<span class="cchip tone-${chip.tone}"><ha-icon aria-hidden="true" .icon=${chip.icon}></ha-icon><span>${chip.text}</span></span>` : nothing}
       ${state?.is_due ? html`<button type="button" class="btn tonal sm" ?disabled=${busy} aria-label=${l.t("care_plan.done_label", { name })} @click=${() => ctx.onDone(task)}><ha-icon aria-hidden="true" icon="mdi:check"></ha-icon>${l.t("care_plan.done")}</button>` : nothing}</span>
     <ha-dropdown class="task-menu" @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => ctx.onAction(task, e.detail.item.value as TaskAction)}>
@@ -101,16 +106,27 @@ export interface TaskEditorState {
   moreOpen: boolean;
   // The suggestion whose care text is shown in full in step 1.
   expanded?: CareTaskType | null;
+  // "Any other sensor" is picked for a reading task.
+  otherSensor?: boolean;
 }
 
 export interface TaskEditorContext {
   l: Localizer;
   plant: PlantRecord;
+  // The plant's current readings, shown next to its sensors.
+  overview?: PlantOverview | undefined;
+  hass?: HomeAssistantLike | undefined;
+  // Home Assistant states, for sensors that reading tasks can follow.
+  states?: Record<string, HAState> | undefined;
   state: TaskEditorState;
   today: string;
   busy: boolean;
   onPreset: (type: CareTaskType) => void;
   onSuggestion: (type: CareTaskType, text: string) => void;
+  // Opens step 2 with a prepared draft, such as winter protection from the
+  // species' minimum temperature.
+  onDraft: (draft: TaskDraft) => void;
+  onEditor: (changes: Partial<TaskEditorState>) => void;
   onExpand: (type: CareTaskType | null) => void;
   onBack: () => void;
   onChange: (changes: Partial<TaskDraft>) => void;
@@ -133,9 +149,11 @@ function presetStep(ctx: TaskEditorContext): TemplateResult {
   const { l, plant } = ctx;
   const taken = existingTypes(plant.care_tasks ?? []);
   const suggestions = careSuggestions(plant);
+  const minTemp = minTemperature(plant);
+  const winter = minTemp === null ? null : winterDraft(plant);
   const species = plant.species?.snapshot.latin_name ?? plant.species?.snapshot.common_name ?? "";
   return html`<p class="muted">${l.t("care_plan.add_intro")}</p>
-    ${suggestions.length ? html`<section class="suggestions" aria-labelledby="suggestions-heading">
+    ${suggestions.length || winter ? html`<section class="suggestions" aria-labelledby="suggestions-heading">
       <h4 id="suggestions-heading"><ha-icon aria-hidden="true" icon="mdi:auto-fix"></ha-icon><span>${l.t("care_plan.suggestions_for")} <i>${species}</i></span></h4>
       ${suggestions.map(({ type, text }) => {
         const name = l.t(`care_task_type.${type}`);
@@ -148,12 +166,18 @@ function presetStep(ctx: TaskEditorContext): TemplateResult {
           ${taken.has(type) ? html`<span class="small muted">${l.t("care_plan.preset_exists")}</span>`
             : html`<button type="button" class="btn tonal sm" ?disabled=${ctx.busy} @click=${() => ctx.onSuggestion(type, text)}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("care_plan.suggestion_add", { name })}</button>`}
         </div>`;
-      })}</section>
+      })}
+      ${winter && minTemp !== null ? html`<div class="suggestion">
+          <div class="suggestion-main"><span class="suggestion-source"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon>${l.t("care_plan.suggestion_source", { topic: l.t("care_plan.note_min_temperature") })}</span>
+            <span class="suggestion-value">${l.t("care_plan.grows_above", { value: readingValue(l, minTemp, "°C") })}</span></div>
+          ${taken.has("winter_protection") ? html`<span class="small muted">${l.t("care_plan.preset_exists")}</span>`
+            : html`<button type="button" class="btn tonal sm" ?disabled=${ctx.busy} @click=${() => ctx.onDraft(winter)}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("care_plan.suggestion_add_winter")}</button>`}
+        </div>` : nothing}</section>
       <span class="field-label">${l.t("care_plan.from_scratch")}</span>` : nothing}
     <div class="presets" role="list">${CARE_TASK_TYPES.map(type => {
       const exists = taken.has(type);
       const description = exists ? l.t("care_plan.preset_exists")
-        : type === "custom" ? l.t("care_plan.preset_custom") : scheduleText(l, scheduleOf(presetDraft(type)), plant.rest_period ?? null);
+        : type === "custom" ? l.t("care_plan.preset_custom") : type === "winter_protection" ? l.t("care_plan.preset_winter") : scheduleText(l, scheduleOf(presetDraft(type)), plant.rest_period ?? null);
       return html`<div role="listitem"><button type="button" class="preset" ?disabled=${exists || ctx.busy} @click=${() => ctx.onPreset(type)}>
         <span class="ic tonal" aria-hidden="true"><ha-icon .icon=${TASK_ICONS[type]}></ha-icon></span>
         <span class="preset-text"><span class="preset-name">${l.t(`care_task_type.${type}`)}</span><span class="preset-d">${description}</span></span></button></div>`;
@@ -163,6 +187,84 @@ function presetStep(ctx: TaskEditorContext): TemplateResult {
 
 // Care texts longer than this are clamped to three lines with Show more.
 const NOTE_CLAMP_CHARS = 160;
+
+// The reading picker, the condition and value, and the OpenPlantBook
+// suggestion line of a reading task.
+function readingFields(ctx: TaskEditorContext, err: (field: keyof DraftErrors) => string | undefined): TemplateResult {
+  const { l, plant, state } = ctx;
+  const draft = state.draft; const errors = state.errors; const states = ctx.states;
+  const roles: ReadingSourceRole[] = plantReadingRoles(plant);
+  // A task can follow a role whose sensors were removed since; keep it listed.
+  if (draft.role && isSourceRole(draft.role) && !roles.includes(draft.role)) roles.push(draft.role);
+  const other = !draft.role && (!!draft.entityId || !!state.otherSensor);
+  const selected = draft.role ? `role:${draft.role}` : other ? "other" : "";
+  const roleText = (role: ReadingSourceRole) => {
+    const value = ctx.overview?.roles[role]?.value;
+    return typeof value === "number" ? l.t("care_plan.reading_role_value", { role: readingLabel(l, role), value: readingValue(l, value, ROLE_UNITS[role]) }) : readingLabel(l, role);
+  };
+  const pick = (value: string) => {
+    if (value === "other") { ctx.onEditor({ otherSensor: true }); ctx.onChange(pickSource(draft, null, null, plant)); return; }
+    const role = value.slice(5);
+    if (!isSourceRole(role)) return;
+    ctx.onEditor({ otherSensor: false });
+    ctx.onChange(pickSource(draft, { role }, ROLE_UNITS[role], plant));
+  };
+  const pickEntity = (entityId: string) => { if (entityId) ctx.onChange(pickSource(draft, { entity_id: entityId }, sourceUnit({ entity_id: entityId }, states), plant)); };
+  const unit = draft.readingUnit ?? "";
+  const suggestion = readingSuggestion(plant, draft, states);
+  const value = parseNumber(draft.value);
+  return html`<label>${l.t("care_plan.reading")}<select aria-invalid=${errors.source ? "true" : "false"} aria-describedby=${errors.source ? "task-source-error" : nothing} @change=${(e: Event) => pick((e.target as HTMLSelectElement).value)}>
+      <option value="" disabled ?selected=${selected === ""}>${l.t("care_plan.reading_choose")}</option>
+      ${roles.length ? html`<optgroup label=${l.t("care_plan.reading_group_plant")}>${roles.map(role => html`<option value="role:${role}" ?selected=${selected === `role:${role}`}>${roleText(role)}</option>`)}</optgroup>` : nothing}
+      <optgroup label=${l.t("care_plan.reading_group_other")}><option value="other" ?selected=${selected === "other"}>${l.t("care_plan.reading_other")}</option></optgroup></select></label>
+    ${other ? entityPicker(ctx, pickEntity) : nothing}
+    ${fieldError("task-source-error", err("source"))}
+    <div class="grid2">
+      <label>${l.t("care_plan.due_when")}<select @change=${(e: Event) => ctx.onChange({ condition: (e.target as HTMLSelectElement).value === "above" ? "above" : "below" })}>
+        <option value="below" ?selected=${draft.condition === "below"}>${l.t("care_plan.below")}</option>
+        <option value="above" ?selected=${draft.condition === "above"}>${l.t("care_plan.above")}</option></select></label>
+      <label>${l.t("care_plan.value")}<span class="suffix-field"><input type="text" inputmode="decimal" required .value=${draft.value} placeholder=${l.t("care_plan.value_placeholder")}
+          aria-invalid=${errors.value ? "true" : "false"} aria-describedby=${errors.value ? "task-value-error" : nothing}
+          @input=${(e: Event) => ctx.onChange({ value: (e.target as HTMLInputElement).value })}>${unit ? html`<span class="suffix">${unit}</span>` : nothing}</span></label></div>
+    ${fieldError("task-value-error", err("value"))}
+    ${suggestion === null ? nothing : value === suggestion
+      ? html`<div class="note-hint small"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.min_temp_applied")}</span></div>`
+      : html`<div class="note-hint small"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.min_temp_hint", { value: readingValue(l, suggestion, draft.readingUnit ?? "°C") })}</span>
+          <button type="button" class="btn text sm" ?disabled=${ctx.busy} aria-label=${l.t("care_plan.min_temp_use_label", { value: readingValue(l, suggestion, draft.readingUnit ?? "°C") })} @click=${() => ctx.onChange({ value: String(suggestion) })}>${l.t("care_plan.min_temp_use")}</button></div>`}`;
+}
+
+// "Any other sensor": Home Assistant's entity picker limited to sensors with
+// a numeric state, or a plain list when the picker is not available.
+function entityPicker(ctx: TaskEditorContext, pick: (entityId: string) => void): TemplateResult {
+  const { l } = ctx; const draft = ctx.state.draft; const states = ctx.states;
+  const chosen = draft.entityId ? html`<span class="small muted chosen-sensor">${sourceName(l, { entity_id: draft.entityId }, states)} · <code>${draft.entityId}</code></span>` : nothing;
+  if (isDefined("ha-entity-picker") && ctx.hass) {
+    return html`<ha-entity-picker .hass=${ctx.hass} .label=${l.t("care_plan.reading_sensor")} .placeholder=${l.t("wizard.search_sensors")} .value=${draft.entityId ?? ""} .includeDomains=${["sensor"]}
+      .entityFilter=${(s: HAState) => numericSensor(s)} @value-changed=${(e: CustomEvent<{ value?: string }>) => pick(e.detail.value ?? "")}></ha-entity-picker>${chosen}`;
+  }
+  const sensors = Object.values(states ?? {}).filter(numericSensor).sort((a, b) => sourceName(l, { entity_id: a.entity_id }, states).localeCompare(sourceName(l, { entity_id: b.entity_id }, states)));
+  return html`<label>${l.t("care_plan.reading_sensor")}<select @change=${(e: Event) => pick((e.target as HTMLSelectElement).value)}>
+    <option value="" disabled ?selected=${!draft.entityId}>${sensors.length ? l.t("care_plan.reading_choose") : l.t("care_plan.reading_no_sensors")}</option>
+    ${sensors.map(s => html`<option value=${s.entity_id} ?selected=${s.entity_id === draft.entityId}>${sourceName(l, { entity_id: s.entity_id }, states)}</option>`)}</select></label>`;
+}
+
+// More options of a reading task: the "only after" delay and the value the
+// reading must pass before the task can be due again.
+function readingMore(ctx: TaskEditorContext, err: (field: keyof DraftErrors) => string | undefined): TemplateResult {
+  const { l } = ctx; const draft = ctx.state.draft; const errors = ctx.state.errors;
+  const unit = draft.readingUnit ?? "";
+  const describe = (hint: string, error: boolean, id: string) => error ? `${hint} ${id}` : hint;
+  return html`<div id="task-more"><div class="grid2">
+      <label>${l.t("care_plan.for_hours")}<span class="suffix-field"><input type="number" inputmode="numeric" min="0" max=${MAX_FOR_HOURS} step="1" .value=${draft.forHours}
+          aria-invalid=${errors.forHours ? "true" : "false"} aria-describedby=${describe("task-for-hint", !!errors.forHours, "task-for-error")}
+          @input=${(e: Event) => ctx.onChange({ forHours: (e.target as HTMLInputElement).value })}><span class="suffix">${l.t("care_plan.hours")}</span></span></label>
+      <label>${l.t(draft.condition === "below" ? "care_plan.reset_after_above" : "care_plan.reset_after_below")}<span class="suffix-field"><input type="text" inputmode="decimal" .value=${draft.resetValue} placeholder=${draft.value.trim()}
+          aria-invalid=${errors.resetValue ? "true" : "false"} aria-describedby=${describe("task-reset-hint", !!errors.resetValue, "task-reset-error")}
+          @input=${(e: Event) => ctx.onChange({ resetValue: (e.target as HTMLInputElement).value })}>${unit ? html`<span class="suffix">${unit}</span>` : nothing}</span></label></div>
+    ${fieldError("task-for-error", err("forHours"))}${fieldError("task-reset-error", err("resetValue"))}
+    <span class="small muted" id="task-for-hint">${l.t("care_plan.for_hours_hint")}</span>
+    <span class="small muted" id="task-reset-hint">${l.t("care_plan.reset_hint")}</span></div>`;
+}
 
 function scheduleOf(draft: TaskDraft) {
   return draft.mode === "yearly"
@@ -184,9 +286,11 @@ function detailsStep(ctx: TaskEditorContext): TemplateResult {
   const selected = draft.startMonth !== null && draft.endMonth !== null ? new Set(monthsInRange(draft.startMonth, draft.endMonth)) : new Set<number>();
   const input = (e: Event) => (e.target as HTMLInputElement).value;
   const note = careNote(plant, draft.type);
+  const reading = draft.mode === "reading";
+  const moreOpen = state.moreOpen || !!errors.lastDone || !!errors.forHours || !!errors.resetValue;
   return html`${state.error ? html`<p class="error" role="alert">${state.error}</p>` : nothing}
     <div class="task-summary"><ha-icon aria-hidden="true" .icon=${TASK_ICONS[draft.type]}></ha-icon>
-      <span><span class="summary-name">${draft.name.trim() || typeName}</span> · ${draftSummary(l, draft, rest)}</span></div>
+      <span><span class="summary-name">${draft.name.trim() || typeName}</span> · ${draftSummary(l, draft, rest, ctx.states)}</span></div>
     <label>${custom ? l.t("care_plan.name") : l.t("care_plan.name_optional")}
       <input type="text" maxlength=${TASK_NAME_MAX} .value=${draft.name} placeholder=${custom ? "" : typeName} ?required=${custom}
         aria-invalid=${errors.name ? "true" : "false"} aria-describedby=${errors.name ? "task-name-error" : nothing}
@@ -195,8 +299,9 @@ function detailsStep(ctx: TaskEditorContext): TemplateResult {
     <div class="field-group"><span class="field-label" id="task-mode-label">${l.t("care_plan.when_due")}</span>
       <div class="seg" role="group" aria-labelledby="task-mode-label">
         <button type="button" aria-pressed=${draft.mode === "interval" ? "true" : "false"} @click=${() => ctx.onChange({ mode: "interval" })}>${l.t("care_plan.mode_interval")}</button>
-        <button type="button" aria-pressed=${draft.mode === "yearly" ? "true" : "false"} @click=${() => ctx.onChange({ mode: "yearly" })}>${l.t("care_plan.mode_yearly")}</button></div></div>
-    ${draft.mode === "interval" ? html`<div class="grid2">
+        <button type="button" aria-pressed=${draft.mode === "yearly" ? "true" : "false"} @click=${() => ctx.onChange({ mode: "yearly" })}>${l.t("care_plan.mode_yearly")}</button>
+        <button type="button" aria-pressed=${reading ? "true" : "false"} @click=${() => ctx.onChange({ mode: "reading" })}>${l.t("care_plan.mode_reading")}</button></div></div>
+    ${reading ? readingFields(ctx, err) : draft.mode === "interval" ? html`<div class="grid2">
         <label>${l.t("care_plan.every")}<input type="number" inputmode="numeric" min="1" max="999" step="1" .value=${draft.every}
           aria-invalid=${errors.every ? "true" : "false"} aria-describedby=${errors.every ? "task-every-error" : nothing}
           @input=${(e: Event) => ctx.onChange({ every: input(e) })}></label>
@@ -219,9 +324,9 @@ function detailsStep(ctx: TaskEditorContext): TemplateResult {
         <button type="button" class="btn text sm" ?disabled=${ctx.busy} @click=${() => ctx.onChange({ instructions: note })}>${l.t("care_plan.note_use")}</button></div>`
       : note && draft.instructions === note ? html`<div class="note-hint small"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.note_applied")}</span></div>` : nothing}
     <div class="more-options">
-      <button type="button" class="btn text sm" aria-expanded=${state.moreOpen || errors.lastDone ? "true" : "false"} aria-controls="task-more" @click=${ctx.onToggleMore}>
-        <ha-icon aria-hidden="true" icon=${state.moreOpen || errors.lastDone ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>${l.t("care_plan.more_options")}</button>
-      ${state.moreOpen || errors.lastDone ? html`<div id="task-more"><label>${l.t("care_plan.last_done_field")}
+      <button type="button" class="btn text sm" aria-expanded=${moreOpen ? "true" : "false"} aria-controls="task-more" @click=${ctx.onToggleMore}>
+        <ha-icon aria-hidden="true" icon=${moreOpen ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>${l.t("care_plan.more_options")}${reading && !moreOpen ? html`<span class="more-hint">&nbsp;· ${l.t("care_plan.more_options_reading")}</span>` : nothing}</button>
+      ${moreOpen && reading ? readingMore(ctx, err) : moreOpen ? html`<div id="task-more"><label>${l.t("care_plan.last_done_field")}
         <input type="date" max=${ctx.today} .value=${draft.lastDone} aria-invalid=${errors.lastDone ? "true" : "false"} aria-describedby="task-last-done-hint${errors.lastDone ? " task-last-done-error" : ""}"
           @input=${(e: Event) => ctx.onChange({ lastDone: input(e) })}></label>
         <span class="small muted" id="task-last-done-hint">${l.t("care_plan.last_done_hint")}</span>${fieldError("task-last-done-error", err("lastDone"))}</div>` : nothing}
@@ -330,6 +435,7 @@ export const carePlanStyles = css`
   .care-dialog .suggestion-source { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sp-text-secondary); }
   .care-dialog .suggestion-source ha-icon, .care-dialog .note-hint ha-icon { --mdc-icon-size: 16px; color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); }
   .care-dialog .suggestion q { font-size: 14px; overflow-wrap: anywhere; }
+  .care-dialog .suggestion-value { font-size: 14px; font-weight: 500; }
   .care-dialog .suggestion q.clamped { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
   .care-dialog .linkbtn { align-self: flex-start; padding: 0; min-height: 24px; border: 0; background: none; color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: underline; }
   .care-dialog .note-hint { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--sp-text-secondary); margin-top: -4px; }
@@ -358,6 +464,12 @@ export const carePlanStyles = css`
   .care-dialog .growing-hint { display: block; margin-inline-start: 34px; }
   .care-dialog #task-more { display: flex; flex-direction: column; gap: 4px; }
   .care-dialog .more-options .btn { margin-inline-start: -14px; }
+  .care-dialog .more-hint { font-weight: 400; color: var(--sp-text-secondary); }
+  .care-dialog #task-more .grid2 { margin-bottom: 4px; }
+  .care-dialog .suffix-field { position: relative; display: block; }
+  .care-dialog .suffix-field input { width: 100%; padding-inline-end: 56px; }
+  .care-dialog .suffix-field .suffix { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%); color: var(--sp-text-secondary); pointer-events: none; }
+  .care-dialog .chosen-sensor { overflow-wrap: anywhere; }
   .care-dialog .rest-tasks { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
   .care-dialog .rest-tasks legend { padding: 0; margin-bottom: 6px; }
   .care-dialog .automate-list { border: 1px solid var(--divider-color, #e0e0e0); border-radius: 12px; }
@@ -366,6 +478,7 @@ export const carePlanStyles = css`
     .care-dialog .presets { grid-template-columns: minmax(0, 1fr); }
     .care-dialog .suggestion { grid-template-columns: minmax(0, 1fr); }
     .care-dialog .monthpick { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .care-dialog #task-more .grid2 { grid-template-columns: minmax(0, 1fr); }
   }
   @container plant (max-width: 700px) {
     .care-plan .task { grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: start; }

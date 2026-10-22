@@ -213,7 +213,7 @@ also marks that task as done; the form says so below the care type.
 ## Care plan
 
 The **Care plan** card at the top of the **Care** tab holds reminders for recurring care:
-fertilizing, pruning, repotting, checking for pests, and tasks of your own. A plant can have
+fertilizing, pruning, repotting, checking for pests, winter protection, and tasks of your own. A plant can have
 one task of each type plus any number of custom tasks, up to 20 in total. Care tasks never
 change the plant's health status.
 
@@ -228,6 +228,8 @@ Select **Add task**, pick what you want to be reminded of, then choose when it i
   then the last; a range can run past December, such as November to February. The task is due
   from the first day of the range to its end. If the range passes without a Done, the task
   shows *Missed this year* and opens again the next year.
+- **Reading** – when a sensor reading is below or above a value, for example when the
+  temperature is below 5 °C. See [Reading tasks](#reading-tasks).
 
 A custom task needs a name; other tasks can keep their default name. **Instructions** are
 optional and can hold up to 4,000 characters. Under **More options** you can enter when the
@@ -257,6 +259,45 @@ in your Home Assistant time zone. When a task is due, **Done** marks it as done 
 
 Due tasks also appear as small chips under the plant's status in the header, at most two
 followed by *+N*.
+
+### Reading tasks
+
+A reading task is due because of a sensor reading instead of a date. **Winter protection**
+starts as one ("When it gets cold"): below a temperature on the plant's temperature sensors.
+
+- **Reading** – pick one of **This plant's sensors** (every assigned sensor role except
+  battery, with its current value) or **Any other sensor…**, which opens a sensor picker for
+  sensors with a numeric state. A plant sensor follows the role, so replacing the sensor behind
+  it on the **Sensors** tab keeps the task working, and it compares in the role's unit (°C, %,
+  lx, µS/cm or ppm). Another sensor compares in the unit it reports when you save the task.
+- **Due when** – **Below** or **Above**, and the **Value**, with the unit shown next to it.
+- **More options** – **Only after**: the reading must stay on the due side this many whole
+  hours (0 to 72) before the task is due; after a Home Assistant restart the wait starts
+  again. **Due again after above** (or **below**): after Done, the task waits until the
+  reading passes this value instead of the value itself, so a reading that hovers around the
+  value gives one reminder. It must be on the other side of the value.
+
+The summary at the top reads the rule back, for example *When the temperature is below 5 °C ·
+for 2 h · due again above 12 °C*. When the species comes from OpenPlantBook with a minimum
+temperature, a temperature reading set to **Below** shows *OpenPlantBook: minimum 5 °C* with
+**Use**; the value is converted into the sensor's unit first, for example 41 °F. **Add task**
+also suggests **Add winter protection** with that minimum, or says *Already in the care plan*.
+
+A reading task shows its rule, for example *Below 5 °C · Temperature*, and one of these
+states:
+
+- *Not needed · 9 °C* – the reading is on the safe side.
+- *Below 5 °C since 8:10 PM · due 10:10 PM* – the reading is on the due side and **Only after** is
+  still counting.
+- *Due · 3 °C* – the task is due; **Done** marks it as done.
+- *Done Nov 12 · still cold* or *Done Nov 12 · until above 12 °C* – done, and waiting until the
+  reading is back on the safe side. Then the next cold spell makes it due again.
+- *No reading* – the sensor is unavailable or doesn't report a number. The task keeps its
+  state until a reading arrives.
+
+If the reading moves back to the safe side before you mark the task as done, it stops being
+due by itself. Reading tasks have no **Skip this time** and no next due date, and they keep
+running during a rest period.
 
 ### Rest period
 

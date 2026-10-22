@@ -29,6 +29,13 @@ export interface CareTaskSummary {
   days: number | null;
   window_end: string | null;
   resume_on: string | null;
+  // Reading tasks only, else null: the current reading in `unit` (null without
+  // a valid reading), when the task became due and when a running "only
+  // after" delay makes it due (ISO timestamps).
+  reading: number | null;
+  unit: string | null;
+  due_since: string | null;
+  due_at: string | null;
 }
 export interface PlantOverview {
   plant_id: string;
@@ -49,20 +56,24 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "obj
 const numOrNull = (v: unknown): v is number | null => v === null || (typeof v === "number" && Number.isFinite(v));
 const strOrNull = (v: unknown): v is string | null => v === null || typeof v === "string";
 
-const CARE_TASK_TYPES: readonly CareTaskType[] = ["fertilize", "prune", "repot", "pests", "custom"];
-const CARE_TASK_STATUSES: readonly CareTaskStatus[] = ["scheduled", "due", "overdue", "resting", "done", "skipped", "missed"];
+const CARE_TASK_TYPES: readonly CareTaskType[] = ["fertilize", "prune", "repot", "pests", "winter_protection", "custom"];
+const CARE_TASK_STATUSES: readonly CareTaskStatus[] = ["scheduled", "due", "overdue", "resting", "done", "skipped", "missed", "watching", "waiting", "no_reading"];
+const timestampOrNull = (v: unknown): v is string | null => v === null || (typeof v === "string" && Number.isFinite(Date.parse(v)));
 const dateOrNull = (v: unknown): v is string | null => v === null || (typeof v === "string" && /^\d{4}-\d\d-\d\d$/.test(v) && Number.isFinite(Date.parse(v)));
 const month = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 12;
 
 function parseCareTask(raw: unknown): CareTaskSummary | null {
   if (!isRecord(raw)) return null;
   const { task_id, type, name, status, is_due, next_due, days, window_end, resume_on } = raw;
+  // Backends without reading tasks omit the reading fields.
+  const { reading = null, unit = null, due_since = null, due_at = null } = raw;
   if (typeof task_id !== "string" || !/^[0-9a-f]{32}$/.test(task_id) || !CARE_TASK_TYPES.includes(type as CareTaskType)) return null;
   if (!(name === null ? type !== "custom" : typeof name === "string" && name.length > 0 && name.length <= 60)) return null;
   if (!CARE_TASK_STATUSES.includes(status as CareTaskStatus) || typeof is_due !== "boolean" || is_due !== (status === "due" || status === "overdue")) return null;
   if (!dateOrNull(next_due) || !dateOrNull(window_end) || !dateOrNull(resume_on)) return null;
   if (!(days === null || (typeof days === "number" && Number.isSafeInteger(days) && days >= 0))) return null;
-  return { task_id, type: type as CareTaskType, name: name as string | null, status: status as CareTaskStatus, is_due, next_due, days, window_end, resume_on };
+  if (!numOrNull(reading) || !strOrNull(unit) || !timestampOrNull(due_since) || !timestampOrNull(due_at)) return null;
+  return { task_id, type: type as CareTaskType, name: name as string | null, status: status as CareTaskStatus, is_due, next_due, days, window_end, resume_on, reading, unit, due_since, due_at };
 }
 
 function parseRestPeriod(raw: unknown): RestPeriod | null | undefined {

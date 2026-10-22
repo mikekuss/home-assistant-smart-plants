@@ -182,4 +182,14 @@ describe("care tasks and linked care events", () => {
     { baseline_done_on: "2026-01-01T00:00:00Z" }, { created_on: null }, { extra: 1 }])("rejects malformed care task %#", change => {
     expect(validCareTask({ ...task, ...change })).toBe(false);
   });
+  const reading = { kind: "reading", source: { role: "temperature" }, condition: "below", value: 5, unit: "°C", for_minutes: 120, reset_value: 12 };
+  it("accepts winter protection and reading schedules", () => {
+    expect(validCareTask({ ...task, type: "winter_protection", schedule: reading })).toBe(true);
+    expect(validCareTask({ ...task, schedule: { ...reading, source: { entity_id: "sensor.mock_balcony_temperature" }, unit: null, reset_value: null, condition: "above", value: -2.5 } })).toBe(true);
+    expect(validCareTask({ ...task, schedule: { ...reading, condition: "above", reset_value: 3 } })).toBe(true);
+  });
+  it.each([{ source: { role: "battery" } }, { source: { entity_id: "light.mock_lamp" } }, { source: { role: "temperature", entity_id: "sensor.mock_x" } }, { condition: "equal" },
+    { value: Number.NaN }, { value: "5" }, { for_minutes: 4321 }, { for_minutes: 1.5 }, { reset_value: 4 }, { condition: "above", reset_value: 6 }, { unit: 5 }, { extra: 1 }])("rejects a malformed reading schedule %#", change => {
+    expect(validCareTask({ ...task, schedule: { ...reading, ...change } })).toBe(false);
+  });
 });
