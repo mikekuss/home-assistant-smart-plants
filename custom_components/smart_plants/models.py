@@ -25,6 +25,7 @@ from .care import (
     parse_utc_timestamp,
     validate_task_id,
 )
+from .conductivity_evaluator import ACCEPTED_MICROSIEMENS_PER_CM_UNITS
 from .const import IMAGE_MAX_DIMENSION, IMAGE_OUTPUT_CONTENT_TYPE
 
 # Server-generated image ids are 32 lowercase hex chars (uuid4().hex).
@@ -2883,8 +2884,18 @@ class ReadingSchedule:
                     "reading schedule unit must be trimmed text of at most "
                     f"{_READING_UNIT_MAX_LEN} characters"
                 )
-        if source.role is not None and unit != READING_ROLE_UNITS[source.role]:
-            raise ValueError("reading schedule unit must match the role's unit")
+        if source.role is not None:
+            role_unit = READING_ROLE_UNITS[source.role]
+            # Conductivity is written with the micro sign, the Greek mu, or
+            # ASCII "u"; any of them names the role's unit, stored as Home
+            # Assistant spells it.
+            if (
+                role_unit in ACCEPTED_MICROSIEMENS_PER_CM_UNITS
+                and unit in ACCEPTED_MICROSIEMENS_PER_CM_UNITS
+            ):
+                unit = role_unit
+            if unit != role_unit:
+                raise ValueError("reading schedule unit must match the role's unit")
         for_minutes = data["for_minutes"]
         if (
             not _is_pure_int(for_minutes)

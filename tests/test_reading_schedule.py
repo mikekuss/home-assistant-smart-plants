@@ -14,6 +14,9 @@ from custom_components.smart_plants.care_schedule import (
     is_waiting,
     reading_task_state,
 )
+from custom_components.smart_plants.conductivity_evaluator import (
+    ACCEPTED_MICROSIEMENS_PER_CM_UNITS,
+)
 from custom_components.smart_plants.const import (
     READING_STATE_STORAGE_KEY,
     READING_STATE_STORAGE_VERSION,
@@ -80,6 +83,15 @@ def test_valid_reading_schedules_round_trip(schedule: dict[str, Any]) -> None:
     assert parse_care_schedule(stored) == parsed
     assert isinstance(stored["value"], float)
     assert json.loads(json.dumps(stored)) == stored
+
+
+@pytest.mark.parametrize("unit", sorted(ACCEPTED_MICROSIEMENS_PER_CM_UNITS))
+def test_conductivity_role_accepts_every_microsiemens_spelling(unit: str) -> None:
+    schedule = ReadingSchedule.from_storage(
+        _reading(source={"role": "conductivity"}, value=350, unit=unit)
+    )
+
+    assert schedule.unit == READING_ROLE_UNITS["conductivity"]
 
 
 def test_every_source_role_has_its_normalized_unit() -> None:
