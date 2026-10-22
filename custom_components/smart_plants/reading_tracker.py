@@ -32,7 +32,7 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 from homeassistant.components.sensor.const import UNIT_CONVERTERS
 from homeassistant.const import (
@@ -65,6 +65,9 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 ReadingListener = Callable[[str], None]
+# Readings converted between units can have long fractions (33.1 °F is
+# 0.6111... °C); two decimals are enough for every supported role.
+_SHOWN_DECIMALS: Final = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +76,21 @@ class ReadingTaskInfo:
 
     state: ReadingState
     reading: float | None
+
+    @property
+    def shown_reading(self) -> float | None:
+        """Return the reading rounded for display; comparisons use ``reading``."""
+        return None if self.reading is None else round(self.reading, _SHOWN_DECIMALS)
+
+    @property
+    def due_since(self) -> datetime | None:
+        """
+        Return when the task became due, while it is due.
+
+        A Done keeps ``triggered_at`` stored so Undo Done can make the task due
+        again at once, but a waiting task is not due and shows no due time.
+        """
+        return self.state.triggered_at if self.state.is_due else None
 
 
 @dataclass(slots=True)

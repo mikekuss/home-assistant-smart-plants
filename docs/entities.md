@@ -198,7 +198,8 @@ How a reading task behaves:
 
 Additional attributes of a reading task's binary sensor:
 
-- `reading`: the current reading in the task's unit, or `null` without a usable reading.
+- `reading`: the current reading in the task's unit, rounded to two decimals, or `null`
+  without a usable reading.
 - `unit`, `condition` (`below` or `above`), `value`, `reset_value`: the task's settings.
 - `source`: the role name or the entity ID the task watches.
 - `due_since`: when the task last became due, or `null` while it is not due.

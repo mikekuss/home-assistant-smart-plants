@@ -879,7 +879,7 @@ export const en = {
   "care_plan.show_more": "Show more",
   "care_plan.show_less": "Show less",
   "care_plan.from_scratch": "Or start from scratch",
-  "care_plan.empty_suggestions": "OpenPlantBook has care notes for this species. They show up as suggestions when you add a task.",
+  "care_plan.empty_suggestions": "OpenPlantBook has care information for this species. They show up as suggestions when you add a task.",
   "care_plan.note_hint": "OpenPlantBook has a care note for this",
   "care_plan.note_use": "Use as instructions",
   "care_plan.note_applied": "From OpenPlantBook. Edit the text to make it your own.",

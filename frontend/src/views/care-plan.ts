@@ -45,7 +45,7 @@ export function renderCarePlan(ctx: CarePlanContext): TemplateResult {
     ${tasks.length
       ? html`<ul class="list task-list" aria-label=${l.t("care_plan.tasks_label")}>${tasks.map(task => taskRow(ctx, task))}</ul>`
       : html`<div class="card-b"><p class="muted">${l.t("care_plan.empty")}</p>
-          ${careSuggestions(plant).length ? html`<p class="small muted care-note"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.empty_suggestions")}</span></p>` : nothing}
+          ${careSuggestions(plant).length || minTemperature(plant) !== null ? html`<p class="small muted care-note"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.empty_suggestions")}</span></p>` : nothing}
           <div><button type="button" class="btn filled" ?disabled=${ctx.disabled} @click=${ctx.onAdd}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("care_plan.add_task")}</button></div></div>`}
   </section>`;
 }

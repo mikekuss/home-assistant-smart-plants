@@ -799,13 +799,13 @@ class _CareTaskDueBinary(SmartPlantsBinarySensorEntity):
         if info is not None:
             schedule = cast("ReadingSchedule", task.schedule)
             attributes.update(
-                reading=info.reading,
+                reading=info.shown_reading,
                 unit=schedule.unit,
                 condition=schedule.condition,
                 value=schedule.value,
                 reset_value=schedule.effective_reset_value,
                 source=schedule.source.label,
-                due_since=_iso_timestamp(info.state.triggered_at),
+                due_since=_iso_timestamp(info.due_since),
                 due_at=_iso_timestamp(info.state.due_at),
             )
         return attributes
