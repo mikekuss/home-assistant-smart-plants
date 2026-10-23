@@ -610,11 +610,8 @@
     "reading_task_skip": {
       "message": "{target} follows a sensor reading and cannot be skipped. Mark it as done instead."
     },
-    "plant_target_required": {
-      "message": "Choose plants, not individual entities."
-    },
     "no_plant_target": {
-      "message": "Choose at least one plant."
+      "message": "Choose at least one plant or one of its entities."
     },
     "plant_disabled_snooze": {
       "message": "{plant} is disabled. Enable it before snoozing its alerts."

@@ -610,11 +610,8 @@
     "reading_task_skip": {
       "message": "{target} richtet sich nach einem Messwert und kann nicht übersprungen werden. Markieren Sie die Aufgabe stattdessen als erledigt."
     },
-    "plant_target_required": {
-      "message": "Wählen Sie Pflanzen aus, keine einzelnen Entitäten."
-    },
     "no_plant_target": {
-      "message": "Wählen Sie mindestens eine Pflanze aus."
+      "message": "Wählen Sie mindestens eine Pflanze oder eine ihrer Entitäten aus."
     },
     "plant_disabled_snooze": {
       "message": "{plant} ist deaktiviert. Aktivieren Sie die Pflanze, bevor Sie ihre Hinweise stummschalten."

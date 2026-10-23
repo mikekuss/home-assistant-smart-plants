@@ -644,16 +644,8 @@ async def test_snooze_actions_need_plant_devices(
     plant = await _plant(entry)
     await hass.async_block_till_done()
     duration = {"duration": {"days": 1}} if service == SERVICE_SNOOZE else {}
-    entity = _manager(entry).get_entity("binary_sensor", plant.id, "sensor_stale")
-    assert entity is not None
 
     await _expect_error(hass, service, duration, "no_plant_target")
-    await _expect_error(
-        hass,
-        service,
-        {"entity_id": entity.entity_id, **duration},
-        "plant_target_required",
-    )
     await _expect_error(
         hass, service, {"area_id": "kitchen", **duration}, "unsupported_target"
     )
@@ -668,6 +660,55 @@ async def test_snooze_actions_need_plant_devices(
     await _expect_error(
         hass, service, {"device_id": "missing", **duration}, "unknown_target"
     )
+    foreign = er.async_get(hass).async_get_or_create(
+        "binary_sensor", "other", "lamp-problem", config_entry=other
+    )
+    await _expect_error(
+        hass, service, {"entity_id": foreign.entity_id, **duration}, "invalid_target"
+    )
+    await _expect_error(
+        hass,
+        service,
+        {"entity_id": "binary_sensor.missing", **duration},
+        "unknown_target",
+    )
+    # Nothing was written by any rejected call.
+    assert _manager(entry).get_plant(plant.id) == plant
+
+
+async def test_snooze_actions_accept_entity_targets(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(NOW)
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    first = await _plant(entry)
+    second = await _plant(entry, "Office Aloe")
+    await hass.async_block_till_done()
+    stale = manager.get_entity("binary_sensor", first.id, "sensor_stale")
+    other_stale = manager.get_entity("binary_sensor", second.id, "sensor_stale")
+    assert stale is not None
+    assert other_stale is not None
+
+    # An entity and the device of the same plant snooze that plant once.
+    await _call(
+        hass,
+        SERVICE_SNOOZE,
+        {
+            "device_id": _device_id(hass, first.id),
+            "entity_id": [stale.entity_id, other_stale.entity_id],
+            "duration": {"days": 2},
+        },
+    )
+
+    for plant in (first, second):
+        snoozed = manager.get_plant(plant.id)
+        assert snoozed.snoozed_until == "2026-06-17T10:00:00Z"
+        assert snoozed.revision == plant.revision + 1
+
+    await _call(hass, SERVICE_UNSNOOZE, {"entity_id": stale.entity_id})
+    assert manager.get_plant(first.id).snoozed_until is None
+    assert manager.get_plant(second.id).snoozed_until == "2026-06-17T10:00:00Z"
 
 
 async def test_snooze_action_rejects_paused_plants(

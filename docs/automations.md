@@ -223,8 +223,8 @@ are listed under **Smart Plants** in the action picker.
 | --- | --- | --- |
 | `smart_plants.log_care` | Plant devices or care task *due* entities | Adds an entry to the plant's care history. With a care task as the target, the entry marks that task as done. |
 | `smart_plants.skip_care_task` | Care task *due* entities | Skips the task's current occurrence. The task is due again on its next scheduled date. Tasks that follow a sensor reading cannot be skipped. |
-| `smart_plants.snooze` | Plant devices | Snoozes the plant's alerts for a while. See [Snooze alerts](#snooze-alerts). |
-| `smart_plants.unsnooze` | Plant devices | Ends the plant's snooze now. |
+| `smart_plants.snooze` | Plant devices or any of their Smart Plants entities | Snoozes the plant's alerts for a while. See [Snooze alerts](#snooze-alerts). |
+| `smart_plants.unsnooze` | Plant devices or any of their Smart Plants entities | Ends the plant's snooze now. |
 
 `smart_plants.log_care` accepts these fields:
 
@@ -327,7 +327,9 @@ its real state, and the plant still counts in the panel. Instead, every binary s
 plant gets the attribute `snoozed: true` and the end in `snoozed_until` (see
 [Entities](entities.md#snoozed-plants)). Your automations check `snoozed` to stay quiet.
 
-`smart_plants.snooze` targets one or more plant devices and takes exactly one of these fields:
+`smart_plants.snooze` targets one or more plants, either by their device or by any of their
+Smart Plants entities (an entity target snoozes the whole plant it belongs to), and takes
+exactly one of these fields:
 
 - `duration` – how long to snooze, counted from now, for example `days: 7`.
 - `until` – when the snooze ends. A time without a time zone is Home Assistant's local time.

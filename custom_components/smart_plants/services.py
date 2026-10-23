@@ -348,21 +348,52 @@ async def _async_skip_care_task(call: ServiceCall) -> None:
         )
 
 
+def _resolve_plant_entity(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    manager: SmartPlantsManager,
+    entity_ref: str,
+    disabled_key: str | None,
+) -> PlantRecord:
+    """Return the plant whose device owns a Smart Plants entity."""
+    registry = er.async_get(hass)
+    entity_id = er.async_resolve_entity_id(registry, entity_ref)
+    registry_entry = registry.async_get(entity_id) if entity_id else None
+    if entity_id is None or registry_entry is None:
+        raise _error("unknown_target", target=entity_ref)
+    if (
+        registry_entry.platform != DOMAIN
+        or registry_entry.config_entry_id != entry.entry_id
+        or registry_entry.device_id is None
+    ):
+        raise _error("invalid_target", target=entity_id)
+    return _resolve_plant_device(
+        hass, entry, manager, registry_entry.device_id, disabled_key
+    )
+
+
 def _snooze_plants(
     call: ServiceCall,
     entry: ConfigEntry,
     manager: SmartPlantsManager,
     disabled_key: str | None,
 ) -> list[PlantRecord]:
-    """Resolve the plant devices of a snooze action; entities are rejected."""
+    """Resolve the plants of a snooze action from plant devices and entities."""
     device_ids, entity_refs = _targets(call)
-    if entity_refs:
-        raise _error("plant_target_required")
-    if not device_ids:
+    if not device_ids and not entity_refs:
         raise _error("no_plant_target")
+    hass = call.hass
     return _unique_plants(
-        _resolve_plant_device(call.hass, entry, manager, device_id, disabled_key)
-        for device_id in device_ids
+        [
+            *(
+                _resolve_plant_device(hass, entry, manager, device_id, disabled_key)
+                for device_id in device_ids
+            ),
+            *(
+                _resolve_plant_entity(hass, entry, manager, ref, disabled_key)
+                for ref in entity_refs
+            ),
+        ]
     )
 
 
