@@ -88,6 +88,9 @@ problem. The care task binary sensors are described under [Care tasks](#care-tas
 | CO2 stress | First CO₂ source | – | `confidence`, `reason`, `threshold_ppm`, `clear_ppm` |
 | Low battery | First battery source | Diagnostic | `confidence`, `reason`, `threshold_percent`, `clear_percent` |
 
+Every binary sensor of a plant, including the care task ones, also has the attributes
+`snoozed` and `snoozed_until`; see [Snoozed plants](#snoozed-plants).
+
 The threshold attributes show the thresholds currently in effect (built-in or your override).
 The `reason` attribute explains the current state, for example `cold_stress`, `hot_stress`,
 `temperature_ok`, `low_light`, `enough_light`, `nighttime`, or `battery_ok`.
@@ -226,11 +229,36 @@ automation:
           message: "The Monstera needs fertilizer in two days."
 ```
 
+## Snoozed plants
+
+A snooze, set with the [`smart_plants.snooze`](automations.md#snooze-alerts) action, mutes a
+plant's alerts without changing any entity. While it lasts, every binary sensor of the plant
+(*Needs water*, *Too wet*, *Sensor stale*, *Low light*, *Low battery*, the stress sensors, the
+care task *due* sensors and *Care due*) keeps its real state and has these attributes:
+
+| Attribute | Value |
+| --- | --- |
+| `snoozed` | `true` while the plant is snoozed, otherwise `false` |
+| `snoozed_until` | When the snooze ends, as a UTC timestamp such as `2026-11-01T22:59:59Z`, otherwise `null` |
+
+Sensors such as soil moisture, the health score, or *next due* have no snooze attributes:
+they are values, not alerts. The snooze adds no entity.
+
+To keep an automation quiet during a snooze, use a native state condition on the attribute:
+
+```yaml
+conditions:
+  - condition: state
+    entity_id: binary_sensor.aloe_needs_water
+    attribute: snoozed
+    state: false
+```
+
 ## Paused plants
 
 When you pause a plant in the panel (**Pause monitoring**), all of its entities stay
 registered but become unavailable until you resume it (**Resume monitoring**). Their history
-is kept.
+is kept. Pausing a plant also ends its snooze.
 
 ## Not exposed as entities
 

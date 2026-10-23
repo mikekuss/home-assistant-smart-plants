@@ -467,13 +467,14 @@ def _plant(tasks: list[dict[str, Any]]) -> dict[str, Any]:
         "care_events": [],
         "care_tasks": tasks,
         "rest_period": None,
+        "snoozed_until": None,
     }
 
 
 async def test_minor_thirteen_loads_unchanged_and_saves_as_current(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
-    assert STORAGE_MINOR_VERSION == 14
+    assert STORAGE_MINOR_VERSION == 15
     plant = _plant([_task_row()])
     _seed(hass_storage, minor=13, plants=[plant])
 

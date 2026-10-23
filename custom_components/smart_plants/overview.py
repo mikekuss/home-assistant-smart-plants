@@ -267,4 +267,5 @@ def plant_overview(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str,
             plant.rest_period.as_storage() if plant.rest_period is not None else None
         ),
         "resting": is_resting(plant.rest_period, today),
+        "snoozed_until": plant.snoozed_until,
     }

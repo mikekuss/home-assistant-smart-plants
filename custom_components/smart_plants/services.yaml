@@ -31,3 +31,26 @@ skip_care_task:
     entity:
       - integration: smart_plants
         domain: binary_sensor
+
+snooze:
+  # The entity filter also limits the device picker to devices that have a
+  # matching entity, which are the Smart Plants plant devices. An entity
+  # target snoozes the plant it belongs to.
+  target:
+    entity:
+      - integration: smart_plants
+        domain: binary_sensor
+  fields:
+    duration:
+      selector:
+        duration:
+          enable_day: true
+    until:
+      selector:
+        datetime:
+
+unsnooze:
+  target:
+    entity:
+      - integration: smart_plants
+        domain: binary_sensor

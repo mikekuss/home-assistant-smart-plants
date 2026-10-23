@@ -1,5 +1,5 @@
 """
-Home Assistant actions for logging plant care and skipping care tasks.
+Home Assistant actions for plant care, care tasks, and alert snoozes.
 
 Actions are registered once per Home Assistant run from ``async_setup`` and
 survive config entry reloads. Each call resolves the currently loaded
@@ -7,7 +7,7 @@ manager, so a call while the integration is unloaded fails with a clear
 error instead of writing to a stale manager.
 
 Actions cannot know a plant's revision, so every write skips the revision
-check and is stored with the ``action`` provenance.
+check; care is stored with the ``action`` provenance.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ import re
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final
 
 import voluptuous as vol
@@ -42,6 +42,7 @@ from .care import CARE_EVENT_KINDS, kind_for_task_type, minimal_care_payload
 from .const import DOMAIN
 from .manager import (
     CARE_CLOCK_SKEW,
+    SNOOZE_MAX_AHEAD,
     SmartPlantsManager,
     SmartPlantsManagerUnavailableError,
     SmartPlantsPlantNotFoundError,
@@ -58,10 +59,14 @@ _LOGGER = logging.getLogger(__name__)
 
 SERVICE_LOG_CARE: Final = "log_care"
 SERVICE_SKIP_CARE_TASK: Final = "skip_care_task"
+SERVICE_SNOOZE: Final = "snooze"
+SERVICE_UNSNOOZE: Final = "unsnooze"
 
 ATTR_KIND: Final = "kind"
 ATTR_OCCURRED_AT: Final = "occurred_at"
 ATTR_NOTE: Final = "note"
+ATTR_DURATION: Final = "duration"
+ATTR_UNTIL: Final = "until"
 
 ACTION_PROVENANCE: Final = "action"
 NOTE_MAX_LENGTH: Final = 500
@@ -82,6 +87,14 @@ LOG_CARE_SCHEMA = vol.Schema(
     }
 )
 SKIP_CARE_TASK_SCHEMA = vol.Schema(cv.TARGET_SERVICE_FIELDS)
+SNOOZE_SCHEMA = vol.Schema(
+    {
+        **cv.TARGET_SERVICE_FIELDS,
+        vol.Optional(ATTR_DURATION): cv.positive_time_period,
+        vol.Optional(ATTR_UNTIL): cv.datetime,
+    }
+)
+UNSNOOZE_SCHEMA = vol.Schema(cv.TARGET_SERVICE_FIELDS)
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,14 +143,18 @@ def _targets(call: ServiceCall) -> tuple[list[str], list[str]]:
 
 
 def _plant_for_target(
-    manager: SmartPlantsManager, plant_id: str, target: str
+    manager: SmartPlantsManager,
+    plant_id: str,
+    target: str,
+    disabled_key: str | None = "plant_disabled",
 ) -> PlantRecord:
+    """Return the target's plant; a disabled one raises ``disabled_key``."""
     try:
         plant = manager.get_plant(plant_id)
     except SmartPlantsPlantNotFoundError, SmartPlantsValidationError:
         raise _error("unknown_target", target=target) from None
-    if plant.lifecycle_state == "disabled":
-        raise _error("plant_disabled", plant=plant.name)
+    if plant.lifecycle_state == "disabled" and disabled_key is not None:
+        raise _error(disabled_key, plant=plant.name)
     return plant
 
 
@@ -146,6 +163,7 @@ def _resolve_plant_device(
     entry: ConfigEntry,
     manager: SmartPlantsManager,
     device_id: str,
+    disabled_key: str | None = "plant_disabled",
 ) -> PlantRecord:
     device = dr.async_get(hass).async_get(device_id)
     if device is None:
@@ -157,7 +175,7 @@ def _resolve_plant_device(
     )
     if entry.entry_id not in device.config_entries or plant_id is None:
         raise _error("invalid_target", target=label)
-    return _plant_for_target(manager, plant_id, label)
+    return _plant_for_target(manager, plant_id, label, disabled_key)
 
 
 def _resolve_task_entity(
@@ -212,7 +230,7 @@ def _occurred_at(call: ServiceCall) -> str:
 
 
 @contextmanager
-def _manager_errors(target: str) -> Iterator[None]:
+def _manager_errors(target: str, rejected_key: str = "care_rejected") -> Iterator[None]:
     """Translate manager errors raised for one target into action errors."""
     try:
         yield
@@ -221,7 +239,7 @@ def _manager_errors(target: str) -> Iterator[None]:
     except SmartPlantsPlantNotFoundError as err:
         raise _error("unknown_target", target=target) from err
     except SmartPlantsValidationError as err:
-        raise _error("care_rejected", target=target, reason=str(err)) from err
+        raise _error(rejected_key, target=target, reason=str(err)) from err
 
 
 def _unique_plants(plants: Iterable[PlantRecord]) -> list[PlantRecord]:
@@ -330,6 +348,96 @@ async def _async_skip_care_task(call: ServiceCall) -> None:
         )
 
 
+def _resolve_plant_entity(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    manager: SmartPlantsManager,
+    entity_ref: str,
+    disabled_key: str | None,
+) -> PlantRecord:
+    """Return the plant whose device owns a Smart Plants entity."""
+    registry = er.async_get(hass)
+    entity_id = er.async_resolve_entity_id(registry, entity_ref)
+    registry_entry = registry.async_get(entity_id) if entity_id else None
+    if entity_id is None or registry_entry is None:
+        raise _error("unknown_target", target=entity_ref)
+    if (
+        registry_entry.platform != DOMAIN
+        or registry_entry.config_entry_id != entry.entry_id
+        or registry_entry.device_id is None
+    ):
+        raise _error("invalid_target", target=entity_id)
+    return _resolve_plant_device(
+        hass, entry, manager, registry_entry.device_id, disabled_key
+    )
+
+
+def _snooze_plants(
+    call: ServiceCall,
+    entry: ConfigEntry,
+    manager: SmartPlantsManager,
+    disabled_key: str | None,
+) -> list[PlantRecord]:
+    """Resolve the plants of a snooze action from plant devices and entities."""
+    device_ids, entity_refs = _targets(call)
+    if not device_ids and not entity_refs:
+        raise _error("no_plant_target")
+    hass = call.hass
+    return _unique_plants(
+        [
+            *(
+                _resolve_plant_device(hass, entry, manager, device_id, disabled_key)
+                for device_id in device_ids
+            ),
+            *(
+                _resolve_plant_entity(hass, entry, manager, ref, disabled_key)
+                for ref in entity_refs
+            ),
+        ]
+    )
+
+
+def _snooze_end(call: ServiceCall) -> datetime:
+    """Return when a snooze action's snooze ends, as an aware local time."""
+    duration: timedelta | None = call.data.get(ATTR_DURATION)
+    until: datetime | None = call.data.get(ATTR_UNTIL)
+    now = dt_util.now()
+    if duration is not None and until is None:
+        end = now + duration
+    elif until is not None and duration is None:
+        # A time without a zone (the action editor's date and time picker)
+        # is Home Assistant local time.
+        end = dt_util.as_local(until)
+    else:
+        raise _error("snooze_period_required")
+    if end <= now:
+        raise _error("snooze_in_past")
+    if end > now + SNOOZE_MAX_AHEAD:
+        raise _error("snooze_too_long")
+    return end
+
+
+async def _async_snooze(call: ServiceCall) -> None:
+    entry, manager = _loaded_runtime(call.hass)
+    plants = _snooze_plants(call, entry, manager, "plant_disabled_snooze")
+    end = _snooze_end(call)
+    for plant in plants:
+        with _manager_errors(plant.name, "snooze_rejected"):
+            await manager.async_snooze_plant(
+                plant.id, expected_revision=None, until=end
+            )
+        _LOGGER.debug("Snoozed plant %s from an action", plant.id)
+
+
+async def _async_unsnooze(call: ServiceCall) -> None:
+    entry, manager = _loaded_runtime(call.hass)
+    # A disabled plant is never snoozed, so ending its snooze is a no-op.
+    for plant in _snooze_plants(call, entry, manager, None):
+        with _manager_errors(plant.name, "snooze_rejected"):
+            await manager.async_unsnooze_plant(plant.id, expected_revision=None)
+        _LOGGER.debug("Ended the snooze of plant %s from an action", plant.id)
+
+
 @callback
 def async_setup_services(hass: HomeAssistant) -> None:
     """Register the Smart Plants actions."""
@@ -341,4 +449,10 @@ def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_SKIP_CARE_TASK,
         _async_skip_care_task,
         schema=SKIP_CARE_TASK_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SNOOZE, _async_snooze, schema=SNOOZE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_UNSNOOZE, _async_unsnooze, schema=UNSNOOZE_SCHEMA
     )
