@@ -255,7 +255,7 @@ function readingMore(ctx: TaskEditorContext, err: (field: keyof DraftErrors) => 
   const unit = draft.readingUnit ?? "";
   const describe = (hint: string, error: boolean, id: string) => error ? `${hint} ${id}` : hint;
   return html`<div id="task-more"><div class="grid2">
-      <label>${l.t("care_plan.for_hours")}<span class="suffix-field"><input type="number" inputmode="numeric" min="0" max=${MAX_FOR_HOURS} step="1" .value=${draft.forHours}
+      <label>${l.t("care_plan.for_hours")}<span class="suffix-field"><input type="number" inputmode="decimal" min="0" max=${MAX_FOR_HOURS} step="any" .value=${draft.forHours}
           aria-invalid=${errors.forHours ? "true" : "false"} aria-describedby=${describe("task-for-hint", !!errors.forHours, "task-for-error")}
           @input=${(e: Event) => ctx.onChange({ forHours: (e.target as HTMLInputElement).value })}><span class="suffix">${l.t("care_plan.hours")}</span></span></label>
       <label>${l.t(draft.condition === "below" ? "care_plan.reset_after_above" : "care_plan.reset_after_below")}<span class="suffix-field"><input type="text" inputmode="decimal" .value=${draft.resetValue} placeholder=${draft.value.trim()}
@@ -482,7 +482,7 @@ export const carePlanStyles = css`
   }
   @container plant (max-width: 700px) {
     .care-plan .task { grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: start; }
-    .care-plan .task-side { grid-column: 2; grid-row: 2; justify-content: flex-start; }
+    .care-plan .task-side { grid-column: 2 / -1; grid-row: 2; justify-content: flex-start; }
     .care-plan .task-menu { grid-column: 3; grid-row: 1; }
     .restline { grid-template-columns: 20px minmax(0, 1fr); }
     .restline > .btn { grid-column: 2; justify-self: start; margin-inline-start: -12px; }

@@ -255,7 +255,7 @@ describe("care plan card", () => {
     expect(el.shadowRoot!.querySelector('ul[aria-label="Plant care events"]')!.textContent).toContain("Check for pests");
 
     // A fertilizing entry completes the Fertilize task on its own.
-    el.shadowRoot!.querySelectorAll<HTMLButtonElement>(".care-bar button.btn.filled")[0]!.click(); await settle(el);
+    el.shadowRoot!.querySelector<HTMLButtonElement>(".care-history .card-h button.btn")!.click(); await settle(el);
     const kind = el.shadowRoot!.querySelector<HTMLSelectElement>("#care-form select")!;
     kind.value = "fertilizing"; kind.dispatchEvent(new Event("change", { bubbles: true })); await settle(el);
     expect(el.shadowRoot!.querySelector("#care-form")!.textContent).toContain("Also marks Fertilize as done.");
@@ -634,7 +634,7 @@ describe("reading task draft", () => {
     const draft = { ...empty, role: "temperature", readingUnit: "°C", value: "5" };
     expect(validateDraft({ ...draft, resetValue: "4" }, TODAY).errors).toEqual({ resetValue: "care_plan.error_reset_below" });
     expect(validateDraft({ ...draft, condition: "above", resetValue: "6" }, TODAY).errors).toEqual({ resetValue: "care_plan.error_reset_above" });
-    for (const forHours of ["73", "1.5", "-1", "x"]) expect(validateDraft({ ...draft, forHours }, TODAY).errors).toEqual({ forHours: "care_plan.error_for_hours" });
+    for (const forHours of ["73", "72.5", "0.01", "-1", "x"]) expect(validateDraft({ ...draft, forHours }, TODAY).errors).toEqual({ forHours: "care_plan.error_for_hours" });
     for (const value of ["", "abc", "1.2345", "5 °C"]) expect(validateDraft({ ...draft, value }, TODAY).errors).toEqual({ value: "care_plan.error_value" });
     // "Last done" belongs to date schedules and is not sent for a reading task.
     expect(validateDraft({ ...draft, value: "4,5", forHours: "2", resetValue: "12", lastDone: "2026-10-01", instructions: " Cover the pot " }, TODAY).input).toEqual({ task_type: "winter_protection", name: null,
@@ -648,6 +648,12 @@ describe("reading task draft", () => {
     expect(draft).toMatchObject({ mode: "reading", role: "temperature", value: "5", forHours: "2", resetValue: "12" });
     expect(taskChanges(stored, validateDraft(draft, TODAY).input!)).toEqual({});
     expect(taskChanges(stored, validateDraft({ ...draft, value: "3" }, TODAY).input!)).toEqual({ schedule: { ...stored.schedule, value: 3 } });
+    // A delay that is not whole hours (saved through the API) stays editable.
+    const odd: CareTask = { ...stored, schedule: { kind: "reading", source: { role: "temperature" }, condition: "below", value: 5, unit: "°C", for_minutes: 90, reset_value: 12 } };
+    const oddDraft = draftFromTask(odd);
+    expect(oddDraft.forHours).toBe("1.5");
+    expect(taskChanges(odd, validateDraft(oddDraft, TODAY).input!)).toEqual({});
+    expect(validateDraft({ ...oddDraft, forHours: "0,25" }, TODAY).input!.schedule).toMatchObject({ for_minutes: 15 });
     // Switching to Reading keeps the name and the instructions.
     const feed = draftFromTask({ ...fertilize, name: "Feed", instructions: "Half dose" });
     expect(validateDraft({ ...feed, mode: "reading", role: "humidity", readingUnit: "%", value: "40" }, TODAY).input).toMatchObject({ name: "Feed", instructions: "Half dose", schedule: { kind: "reading", unit: "%" } });

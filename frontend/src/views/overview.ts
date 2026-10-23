@@ -127,6 +127,10 @@ export class SmartPlantsOverview extends LitElement {
       .tile .ico { width: 34px; height: 34px; }
       .grid { grid-template-columns: 1fr; }
     }
+    /* Small phones: the icon goes above the number so the label gets the full tile width. */
+    @container (max-width: 380px) {
+      .tile { flex-direction: column; align-items: flex-start; gap: 6px; }
+    }
   `];
 
   @property({ attribute: false }) public l: Localizer = ENGLISH;

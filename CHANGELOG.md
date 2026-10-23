@@ -17,6 +17,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   on the task's binary sensor, and they are completed with `smart_plants.log_care` like other
   tasks. See [Entities](docs/entities.md#reading-tasks).
 
+### Changed
+
+- The care history filters, the watering summary and **Log care** now sit inside the **Care
+  history** card, so they no longer look like part of the care plan.
+
+### Fixed
+
+- On narrow phones, card headings such as "Pflegeplan" no longer break inside a word: the card's
+  actions move below the heading instead. The overview tiles put their icon above the number on
+  very small screens, so labels such as "Sensorprobleme" stay whole.
+
 ## [0.8.0] - 2026-10-22
 
 ### Added

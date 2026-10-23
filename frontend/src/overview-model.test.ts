@@ -69,6 +69,9 @@ describe("parseOverview care fields", () => {
       reading: 9.5, unit: "°C", due_since: null, due_at: "2026-11-12T22:10:00+00:00" };
     expect(parseOverview({ ...raw, care: [watching] })!.care).toEqual([watching]);
     for (const status of ["waiting", "no_reading"]) expect(parseOverview({ ...raw, care: [{ ...watching, status, reading: null }] })).not.toBeNull();
+    // A due task whose sensor goes away stays due without a reading.
+    const lost = { ...watching, status: "no_reading", is_due: true, reading: null, due_since: "2026-11-12T20:10:00+00:00", due_at: null };
+    expect(parseOverview({ ...raw, care: [lost] })!.care).toEqual([lost]);
     expect(parseOverview({ ...raw, care: [{ ...watching, status: "due", is_due: true, due_since: "2026-11-12T20:10:00+00:00" }] })).not.toBeNull();
   });
   it.each([

@@ -69,7 +69,9 @@ function parseCareTask(raw: unknown): CareTaskSummary | null {
   const { reading = null, unit = null, due_since = null, due_at = null } = raw;
   if (typeof task_id !== "string" || !/^[0-9a-f]{32}$/.test(task_id) || !CARE_TASK_TYPES.includes(type as CareTaskType)) return null;
   if (!(name === null ? type !== "custom" : typeof name === "string" && name.length > 0 && name.length <= 60)) return null;
-  if (!CARE_TASK_STATUSES.includes(status as CareTaskStatus) || typeof is_due !== "boolean" || is_due !== (status === "due" || status === "overdue")) return null;
+  // A reading task that loses its reading keeps whether it was due, so
+  // `no_reading` comes with either value.
+  if (!CARE_TASK_STATUSES.includes(status as CareTaskStatus) || typeof is_due !== "boolean" || (status !== "no_reading" && is_due !== (status === "due" || status === "overdue"))) return null;
   if (!dateOrNull(next_due) || !dateOrNull(window_end) || !dateOrNull(resume_on)) return null;
   if (!(days === null || (typeof days === "number" && Number.isSafeInteger(days) && days >= 0))) return null;
   if (!numOrNull(reading) || !strOrNull(unit) || !timestampOrNull(due_since) || !timestampOrNull(due_at)) return null;
