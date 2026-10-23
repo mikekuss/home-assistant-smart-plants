@@ -371,12 +371,17 @@ export function draftSource(draft: TaskDraft): ReadingSchedule["source"] | null 
   return draft.role ? { role: draft.role } : draft.entityId ? { entity_id: draft.entityId } : null;
 }
 
-// "Only after" in minutes from whole hours; empty means at once.
+// "Only after" in minutes from hours; empty means at once. Fractions that
+// come out to whole minutes are accepted, so a task saved with 90 minutes
+// (for example through the API) opens as 1.5 hours and saves unchanged.
 function forMinutes(text: string): number | null {
-  const trimmed = text.trim();
+  const trimmed = text.trim().replace(",", ".");
   if (!trimmed) return 0;
-  if (!/^\d+$/.test(trimmed) || Number(trimmed) > MAX_FOR_HOURS) return null;
-  return Number(trimmed) * 60;
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) return null;
+  const minutes = Number(trimmed) * 60;
+  const rounded = Math.round(minutes);
+  if (Math.abs(minutes - rounded) > 1e-9 || rounded > MAX_FOR_HOURS * 60) return null;
+  return rounded;
 }
 
 function readingErrors(draft: TaskDraft): DraftErrors {

@@ -216,8 +216,10 @@ export const plantStyles = css`
   .pd .spacer { flex: 1; }
   .pd .error-text { color: var(--sp-error); }
   .pd code { font-size: 12.5px; overflow-wrap: anywhere; }
-  .card-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px 4px; min-height: 52px; }
-  .card-h h2, .card-h h3 { font-size: 16px; font-weight: 500; }
+  /* On narrow cards the actions move below the heading instead of squeezing
+     it; long words in other languages break at hyphens, not mid-letter. */
+  .card-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; padding: 12px 16px 4px; min-height: 52px; }
+  .card-h h2, .card-h h3 { font-size: 16px; font-weight: 500; flex: 1 1 auto; overflow-wrap: break-word; hyphens: auto; }
   .card-b { padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
   .muted, .pd small { color: var(--sp-text-secondary); }
   .small { font-size: 13px; }
@@ -322,6 +324,8 @@ export const plantStyles = css`
   .setrow-d { font-size: 13px; color: var(--sp-text-secondary); overflow-wrap: anywhere; hyphens: auto; }
   .setrow-editor { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
   .setrow-editor label { margin: 4px 0; }
+  /* After the button rules, which reset margins: header actions stay at the end when they wrap. */
+  .pd .card-h > :not(h2, h3) { margin-inline-start: auto; }
   .setrow-editor .actions, .card-b .actions { margin-top: 4px; }
   .thr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
   .thr label { margin: 0; }
@@ -329,8 +333,8 @@ export const plantStyles = css`
   .field-suffix input { flex: 1; min-width: 0; }
 
   /* Care */
-  .care-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-  .care-bar .spacer { flex: 1; }
+  .care-filters { display: flex; flex-direction: column; gap: 8px; padding: 4px 16px 8px; }
+  .care-filters p { margin: 0; }
   .pd button.fchip { min-height: 32px; height: auto; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--divider-color, #bdbdbd); background: var(--ha-card-background, var(--sp-card)); font-size: 13px; color: var(--sp-text); cursor: pointer; }
   .pd button.fchip[aria-pressed="true"] { background: color-mix(in srgb, var(--sp-primary) 14%, transparent); border-color: transparent; color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); font-weight: 500; }
   .care-form label { margin: 8px 0; }

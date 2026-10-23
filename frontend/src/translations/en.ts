@@ -975,7 +975,7 @@ export const en = {
   "care_plan.reading_not_needed_plain": "Not needed",
   "care_plan.error_source": "Pick a sensor.",
   "care_plan.error_value": "Enter a number.",
-  "care_plan.error_for_hours": "Enter whole hours from 0 to 72.",
+  "care_plan.error_for_hours": "Enter hours from 0 to 72, in whole minutes.",
   "care_plan.error_reset_below": "Enter the value or a higher number.",
   "care_plan.error_reset_above": "Enter the value or a lower number.",
   "care_plan.summary_pick_source": "Reading · pick a sensor",

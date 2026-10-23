@@ -785,10 +785,7 @@ export class SmartPlantsPanel extends LitElement {
     const today = this._today();
     return html`${renderCarePlan({ l, plant, overview: this._overview[plant.id], today, timeZone: this._timeZone(), states: this._states, disabled: busy || this._blocked, pending: this._carePending,
         onAdd: () => this._openTaskEditor(), onRest: () => this._openRestEditor(plant), onDone: task => void this._completeTask(plant.id, task), onAction: (task, action) => this._taskAction(plant, task, action) })}
-      <div class="care-bar"><div class="row" role="group" aria-label=${l.t("care.filter_label")}>${filters.map(([kind, label]) => html`<button type="button" class="fchip" aria-pressed=${this._careFilter === kind ? "true" : "false"} @click=${() => { this._careFilter = kind; }}>${label}</button>`)}</div>
-        <span class="spacer"></span><button type="button" class="btn filled" ?disabled=${this._blocked} @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("detail.log_care")}</button></div>
       ${this._careError ? html`<p class="error" role="alert">${this._careError}</p>` : nothing}
-      ${history ? html`<p class="small muted" role="status">${l.tn(history.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${history.summary.last_watered_local_date ? l.t("care.last_watered", { date: l.date(history.summary.last_watered_local_date) }) : l.t("care.never_watered")}</p>` : nothing}
       ${formOpen ? html`<section class="sp-card" id="care-form" aria-labelledby="care-form-heading"><div class="card-h"><h3 id="care-form-heading">${this._careEditingId ? l.t("care.edit_kind", { kind: kindPhrase(this._careKind) }) : l.t("care.record")}</h3>
           <button type="button" class="icon-btn" aria-label=${l.t("care.close_form")} @click=${() => this._closeCareForm()}><ha-icon aria-hidden="true" icon="mdi:close"></ha-icon></button></div>
         <div class="card-b care-form"><fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict || !history || history.revision !== plant.revision}>
@@ -804,7 +801,12 @@ export class SmartPlantsPanel extends LitElement {
         <div class="actions"><button type="button" class="primary" @click=${() => void this._saveCare(plant)}>${this._careEditingId ? l.t("care.save_changes") : l.t("care.record")}</button>
         ${this._careEditingId ? html`<button type="button" @click=${() => { this._careEditingId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; }}>${l.t("care.cancel_editing")}</button>` : nothing}</div>
       </fieldset></div></section>` : nothing}
-      <section class="sp-card" aria-labelledby="care-heading"><div class="card-h"><h3 id="care-heading">${l.t("care.heading")}</h3></div>
+      <section class="sp-card care-history" aria-labelledby="care-heading"><div class="card-h"><h3 id="care-heading">${l.t("care.heading")}</h3>
+        <button type="button" class="btn text sm" ?disabled=${this._blocked} @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("detail.log_care")}</button></div>
+      <div class="care-filters">
+        <div class="row" role="group" aria-label=${l.t("care.filter_label")}>${filters.map(([kind, label]) => html`<button type="button" class="fchip" aria-pressed=${this._careFilter === kind ? "true" : "false"} @click=${() => { this._careFilter = kind; }}>${label}</button>`)}</div>
+        ${history ? html`<p class="small muted" role="status">${l.tn(history.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${history.summary.last_watered_local_date ? l.t("care.last_watered", { date: l.date(history.summary.last_watered_local_date) }) : l.t("care.never_watered")}</p>` : nothing}
+      </div>
       ${!history ? html`<p class="card-b muted">${l.t("care.loading")}</p>` : !history.events.length ? html`<p class="card-b muted">${l.t("care.empty")}</p>` : !events.length ? html`<p class="card-b muted">${l.t("care.filter_empty")}</p>`
         : html`<ul class="list" aria-label=${l.t("care.events_label")}>${events.map(event => {
           const extra = careDetails(l, event, fieldLabel);

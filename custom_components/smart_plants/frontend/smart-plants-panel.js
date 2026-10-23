@@ -1000,7 +1000,7 @@ var Rt = [
 function qt(e) {
 	if (!zt(e)) return null;
 	let { task_id: t, type: n, name: r, status: i, is_due: a, next_due: o, days: s, window_end: c, resume_on: l } = e, { reading: u = null, unit: d = null, due_since: f = null, due_at: p = null } = e;
-	return typeof t != "string" || !/^[0-9a-f]{32}$/.test(t) || !Ht.includes(n) || !(r === null ? n !== "custom" : typeof r == "string" && r.length > 0 && r.length <= 60) || !Ut.includes(i) || typeof a != "boolean" || a !== (i === "due" || i === "overdue") || !Gt(o) || !Gt(c) || !Gt(l) || !(s === null || typeof s == "number" && Number.isSafeInteger(s) && s >= 0) || !Bt(u) || !Vt(d) || !Wt(f) || !Wt(p) ? null : {
+	return typeof t != "string" || !/^[0-9a-f]{32}$/.test(t) || !Ht.includes(n) || !(r === null ? n !== "custom" : typeof r == "string" && r.length > 0 && r.length <= 60) || !Ut.includes(i) || typeof a != "boolean" || i !== "no_reading" && a !== (i === "due" || i === "overdue") || !Gt(o) || !Gt(c) || !Gt(l) || !(s === null || typeof s == "number" && Number.isSafeInteger(s) && s >= 0) || !Bt(u) || !Vt(d) || !Wt(f) || !Wt(p) ? null : {
 		task_id: t,
 		type: n,
 		name: r,
@@ -2756,7 +2756,7 @@ var Ln = {
 	"care_plan.reading_not_needed_plain": "Nicht nötig",
 	"care_plan.error_source": "Wähle einen Sensor.",
 	"care_plan.error_value": "Gib eine Zahl ein.",
-	"care_plan.error_for_hours": "Gib ganze Stunden von 0 bis 72 ein.",
+	"care_plan.error_for_hours": "Gib Stunden von 0 bis 72 in ganzen Minuten ein.",
 	"care_plan.error_reset_below": "Gib den Wert oder eine höhere Zahl ein.",
 	"care_plan.error_reset_above": "Gib den Wert oder eine niedrigere Zahl ein.",
 	"care_plan.summary_pick_source": "Messwert · wähle einen Sensor",
@@ -3745,7 +3745,7 @@ var Ln = {
 	"care_plan.reading_not_needed_plain": "Not needed",
 	"care_plan.error_source": "Pick a sensor.",
 	"care_plan.error_value": "Enter a number.",
-	"care_plan.error_for_hours": "Enter whole hours from 0 to 72.",
+	"care_plan.error_for_hours": "Enter hours from 0 to 72, in whole minutes.",
 	"care_plan.error_reset_below": "Enter the value or a higher number.",
 	"care_plan.error_reset_above": "Enter the value or a lower number.",
 	"care_plan.summary_pick_source": "Reading · pick a sensor",
@@ -5376,8 +5376,10 @@ var Ta = o`
   .pd .spacer { flex: 1; }
   .pd .error-text { color: var(--sp-error); }
   .pd code { font-size: 12.5px; overflow-wrap: anywhere; }
-  .card-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px 4px; min-height: 52px; }
-  .card-h h2, .card-h h3 { font-size: 16px; font-weight: 500; }
+  /* On narrow cards the actions move below the heading instead of squeezing
+     it; long words in other languages break at hyphens, not mid-letter. */
+  .card-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; padding: 12px 16px 4px; min-height: 52px; }
+  .card-h h2, .card-h h3 { font-size: 16px; font-weight: 500; flex: 1 1 auto; overflow-wrap: break-word; hyphens: auto; }
   .card-b { padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
   .muted, .pd small { color: var(--sp-text-secondary); }
   .small { font-size: 13px; }
@@ -5482,6 +5484,8 @@ var Ta = o`
   .setrow-d { font-size: 13px; color: var(--sp-text-secondary); overflow-wrap: anywhere; hyphens: auto; }
   .setrow-editor { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
   .setrow-editor label { margin: 4px 0; }
+  /* After the button rules, which reset margins: header actions stay at the end when they wrap. */
+  .pd .card-h > :not(h2, h3) { margin-inline-start: auto; }
   .setrow-editor .actions, .card-b .actions { margin-top: 4px; }
   .thr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
   .thr label { margin: 0; }
@@ -5489,8 +5493,8 @@ var Ta = o`
   .field-suffix input { flex: 1; min-width: 0; }
 
   /* Care */
-  .care-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-  .care-bar .spacer { flex: 1; }
+  .care-filters { display: flex; flex-direction: column; gap: 8px; padding: 4px 16px 8px; }
+  .care-filters p { margin: 0; }
   .pd button.fchip { min-height: 32px; height: auto; padding: 4px 12px; border-radius: 8px; border: 1px solid var(--divider-color, #bdbdbd); background: var(--ha-card-background, var(--sp-card)); font-size: 13px; color: var(--sp-text); cursor: pointer; }
   .pd button.fchip[aria-pressed="true"] { background: color-mix(in srgb, var(--sp-primary) 14%, transparent); border-color: transparent; color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); font-weight: 500; }
   .care-form label { margin: 8px 0; }
@@ -5982,8 +5986,11 @@ function go(e) {
 	return e.role ? { role: e.role } : e.entityId ? { entity_id: e.entityId } : null;
 }
 function _o(e) {
-	let t = e.trim();
-	return t ? !/^\d+$/.test(t) || Number(t) > 72 ? null : Number(t) * 60 : 0;
+	let t = e.trim().replace(",", ".");
+	if (!t) return 0;
+	if (!/^\d+(\.\d+)?$/.test(t)) return null;
+	let n = Number(t) * 60, r = Math.round(n);
+	return Math.abs(n - r) > 1e-9 || r > 4320 ? null : r;
 }
 function vo(e) {
 	let t = {};
@@ -6303,7 +6310,7 @@ function Ko(e, t) {
 function qo(e, t) {
 	let { l: n } = e, r = e.state.draft, i = e.state.errors, a = r.readingUnit ?? "", o = (e, t, n) => t ? `${e} ${n}` : e;
 	return v`<div id="task-more"><div class="grid2">
-      <label>${n.t("care_plan.for_hours")}<span class="suffix-field"><input type="number" inputmode="numeric" min="0" max=${72} step="1" .value=${r.forHours}
+      <label>${n.t("care_plan.for_hours")}<span class="suffix-field"><input type="number" inputmode="decimal" min="0" max=${72} step="any" .value=${r.forHours}
           aria-invalid=${i.forHours ? "true" : "false"} aria-describedby=${o("task-for-hint", !!i.forHours, "task-for-error")}
           @input=${(t) => e.onChange({ forHours: t.target.value })}><span class="suffix">${n.t("care_plan.hours")}</span></span></label>
       <label>${n.t(r.condition === "below" ? "care_plan.reset_after_above" : "care_plan.reset_after_below")}<span class="suffix-field"><input type="text" inputmode="decimal" .value=${r.resetValue} placeholder=${r.value.trim()}
@@ -6493,7 +6500,7 @@ var $o = o`
   }
   @container plant (max-width: 700px) {
     .care-plan .task { grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: start; }
-    .care-plan .task-side { grid-column: 2; grid-row: 2; justify-content: flex-start; }
+    .care-plan .task-side { grid-column: 2 / -1; grid-row: 2; justify-content: flex-start; }
     .care-plan .task-menu { grid-column: 3; grid-row: 1; }
     .restline { grid-template-columns: 20px minmax(0, 1fr); }
     .restline > .btn { grid-column: 2; justify-self: start; margin-inline-start: -12px; }
@@ -7642,6 +7649,10 @@ ys = Q, ys.styles = [U, o`
       .tile .ico { width: 34px; height: 34px; }
       .grid { grid-template-columns: 1fr; }
     }
+    /* Small phones: the icon goes above the number so the label gets the full tile width. */
+    @container (max-width: 380px) {
+      .tile { flex-direction: column; align-items: flex-start; gap: 6px; }
+    }
   `], W([S({ attribute: !1 })], Q.prototype, "l", void 0), W([S({ attribute: !1 })], Q.prototype, "plants", void 0), W([S({ attribute: !1 })], Q.prototype, "overview", void 0), W([S({ attribute: !1 })], Q.prototype, "areaNames", void 0), W([S({ attribute: !1 })], Q.prototype, "thumbnails", void 0), W([S({ attribute: !1 })], Q.prototype, "watering", void 0), W([S({ type: Boolean })], Q.prototype, "loading", void 0), W([S({ type: Boolean })], Q.prototype, "blocked", void 0), W([S({ attribute: !1 })], Q.prototype, "now", void 0), W([S({
 	type: Boolean,
 	reflect: !0
@@ -8391,12 +8402,7 @@ var $ = class e extends x {
 			onDone: (t) => void this._completeTask(e.id, t),
 			onAction: (t, n) => this._taskAction(e, t, n)
 		})}
-      <div class="care-bar"><div class="row" role="group" aria-label=${t.t("care.filter_label")}>${l.map(([e, t]) => v`<button type="button" class="fchip" aria-pressed=${this._careFilter === e ? "true" : "false"} @click=${() => {
-			this._careFilter = e;
-		}}>${t}</button>`)}</div>
-        <span class="spacer"></span><button type="button" class="btn filled" ?disabled=${this._blocked} @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("detail.log_care")}</button></div>
       ${this._careError ? v`<p class="error" role="alert">${this._careError}</p>` : b}
-      ${n ? v`<p class="small muted" role="status">${t.tn(n.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${n.summary.last_watered_local_date ? t.t("care.last_watered", { date: t.date(n.summary.last_watered_local_date) }) : t.t("care.never_watered")}</p>` : b}
       ${u ? v`<section class="sp-card" id="care-form" aria-labelledby="care-form-heading"><div class="card-h"><h3 id="care-form-heading">${this._careEditingId ? t.t("care.edit_kind", { kind: o(this._careKind) }) : t.t("care.record")}</h3>
           <button type="button" class="icon-btn" aria-label=${t.t("care.close_form")} @click=${() => this._closeCareForm()}><ha-icon aria-hidden="true" icon="mdi:close"></ha-icon></button></div>
         <div class="card-b care-form"><fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict || !n || n.revision !== e.revision}>
@@ -8423,7 +8429,14 @@ var $ = class e extends x {
 			this._careEditingId = null, this._careKind = "watering", this._careFields = {}, this._careNote = "";
 		}}>${t.t("care.cancel_editing")}</button>` : b}</div>
       </fieldset></div></section>` : b}
-      <section class="sp-card" aria-labelledby="care-heading"><div class="card-h"><h3 id="care-heading">${t.t("care.heading")}</h3></div>
+      <section class="sp-card care-history" aria-labelledby="care-heading"><div class="card-h"><h3 id="care-heading">${t.t("care.heading")}</h3>
+        <button type="button" class="btn text sm" ?disabled=${this._blocked} @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("detail.log_care")}</button></div>
+      <div class="care-filters">
+        <div class="row" role="group" aria-label=${t.t("care.filter_label")}>${l.map(([e, t]) => v`<button type="button" class="fchip" aria-pressed=${this._careFilter === e ? "true" : "false"} @click=${() => {
+			this._careFilter = e;
+		}}>${t}</button>`)}</div>
+        ${n ? v`<p class="small muted" role="status">${t.tn(n.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${n.summary.last_watered_local_date ? t.t("care.last_watered", { date: t.date(n.summary.last_watered_local_date) }) : t.t("care.never_watered")}</p>` : b}
+      </div>
       ${n ? n.events.length ? c.length ? v`<ul class="list" aria-label=${t.t("care.events_label")}>${c.map((n) => {
 			let r = Ca(t, n, i), c = t.recordedDateTime(n.occurred_at);
 			return v`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${ca[n.kind]}></ha-icon></span>

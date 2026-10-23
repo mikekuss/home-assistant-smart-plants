@@ -184,10 +184,11 @@ the trigger value and the normal range) before saving. Built-in defaults are lis
 
 ## Log care
 
-Open the plant and select **Log care** in the header or in the **Care** tab. Choose a care
-type, set the date and time (your local time, not in the future), fill in the optional
-details, and select **Record care**. The chips above the list (All, Watering, Fertilizing,
-Pruning, Repotting, Notes) filter the entries.
+Open the plant and select **Log care** in the header or on the **Care history** card in the
+**Care** tab. Choose a care type, set the date and time (your local time, not in the future),
+fill in the optional details, and select **Record care**. The chips at the top of the
+**Care history** card (All, Watering, Fertilizing, Pruning, Repotting, Notes) filter the
+entries.
 
 | Care type | Details you can record |
 | --- | --- |

@@ -95,7 +95,7 @@ test("pruning, repotting and note events have accessible kind-specific forms", a
     await date.fill("2026-01-02T11:15");
     for (const [label, value] of Object.entries(item.fields)) await page.getByLabel(label, { exact: true }).fill(value);
     await button(page, "Record care").click();
-    await expect(page.getByText(item.label, { exact: false }).first()).toBeVisible();
+    await expect(page.getByRole("list", { name: "Plant care events" }).getByText(item.label, { exact: false }).first()).toBeVisible();
     await audit(page, info, `${item.kind}-history`);
   }
   expect(await messages(page, "care/add")).toHaveLength(3);

@@ -976,7 +976,7 @@ export const de: Catalog = {
   "care_plan.reading_not_needed_plain": "Nicht nötig",
   "care_plan.error_source": "Wähle einen Sensor.",
   "care_plan.error_value": "Gib eine Zahl ein.",
-  "care_plan.error_for_hours": "Gib ganze Stunden von 0 bis 72 ein.",
+  "care_plan.error_for_hours": "Gib Stunden von 0 bis 72 in ganzen Minuten ein.",
   "care_plan.error_reset_below": "Gib den Wert oder eine höhere Zahl ein.",
   "care_plan.error_reset_above": "Gib den Wert oder eine niedrigere Zahl ein.",
   "care_plan.summary_pick_source": "Messwert · wähle einen Sensor",
