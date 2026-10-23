@@ -13,6 +13,9 @@ computed moisture aggregate has no valid input. ``sensor_stale`` stays
 available so it can reflect "no assigned source" (off) versus
 "assigned source missing" (on).
 
+Every binary sensor carries ``snoozed`` and ``snoozed_until`` attributes
+for the plant's alert snooze; a snooze never changes a state.
+
 Care entities are managed by ``CareEntityLifecycle``: one "due" binary
 sensor per care task and one plant-wide "care due" binary sensor while the
 plant has at least one task. They have no device class, because a due care
@@ -77,9 +80,29 @@ ROLE_CONDUCTIVITY_STRESS = "conductivity_stress"
 
 
 class SmartPlantsBinarySensorEntity(SmartPlantsEntity, BinarySensorEntity):
-    """Base for every Smart Plants binary sensor role."""
+    """
+    Base for every Smart Plants binary sensor role.
+
+    Every binary sensor reports whether the plant's alerts are snoozed. The
+    state itself never changes with a snooze; automations check the
+    ``snoozed`` attribute to stay quiet.
+    """
 
     PLATFORM = PLATFORM
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        plant = self._manager.snapshot.plants.get(self._plant_id)
+        snoozed_until = None if plant is None else plant.snoozed_until
+        return {
+            **self._alert_attributes(),
+            "snoozed": snoozed_until is not None,
+            "snoozed_until": snoozed_until,
+        }
+
+    def _alert_attributes(self) -> dict[str, Any]:
+        """Return the attributes of this sensor's own alert."""
+        return {}
 
 
 class _MoistureBinaryBase(SmartPlantsBinarySensorEntity):
@@ -242,8 +265,7 @@ class _LowLightBinary(SmartPlantsBinarySensorEntity):
             return None
         return bool(result.low_light)
 
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def _alert_attributes(self) -> dict[str, Any]:
         controller = self._manager.get_role_controller(self._plant_id, "illuminance")
         if controller is None:
             return {}
@@ -316,8 +338,7 @@ class _LowBatteryBinary(SmartPlantsBinarySensorEntity):
             return None
         return bool(result.low_battery)
 
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def _alert_attributes(self) -> dict[str, Any]:
         controller = self._manager.get_role_controller(self._plant_id, "battery")
         if controller is None:
             return {}
@@ -392,8 +413,7 @@ class _TemperatureStressBinary(SmartPlantsBinarySensorEntity):
             return None
         return bool(result.temperature_stress)
 
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def _alert_attributes(self) -> dict[str, Any]:
         controller = self._manager.get_role_controller(self._plant_id, "temperature")
         if controller is None:
             return {}
@@ -470,8 +490,7 @@ class _HumidityStressBinary(SmartPlantsBinarySensorEntity):
             return None
         return bool(result.humidity_stress)
 
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def _alert_attributes(self) -> dict[str, Any]:
         controller = self._manager.get_role_controller(self._plant_id, "humidity")
         if controller is None:
             return {}
@@ -554,8 +573,7 @@ class _SoilTemperatureStressBinary(SmartPlantsBinarySensorEntity):
             return None
         return bool(result.soil_temperature_stress)
 
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def _alert_attributes(self) -> dict[str, Any]:
         controller = self._manager.get_role_controller(
             self._plant_id, "soil_temperature"
         )
@@ -629,8 +647,7 @@ class _Co2StressBinary(SmartPlantsBinarySensorEntity):
             return None
         return bool(result.co2_stress)
 
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def _alert_attributes(self) -> dict[str, Any]:
         controller = self._manager.get_role_controller(self._plant_id, "co2")
         if controller is None:
             return {}
@@ -705,8 +722,7 @@ class _ConductivityStressBinary(SmartPlantsBinarySensorEntity):
             return None
         return bool(result.conductivity_stress)
 
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def _alert_attributes(self) -> dict[str, Any]:
         controller = self._manager.get_role_controller(self._plant_id, "conductivity")
         if controller is None:
             return {}
@@ -781,8 +797,7 @@ class _CareTaskDueBinary(SmartPlantsBinarySensorEntity):
             return None
         return compute_task_state(self._manager, *current).is_due
 
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def _alert_attributes(self) -> dict[str, Any]:
         current = self._task()
         if current is None:
             return {}
@@ -848,8 +863,7 @@ class _CareDueBinary(SmartPlantsBinarySensorEntity):
             return None
         return bool(self._due_tasks(plant))
 
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def _alert_attributes(self) -> dict[str, Any]:
         plant = self._plant()
         if plant is None:
             return {}

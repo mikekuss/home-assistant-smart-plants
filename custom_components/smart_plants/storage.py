@@ -60,6 +60,7 @@ _MINOR_CARE_EVENTS: Final = 11
 _MINOR_CARE_TASKS: Final = 12
 _MINOR_SPECIES_CARE_RANGES: Final = 13
 _MINOR_READING_CARE_TASKS: Final = 14
+_MINOR_ALERT_SNOOZE: Final = 15
 _SPECIES_CARE_RANGE_KEYS: Final = (
     "min_temperature",
     "max_temperature",
@@ -466,6 +467,20 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                             "older storage cannot contain reading care tasks "
                             "or winter protection tasks"
                         )
+
+        if old_major_version == 1 and old_minor_version < _MINOR_ALERT_SNOOZE:
+            # Minor 15 records when an alert snooze ends. Existing plants are
+            # not snoozed. Earlier branches may re-serialize a plant, which
+            # adds an empty snooze; a set snooze cannot come from an older
+            # minor, so the load fails closed instead of guessing.
+            for plant in data["plants"]:
+                if not isinstance(plant, dict):
+                    continue
+                if plant.get("snoozed_until") is not None:
+                    raise SmartPlantsInvalidStorageError(
+                        "older storage cannot contain an alert snooze"
+                    )
+                plant["snoozed_until"] = None
 
         return data
 

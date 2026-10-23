@@ -34,6 +34,10 @@ Commands (all admin-only):
   Reading care tasks cannot be skipped (``invalid_format``).
 * ``smart_plants/care_tasks/undo_skip`` -> ``{"plant": PlantView}``
 * ``smart_plants/plants/set_rest_period`` -> ``{"plant": PlantView}``
+* ``smart_plants/plants/snooze`` -> ``{"plant": PlantView}``; ``until`` is an
+  ISO timestamp with an offset, in the future and at most 366 days ahead,
+  or ``null`` to end the snooze. ``PlantView.snoozed_until`` holds the end
+  as a UTC timestamp, or ``null``.
 
 The generic ``smart_plants/roles/*`` source commands take an additional
 ``role`` field and delegate to the same manager methods as the
@@ -80,6 +84,8 @@ call, derived on the server from the same evaluations the entities read:
   reading, then the rest by ``next_due``.
 * ``rest_period`` -- ``{"start_month", "end_month"}`` or ``null``.
 * ``resting`` -- whether today lies inside the rest period.
+* ``snoozed_until`` -- when the plant's alert snooze ends (UTC timestamp), or
+  ``null``. A snooze never changes ``status``, ``problems`` or ``care``.
 
 ``smart_plants/wizard/create`` takes a required ``moisture`` configuration
 and an optional ``roles`` object mapping any other source-accepting role to
@@ -100,7 +106,7 @@ Error codes:
   full detail is logged, only the message is returned.
 
 ``expected_revision`` is required on every mutation of an existing plant
-(update, disable, reenable, delete, care and care task commands) and is
+(update, disable, reenable, delete, snooze, care and care task commands) and is
 compared against
 ``PlantRecord.revision``. Handlers never trust client-supplied ids.
 """
@@ -987,6 +993,30 @@ async def _handle_set_rest_period(
             msg["plant_id"],
             expected_revision=msg["expected_revision"],
             rest_period=msg["rest_period"],
+        )
+        return {"plant": _plant_view(plant)}
+
+    await _run_mutation(hass, connection, msg, mutate)
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/plants/snooze",
+        vol.Required("plant_id"): _plant_id,
+        vol.Required("expected_revision"): _positive_int,
+        vol.Required("until"): vol.Any(vol.All(str, vol.Length(min=1, max=64)), None),
+    }
+)
+@require_admin
+@async_response
+async def _handle_snooze(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> None:
+    async def mutate(manager: SmartPlantsManager) -> dict[str, Any]:
+        plant = await manager.async_snooze_plant(
+            msg["plant_id"],
+            expected_revision=msg["expected_revision"],
+            until=msg["until"],
         )
         return {"plant": _plant_view(plant)}
 
@@ -2120,6 +2150,7 @@ def async_register(hass: HomeAssistant) -> None:
     async_register_command(hass, _handle_care_task_skip)
     async_register_command(hass, _handle_care_task_undo_skip)
     async_register_command(hass, _handle_set_rest_period)
+    async_register_command(hass, _handle_snooze)
     async_register_command(hass, _handle_create)
     async_register_command(hass, _handle_update)
     async_register_command(hass, _handle_disable)

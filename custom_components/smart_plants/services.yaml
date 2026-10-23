@@ -31,3 +31,21 @@ skip_care_task:
     entity:
       - integration: smart_plants
         domain: binary_sensor
+
+snooze:
+  target:
+    device:
+      - integration: smart_plants
+  fields:
+    duration:
+      selector:
+        duration:
+          enable_day: true
+    until:
+      selector:
+        datetime:
+
+unsnooze:
+  target:
+    device:
+      - integration: smart_plants

@@ -83,6 +83,8 @@ def _inventory_summary(snapshot: Any) -> dict[str, Any]:
     care_task_type_counts: dict[str, int] = {}
     care_task_schedule_counts: dict[str, int] = {}
     rest_period_count = 0
+    # When each snooze ends; not sensitive, and sorted so no plant is named.
+    snoozed_until: list[str] = []
     for plant in snapshot.plants.values():
         lifecycle[plant.lifecycle_state] = lifecycle.get(plant.lifecycle_state, 0) + 1
         if plant.species is not None:
@@ -100,6 +102,8 @@ def _inventory_summary(snapshot: Any) -> dict[str, Any]:
             kind = task.schedule.kind
             care_task_schedule_counts[kind] = care_task_schedule_counts.get(kind, 0) + 1
         rest_period_count += plant.rest_period is not None
+        if plant.snoozed_until is not None:
+            snoozed_until.append(plant.snoozed_until)
     return {
         "schema_revision": snapshot.revision,
         "plant_count": len(snapshot.plants),
@@ -112,6 +116,7 @@ def _inventory_summary(snapshot: Any) -> dict[str, Any]:
         "care_task_type_counts": care_task_type_counts,
         "care_task_schedule_counts": care_task_schedule_counts,
         "rest_period_count": rest_period_count,
+        "snoozed_until": sorted(snoozed_until),
         "pending_operation_count": len(snapshot.pending_operations),
         "tombstone_count": len(snapshot.tombstones),
     }

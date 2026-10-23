@@ -104,34 +104,154 @@
     },
     "binary_sensor": {
       "needs_water": {
-        "name": "Braucht Wasser"
+        "name": "Braucht Wasser",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
+          }
+        }
       },
       "too_wet": {
-        "name": "Zu nass"
+        "name": "Zu nass",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
+          }
+        }
       },
       "sensor_stale": {
-        "name": "Sensor veraltet"
+        "name": "Sensor veraltet",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
+          }
+        }
       },
       "low_light": {
-        "name": "Zu wenig Licht"
+        "name": "Zu wenig Licht",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
+          }
+        }
       },
       "low_battery": {
-        "name": "Batterie niedrig"
+        "name": "Batterie niedrig",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
+          }
+        }
       },
       "temperature_stress": {
-        "name": "Temperaturstress"
+        "name": "Temperaturstress",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
+          }
+        }
       },
       "humidity_stress": {
-        "name": "Luftfeuchtestress"
+        "name": "Luftfeuchtestress",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
+          }
+        }
       },
       "soil_temperature_stress": {
-        "name": "Bodentemperaturstress"
+        "name": "Bodentemperaturstress",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
+          }
+        }
       },
       "co2_stress": {
-        "name": "CO2-Stress"
+        "name": "CO2-Stress",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
+          }
+        }
       },
       "conductivity_stress": {
-        "name": "Leitfähigkeitsstress"
+        "name": "Leitfähigkeitsstress",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
+          }
+        }
       },
       "care_task_fertilize": {
         "name": "Düngen",
@@ -154,6 +274,16 @@
               "waiting": "Wartet auf Erholung des Messwerts",
               "no_reading": "Kein Messwert"
             }
+          },
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
           }
         }
       },
@@ -178,6 +308,16 @@
               "waiting": "Wartet auf Erholung des Messwerts",
               "no_reading": "Kein Messwert"
             }
+          },
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
           }
         }
       },
@@ -202,6 +342,16 @@
               "waiting": "Wartet auf Erholung des Messwerts",
               "no_reading": "Kein Messwert"
             }
+          },
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
           }
         }
       },
@@ -226,6 +376,16 @@
               "waiting": "Wartet auf Erholung des Messwerts",
               "no_reading": "Kein Messwert"
             }
+          },
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
           }
         }
       },
@@ -250,6 +410,16 @@
               "waiting": "Wartet auf Erholung des Messwerts",
               "no_reading": "Kein Messwert"
             }
+          },
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
           }
         }
       },
@@ -274,6 +444,16 @@
               "waiting": "Wartet auf Erholung des Messwerts",
               "no_reading": "Kein Messwert"
             }
+          },
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
           }
         }
       },
@@ -282,6 +462,18 @@
         "state": {
           "on": "Fällig",
           "off": "Nicht fällig"
+        },
+        "state_attributes": {
+          "snoozed": {
+            "name": "Stummgeschaltet",
+            "state": {
+              "true": "Ja",
+              "false": "Nein"
+            }
+          },
+          "snoozed_until": {
+            "name": "Stummgeschaltet bis"
+          }
         }
       }
     },
@@ -355,6 +547,24 @@
     "skip_care_task": {
       "name": "Pflegeaufgabe überspringen",
       "description": "Überspringt die aktuelle Fälligkeit von Smart-Plants-Pflegeaufgaben. Die Aufgabe wird zum nächsten geplanten Termin wieder fällig. Pflegeaufgaben, die sich nach einem Messwert richten, können nicht übersprungen werden."
+    },
+    "snooze": {
+      "name": "Hinweise stummschalten",
+      "description": "Schaltet die Hinweise von Smart-Plants-Pflanzen stumm, zum Beispiel während eines Urlaubs. Die Entitäten behalten ihren echten Zustand; ihr Attribut Stummgeschaltet wird aktiv, damit Automationen still bleiben können. Erneutes Stummschalten ersetzt das Ende. Die Stummschaltung endet von selbst.",
+      "fields": {
+        "duration": {
+          "name": "Dauer",
+          "description": "Wie lange ab jetzt stummgeschaltet wird. Entweder dies oder Bis angeben, höchstens 366 Tage."
+        },
+        "until": {
+          "name": "Bis",
+          "description": "Wann die Stummschaltung endet. Entweder dies oder Dauer angeben, höchstens 366 Tage im Voraus."
+        }
+      }
+    },
+    "unsnooze": {
+      "name": "Hinweise fortsetzen",
+      "description": "Beendet die Stummschaltung der Hinweise von Smart-Plants-Pflanzen sofort."
     }
   },
   "exceptions": {
@@ -399,6 +609,27 @@
     },
     "reading_task_skip": {
       "message": "{target} richtet sich nach einem Messwert und kann nicht übersprungen werden. Markieren Sie die Aufgabe stattdessen als erledigt."
+    },
+    "plant_target_required": {
+      "message": "Wählen Sie Pflanzen aus, keine einzelnen Entitäten."
+    },
+    "no_plant_target": {
+      "message": "Wählen Sie mindestens eine Pflanze aus."
+    },
+    "plant_disabled_snooze": {
+      "message": "{plant} ist deaktiviert. Aktivieren Sie die Pflanze, bevor Sie ihre Hinweise stummschalten."
+    },
+    "snooze_period_required": {
+      "message": "Geben Sie entweder eine Dauer oder ein Ende an, nicht beides."
+    },
+    "snooze_in_past": {
+      "message": "Die Stummschaltung muss in der Zukunft enden."
+    },
+    "snooze_too_long": {
+      "message": "Eine Stummschaltung dauert höchstens 366 Tage."
+    },
+    "snooze_rejected": {
+      "message": "Die Stummschaltung von {target} wurde nicht gespeichert: {reason}"
     }
   }
 }

@@ -104,34 +104,154 @@
     },
     "binary_sensor": {
       "needs_water": {
-        "name": "Needs water"
+        "name": "Needs water",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
+          }
+        }
       },
       "too_wet": {
-        "name": "Too wet"
+        "name": "Too wet",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
+          }
+        }
       },
       "sensor_stale": {
-        "name": "Sensor stale"
+        "name": "Sensor stale",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
+          }
+        }
       },
       "low_light": {
-        "name": "Low light"
+        "name": "Low light",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
+          }
+        }
       },
       "low_battery": {
-        "name": "Low battery"
+        "name": "Low battery",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
+          }
+        }
       },
       "temperature_stress": {
-        "name": "Temperature stress"
+        "name": "Temperature stress",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
+          }
+        }
       },
       "humidity_stress": {
-        "name": "Humidity stress"
+        "name": "Humidity stress",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
+          }
+        }
       },
       "soil_temperature_stress": {
-        "name": "Soil temperature stress"
+        "name": "Soil temperature stress",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
+          }
+        }
       },
       "co2_stress": {
-        "name": "CO2 stress"
+        "name": "CO2 stress",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
+          }
+        }
       },
       "conductivity_stress": {
-        "name": "Conductivity stress"
+        "name": "Conductivity stress",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
+          }
+        }
       },
       "care_task_fertilize": {
         "name": "Fertilize",
@@ -154,6 +274,16 @@
               "waiting": "Waiting for the reading to recover",
               "no_reading": "No reading"
             }
+          },
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
           }
         }
       },
@@ -178,6 +308,16 @@
               "waiting": "Waiting for the reading to recover",
               "no_reading": "No reading"
             }
+          },
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
           }
         }
       },
@@ -202,6 +342,16 @@
               "waiting": "Waiting for the reading to recover",
               "no_reading": "No reading"
             }
+          },
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
           }
         }
       },
@@ -226,6 +376,16 @@
               "waiting": "Waiting for the reading to recover",
               "no_reading": "No reading"
             }
+          },
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
           }
         }
       },
@@ -250,6 +410,16 @@
               "waiting": "Waiting for the reading to recover",
               "no_reading": "No reading"
             }
+          },
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
           }
         }
       },
@@ -274,6 +444,16 @@
               "waiting": "Waiting for the reading to recover",
               "no_reading": "No reading"
             }
+          },
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
           }
         }
       },
@@ -282,6 +462,18 @@
         "state": {
           "on": "Due",
           "off": "Not due"
+        },
+        "state_attributes": {
+          "snoozed": {
+            "name": "Snoozed",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "Snoozed until"
+          }
         }
       }
     },
@@ -355,6 +547,24 @@
     "skip_care_task": {
       "name": "Skip care task",
       "description": "Skips the current occurrence of Smart Plants care tasks. The task becomes due again on its next scheduled date. Care tasks that follow a sensor reading cannot be skipped."
+    },
+    "snooze": {
+      "name": "Snooze alerts",
+      "description": "Snoozes the alerts of Smart Plants plants, for example during a vacation. Entities keep their real states; their Snoozed attribute turns on so automations can stay quiet. Snoozing again replaces the end. The snooze ends by itself.",
+      "fields": {
+        "duration": {
+          "name": "Duration",
+          "description": "How long to snooze, counted from now. Set either this or Until, at most 366 days."
+        },
+        "until": {
+          "name": "Until",
+          "description": "When the snooze ends. Set either this or Duration, at most 366 days ahead."
+        }
+      }
+    },
+    "unsnooze": {
+      "name": "Resume alerts",
+      "description": "Ends the alert snooze of Smart Plants plants now."
     }
   },
   "exceptions": {
@@ -399,6 +609,27 @@
     },
     "reading_task_skip": {
       "message": "{target} follows a sensor reading and cannot be skipped. Mark it as done instead."
+    },
+    "plant_target_required": {
+      "message": "Choose plants, not individual entities."
+    },
+    "no_plant_target": {
+      "message": "Choose at least one plant."
+    },
+    "plant_disabled_snooze": {
+      "message": "{plant} is disabled. Enable it before snoozing its alerts."
+    },
+    "snooze_period_required": {
+      "message": "Set either a duration or an end time, not both."
+    },
+    "snooze_in_past": {
+      "message": "The snooze must end in the future."
+    },
+    "snooze_too_long": {
+      "message": "A snooze can last at most 366 days."
+    },
+    "snooze_rejected": {
+      "message": "The snooze of {target} was not saved: {reason}"
     }
   }
 }

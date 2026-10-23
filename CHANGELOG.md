@@ -16,6 +16,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Reading tasks have new `watching`, `waiting` and `no_reading` statuses and reading attributes
   on the task's binary sensor, and they are completed with `smart_plants.log_care` like other
   tasks. See [Entities](docs/entities.md#reading-tasks).
+- Snooze a plant's alerts, for example during a vacation, with the new `smart_plants.snooze`
+  action (for a duration or until a time, at most 366 days) and end it early with
+  `smart_plants.unsnooze`. Entities keep their real states; every binary sensor of the plant
+  gets `snoozed` and `snoozed_until` attributes for automation conditions, and the snooze ends
+  by itself. See [Automations](docs/automations.md#snooze-alerts).
 
 ### Changed
 

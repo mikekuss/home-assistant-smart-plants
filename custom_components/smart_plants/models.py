@@ -3071,6 +3071,8 @@ class PlantRecord:
     care_events: tuple[CareEvent, ...] = ()
     care_tasks: tuple[CareTask, ...] = ()
     rest_period: RestPeriod | None = None
+    # End of an alert snooze as a UTC timestamp; ``None`` when not snoozed.
+    snoozed_until: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "extra_roles", _deep_freeze(self.extra_roles))
@@ -3116,6 +3118,7 @@ class PlantRecord:
                     "care_events",
                     "care_tasks",
                     "rest_period",
+                    "snoozed_until",
                 }
             ),
             "plant record",
@@ -3170,6 +3173,11 @@ class PlantRecord:
             raise ValueError("plant care_tasks exceeds its limit or is invalid")
         care_tasks = tuple(CareTask.from_storage(row) for row in raw_tasks)
         validate_care_tasks(care_tasks)
+        if require_roles and "snoozed_until" not in data:
+            raise ValueError("plant snoozed_until is required")
+        snoozed_until = data.get("snoozed_until")
+        if snoozed_until is not None:
+            parse_utc_timestamp(snoozed_until, "plant snoozed_until")
         rest_data = data.get("rest_period")
         rest_period = (
             RestPeriod.from_storage(rest_data) if rest_data is not None else None
@@ -3231,6 +3239,7 @@ class PlantRecord:
             care_events=care_events,
             care_tasks=care_tasks,
             rest_period=rest_period,
+            snoozed_until=snoozed_until,
         )
 
     def as_storage(self) -> dict[str, Any]:
@@ -3263,6 +3272,7 @@ class PlantRecord:
             "rest_period": self.rest_period.as_storage()
             if self.rest_period is not None
             else None,
+            "snoozed_until": self.snoozed_until,
             "roles": {
                 **extra_roles,
                 "moisture": self.moisture.as_storage(),

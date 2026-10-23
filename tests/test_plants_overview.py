@@ -134,6 +134,7 @@ async def test_overview_plant_without_sensors(
             "care": [],
             "rest_period": None,
             "resting": False,
+            "snoozed_until": None,
         }
     }
 
@@ -371,6 +372,7 @@ async def test_overview_payload_has_no_provider_data(
         "care",
         "rest_period",
         "resting",
+        "snoozed_until",
     }
 
 

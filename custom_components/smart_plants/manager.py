@@ -15,7 +15,8 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from homeassistant.core import callback, valid_entity_id
+from homeassistant.core import CALLBACK_TYPE, callback, valid_entity_id
+from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.util import dt as dt_util
 
 from .care import (
@@ -32,6 +33,7 @@ from .care import (
     parse_utc_timestamp,
     rotate_for_append,
     task_matches_event,
+    utc_timestamp,
 )
 from .events import (
     EventCallback,
@@ -115,6 +117,9 @@ _AREA_ID_MAX_LEN = 200
 # How far a care event may lie ahead of the server clock before it counts as
 # "in the future"; covers browsers and phones whose clocks drift.
 CARE_CLOCK_SKEW = timedelta(minutes=5)
+# Longest alert snooze, counted from the moment it is set.
+SNOOZE_MAX_AHEAD = timedelta(days=366)
+_SNOOZE_TIMESTAMP_MAX_LEN = 64
 WIZARD_MAX_DRAFTS = 64
 WIZARD_MAX_AGE = 600
 WIZARD_ID_LENGTH = 36
@@ -198,6 +203,11 @@ class SmartPlantsManager:
         # construction and configuration; adding a role never adds a manager map.
         self._controllers: dict[str, dict[str, Any]] = {}
         self._wizard_drafts: OrderedDict[str, float] = OrderedDict()
+        # plant_id -> (snoozed_until, cancel) for the timer that ends each
+        # alert snooze, kept in step with the snapshot by
+        # ``_sync_snooze_timers``.
+        self._snooze_timers: dict[str, tuple[str, CALLBACK_TYPE]] = {}
+        self._snooze_tasks: set[asyncio.Task[None]] = set()
 
     def wizard_start(self) -> dict[str, Any]:
         """Reserve a bounded capability without writing inventory or registries."""
@@ -405,6 +415,7 @@ class SmartPlantsManager:
         """Load and start all manager resources as one transaction."""
         try:
             self._snapshot = await self._store.async_load()
+            await self._async_clear_ended_snoozes()
             await self._async_canonicalize_registered_sources()
             self._start_registry_tracking()
             for plant in self._snapshot.plants.values():
@@ -413,8 +424,10 @@ class SmartPlantsManager:
             self._reading_tracker = tracker
             await tracker.async_load()
             tracker.start()
+            self._sync_snooze_timers()
             self._loaded = True
         except BaseException:
+            self._cancel_snooze_timers()
             if self._unsub_registry is not None:
                 self._unsub_registry()
                 self._unsub_registry = None
@@ -508,6 +521,7 @@ class SmartPlantsManager:
         # unload and write through a stale manager reference.
         self._closing = True
         self._wizard_drafts.clear()
+        self._cancel_snooze_timers()
         if self._unsub_registry is not None:
             try:
                 self._unsub_registry()
@@ -521,10 +535,11 @@ class SmartPlantsManager:
             self._unavailable = True
             self._loaded = False
 
-        tasks = list(self._registry_tasks)
+        tasks = [*self._registry_tasks, *self._snooze_tasks]
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         self._registry_tasks.clear()
+        self._snooze_tasks.clear()
         # A process interruption may occur after a mutation reserves ordering
         # but before dispatch starts. Those tickets are not owned by an event
         # task and must not leave unload waiting on an impossible completion.
@@ -1111,6 +1126,120 @@ class SmartPlantsManager:
             change = await self._async_publish_plant_change(current, updated)
         await self._dispatch_event(change)
         return updated
+
+    async def async_snooze_plant(
+        self,
+        plant_id: str,
+        *,
+        expected_revision: int | None,
+        until: datetime | str | None,
+    ) -> PlantRecord:
+        """
+        Mute a plant's alerts until ``until``, or end the snooze with ``None``.
+
+        Entities keep their real states while a plant is snoozed; their
+        ``snoozed`` attribute lets automations stay quiet. Snoozing again
+        replaces the end. Actions pass ``expected_revision=None``.
+        """
+        self._raise_if_unavailable()
+        async with self._mutation_lock:
+            self._raise_if_unavailable()
+            current = self._require_plant(plant_id)
+            self._require_optional_expected_revision(current, expected_revision)
+            snoozed_until = _validate_snooze_until(until, dt_util.utcnow())
+            if snoozed_until is not None and current.lifecycle_state != "active":
+                raise SmartPlantsValidationError("a disabled plant cannot be snoozed")
+            if snoozed_until == current.snoozed_until:
+                return current
+            updated = current.with_next_revision(snoozed_until=snoozed_until)
+            change = await self._async_publish_plant_change(current, updated)
+        await self._dispatch_event(change)
+        return updated
+
+    async def async_unsnooze_plant(
+        self, plant_id: str, *, expected_revision: int | None
+    ) -> PlantRecord:
+        return await self.async_snooze_plant(
+            plant_id, expected_revision=expected_revision, until=None
+        )
+
+    async def _async_clear_ended_snoozes(self) -> None:
+        """Clear snoozes that ended while Home Assistant was not running."""
+        now = dt_util.utcnow()
+        snapshot = self._snapshot
+        for plant in self._snapshot.plants.values():
+            if _snooze_ended(plant, now):
+                snapshot = snapshot.with_plant(
+                    plant.with_next_revision(snoozed_until=None)
+                )
+        if snapshot is not self._snapshot:
+            await self._async_publish(snapshot)
+
+    def _sync_snooze_timers(self) -> None:
+        """Arm one end timer per snoozed plant and cancel stale ones."""
+        if self._closing:
+            return
+        plants = self._snapshot.plants
+        for plant_id, (until, cancel) in tuple(self._snooze_timers.items()):
+            plant = plants.get(plant_id)
+            if plant is None or plant.snoozed_until != until:
+                cancel()
+                del self._snooze_timers[plant_id]
+        for plant in plants.values():
+            snoozed_until = plant.snoozed_until
+            if snoozed_until is None or plant.id in self._snooze_timers:
+                continue
+            cancel = async_track_point_in_utc_time(
+                self._hass,
+                self._make_snooze_end_callback(plant.id, snoozed_until),
+                parse_utc_timestamp(snoozed_until, "plant snoozed_until"),
+            )
+            self._snooze_timers[plant.id] = (snoozed_until, cancel)
+
+    def _cancel_snooze_timers(self) -> None:
+        for _until, cancel in self._snooze_timers.values():
+            cancel()
+        self._snooze_timers.clear()
+
+    def _make_snooze_end_callback(
+        self, plant_id: str, until: str
+    ) -> Callable[[datetime], None]:
+        @callback
+        def _ended(_now: datetime) -> None:
+            timer = self._snooze_timers.get(plant_id)
+            if timer is not None and timer[0] == until:
+                del self._snooze_timers[plant_id]
+            if self._closing:
+                return
+            task = self._hass.async_create_task(
+                self._async_end_snooze(plant_id, until),
+                f"smart_plants snooze end {plant_id}",
+            )
+            self._snooze_tasks.add(task)
+            task.add_done_callback(self._snooze_tasks.discard)
+
+        return _ended
+
+    async def _async_end_snooze(self, plant_id: str, until: str) -> None:
+        try:
+            self._raise_if_unavailable()
+            async with self._mutation_lock:
+                self._raise_if_unavailable()
+                current = self._snapshot.plants.get(plant_id)
+                if current is None or current.snoozed_until != until:
+                    return
+                if not _snooze_ended(current, dt_util.utcnow()):
+                    # The timer fired early; arm it again.
+                    self._sync_snooze_timers()
+                    return
+                updated = current.with_next_revision(snoozed_until=None)
+                change = await self._async_publish_plant_change(current, updated)
+        except SmartPlantsManagerUnavailableError:
+            return
+        except SmartPlantsStorageError:
+            _LOGGER.exception("Smart Plants could not end the snooze of a plant")
+            return
+        await self._dispatch_event(change)
 
     async def _async_change_care_task(
         self,
@@ -2170,7 +2299,11 @@ class SmartPlantsManager:
             self._require_expected_revision(current, expected_revision)
             if current.lifecycle_state == lifecycle_state:
                 return current
-            updated = current.with_next_revision(lifecycle_state=lifecycle_state)
+            changes: dict[str, Any] = {"lifecycle_state": lifecycle_state}
+            if lifecycle_state == "disabled":
+                # A disabled plant reports nothing, so its snooze ends too.
+                changes["snoozed_until"] = None
+            updated = current.with_next_revision(**changes)
             await self._async_publish(self._snapshot.with_plant(updated))
             event = PlantLifecycleChangedEvent(
                 kind="plant_lifecycle_changed",
@@ -2578,6 +2711,35 @@ class SmartPlantsManager:
                 "Smart Plants failed to persist snapshot"
             ) from err
         self._snapshot = snapshot
+        self._sync_snooze_timers()
+
+
+def _snooze_ended(plant: PlantRecord, now: datetime) -> bool:
+    until = plant.snoozed_until
+    return until is not None and parse_utc_timestamp(until, "snoozed_until") <= now
+
+
+def _validate_snooze_until(value: object, now: datetime) -> str | None:
+    """Return a snooze end as a UTC timestamp, or ``None`` to end a snooze."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        if len(value) > _SNOOZE_TIMESTAMP_MAX_LEN or value != value.strip():
+            raise SmartPlantsValidationError("until must be an ISO timestamp")
+        try:
+            value = datetime.fromisoformat(value)
+        except ValueError as err:
+            raise SmartPlantsValidationError("until must be an ISO timestamp") from err
+    if not isinstance(value, datetime):
+        raise SmartPlantsValidationError("until must be an ISO timestamp")
+    if value.utcoffset() is None:
+        raise SmartPlantsValidationError("until requires a time zone offset")
+    until = value.astimezone(UTC).replace(microsecond=0)
+    if until <= now:
+        raise SmartPlantsValidationError("until must be in the future")
+    if until > now + SNOOZE_MAX_AHEAD:
+        raise SmartPlantsValidationError("until must be at most 366 days ahead")
+    return utc_timestamp(until)
 
 
 def _local_today() -> str:

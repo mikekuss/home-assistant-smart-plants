@@ -358,6 +358,27 @@ In the **Settings** tab under **Manage**, or from the **⋮** menu:
 Automations you wrote are never changed by Smart Plants. After deleting a plant, update any
 automations that used its entities.
 
+## Going on vacation
+
+While you're away, a plant may need water that nobody can give it, and reminders would only
+pile up. Snooze its alerts with the `smart_plants.snooze` action, for example from
+**Developer tools → Actions** or a script you run before leaving:
+
+```yaml
+action: smart_plants.snooze
+target:
+  device_id:
+    - 0123456789abcdef0123456789abcdef
+    - fedcba9876543210fedcba9876543210
+data:
+  until: "2026-11-15 18:00:00"
+```
+
+The plants keep their real states and still count in the panel. Their binary sensors get the
+attribute `snoozed: true`, which your notification automations can check to stay quiet (see
+[Snooze alerts](automations.md#snooze-alerts)). The snooze ends by itself at the given time;
+`smart_plants.unsnooze` ends it earlier.
+
 ## Next steps
 
 - [Sensors and health](sensors-and-health.md) – how values and problems are calculated.

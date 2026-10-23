@@ -50,6 +50,12 @@
     },
     "skip_care_task": {
       "service": "mdi:debug-step-over"
+    },
+    "snooze": {
+      "service": "mdi:bell-sleep-outline"
+    },
+    "unsnooze": {
+      "service": "mdi:bell-ring-outline"
     }
   }
 }

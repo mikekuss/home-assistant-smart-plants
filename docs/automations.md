@@ -216,13 +216,15 @@ before trusting any automatic watering.
 
 ## Log care with actions
 
-Smart Plants provides two actions you can use in automations, scripts, and dashboards. Both
+Smart Plants provides these actions for automations, scripts, and dashboards. All of them
 are listed under **Smart Plants** in the action picker.
 
 | Action | Targets | What it does |
 | --- | --- | --- |
 | `smart_plants.log_care` | Plant devices or care task *due* entities | Adds an entry to the plant's care history. With a care task as the target, the entry marks that task as done. |
 | `smart_plants.skip_care_task` | Care task *due* entities | Skips the task's current occurrence. The task is due again on its next scheduled date. Tasks that follow a sensor reading cannot be skipped. |
+| `smart_plants.snooze` | Plant devices | Snoozes the plant's alerts for a while. See [Snooze alerts](#snooze-alerts). |
+| `smart_plants.unsnooze` | Plant devices | Ends the plant's snooze now. |
 
 `smart_plants.log_care` accepts these fields:
 
@@ -316,3 +318,64 @@ action: smart_plants.skip_care_task
 target:
   entity_id: binary_sensor.monstera_fertilize
 ```
+
+## Snooze alerts
+
+A snooze mutes a plant's alerts for a while, for example during a vacation, while the plant
+recovers after repotting, or while you move it. It doesn't hide anything: every entity keeps
+its real state, and the plant still counts in the panel. Instead, every binary sensor of the
+plant gets the attribute `snoozed: true` and the end in `snoozed_until` (see
+[Entities](entities.md#snoozed-plants)). Your automations check `snoozed` to stay quiet.
+
+`smart_plants.snooze` targets one or more plant devices and takes exactly one of these fields:
+
+- `duration` – how long to snooze, counted from now, for example `days: 7`.
+- `until` – when the snooze ends. A time without a time zone is Home Assistant's local time.
+
+The snooze can last at most 366 days and must end in the future; otherwise the action reports
+an error and nothing changes. Snoozing an already snoozed plant replaces the end. The snooze
+ends by itself at that time, even if Home Assistant was off then. `smart_plants.unsnooze` ends
+it right away. Logging care, marking a task as done, and skipping a task work as usual and
+don't end a snooze. Pausing a plant ends its snooze, and a paused plant can't be snoozed.
+
+```yaml
+action: smart_plants.snooze
+target:
+  device_id: 0123456789abcdef0123456789abcdef
+data:
+  duration:
+    days: 14
+```
+
+### Stay quiet while a plant is snoozed
+
+Add a state condition on the `snoozed` attribute to any alert automation:
+
+```yaml
+alias: "Monstera: needs water"
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.monstera_needs_water
+    not_from:
+      - unavailable
+      - unknown
+    to: "on"
+    for:
+      minutes: 30
+conditions:
+  - condition: state
+    entity_id: binary_sensor.monstera_needs_water
+    attribute: snoozed
+    state: false
+actions:
+  - action: notify.mobile_app_my_phone
+    data:
+      message: "The Monstera needs water."
+mode: single
+```
+
+The condition only stops new notifications. When the snooze ends, the entity's state hasn't
+changed, so a problem that started during the snooze doesn't trigger the automation again. To
+get a reminder for it, add a second trigger on the attribute turning off, for example
+`trigger: state`, `entity_id: binary_sensor.monstera_needs_water`, `attribute: snoozed`,
+`to: false`, together with a condition that the entity is `on`.

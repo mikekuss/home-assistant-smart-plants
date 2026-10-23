@@ -15,6 +15,8 @@ from custom_components.smart_plants.models import PlantRecord
 from custom_components.smart_plants.services import (
     SERVICE_LOG_CARE,
     SERVICE_SKIP_CARE_TASK,
+    SERVICE_SNOOZE,
+    SERVICE_UNSNOOZE,
     async_setup_services,
 )
 from homeassistant.core import HomeAssistant
@@ -123,6 +125,8 @@ async def test_actions_are_registered_once_and_survive_reload(
     assert set(hass.services.async_services_for_domain(DOMAIN)) == {
         SERVICE_LOG_CARE,
         SERVICE_SKIP_CARE_TASK,
+        SERVICE_SNOOZE,
+        SERVICE_UNSNOOZE,
     }
 
     plant_id = await _plant(hass, entry, "Aloe")
