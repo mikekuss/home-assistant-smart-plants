@@ -45,7 +45,8 @@ export function validPlant(v: unknown): boolean {
     (i === null || (object(i) && text(i.id, 200) && i.content_type === "image/webp" && integer(i.width, 1, 2048) && integer(i.height, 1, 2048) && timestamp(i.created_at))) &&
     (v.care_events === undefined || (Array.isArray(v.care_events) && v.care_events.length <= 256 && v.care_events.every(validCareEvent))) &&
     (v.care_tasks === undefined || validCareTasks(v.care_tasks)) &&
-    (v.rest_period === undefined || v.rest_period === null || monthRange(v.rest_period, ["start_month", "end_month"]));
+    (v.rest_period === undefined || v.rest_period === null || monthRange(v.rest_period, ["start_month", "end_month"])) &&
+    (v.snoozed_until === undefined || v.snoozed_until === null || timestamp(v.snoozed_until));
 }
 const TASK_ID = /^[0-9a-f]{32}$/;
 const isoDate = (v: unknown) => typeof v === "string" && /^\d{4}-\d\d-\d\d$/.test(v) && Number.isFinite(Date.parse(v));
@@ -239,6 +240,13 @@ export function validResponse(msg: Record<string, unknown>, v: unknown): boolean
   }
   if (command === "smart_plants/roles/list") return Array.isArray(v.roles) && v.roles.every(r => object(r) && text(r.role) && text(r.source_domain) && Array.isArray(r.aggregations) && r.aggregations.every(a => text(a)) && Array.isArray(r.thresholds) && r.thresholds.every(t => object(t) && text(t.key) && text(t.entity_role) && text(t.translation_key)) && Array.isArray(r.entities) && r.entities.every(e => object(e) && text(e.role) && text(e.platform) && text(e.translation_key)));
   if (command === "smart_plants/plants/delete") return Object.keys(v).length === 0;
+  // The reply carries the snooze end the backend stored, in UTC; asking for the
+  // current end again leaves the revision unchanged.
+  if (command === "smart_plants/plants/snooze") {
+    if (!validPlant(v.plant) || !object(v.plant) || v.plant.id !== msg.plant_id) return false;
+    const until = v.plant.snoozed_until;
+    return msg.until === null ? until === null || until === undefined : typeof until === "string" && Math.floor(Date.parse(String(msg.until)) / 1000) === Math.floor(Date.parse(until) / 1000);
+  }
   // Entries are validated one by one when parsed; malformed entries are dropped.
   if (command === "smart_plants/plants/overview") return Array.isArray(v.plants) && v.plants.every(object) && new Set(v.plants.map(p => (p as Record<string, unknown>).plant_id)).size === v.plants.length;
   // A created plant reports every role it was created with. A replayed request

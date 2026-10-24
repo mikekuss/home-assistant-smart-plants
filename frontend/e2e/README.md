@@ -75,6 +75,10 @@ Every scenario runs in Chromium at **1440 × 1000 desktop** and **375 × 812 mob
 - Full-rule axe audits, overflow checks and screenshots.
 - German rendering (`?lang=de`): inventory, detail tabs, sensors, care, diagnostics,
   locale-formatted thresholds and validation messages, with axe audits.
+- Snoozing alerts (`?snoozed` seeds a snoozed plant, `?tz=UTC` sets Home Assistant's time
+  zone; the clock is pinned): the header menu dialog with presets and a picked day, the grey
+  chip with Resume, the overview card chip, a revision conflict and German texts, with axe
+  audits.
 
 ## Accessibility and screenshot evidence
 

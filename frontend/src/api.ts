@@ -350,6 +350,23 @@ export const api = {
     return result.plant;
   },
 
+  // Snoozes the plant's alerts until `until` (ISO timestamp with offset), or
+  // resumes them with null.
+  async snooze(
+    hass: HomeAssistantLike,
+    plantId: string,
+    expectedRevision: number,
+    until: string | null,
+  ): Promise<PlantRecord> {
+    const result = await send<{ plant: PlantRecord }>(hass, {
+      type: "smart_plants/plants/snooze",
+      plant_id: plantId,
+      expected_revision: expectedRevision,
+      until,
+    });
+    return result.plant;
+  },
+
   async setArea(
     hass: HomeAssistantLike,
     plantId: string,

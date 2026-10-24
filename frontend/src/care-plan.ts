@@ -476,10 +476,11 @@ function readingSummary(l: Localizer, draft: TaskDraft, states?: Record<string, 
 }
 
 // True when two revisions of a plant differ only in care: its care history,
-// care tasks or rest period. Such changes (for example a task marked done by an
-// automation) never touch what the plant editor holds, so the panel takes them
-// over silently instead of pausing saving for a review.
-const CARE_FIELDS = new Set(["revision", "care_events", "care_tasks", "rest_period"]);
+// care tasks, rest period or alert snooze. Such changes (for example a task
+// marked done by an automation, or a snooze that ran out) never touch what the
+// plant editor holds, so the panel takes them over silently instead of pausing
+// saving for a review.
+const CARE_FIELDS = new Set(["revision", "care_events", "care_tasks", "rest_period", "snoozed_until"]);
 export function careOnlyChange(before: object, after: object): boolean {
   const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
   return [...keys].every(key => CARE_FIELDS.has(key) || JSON.stringify((before as Record<string, unknown>)[key]) === JSON.stringify((after as Record<string, unknown>)[key]));

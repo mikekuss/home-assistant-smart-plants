@@ -229,6 +229,7 @@ function overviewOf(p) {
     image: p.image ? { id: p.image.id } : null,
     care: (p.care_tasks ?? []).map(task => careStateOf(task, p.rest_period, p)).sort((a, b) => ({ overdue: 0, due: 1 }[a.status] ?? 2) - ({ overdue: 0, due: 1 }[b.status] ?? 2) || (a.next_due ?? "").localeCompare(b.next_due ?? "")),
     rest_period: p.rest_period ?? null,
+    snoozed_until: p.snoozed_until ?? null,
     resting: !!p.rest_period && restMonths(p.rest_period).includes(Number(today().slice(5, 7))),
   };
 }
@@ -249,6 +250,8 @@ state.seedSuggestions = () => {
 if (params.has("care")) state.seedCare();
 if (params.has("reading")) state.seedReading(params.has("cold"), params.has("winter"));
 if (params.has("suggest")) state.seedSuggestions();
+// Opt-in snoozed first plant; tests pin the clock so the end date reads the same.
+if (params.has("snoozed")) state.plants[0].snoozed_until = "2026-10-30T23:59:59Z";
 const drafts = new Map();
 const previews = new Map();
 function preview(message) {
@@ -425,7 +428,12 @@ async function respond(message) {
       const role = roleConfig(p, message.role);
       return { plant: revise(p, { roles: { ...p.roles, [message.role]: { ...role, stale_after_seconds: message.stale_after_seconds } } }) };
     }
-    case "smart_plants/plants/disable": return { plant: revise(p, { lifecycle_state: "disabled" }) };
+    case "smart_plants/plants/disable": return { plant: revise(p, { lifecycle_state: "disabled", snoozed_until: null }) };
+    // Mirrors the backend: an aware end in the future, stored in UTC to the second.
+    case "smart_plants/plants/snooze": {
+      if (message.until !== null && (!/(?:Z|[+-]\d\d:\d\d)$/.test(message.until) || !(Date.parse(message.until) > Date.now()) || p.lifecycle_state !== "active")) reject("invalid_format");
+      return { plant: revise(p, { snoozed_until: message.until === null ? null : new Date(message.until).toISOString().replace(/\.\d{3}Z$/, "Z") }) };
+    }
     case "smart_plants/plants/reenable": return { plant: revise(p, { lifecycle_state: "active" }) };
     case "smart_plants/plants/delete": state.plants = state.plants.filter(v => v.id !== p.id); state.devices = state.devices.filter(d => d.identifiers[0][1] !== p.id); return {};
     default: state.unexpected.push(message.type); throw new Error(`Unexpected WS command: ${message.type}`);
@@ -632,6 +640,8 @@ const panel = document.createElement("smart-plants-panel");
 // `?lang=de` renders the panel as a Home Assistant user with that profile language.
 const language = params.get("lang") ?? "en";
 document.documentElement.lang = language;
-panel.hass = { auth: { accessToken: "playwright-token" }, connection, language, locale: { language, number_format: "language", time_format: "language", date_format: "language" }, user: { is_admin: true, name: "Synthetic browser admin" } };
+// `?tz=UTC` sets Home Assistant's time zone; without it the panel uses the browser's.
+const timeZone = params.get("tz");
+panel.hass = { auth: { accessToken: "playwright-token" }, connection, language, locale: { language, number_format: "language", time_format: "language", date_format: "language" }, user: { is_admin: true, name: "Synthetic browser admin" }, ...(timeZone ? { config: { time_zone: timeZone } } : {}) };
 panel.panel = { title: "Smart Plants", url_path: "smart-plants" };
 document.body.append(panel);

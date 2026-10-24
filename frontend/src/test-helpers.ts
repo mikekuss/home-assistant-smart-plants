@@ -66,6 +66,7 @@ export function overviewFor(plant: PlantRecord): PlantOverview {
     care: [],
     rest_period: plant.rest_period ?? null,
     resting: false,
+    snoozed_until: plant.snoozed_until ?? null,
   };
 }
 export function overviewOf(panel: { shadowRoot: ShadowRoot | null }): HTMLElementTagNameMap["smart-plants-overview"] {

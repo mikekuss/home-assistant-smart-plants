@@ -21,6 +21,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   `smart_plants.unsnooze`. Entities keep their real states; every binary sensor of the plant
   gets `snoozed` and `snoozed_until` attributes for automation conditions, and the snooze ends
   by itself. See [Automations](docs/automations.md#snooze-alerts).
+- Snooze a plant from the panel with **⋮ → Snooze alerts…**: 1 day, 3 days, 1 week, 2 weeks or
+  until a picked day, each ending at the end of that day in Home Assistant's time zone. A snoozed
+  plant shows a grey "Snoozed until …" chip in its header, with **Resume**, and on its overview
+  card. See [Getting started](docs/getting-started.md#going-on-vacation).
 
 ### Changed
 

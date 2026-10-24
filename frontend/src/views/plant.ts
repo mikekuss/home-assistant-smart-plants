@@ -249,6 +249,16 @@ export const plantStyles = css`
   .hero-meta ha-icon { --mdc-icon-size: 17px; }
   .hero-status { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
   .reason { font-size: 13.5px; color: var(--sp-text-secondary); overflow-wrap: anywhere; hyphens: auto; }
+  .hero-status .snooze { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; max-width: 100%; }
+  .pd .hero-status .snooze .btn.sm { min-height: 32px; padding: 2px 10px; }
+
+  /* Snooze dialog */
+  .snooze-dialog .snooze-choices { display: flex; flex-direction: column; gap: 4px; }
+  .snooze-dialog .snooze-choices legend { margin-bottom: 4px; }
+  .snooze-dialog .check { padding: 6px 0; cursor: pointer; }
+  .snooze-dialog .check input { margin: 0; flex: none; }
+  .snooze-dialog .choice-text { display: flex; flex-direction: column; min-width: 0; }
+  .snooze-dialog input[type="date"] { max-width: 240px; }
   .hero-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
   .keyreads { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); border-top: 1px solid var(--divider-color, #e0e0e0); }
   .kr { display: flex; flex-direction: column; padding: 12px 20px; border-inline-end: 1px solid var(--divider-color, #e0e0e0); min-width: 0; }

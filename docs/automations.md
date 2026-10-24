@@ -327,6 +327,10 @@ its real state, and the plant still counts in the panel. Instead, every binary s
 plant gets the attribute `snoozed: true` and the end in `snoozed_until` (see
 [Entities](entities.md#snoozed-plants)). Your automations check `snoozed` to stay quiet.
 
+In the panel, a plant is snoozed from its page with **⋮ → Snooze alerts…** (see
+[Going on vacation](getting-started.md#going-on-vacation)). A snooze set there ends at the end of
+the chosen day in Home Assistant's time zone.
+
 `smart_plants.snooze` targets one or more plants, either by their device or by any of their
 Smart Plants entities (an entity target snoozes the whole plant it belongs to), and takes
 exactly one of these fields:

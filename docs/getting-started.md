@@ -361,7 +361,16 @@ automations that used its entities.
 ## Going on vacation
 
 While you're away, a plant may need water that nobody can give it, and reminders would only
-pile up. Snooze its alerts with the `smart_plants.snooze` action, for example from
+pile up. Open the plant, choose **⋮ → Snooze alerts…** and pick how long: 1 day, 3 days, 1 week,
+2 weeks, or **Until date…** for any day from tomorrow up to a year ahead. The snooze lasts until
+the end of that day in Home Assistant's time zone, so **1 day** means until the end of tomorrow.
+
+While a plant is snoozed, its header shows a grey **Snoozed until Fri, Oct 30** chip next to the
+status with a **Resume** button, and its card on the overview shows the same chip. The menu
+entry then reads **Change snooze…**, where you pick a new end or resume. The status, the
+counts, and the care reminders stay as they are.
+
+To snooze several plants at once, use the `smart_plants.snooze` action, for example from
 **Developer tools → Actions** or a script you run before leaving:
 
 ```yaml
