@@ -277,6 +277,20 @@ describe("detail saves and conflict review", () => {
     expect(h.calls.find(c => c.type === "smart_plants/plants/set_area")).toEqual({ type: "smart_plants/plants/set_area", plant_id: sample.id, expected_revision: 1, area_id: "garden" });
     expect(h.calls.filter(c => c.type === "smart_plants/plants/update").every(c => !("area_id" in c))).toBe(true);
   });
+  it("lists only the details that are set and offers to add the rest", async () => {
+    const about = (el: SmartPlantsPanel) => el.shadowRoot!.querySelector<HTMLElement>("section[aria-labelledby=about-heading]")!;
+    const el = await detail(harness().hass, "Overview");
+    expect(about(el).textContent).not.toContain("Placement");
+    expect(about(el).textContent).not.toContain("Tags");
+    [...about(el).querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === "Add details")!.click(); await settle(el);
+    expect(field(el.shadowRoot!, "Category")).toBeDefined();
+    document.body.replaceChildren();
+    const full = { ...sample, placement: { mode: "balcony" as const, exposure: null, rain_exposure: null, container: null }, acquired_at: "2024-03-01T00:00:00Z", category: "succulent", tags: ["pot"] };
+    const el2 = await detail(harness([full]).hass, "Overview");
+    expect(about(el2).textContent).toContain("Placement");
+    expect(about(el2).textContent).toContain("succulent");
+    expect([...about(el2).querySelectorAll("button")].some(b => b.textContent?.trim() === "Add details")).toBe(false);
+  });
   it("shows and round-trips a date-only acquired_at from older records", async () => {
     const dated = { ...sample, acquired_at: "2024-03-01" };
     const h = harness([dated]); const el = await detail(h.hass);

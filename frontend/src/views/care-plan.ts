@@ -44,9 +44,10 @@ export function renderCarePlan(ctx: CarePlanContext): TemplateResult {
     ${plant.rest_period ? restRow(ctx, plant.rest_period) : nothing}
     ${tasks.length
       ? html`<ul class="list task-list" aria-label=${l.t("care_plan.tasks_label")}>${tasks.map(task => taskRow(ctx, task))}</ul>`
-      : html`<div class="card-b"><p class="muted">${l.t("care_plan.empty")}</p>
-          ${careSuggestions(plant).length || minTemperature(plant) !== null ? html`<p class="small muted care-note"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.empty_suggestions")}</span></p>` : nothing}
-          <div><button type="button" class="btn filled" ?disabled=${ctx.disabled} @click=${ctx.onAdd}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("care_plan.add_task")}</button></div></div>`}
+      // Without tasks the plan is a quiet offer, not the tab's main action.
+      : html`<div class="card-b"><div class="empty-box"><span>${l.t("care_plan.empty")}</span>
+          <button type="button" class="btn tonal sm" ?disabled=${ctx.disabled} @click=${ctx.onAdd}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("care_plan.add_task")}</button></div>
+          ${careSuggestions(plant).length || minTemperature(plant) !== null ? html`<p class="small muted care-note"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.empty_suggestions")}</span></p>` : nothing}</div>`}
   </section>`;
 }
 

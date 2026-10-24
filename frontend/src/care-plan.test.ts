@@ -166,15 +166,17 @@ const typeInto = async (el: SmartPlantsPanel, input: HTMLInputElement | HTMLText
 const plantWith = (changes: Partial<PlantRecord>): PlantRecord => ({ ...structuredClone(sample), care_events: [], care_tasks: [], rest_period: null, ...changes });
 
 describe("care plan card", () => {
-  it("shows an empty plan above the care history and adds a task from a preset", async () => {
+  it("offers an empty plan quietly below the care history and adds a task from a preset", async () => {
     const backend = careBackend(plantWith({}));
     const toasts: string[] = [];
     const el = await openCare(backend);
     el.addEventListener("hass-notification", e => toasts.push((e as CustomEvent<{ message: string }>).detail.message));
     const plan = carePlan(el);
-    expect(plan.textContent).toContain("No care tasks yet");
-    expect(plan.compareDocumentPosition(el.shadowRoot!.querySelector("#care-heading")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    plan.querySelector<HTMLButtonElement>("button.btn.filled")!.click(); await settle(el);
+    expect(plan.textContent).toContain("Get reminders for fertilizing, repotting and more.");
+    // Care logging leads the tab; the unused plan is no primary action.
+    expect(plan.compareDocumentPosition(el.shadowRoot!.querySelector("#care-heading")!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(plan.querySelector("button.btn.filled")).toBeNull();
+    plan.querySelector<HTMLButtonElement>("button.btn.tonal")!.click(); await settle(el);
     expect(dialog(el)?.textContent).toContain("What do you want to be reminded of?");
     [...dialog(el)!.querySelectorAll<HTMLButtonElement>("button.preset")].find(b => b.textContent?.includes("Fertilize"))!.click(); await settle(el);
     expect(dialog(el)?.textContent).toContain("Fertilize · Every 4 weeks");
@@ -186,6 +188,8 @@ describe("care plan card", () => {
     expect(toasts).toContain("Fertilize added to the care plan");
     expect(carePlan(el).textContent).toContain("Fertilize");
     expect(carePlan(el).textContent).toContain("Not done yet");
+    // With a task the plan leads the tab again.
+    expect(carePlan(el).compareDocumentPosition(el.shadowRoot!.querySelector("#care-heading")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("validates the editor inline and disables presets that already exist", async () => {
@@ -278,7 +282,7 @@ describe("care plan card", () => {
     expect(backend.h.calls.some(c => c.type === "smart_plants/care_tasks/delete")).toBe(false);
     await menu(el, 0, "delete"); await settle(el);
     expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/delete")).toMatchObject({ task_id: FERTILIZE_ID, expected_revision: 2 });
-    expect(carePlan(el).textContent).toContain("No care tasks yet");
+    expect(carePlan(el).textContent).toContain("Get reminders for fertilizing, repotting and more.");
   });
 
   it("lists the task's entities for automations", async () => {
@@ -421,6 +425,43 @@ describe("rest period editor, header chips and overview", () => {
     expect(overview.shadowRoot!.querySelectorAll(".tile")).toHaveLength(4);
     expect(overview.shadowRoot!.querySelector(".care")).toBeNull();
   });
+
+  it("hides the Care due tile while no task is due", async () => {
+    const backend = careBackend(plantWith({ care_tasks: [fertilize] }), () => [state(FERTILIZE_ID)]);
+    const el = new SmartPlantsPanel(); el.hass = backend.h.hass; document.body.append(el); await settle(el);
+    const overview = el.shadowRoot!.querySelector("smart-plants-overview")!; await settle(overview);
+    expect(overview.shadowRoot!.querySelectorAll(".tile")).toHaveLength(4);
+    expect(overview.shadowRoot!.textContent).not.toContain("Care due");
+  });
+});
+
+describe("care history defaults", () => {
+  const watering = (id: number, date: string): CareEvent => ({ schema_version: 2, id: `00000000-0000-4000-8000-00000000010${id}`, kind: "watering", provenance: "manual", task_id: null, occurred_at: `${date}T09:00:00+00:00`, local_date: date, created_at: `${date}T09:00:00+00:00`, updated_at: `${date}T09:00:00+00:00`, payload: { note: null } });
+  const history = (el: SmartPlantsPanel) => el.shadowRoot!.querySelector<HTMLElement>(".care-history")!;
+
+  it("shows no filters or summary on an empty history", async () => {
+    const el = await openCare(careBackend(plantWith({})));
+    expect(history(el).textContent).toContain("No care recorded yet.");
+    expect(history(el).querySelector(".care-filters")).toBeNull();
+    expect(el.shadowRoot!.textContent).not.toContain("Care records never operate irrigation");
+  });
+
+  it("shows filters only once the history holds more than one kind", async () => {
+    const note = (id: number, date: string): CareEvent => ({ ...watering(id, date), kind: "note", payload: { text: "New leaf" } });
+    const el = await openCare(careBackend(plantWith({ care_events: [note(1, "2026-10-18"), note(2, "2026-10-11")] })));
+    expect(history(el).querySelector(".care-filters [role=status]")).not.toBeNull();
+    expect(history(el).querySelector(".care-filters [role=group]")).toBeNull();
+    document.body.replaceChildren();
+    const pruning: CareEvent = { ...watering(3, "2026-10-19"), kind: "pruning", payload: { part: null, note: null } };
+    const el2 = await openCare(careBackend(plantWith({ care_events: [pruning, note(1, "2026-10-18")] })));
+    expect(history(el2).querySelectorAll(".care-filters [role=group] button")).not.toHaveLength(0);
+  });
+
+  it("explains in the Log care form that a watering never operates irrigation", async () => {
+    const el = await openCare(careBackend(plantWith({})));
+    history(el).querySelector<HTMLButtonElement>(".card-h button")!.click(); await settle(el);
+    expect(el.shadowRoot!.querySelector("#care-form")!.textContent).toContain("Care records never operate irrigation");
+  });
 });
 
 // An OpenPlantBook species with the given care texts, valid for the panel's
@@ -450,7 +491,7 @@ describe("care suggestions", () => {
     const backend = careBackend(plantWith({ species: openPlantBook({ fertilization: FEED, pruning: PRUNE }) }));
     const el = await openCare(backend);
     expect(carePlan(el).textContent).toContain("They show up as suggestions when you add a task.");
-    carePlan(el).querySelector<HTMLButtonElement>("button.btn.filled")!.click(); await settle(el);
+    carePlan(el).querySelector<HTMLButtonElement>("button.btn.tonal")!.click(); await settle(el);
     const box = dialog(el)!.querySelector<HTMLElement>(".suggestions")!;
     expect(box.textContent).toContain("Suggestions for Olea europaea");
     expect(box.textContent).toContain("OpenPlantBook · fertilizing");
@@ -492,7 +533,7 @@ describe("care suggestions", () => {
     const el = await openCare(backend);
     // The soil text is not a suggestion of its own.
     expect(carePlan(el).textContent).not.toContain("They show up as suggestions");
-    carePlan(el).querySelector<HTMLButtonElement>("button.btn.filled")!.click(); await settle(el);
+    carePlan(el).querySelector<HTMLButtonElement>("button.btn.tonal")!.click(); await settle(el);
     expect(dialog(el)!.querySelector(".suggestions")).toBeNull();
     [...dialog(el)!.querySelectorAll<HTMLButtonElement>("button.preset")].find(b => b.textContent?.includes("Repot"))!.click(); await settle(el);
     expect(dialog(el)!.textContent).toContain("OpenPlantBook has a care note for this");
@@ -727,7 +768,7 @@ describe("reading tasks in the panel", () => {
   it("adds winter protection on the plant's temperature", async () => {
     const backend = careBackend(plant(), () => [], [], temperatureReading);
     const el = await open(backend);
-    carePlan(el).querySelector<HTMLButtonElement>("button.btn.filled")!.click(); await settle(el);
+    carePlan(el).querySelector<HTMLButtonElement>("button.btn.tonal")!.click(); await settle(el);
     const tile = [...dialog(el)!.querySelectorAll<HTMLButtonElement>("button.preset")].find(b => b.textContent?.includes("Winter protection"))!;
     expect(tile.textContent).toContain("When it gets cold");
     tile.click(); await settle(el);
@@ -765,7 +806,7 @@ describe("reading tasks in the panel", () => {
   it("suggests winter protection from the OpenPlantBook minimum temperature", async () => {
     const backend = careBackend(plant({ species: withMinimum(5) }), () => [], [], temperatureReading);
     const el = await open(backend);
-    carePlan(el).querySelector<HTMLButtonElement>("button.btn.filled")!.click(); await settle(el);
+    carePlan(el).querySelector<HTMLButtonElement>("button.btn.tonal")!.click(); await settle(el);
     const box = dialog(el)!.querySelector(".suggestions")!;
     expect(box.textContent).toContain("OpenPlantBook · minimum temperature");
     expect(box.textContent).toContain("Grows above 5 °C");

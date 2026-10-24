@@ -78,6 +78,11 @@ ROLE_SOIL_TEMPERATURE_STRESS = "soil_temperature_stress"
 ROLE_CO2_STRESS = "co2_stress"
 ROLE_CONDUCTIVITY_STRESS = "conductivity_stress"
 
+# Automations read the snooze from the live state. Most plants are never
+# snoozed, so recording these attributes with every state would only grow
+# the history.
+SNOOZE_ATTRIBUTES = frozenset({"snoozed", "snoozed_until"})
+
 
 class SmartPlantsBinarySensorEntity(SmartPlantsEntity, BinarySensorEntity):
     """
@@ -89,6 +94,7 @@ class SmartPlantsBinarySensorEntity(SmartPlantsEntity, BinarySensorEntity):
     """
 
     PLATFORM = PLATFORM
+    _unrecorded_attributes = SNOOZE_ATTRIBUTES
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -750,7 +756,8 @@ class _CareTaskDueBinary(SmartPlantsBinarySensorEntity):
 
     # The live reading changes with every sensor update; keep it out of the
     # recorder so history does not grow with each value.
-    _unrecorded_attributes = frozenset({"reading"})
+    # Home Assistant takes each class's own set, so it repeats the snooze ones.
+    _unrecorded_attributes = SNOOZE_ATTRIBUTES | {"reading"}
 
     def __init__(
         self, manager: SmartPlantsManager, plant_id: str, task: CareTask

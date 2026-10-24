@@ -782,7 +782,10 @@ export class SmartPlantsPanel extends LitElement {
     const kindLabel = (kind: CareEvent["kind"]) => l.t(`care_kind.${kind}`);
     const kindPhrase = (kind: CareEvent["kind"]) => l.t(`care_kind_phrase.${kind}`);
     const busy = this._formBusy || !!this._conflict;
-    const events = history?.events.filter(event => this._careFilter === "all" || event.kind === this._careFilter) ?? [];
+    // Filters only help once the history holds more than one kind of entry.
+    const showFilters = new Set(history?.events.map(event => event.kind)).size > 1;
+    const careFilter = showFilters ? this._careFilter : "all";
+    const events = history?.events.filter(event => careFilter === "all" || event.kind === careFilter) ?? [];
     const filters: [CareEvent["kind"] | "all", string][] = [["all", l.t("care.filter_all")], ...CARE_KINDS.map(kind => [kind, kind === "note" ? l.t("care.filter_notes") : kindLabel(kind)] as [CareEvent["kind"], string])];
     const formOpen = this._careFormOpen || this._careEditingId !== null;
     const formTask = this._careTaskId ? (plant.care_tasks ?? []).find(task => task.id === this._careTaskId) : undefined;
@@ -795,8 +798,12 @@ export class SmartPlantsPanel extends LitElement {
       return event.kind === "task" && task ? taskName(l, task) : kindLabel(event.kind);
     };
     const today = this._today();
-    return html`${renderCarePlan({ l, plant, overview: this._overview[plant.id], today, timeZone: this._timeZone(), states: this._states, disabled: busy || this._blocked, pending: this._carePending,
-        onAdd: () => this._openTaskEditor(), onRest: () => this._openRestEditor(plant), onDone: task => void this._completeTask(plant.id, task), onAction: (task, action) => this._taskAction(plant, task, action) })}
+    const carePlan = renderCarePlan({ l, plant, overview: this._overview[plant.id], today, timeZone: this._timeZone(), states: this._states, disabled: busy || this._blocked, pending: this._carePending,
+      onAdd: () => this._openTaskEditor(), onRest: () => this._openRestEditor(plant), onDone: task => void this._completeTask(plant.id, task), onAction: (task, action) => this._taskAction(plant, task, action) });
+    // Care logging is the core of this tab. An unused care plan waits below the
+    // history as a quiet offer; once it has a task or a rest period it leads.
+    const planFirst = (plant.care_tasks ?? []).length > 0 || !!plant.rest_period;
+    return html`${planFirst ? carePlan : nothing}
       ${this._careError ? html`<p class="error" role="alert">${this._careError}</p>` : nothing}
       ${formOpen ? html`<section class="sp-card" id="care-form" aria-labelledby="care-form-heading"><div class="card-h"><h3 id="care-form-heading">${this._careEditingId ? l.t("care.edit_kind", { kind: kindPhrase(this._careKind) }) : l.t("care.record")}</h3>
           <button type="button" class="icon-btn" aria-label=${l.t("care.close_form")} @click=${() => this._closeCareForm()}><ha-icon aria-hidden="true" icon="mdi:close"></ha-icon></button></div>
@@ -810,15 +817,16 @@ export class SmartPlantsPanel extends LitElement {
         ${(details[this._careKind] ?? []).map(key => html`<label>${fieldLabel(key)}<input aria-label=${fieldLabel(key)} type=${key === "amount" ? "number" : "text"} maxlength=${key === "text" ? 1000 : 120} .value=${this._careFields[key] ?? ""} @input=${(e: Event) => this._careFields = { ...this._careFields, [key]: (e.target as HTMLInputElement).value }}></label>`)}
         ${this._careKind !== "note" ? html`<label>${l.t("care.note_optional")}<input type="text" maxlength="500" .value=${this._careNote} @input=${(e: Event) => this._careNote = (e.target as HTMLInputElement).value}></label>` : nothing}
         ${this._careKind === "fertilizing" ? html`<label>${l.t("care.unit")}<select aria-label=${l.t("care.unit")} .value=${this._careFields.unit ?? ""} @change=${(e: Event) => this._careFields = { ...this._careFields, unit: (e.target as HTMLSelectElement).value }}><option value="">${l.t("care.no_amount")}</option><option value="g">g</option><option value="mL">mL</option></select></label>` : nothing}
+        ${this._careKind === "watering" ? html`<p class="small muted">${l.t("care.no_irrigation")}</p>` : nothing}
         <div class="actions"><button type="button" class="primary" @click=${() => void this._saveCare(plant)}>${this._careEditingId ? l.t("care.save_changes") : l.t("care.record")}</button>
         ${this._careEditingId ? html`<button type="button" @click=${() => { this._careEditingId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; }}>${l.t("care.cancel_editing")}</button>` : nothing}</div>
       </fieldset></div></section>` : nothing}
       <section class="sp-card care-history" aria-labelledby="care-heading"><div class="card-h"><h3 id="care-heading">${l.t("care.heading")}</h3>
         <button type="button" class="btn text sm" ?disabled=${this._blocked} @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("detail.log_care")}</button></div>
-      <div class="care-filters">
-        <div class="row" role="group" aria-label=${l.t("care.filter_label")}>${filters.map(([kind, label]) => html`<button type="button" class="fchip" aria-pressed=${this._careFilter === kind ? "true" : "false"} @click=${() => { this._careFilter = kind; }}>${label}</button>`)}</div>
-        ${history ? html`<p class="small muted" role="status">${l.tn(history.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${history.summary.last_watered_local_date ? l.t("care.last_watered", { date: l.date(history.summary.last_watered_local_date) }) : l.t("care.never_watered")}</p>` : nothing}
-      </div>
+      ${history?.events.length ? html`<div class="care-filters">
+        ${showFilters ? html`<div class="row" role="group" aria-label=${l.t("care.filter_label")}>${filters.map(([kind, label]) => html`<button type="button" class="fchip" aria-pressed=${careFilter === kind ? "true" : "false"} @click=${() => { this._careFilter = kind; }}>${label}</button>`)}</div>` : nothing}
+        <p class="small muted" role="status">${l.tn(history.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${history.summary.last_watered_local_date ? l.t("care.last_watered", { date: l.date(history.summary.last_watered_local_date) }) : l.t("care.never_watered")}</p>
+      </div>` : nothing}
       ${!history ? html`<p class="card-b muted">${l.t("care.loading")}</p>` : !history.events.length ? html`<p class="card-b muted">${l.t("care.empty")}</p>` : !events.length ? html`<p class="card-b muted">${l.t("care.filter_empty")}</p>`
         : html`<ul class="list" aria-label=${l.t("care.events_label")}>${events.map(event => {
           const extra = careDetails(l, event, fieldLabel);
@@ -831,7 +839,7 @@ export class SmartPlantsPanel extends LitElement {
               <ha-dropdown-item value="delete" ?disabled=${busy}>${l.t("care.delete_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>
             </ha-dropdown></li>`;
         })}</ul>`}</section>
-      <p class="small muted">${l.t("care.no_irrigation")}</p>`;
+      ${planFirst ? nothing : carePlan}`;
   }
   private _edit(part: Partial<Edits>): void { if (this._edits) this._edits = { ...this._edits, ...part }; }
   private async _save(kind: SaveKind): Promise<void> {
@@ -1840,7 +1848,8 @@ export class SmartPlantsPanel extends LitElement {
     const l = this._l; const o = this._overview[plant.id]; const readings = readingsInOrder(o);
     const history = this._careHistory; const recent = history?.events.slice(0, 3) ?? [];
     const device = plantDevice(plant, this._devices);
-    const notSet = l.t("about.not_set");
+    // Unset optional details stay out of the card; one link adds them.
+    const detailsMissing = !plant.placement || !plant.acquired_at || !plant.category || !plant.tags.length;
     const snapshot = plant.species?.snapshot;
     const commonName = snapshot ? speciesCommonName(snapshot, l.language) : null;
     const cap = (text: string) => text.charAt(0).toLocaleUpperCase() + text.slice(1);
@@ -1869,11 +1878,12 @@ export class SmartPlantsPanel extends LitElement {
               <div class="small muted">${snapshot.source_status === "provider" ? l.t("about.species_provider", { provider: snapshot.provider === "openplantbook" ? "OpenPlantBook" : snapshot.provider }) : l.t("about.species_manual")}</div>`
               : html`<button type="button" class="btn text sm" @click=${() => this._openSetting("species")}>${l.t("about.add_species")}</button>`}</dd>
             <dt>${l.t("about.area")}</dt><dd>${device?.area_id ? this._areaName(device.area_id) : l.t("area.none")}</dd>
-            <dt>${l.t("about.placement")}</dt><dd>${plant.placement ? cap(placementLabel(l, plant.placement.mode)) : notSet}</dd>
-            <dt>${l.t("about.since")}</dt><dd>${plant.acquired_at ? l.date(plant.acquired_at.slice(0, 10)) : notSet}</dd>
-            <dt>${l.t("about.category")}</dt><dd>${plant.category ?? notSet}</dd>
-            <dt>${l.t("about.tags")}</dt><dd>${plant.tags.length ? plant.tags.map(tag => html`<span class="tag">${tag}</span>`) : notSet}</dd>
-          </dl></div></section>
+            ${plant.placement ? html`<dt>${l.t("about.placement")}</dt><dd>${cap(placementLabel(l, plant.placement.mode))}</dd>` : nothing}
+            ${plant.acquired_at ? html`<dt>${l.t("about.since")}</dt><dd>${l.date(plant.acquired_at.slice(0, 10))}</dd>` : nothing}
+            ${plant.category ? html`<dt>${l.t("about.category")}</dt><dd>${plant.category}</dd>` : nothing}
+            ${plant.tags.length ? html`<dt>${l.t("about.tags")}</dt><dd>${plant.tags.map(tag => html`<span class="tag">${tag}</span>`)}</dd>` : nothing}
+          </dl>
+          ${detailsMissing ? html`<button type="button" class="btn text sm" @click=${() => this._selectSection("settings")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("about.add_details")}</button>` : nothing}</div></section>
         <section class="sp-card" aria-labelledby="automations-heading"><div class="card-h"><h3 id="automations-heading">${l.t("automations.heading")}</h3></div>
           <div class="card-b"><p class="small muted">${l.t("automations.body")}</p>
             ${device ? html`<div class="row"><a class="btn outline sm" href=${devicePath} @click=${(e: MouseEvent) => this._internalLink(e, devicePath)}><ha-icon aria-hidden="true" icon="mdi:devices"></ha-icon>${l.t("automations.open_device")}</a>

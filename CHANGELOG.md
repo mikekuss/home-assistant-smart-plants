@@ -13,6 +13,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   plant shows a grey "Snoozed until …" chip in its header, with **Resume**, and on its overview
   card. See [Getting started](docs/getting-started.md#going-on-vacation).
 
+### Changed
+
+- A calmer panel for plants that use only the basics. On the **Care** tab, an unused care
+  plan is one short line below the care history instead of a large card above it; the care
+  history shows its filter chips only once it holds more than one kind of entry, and no
+  summary while it is empty. The note that care records never operate irrigation moved into
+  the **Log care** form for waterings. **About this plant** lists only the details you set, with
+  **Add details** for the rest. The **Care due** tile shows only while a care task is due.
+- On phones, the overview's summary tiles are one row of compact chips with icons, so the
+  first plant stays near the top.
+- The `snoozed` and `snoozed_until` attributes are no longer recorded in history.
+
 ### Fixed
 
 - `smart_plants.snooze` called with neither a duration nor an end time now asks for one instead
