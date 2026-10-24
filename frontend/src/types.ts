@@ -121,6 +121,8 @@ export interface PlantRecord {
   care_events?: CareEvent[];
   care_tasks?: CareTask[];
   rest_period?: RestPeriod | null;
+  // When the plant's alert snooze ends (UTC timestamp), or null.
+  snoozed_until?: string | null;
 }
 
 // Months are 1-12, inclusive at both ends; a range may wrap past December.

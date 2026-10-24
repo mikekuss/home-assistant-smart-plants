@@ -8,7 +8,8 @@ import { OVERVIEW_FILTERS, OVERVIEW_SORTS, cardReason, chipText, groupByArea, ma
 import type { OverviewFilter, OverviewItem, OverviewSort, PlantOverview } from "../overview-model.js";
 import { speciesSearchNames } from "../model.js";
 import type { PlantRecord } from "../types.js";
-import { careLine, dueTasks } from "../care-plan.js";
+import { careLine, dueTasks, localDate } from "../care-plan.js";
+import { snoozeChipText } from "../snooze.js";
 
 export const DOCUMENTATION_URL = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md";
 
@@ -89,6 +90,7 @@ export class SmartPlantsOverview extends LitElement {
     .sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 13px; color: var(--sp-text-secondary); }
     .sub ha-icon { --mdc-icon-size: 16px; }
     .status { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 0 14px 10px; }
+    .chiprow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 100%; }
     .reason { font-size: 13px; color: var(--sp-text-secondary); overflow-wrap: anywhere; hyphens: auto; }
     .readings { display: flex; flex-direction: column; gap: 10px; padding: 4px 14px 12px; }
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -142,6 +144,8 @@ export class SmartPlantsOverview extends LitElement {
   @property({ type: Boolean }) public loading = false;
   @property({ type: Boolean }) public blocked = false;
   @property({ attribute: false }) public now: number | undefined = undefined;
+  // Home Assistant's time zone, for the day a snooze ends.
+  @property({ attribute: false }) public timeZone: string | undefined = undefined;
   // While a plant is open the overview stays mounted to keep its filter, sort
   // and search, but renders nothing so its cards never duplicate the plant page.
   @property({ type: Boolean, reflect: true }) public override hidden = false;
@@ -216,11 +220,13 @@ export class SmartPlantsOverview extends LitElement {
     const moisture = o?.roles.moisture;
     const others = o ? secondaryReadings(o) : [];
     const headingId = `plant-${plant.id}`;
+    const now = this.now ?? Date.now();
+    const snoozed = snoozeChipText(l, o ? o.snoozed_until : plant.snoozed_until, localDate(new Date(now).toISOString(), this.timeZone) ?? "", this.timeZone, now);
     return html`<article class="card" aria-labelledby=${headingId}>
       <div class="head"><sp-plant-avatar .src=${this.thumbnails[plant.id] ?? null} .name=${plant.name} .l=${l}></sp-plant-avatar>
         <div class="title"><div role="heading" aria-level=${this._sort === "area" ? "3" : "2"}><button type="button" class="name" id=${headingId} @click=${() => this._emit("open-plant", { plantId: plant.id } satisfies OpenPlantDetail)}>${plant.name}</button></div>
           <span class="sub">${item.areaName ? html`<ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${item.areaName}` : nothing}${item.areaName && item.species ? " · " : ""}${item.species ? html`<i>${item.species}</i>` : nothing}</span></div></div>
-      ${o && chip ? html`<div class="status"><sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip>${reason ? html`<span class="reason">${reason}</span>` : nothing}</div>` : nothing}
+      ${o && chip ? html`<div class="status"><div class="chiprow"><sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip>${snoozed ? html`<sp-snooze-chip .label=${snoozed}></sp-snooze-chip>` : nothing}</div>${reason ? html`<span class="reason">${reason}</span>` : nothing}</div>` : nothing}
       ${this._renderCare(o)}
       ${o && o.status === "no_sensors" && !others.length
         ? html`<div class="empty-box"><span>${l.t("card.no_sensors")}</span><button type="button" class="text-button" @click=${() => this._emit("open-plant", { plantId: plant.id, section: "sensors" } satisfies OpenPlantDetail)} aria-label=${l.t("card.assign_label", { name: plant.name })}>${l.t("card.assign")}</button></div>`

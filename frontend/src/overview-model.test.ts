@@ -12,7 +12,7 @@ function reading(value: number | null, unit: string, range: RoleReading["range"]
   return { value, unit, state, range, last_reported: lastReported, sources: ["sensor.mock_probe"] };
 }
 function entry(status: PlantStatus, problems: PlantOverview["problems"], roles: PlantOverview["roles"] = {}): PlantOverview {
-  return { plant_id: "p1", revision: 3, lifecycle_state: "active", status, problems, roles, last_watered_at: "2026-09-26T12:00:00+00:00", image: null, care: [], rest_period: null, resting: false };
+  return { plant_id: "p1", revision: 3, lifecycle_state: "active", status, problems, roles, last_watered_at: "2026-09-26T12:00:00+00:00", image: null, care: [], rest_period: null, resting: false, snoozed_until: null };
 }
 
 describe("parseOverview", () => {

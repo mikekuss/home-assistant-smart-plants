@@ -49,6 +49,8 @@ export interface PlantOverview {
   care: CareTaskSummary[];
   rest_period: RestPeriod | null;
   resting: boolean;
+  // When the plant's alert snooze ends; a snooze never changes status, problems or care.
+  snoozed_until: string | null;
 }
 
 const READING_STATES: readonly ReadingState[] = ["ok", "low", "high", "stale", "unavailable"];
@@ -97,7 +99,7 @@ function parseReading(raw: unknown): RoleReading | null {
 // entry never renders guessed values. Unknown roles are skipped.
 export function parseOverview(raw: unknown): PlantOverview | null {
   if (!isRecord(raw)) return null;
-  const { plant_id, revision, lifecycle_state, status, problems, roles, last_watered_at, image, care, rest_period, resting } = raw;
+  const { plant_id, revision, lifecycle_state, status, problems, roles, last_watered_at, image, care, rest_period, resting, snoozed_until } = raw;
   if (typeof plant_id !== "string" || typeof revision !== "number" || (lifecycle_state !== "active" && lifecycle_state !== "disabled")) return null;
   if (!isPlantStatus(status) || !Array.isArray(problems) || !isRecord(roles) || !strOrNull(last_watered_at)) return null;
   if (!(image === null || (isRecord(image) && typeof image.id === "string"))) return null;
@@ -106,6 +108,8 @@ export function parseOverview(raw: unknown): PlantOverview | null {
   if (!parsedCare.every((task): task is CareTaskSummary => task !== null) || new Set(parsedCare.map(task => task.task_id)).size !== parsedCare.length) return null;
   const parsedRest = parseRestPeriod(rest_period);
   if (parsedRest === undefined || (parsedRest === null && resting)) return null;
+  // Older backends send no snooze at all.
+  if (snoozed_until !== undefined && !timestampOrNull(snoozed_until)) return null;
   const parsedProblems = problems.filter((p): p is PlantProblem => isRecord(p) && typeof p.role === "string" && typeof p.kind === "string").map(p => ({ role: p.role, kind: p.kind }));
   if (parsedProblems.length !== problems.length) return null;
   const parsedRoles: Partial<Record<ReadingRole, RoleReading>> = {};
@@ -115,7 +119,7 @@ export function parseOverview(raw: unknown): PlantOverview | null {
     if (!reading) return null;
     parsedRoles[role] = reading;
   }
-  return { plant_id, revision, lifecycle_state, status, problems: parsedProblems, roles: parsedRoles, last_watered_at, image: image === null ? null : { id: (image as { id: string }).id }, care: parsedCare, rest_period: parsedRest, resting };
+  return { plant_id, revision, lifecycle_state, status, problems: parsedProblems, roles: parsedRoles, last_watered_at, image: image === null ? null : { id: (image as { id: string }).id }, care: parsedCare, rest_period: parsedRest, resting, snoozed_until: (snoozed_until ?? null) as string | null };
 }
 
 // ---- Chip and reason text ----
