@@ -122,16 +122,18 @@ export class SmartPlantsOverview extends LitElement {
     @container (min-width: 601px) and (max-width: 900px) {
       .summary.five { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
+    /* Phones: the tiles become one row of compact filter chips, so the first plant
+       stays near the top. The row scrolls sideways when the chips do not fit. */
     @container (max-width: 600px) {
-      .summary, .summary.five { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-      .summary.five .tile:last-child { grid-column: 1 / -1; }
-      .tile { padding: 10px; gap: 10px; }
-      .tile .ico { width: 34px; height: 34px; }
+      .summary, .summary.five { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px; }
+      .summary::-webkit-scrollbar { display: none; }
+      .tile { flex: none; gap: 6px; height: 36px; padding: 0 12px 0 6px; border-radius: 18px; }
+      .tile .ico { width: 26px; height: 26px; }
+      .tile .ico ha-icon { --mdc-icon-size: 16px; }
+      .tile .txt { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+      .tile .num { display: inline; font-size: 14px; line-height: 1; }
+      .tile .lbl { display: inline; overflow-wrap: normal; }
       .grid { grid-template-columns: 1fr; }
-    }
-    /* Small phones: the icon goes above the number so the label gets the full tile width. */
-    @container (max-width: 380px) {
-      .tile { flex-direction: column; align-items: flex-start; gap: 6px; }
     }
   `];
 
@@ -178,8 +180,8 @@ export class SmartPlantsOverview extends LitElement {
     if (!this.plants.length) return this._renderEmpty();
     const items = this._items();
     const shown = items.filter(item => matchesFilter(this._filter, item.status, item.careDue) && matchesSearch(item, this._query));
-    // The Care due tile appears once any plant has a care task.
-    const filters = OVERVIEW_FILTERS.filter(filter => filter !== "care" || items.some(item => item.overview?.care.length) || this._filter === "care");
+    // The Care due tile appears only while some plant has a task due.
+    const filters = OVERVIEW_FILTERS.filter(filter => filter !== "care" || items.some(item => item.careDue) || this._filter === "care");
     const filtered = this._filter !== "all";
     return html`<div class="content">
       <div class="summary ${filters.length === 5 ? "five" : ""}" role="group" aria-label=${l.t("overview.filter_label")}>${filters.map(filter => this._renderTile(filter, items.filter(item => matchesFilter(filter, item.status, item.careDue)).length))}</div>
@@ -204,7 +206,7 @@ export class SmartPlantsOverview extends LitElement {
     return html`<button type="button" class="tile ${count === 0 ? "zero" : ""}" style="--tone:${tile.tone}" aria-pressed=${this._filter === filter ? "true" : "false"}
       @click=${() => { this._filter = this._filter === filter && filter !== "all" ? "all" : filter; }}>
       <span class="ico" aria-hidden="true"><ha-icon .icon=${tile.icon}></ha-icon></span>
-      <span><span class="num">${this.l.number(count)}</span><span class="lbl">${this.l.t(tile.label)}</span></span></button>`;
+      <span class="txt"><span class="num">${this.l.number(count)}</span><span class="lbl">${this.l.t(tile.label)}</span></span></button>`;
   }
 
   private _renderList(items: CardItem[]) {

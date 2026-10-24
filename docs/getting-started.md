@@ -15,9 +15,10 @@ The overview shows:
 
 - four summary tiles: **All plants**, **Needs water**, **Problems** (too wet, or another
   reading outside its target such as too little light or a low sensor battery) and
-  **Sensor issues** (no recent data, or no soil moisture sensor assigned). Once a plant has a
-  care task, a fifth tile, **Care due**, counts the plants with a care task due today or
-  overdue. Select a tile to show only those plants; select it again to show all plants.
+  **Sensor issues** (no recent data, or no soil moisture sensor assigned). While a plant has a
+  care task due today or overdue, a fifth tile, **Care due**, counts those plants. Select a
+  tile to show only those plants; select it again to show all plants. On a phone the tiles
+  become one row of compact chips with the same icons and counts.
 - a search field that matches plant name, area, species (scientific name and common names in
   English and German), category and tags, and a sort menu:
   **Needs attention first** (the default), **Name**, or **Group by area**.
@@ -186,9 +187,9 @@ the trigger value and the normal range) before saving. Built-in defaults are lis
 
 Open the plant and select **Log care** in the header or on the **Care history** card in the
 **Care** tab. Choose a care type, set the date and time (your local time, not in the future),
-fill in the optional details, and select **Record care**. The chips at the top of the
-**Care history** card (All, Watering, Fertilizing, Pruning, Repotting, Notes) filter the
-entries.
+fill in the optional details, and select **Record care**. Once the history holds more than
+one kind of entry, chips at the top of the **Care history** card (All, Watering, Fertilizing,
+Pruning, Repotting, Notes) filter the entries.
 
 | Care type | Details you can record |
 | --- | --- |
@@ -213,12 +214,15 @@ also marks that task as done; the form says so below the care type.
 
 ## Care plan
 
-The **Care plan** card at the top of the **Care** tab holds reminders for recurring care:
+The **Care plan** card on the **Care** tab holds reminders for recurring care:
 fertilizing, pruning, repotting, checking for pests, winter protection, and tasks of your own. A plant can have
 one task of each type plus any number of custom tasks, up to 20 in total. Care tasks never
 change the plant's health status.
 
 ![Care plan with a rest period and three care tasks on a plant's Care tab](images/care-plan.png)
+
+Until a plant has a care task or a rest period, the card waits below the care history as one
+short line with **Add task**; after that it sits at the top of the tab.
 
 Select **Add task**, pick what you want to be reminded of, then choose when it is due:
 

@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+from custom_components.smart_plants import binary_sensor
 from custom_components.smart_plants.const import (
     DOMAIN,
     SINGLETON_UNIQUE_ID,
@@ -890,3 +891,18 @@ async def test_snooze_survives_entity_registry_lookups(
         e.entity_id for e in er.async_entries_for_config_entry(registry, entry.entry_id)
     }
     assert after == before
+
+
+def test_snooze_attributes_stay_out_of_the_recorder() -> None:
+    # Home Assistant takes each entity class's own set, so subclasses that add
+    # unrecorded attributes must keep the snooze ones.
+    classes = [
+        cls
+        for cls in vars(binary_sensor).values()
+        if isinstance(cls, type)
+        and issubclass(cls, binary_sensor.SmartPlantsBinarySensorEntity)
+    ]
+    assert len(classes) > 1
+    for cls in classes:
+        assert {"snoozed", "snoozed_until"} <= cls._unrecorded_attributes, cls
+    assert "reading" in binary_sensor._CareTaskDueBinary._unrecorded_attributes

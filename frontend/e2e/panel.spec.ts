@@ -73,7 +73,7 @@ test("care history creates, edits and confirms deletion of other event kinds", a
   await page.getByLabel("Care type").selectOption("pruning");
   await page.getByLabel("Plant part", { exact: true }).fill("leaf tips");
   await button(page, "Save care changes").click();
-  await expect(page.getByText("Pruning", { exact: false }).first()).toBeVisible();
+  await expect(page.locator(".care-history .li-title", { hasText: "Pruning" })).toBeVisible();
   await audit(page, info, "care-kind-changed");
   page.once("dialog", dialog => dialog.accept());
   await careAction(page, "Pruning", "Delete pruning");

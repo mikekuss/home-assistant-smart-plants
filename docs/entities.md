@@ -242,7 +242,9 @@ care task *due* sensors and *Care due*) keeps its real state and has these attri
 | `snoozed_until` | When the snooze ends, as a UTC timestamp such as `2026-11-01T22:59:59Z`, otherwise `null` |
 
 Sensors such as soil moisture, the health score, or *next due* have no snooze attributes:
-they are values, not alerts. The snooze adds no entity.
+they are values, not alerts. The snooze adds no entity. The two attributes are left out of the
+recorder, so history and the logbook do not keep them; automations read them from the current
+state.
 
 To keep an automation quiet during a snooze, use a native state condition on the attribute:
 
