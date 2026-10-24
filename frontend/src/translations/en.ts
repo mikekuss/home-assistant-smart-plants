@@ -1031,7 +1031,7 @@ export const en = {
   "snooze.title": "Snooze alerts for {name}",
   "snooze.title_change": "Change snooze for {name}",
   "snooze.intro": "Entities keep their real states and the plant keeps showing its status. Automations can check the Snoozed attribute to stay quiet. The snooze ends by itself at the end of the chosen day.",
-  "snooze.current": "Snoozed until {date}.",
+  "snooze.current": "Snoozed until {date}",
   "snooze.choices": "Snooze for",
   "snooze.preset_1": "1 day",
   "snooze.preset_3": "3 days",

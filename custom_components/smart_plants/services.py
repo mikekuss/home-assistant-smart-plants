@@ -178,6 +178,18 @@ def _resolve_plant_device(
     return _plant_for_target(manager, plant_id, label, disabled_key)
 
 
+def _unregistered_entity_error(
+    hass: HomeAssistant, entity_ref: str
+) -> ServiceValidationError:
+    """Return the error for an entity target missing from the entity registry."""
+    # Smart Plants entities are always registered, so an entity that only
+    # exists in the state machine (one without a unique ID) is the wrong kind
+    # of target, not a missing one.
+    if hass.states.get(entity_ref) is not None:
+        return _error("invalid_target", target=entity_ref)
+    return _error("unknown_target", target=entity_ref)
+
+
 def _resolve_task_entity(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -188,7 +200,7 @@ def _resolve_task_entity(
     entity_id = er.async_resolve_entity_id(registry, entity_ref)
     registry_entry = registry.async_get(entity_id) if entity_id else None
     if entity_id is None or registry_entry is None:
-        raise _error("unknown_target", target=entity_ref)
+        raise _unregistered_entity_error(hass, entity_ref)
     match = _DUE_UNIQUE_ID.fullmatch(registry_entry.unique_id)
     if (
         registry_entry.platform != DOMAIN
@@ -360,7 +372,7 @@ def _resolve_plant_entity(
     entity_id = er.async_resolve_entity_id(registry, entity_ref)
     registry_entry = registry.async_get(entity_id) if entity_id else None
     if entity_id is None or registry_entry is None:
-        raise _error("unknown_target", target=entity_ref)
+        raise _unregistered_entity_error(hass, entity_ref)
     if (
         registry_entry.platform != DOMAIN
         or registry_entry.config_entry_id != entry.entry_id
@@ -408,8 +420,10 @@ def _snooze_end(call: ServiceCall) -> datetime:
         # A time without a zone (the action editor's date and time picker)
         # is Home Assistant local time.
         end = dt_util.as_local(until)
-    else:
+    elif duration is None:
         raise _error("snooze_period_required")
+    else:
+        raise _error("snooze_period_conflict")
     if end <= now:
         raise _error("snooze_in_past")
     if end > now + SNOOZE_MAX_AHEAD:

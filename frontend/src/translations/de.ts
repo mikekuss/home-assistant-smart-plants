@@ -1032,7 +1032,7 @@ export const de: Catalog = {
   "snooze.title": "Hinweise für {name} stummschalten",
   "snooze.title_change": "Stummschaltung für {name} ändern",
   "snooze.intro": "Die Entitäten behalten ihren echten Zustand, und die Pflanze zeigt weiter ihren Status. Automationen können das Attribut Stummgeschaltet prüfen, um still zu bleiben. Die Stummschaltung endet von selbst am Ende des gewählten Tages.",
-  "snooze.current": "Stummgeschaltet bis {date}.",
+  "snooze.current": "Stummgeschaltet bis {date}",
   "snooze.choices": "Stummschalten für",
   "snooze.preset_1": "1 Tag",
   "snooze.preset_3": "3 Tage",

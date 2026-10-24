@@ -13,6 +13,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   plant shows a grey "Snoozed until …" chip in its header, with **Resume**, and on its overview
   card. See [Getting started](docs/getting-started.md#going-on-vacation).
 
+### Fixed
+
+- `smart_plants.snooze` called with neither a duration nor an end time now asks for one instead
+  of saying "not both", and an action targeting an entity that is not from Smart Plants, such
+  as `sun.sun`, now says so instead of reporting it as not found.
+
 ## [0.9.0] - 2026-10-24
 
 ### Added

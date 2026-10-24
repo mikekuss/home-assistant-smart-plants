@@ -594,6 +594,8 @@ async def test_task_entity_errors(hass: HomeAssistant) -> None:
         "binary_sensor", "mock_other", f"{DOMAIN}:{plant_id}:care_task:{task_id}:due"
     )
 
+    # A state without a registry entry is a wrong target, not a missing one.
+    hass.states.async_set("sun.mock_sun", "above_horizon")
     for service in (SERVICE_LOG_CARE, SERVICE_SKIP_CARE_TASK):
         await _expect_error(
             hass,
@@ -606,6 +608,9 @@ async def test_task_entity_errors(hass: HomeAssistant) -> None:
         )
         await _expect_error(
             hass, service, {"entity_id": other_entity.entity_id}, "invalid_target"
+        )
+        await _expect_error(
+            hass, service, {"entity_id": "sun.mock_sun"}, "invalid_target"
         )
 
     plant = _plant_record(entry, plant_id)

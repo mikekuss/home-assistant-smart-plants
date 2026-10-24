@@ -2826,7 +2826,7 @@ var In = {
 	"snooze.title": "Hinweise für {name} stummschalten",
 	"snooze.title_change": "Stummschaltung für {name} ändern",
 	"snooze.intro": "Die Entitäten behalten ihren echten Zustand, und die Pflanze zeigt weiter ihren Status. Automationen können das Attribut Stummgeschaltet prüfen, um still zu bleiben. Die Stummschaltung endet von selbst am Ende des gewählten Tages.",
-	"snooze.current": "Stummgeschaltet bis {date}.",
+	"snooze.current": "Stummgeschaltet bis {date}",
 	"snooze.choices": "Stummschalten für",
 	"snooze.preset_1": "1 Tag",
 	"snooze.preset_3": "3 Tage",
@@ -3835,7 +3835,7 @@ var In = {
 	"snooze.title": "Snooze alerts for {name}",
 	"snooze.title_change": "Change snooze for {name}",
 	"snooze.intro": "Entities keep their real states and the plant keeps showing its status. Automations can check the Snoozed attribute to stay quiet. The snooze ends by itself at the end of the chosen day.",
-	"snooze.current": "Snoozed until {date}.",
+	"snooze.current": "Snoozed until {date}",
 	"snooze.choices": "Snooze for",
 	"snooze.preset_1": "1 day",
 	"snooze.preset_3": "3 days",
@@ -6794,7 +6794,7 @@ function Es(e, t, n) {
 }
 function Ds(e, t, n, r, i = Date.now()) {
 	let a = ws(t, i), o = a ? Ts(a, r) : null;
-	return o ? e.t("snooze.chip", { date: Es(e, o, n) }) : null;
+	return o ? e.t("snooze.chip", { date: Es(e, o, n).replace(/\s/g, "\xA0") }) : null;
 }
 //#endregion
 //#region src/styles.ts

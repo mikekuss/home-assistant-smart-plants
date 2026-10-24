@@ -12,6 +12,8 @@ import { ApiError } from "./api.js";
 const NOW = new Date("2026-10-24T12:00:00Z");
 const BERLIN = "Europe/Berlin";
 const DE = createLocalizer({ language: "de" });
+// Chip dates are joined with no-break spaces.
+const nb = (date: string) => date.replace(/ /g, "\u00a0");
 
 afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); vi.useRealTimers(); localStorage.clear(); });
 
@@ -41,11 +43,11 @@ describe("snooze end", () => {
   });
   it("names the day a snooze ends, in English and German", () => {
     const now = NOW.getTime();
-    expect(snoozeChipText(ENGLISH, "2026-10-30T22:59:59Z", "2026-10-24", BERLIN, now)).toBe("Snoozed until Fri, Oct 30");
-    expect(snoozeChipText(DE, "2026-10-30T22:59:59Z", "2026-10-24", BERLIN, now)).toBe("Stummgeschaltet bis Fr., 30. Okt.");
+    expect(snoozeChipText(ENGLISH, "2026-10-30T22:59:59Z", "2026-10-24", BERLIN, now)).toBe(`Snoozed until ${nb("Fri, Oct 30")}`);
+    expect(snoozeChipText(DE, "2026-10-30T22:59:59Z", "2026-10-24", BERLIN, now)).toBe(`Stummgeschaltet bis ${nb("Fr., 30. Okt.")}`);
     // An end at midnight still belongs to the day before.
     expect(snoozeEndDate("2026-10-30T23:00:00Z", BERLIN)).toBe("2026-10-30");
-    expect(snoozeChipText(ENGLISH, "2027-01-04T22:59:59Z", "2026-10-24", BERLIN, now)).toBe("Snoozed until Mon, Jan 4, 2027");
+    expect(snoozeChipText(ENGLISH, "2027-01-04T22:59:59Z", "2026-10-24", BERLIN, now)).toBe(`Snoozed until ${nb("Mon, Jan 4, 2027")}`);
     expect(snoozeChipText(ENGLISH, "2026-10-24T11:59:59Z", "2026-10-24", BERLIN, now)).toBeNull();
     expect(snoozeChipText(ENGLISH, null, "2026-10-24", BERLIN, now)).toBeNull();
     expect(activeSnooze("garbage", now)).toBeNull();
@@ -122,7 +124,7 @@ describe("snoozing in the panel", () => {
     expect(snoozeCalls(h)).toEqual([{ type: "smart_plants/plants/snooze", plant_id: "plant-1", expected_revision: 1, until: "2026-10-27T23:59:59+01:00" }]);
     expect(dialog(el)).toBeNull();
     const chip = root(el).querySelector("sp-snooze-chip")!;
-    expect(chip.label).toBe("Snoozed until Tue, Oct 27");
+    expect(chip.label).toBe(`Snoozed until ${nb("Tue, Oct 27")}`);
     // The status chip stays as it was; a snooze only mutes alerts.
     expect(root(el).querySelector("sp-status-chip")!.status).toBe("no_sensors");
     expect(menuItem(el).textContent).toContain("Change snooze…");
@@ -143,18 +145,18 @@ describe("snoozing in the panel", () => {
     input.value = "2026-12-24"; input.dispatchEvent(new Event("input")); await settle(el);
     dialogButton(el, "Snooze").click(); await settle(el);
     expect(snoozeCalls(h).map(call => call.until)).toEqual(["2026-12-24T23:59:59+01:00"]);
-    expect(root(el).querySelector("sp-snooze-chip")!.label).toBe("Snoozed until Thu, Dec 24");
+    expect(root(el).querySelector("sp-snooze-chip")!.label).toBe(`Snoozed until ${nb("Thu, Dec 24")}`);
   });
 
   it("shows the snooze with Resume, changes it and resumes", async () => {
     const { el, h } = await mount({ ...structuredClone(sample), snoozed_until: "2026-10-30T22:59:59Z" });
-    expect(root(el).querySelector("sp-snooze-chip")!.label).toBe("Snoozed until Fri, Oct 30");
+    expect(root(el).querySelector("sp-snooze-chip")!.label).toBe(`Snoozed until ${nb("Fri, Oct 30")}`);
     const resume = root(el).querySelector<HTMLButtonElement>(".hero-status .snooze button")!;
     expect(resume.textContent).toBe("Resume");
     expect(resume.getAttribute("aria-label")).toBe("Resume alerts for Aloe");
     await openMenu(el);
     expect(dialog(el)!.querySelector("h2")!.textContent).toBe("Change snooze for Aloe");
-    expect(dialog(el)!.textContent).toContain("Snoozed until Fri, Oct 30.");
+    expect(dialog(el)!.textContent).toContain("Snoozed until Fri, Oct 30");
     expect(radio(el, "date").checked).toBe(true);
     expect(dialog(el)!.querySelector<HTMLInputElement>("#snooze-date")!.value).toBe("2026-10-30");
     radio(el, "14").click(); await settle(el);
@@ -177,9 +179,11 @@ describe("snoozing in the panel", () => {
 
   it("uses German texts", async () => {
     const { el } = await mount({ ...structuredClone(sample), snoozed_until: "2026-10-30T22:59:59Z" }, { language: "de" });
-    expect(root(el).querySelector("sp-snooze-chip")!.label).toBe("Stummgeschaltet bis Fr., 30. Okt.");
+    expect(root(el).querySelector("sp-snooze-chip")!.label).toBe(`Stummgeschaltet bis ${nb("Fr., 30. Okt.")}`);
     expect(menuItem(el).textContent).toContain("Stummschaltung ändern…");
     await openMenu(el);
+    // The German date already ends with a period; the line adds no second one.
+    expect(dialog(el)!.querySelector(".snooze-current")!.textContent).toBe("Stummgeschaltet bis Fr., 30. Okt.");
     expect(dialog(el)!.textContent).toContain("1 Woche");
     expect(dialogButton(el, "Stummschalten")).toBeDefined();
   });
@@ -216,7 +220,7 @@ describe("snoozing in the panel", () => {
   it("shows the grey chip on the overview card without a button", async () => {
     const { el } = await mount({ ...structuredClone(sample), snoozed_until: "2026-10-30T22:59:59Z" }, { open: false });
     const card = root(el).querySelector("smart-plants-overview")!.shadowRoot!.querySelector("article.card")!;
-    expect(card.querySelector("sp-snooze-chip")!.label).toBe("Snoozed until Fri, Oct 30");
+    expect(card.querySelector("sp-snooze-chip")!.label).toBe(`Snoozed until ${nb("Fri, Oct 30")}`);
     expect(card.querySelector(".chiprow")!.querySelectorAll("button")).toHaveLength(0);
     expect(card.querySelector("sp-status-chip")).not.toBeNull();
   });

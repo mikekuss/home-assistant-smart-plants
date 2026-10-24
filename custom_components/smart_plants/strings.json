@@ -617,6 +617,9 @@
       "message": "{plant} is disabled. Enable it before snoozing its alerts."
     },
     "snooze_period_required": {
+      "message": "Set a duration or an end time for the snooze."
+    },
+    "snooze_period_conflict": {
       "message": "Set either a duration or an end time, not both."
     },
     "snooze_in_past": {
