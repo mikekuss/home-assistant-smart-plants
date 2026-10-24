@@ -606,7 +606,7 @@ async def test_snooze_action_until_without_zone_is_local_time(
         pytest.param({}, "snooze_period_required", id="neither"),
         pytest.param(
             {"duration": {"days": 1}, "until": "2026-06-20T10:00:00+00:00"},
-            "snooze_period_required",
+            "snooze_period_conflict",
             id="both",
         ),
         pytest.param({"duration": {"days": 367}}, "snooze_too_long", id="too long"),
@@ -671,6 +671,11 @@ async def test_snooze_actions_need_plant_devices(
         service,
         {"entity_id": "binary_sensor.missing", **duration},
         "unknown_target",
+    )
+    # A state without a registry entry is a wrong target, not a missing one.
+    hass.states.async_set("sun.mock_sun", "above_horizon")
+    await _expect_error(
+        hass, service, {"entity_id": "sun.mock_sun", **duration}, "invalid_target"
     )
     # Nothing was written by any rejected call.
     assert _manager(entry).get_plant(plant.id) == plant

@@ -94,9 +94,10 @@ export function snoozeDateText(l: Localizer, isoDate: string, today: string): st
     .format(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
 }
 
-// Chip text for a snoozed plant, or null when it is not snoozed.
+// Chip text for a snoozed plant, or null when it is not snoozed. The date is
+// joined with no-break spaces so a narrow chip wraps before it, not inside it.
 export function snoozeChipText(l: Localizer, snoozedUntil: string | null | undefined, today: string, timeZone: string | undefined, now = Date.now()): string | null {
   const active = activeSnooze(snoozedUntil, now);
   const date = active ? snoozeEndDate(active, timeZone) : null;
-  return date ? l.t("snooze.chip", { date: snoozeDateText(l, date, today) }) : null;
+  return date ? l.t("snooze.chip", { date: snoozeDateText(l, date, today).replace(/\s/g, "\u00a0") }) : null;
 }

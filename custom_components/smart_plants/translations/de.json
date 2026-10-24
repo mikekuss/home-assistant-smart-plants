@@ -617,6 +617,9 @@
       "message": "{plant} ist deaktiviert. Aktivieren Sie die Pflanze, bevor Sie ihre Hinweise stummschalten."
     },
     "snooze_period_required": {
+      "message": "Geben Sie eine Dauer oder ein Ende für die Stummschaltung an."
+    },
+    "snooze_period_conflict": {
       "message": "Geben Sie entweder eine Dauer oder ein Ende an, nicht beides."
     },
     "snooze_in_past": {
