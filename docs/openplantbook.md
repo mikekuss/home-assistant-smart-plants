@@ -2,7 +2,7 @@
 
 [OpenPlantBook](https://open.plantbook.io/) is an optional species database. Smart Plants can
 search it and import species details and moisture ranges into your plants. Smart Plants works
-fully without it: every plant can be created and managed manually.
+fully without it. You can create and manage every plant by hand.
 
 Smart Plants connects to the OpenPlantBook API directly. You do **not** need the separate
 Home Assistant OpenPlantBook integration.
@@ -53,8 +53,8 @@ result opens a **read-only preview** that shows:
 - attribution for each field,
 - for existing plants, the changes compared to the current species data.
 
-Nothing is changed until you accept the preview. A preview expires after 10 minutes; if it
-has expired, request a new one.
+Nothing changes until you accept the preview. A preview expires after 10 minutes. After that,
+request a new one.
 
 OpenPlantBook can also supply common names in English and German. When the panel is shown in
 German and the species has a German name, the panel shows that name next to the scientific
@@ -70,15 +70,15 @@ name. The overview search finds a plant by any of these names.
 
 What applying does:
 
-- The species snapshot (names, category, care text, attribution, and when it was fetched) is
-  stored with the plant.
+- Smart Plants stores the species snapshot with the plant: names, category, care text,
+  attribution, and when it was fetched.
 - OpenPlantBook's moisture minimum and maximum become the plant's **default** moisture
   minimum and maximum. The target keeps its built-in default.
-- Your own **overrides are always preserved.** Each threshold either inherits its default or
+- Your own **overrides always stay.** Each threshold either inherits its default or
   uses your override, field by field. Applying species data only changes defaults.
 - If the imported values can't be combined with your current settings (for example, the
-  imported minimum is above the current target), the apply is refused. In the wizard you'll
-  be asked to check the **Soil moisture targets**; for an existing plant, set matching
+  imported minimum is above the current target), Smart Plants doesn't apply them. The wizard
+  then asks you to check the **Soil moisture targets**. For an existing plant, set matching
   **Soil moisture targets** in the **Settings** tab first and apply again.
 
 For a plant that already has OpenPlantBook data, **Preview species refresh** fetches the
@@ -87,7 +87,7 @@ at any time; saving manual details replaces the species data.
 
 ## What is stored locally
 
-Species data is stored in the plant inventory in your Home Assistant configuration directory
+Smart Plants stores species data in the plant inventory in your Home Assistant configuration directory
 (`.storage/smart_plants.inventory`) together with the source reference, attribution, locale,
 and fetch time. Your plants never depend on OpenPlantBook being reachable: if it's down, or
 you disable the provider, existing species data and thresholds stay as they are.
@@ -95,16 +95,16 @@ you disable the provider, existing species data and thresholds stay as they are.
 Smart Plants does **not** download or display images from OpenPlantBook. Plant photos only
 come from your own uploads.
 
-Search results and species details are cached in memory for up to an hour to reduce requests.
-Your credentials are stored in the Smart Plants configuration entry and are not included in
-diagnostics downloads.
+Smart Plants keeps search results and species details in memory for up to an hour to save
+requests. Your credentials live in the Smart Plants configuration entry, and diagnostics
+downloads never include them.
 
 ## Reauthentication
 
 If OpenPlantBook rejects the stored credentials during a search or preview (for example after
 you rotated them), Home Assistant shows a **reauthentication** prompt for Smart Plants in
 **Settings → Devices & services**. Enter the new client ID and secret there. Your plants stay
-available while authentication is broken; only species search is affected.
+available while authentication fails. Only species search stops working.
 
 ## Disable the provider
 

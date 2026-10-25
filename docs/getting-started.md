@@ -13,21 +13,19 @@ appears in the Home Assistant sidebar (sprout icon). The panel is available to
 
 The overview shows:
 
-- four summary tiles: **All plants**, **Needs water**, **Problems** (too wet, or another
-  reading outside its target such as too little light or a low sensor battery) and
-  **Sensor issues** (no recent data, or no soil moisture sensor assigned). While a plant has a
-  care task due today or overdue, a fifth tile, **Care due**, counts those plants. Select a
-  tile to show only those plants; select it again to show all plants. On a phone the tiles
-  become one row of compact chips with the same icons and counts.
-- a search field that matches plant name, area, species (scientific name and common names in
-  English and German), category and tags, and a sort menu:
-  **Needs attention first** (the default), **Name**, or **Group by area**.
-- one card per plant with its photo, area and species, a status label with a short
-  explanation (for example *Soil moisture 34% is below the minimum of 60%*), the soil
-  moisture on a bar with its target range, the current value of every other assigned
-  sensor, and when the plant was last watered. A plant without sensors shows **Assign**,
-  which opens its **Sensors** tab. When care tasks are due, one line names them, for example
-  *Care: Prune, Fertilize +1*.
+- Summary tiles that filter the list: **All plants**, **Needs water**, **Problems** and
+  **Sensor issues**. *Problems* covers too wet and any other reading outside its target, such
+  as too little light. *Sensor issues* covers no recent data and no soil moisture sensor.
+  While a care task is due, a fifth tile, **Care due**, appears. Select a tile to filter,
+  select it again to show all plants. On a phone the tiles become one row of compact chips.
+- A search field and a sort menu. The search matches the plant name, area, species
+  (scientific and common names in English and German), category and tags. The sort menu has
+  **Needs attention first** (the default), **Name** and **Group by area**.
+- One card per plant. It shows the photo, area and species, the status with a short reason
+  (for example *Soil moisture 34% is below the minimum of 60%*), the soil moisture on a bar
+  with its target range, the other readings, and when you last watered. A plant without
+  sensors shows **Assign**, which opens its **Sensors** tab. Due care tasks get one line, for
+  example *Care: Prune, Fertilize +1*.
 
 Each plant has one status, most urgent first: *Needs water*, *Too wet*, a named problem
 (such as *Too little light* or *Battery low*), *No recent data*, *No moisture sensor* (or
@@ -48,27 +46,27 @@ go back at any time without losing your entries. Only the name is required.
 
 ![Add-plant wizard, first step](images/create-wizard.png)
 
-1. **Plant** – Enter a name and optionally choose a Home Assistant **Area**. The plant's
+1. **Plant**: enter a name and optionally choose a Home Assistant **Area**. The plant's
    device is placed in that area, and sensors from the same area are suggested in the next
    step. You can also add a photo: drop an image on the photo field or choose a file (JPEG,
    PNG, or WebP up to 5 MB). It is uploaded right after the plant is created.
-2. **Sensors** – Pick a **Soil moisture sensor**; it gives the plant its watering alerts. The
+2. **Sensors**: pick a **Soil moisture sensor**; it gives the plant its watering alerts. The
    list only shows moisture sensors, with their current values. Under **Suggested from**
    *area*, other sensors from the chosen area are listed with what they measure and their
    current value; select **Add** to use one. **Add another sensor** lets you pick a sensor for
    temperature, humidity, light, fertilizer level, soil temperature, CO₂, or battery. The
    button reads **Skip for now** until you choose a sensor; you can add sensors later.
-3. **Review** – Check the summary and use **Edit** to change a step. Without a soil moisture
+3. **Review**: check the summary and use **Edit** to change a step. Without a soil moisture
    sensor, a warning reminds you that there are no watering alerts. Two optional sections
    hold everything else:
-   - **Species and watering targets** – Search [OpenPlantBook](openplantbook.md) (at least
+   - **Species and watering targets**: search [OpenPlantBook](openplantbook.md) (at least
      three characters), pick a result, check the imported information, and tick
      **I reviewed and accept this species information**. Nothing is applied without this.
      If OpenPlantBook is not set up, the section explains where to add its credentials. You
      can also type a common and scientific name yourself. The soil moisture targets
      **Needs water below**, **Ideal**, and **Too wet above** show the Smart Plants defaults,
      or the species values once accepted; change a value to override it for this plant.
-   - **More details** – Date acquired, placement (indoor, outdoor, balcony, greenhouse,
+   - **More details**: date acquired, placement (indoor, outdoor, balcony, greenhouse,
      covered outdoor, or dormant storage), category, and tags. Sun exposure, rain exposure,
      and container can be set later on the plant page under **Settings** →
      **More details**.
@@ -95,20 +93,22 @@ their target range. Two buttons sit next to it:
 - **Log care** opens the care form in the **Care** tab.
 
 The **⋮** menu in the top bar offers **Open device**, **Download diagnostics**,
-**Pause monitoring** (or **Resume monitoring**) and **Delete plant**. The back arrow returns to
+**Snooze alerts…** (see [Going on vacation](#going-on-vacation)), **Pause monitoring** (or
+**Resume monitoring**) and **Delete plant**. The back arrow returns to
 the overview.
 
 The page has four tabs:
 
-- **Overview** – *Readings* (each assigned reading with its sensor, whether it is in range,
+- **Overview**: *Readings* (each assigned reading with its sensor, whether it is in range,
   too low, too high or not updating, and its target), *History* (a chart of one reading over
   time, see [History](#history)), *Recent care* (the last three entries),
-  *About this plant* (species, area, placement, date acquired, category and tags) and
+  *About this plant* (species, area, and the details you set, with **Add details** for the
+  rest) and
   *Automations* (links to the device page and to a new automation for this device).
-- **Sensors** – the sensors in use, the settings for readings with several sensors, and
+- **Sensors**: the sensors in use, the settings for readings with several sensors, and
   *Troubleshooting*.
-- **Care** – the care plan with your care reminders, and the care log.
-- **Settings** – name, area, photo, species, soil moisture targets, other targets, more
+- **Care**: the care plan with your care reminders, and the care log.
+- **Settings**: name, area, photo, species, soil moisture targets, other targets, more
   details, and pausing or deleting the plant.
 
 ### History
@@ -159,8 +159,8 @@ sensor and when it last reported.
 
 The sensor picker is filtered by device class and unit for each reading. Tick
 **Show all sensors, including ones that don't look like a match** to pick anything else, or
-type an entity ID and press Enter to assign a sensor that is currently unavailable. Each reading accepts up to 32
-sensors.
+type an entity ID and press Enter to assign a sensor that is currently unavailable. Each
+reading accepts up to 32 sensors.
 
 A reading's sensor and problem entities appear the first time you assign a sensor to it. See
 [Sensors and health](sensors-and-health.md) for accepted units and how values are combined.
@@ -169,7 +169,7 @@ A reading's sensor and problem entities appear the first time you assign a senso
 
 Open the plant and go to the **Settings** tab.
 
-- **Soil moisture targets** – **Needs water below**, **Ideal** and **Too wet above**. The card
+- **Soil moisture targets**: **Needs water below**, **Ideal** and **Too wet above**. The card
   says whether the values come from the species or from the Smart Plants defaults. Leave a
   field empty to use the default, or select **Reset to defaults**, then **Save targets**. The
   plant's *Moisture minimum*, *Moisture target* and *Moisture maximum* number entities change
@@ -201,12 +201,12 @@ Pruning, Repotting, Notes) filter the entries.
 
 Notes can be up to 500 characters and other details up to 120. The **⋮** menu of an entry
 edits or deletes it. An entry that marks a care task as done keeps its care type when you edit
-it; pest checks and custom tasks appear under the task's name. Each plant keeps up to 256 care entries; after that, the oldest
-waterings are removed to make room (see
+it. Pest checks and custom tasks appear under the task's name. Each plant keeps up to 256 care
+entries. After that, Smart Plants removes the oldest waterings to make room (see
 [Troubleshooting](troubleshooting.md#old-care-entries-disappeared)).
 
 Logging a **watering** pauses the plant's *Needs water* alert for 24 hours from the time you
-entered, giving the soil sensor time to catch up. See
+entered. That gives the soil sensor time to catch up. The Log care form says this for waterings. See
 [Sensors and health](sensors-and-health.md#manual-watering-grace).
 
 When the plant has a care task of the same type, a fertilizing, pruning or repotting entry
@@ -214,168 +214,168 @@ also marks that task as done; the form says so below the care type.
 
 ## Care plan
 
-The **Care plan** card on the **Care** tab holds reminders for recurring care:
-fertilizing, pruning, repotting, checking for pests, winter protection, and tasks of your own. A plant can have
-one task of each type plus any number of custom tasks, up to 20 in total. Care tasks never
-change the plant's health status.
+The care plan holds reminders for care that comes back: fertilizing, pruning, repotting,
+checking for pests, winter protection, and tasks of your own. You find it on the plant's
+**Care** tab. A plant can have one task of each type plus any number of custom tasks, up to 20
+in total. Care tasks never change the plant's health status.
 
-![Care plan with a rest period and three care tasks on a plant's Care tab](images/care-plan.png)
+![Care plan with a rest period and care tasks on a plant's Care tab](images/care-plan.png)
 
-Until a plant has a care task or a rest period, the card waits below the care history as one
-short line with **Add task**; after that it sits at the top of the tab.
+A plant without tasks shows only one short line with **Add task**, below the care history.
+Once the plant has a task or a rest period, the care plan moves to the top of the tab.
 
-Select **Add task**, pick what you want to be reminded of, then choose when it is due:
+### Add a task
 
-- **Repeating** – every so many days, weeks, months or years. The next date counts from the
-  day you last marked the task as done or skipped it, early or late. When the plant has a
-  rest period, **Only in the growing season** lets the task wait during the rest months.
-- **Once a year** – a range of months, for example March to April. Select the first month,
-  then the last; a range can run past December, such as November to February. The task is due
-  from the first day of the range to its end. If the range passes without a Done, the task
-  shows *Missed this year* and opens again the next year.
-- **Reading** – when a sensor reading or the weather forecast is below or above a value, for
-  example when the temperature is below 5 °C. See [Reading tasks](#reading-tasks).
+Select **Add task** and pick what you want to be reminded of. Then choose when it is due:
 
-A custom task needs a name; other tasks can keep their default name. **Instructions** are
-optional and can hold up to 4,000 characters. Under **More options** you can enter when the
-task was last done; without a date, a repeating task is due right away.
+- **Repeating**: every so many days, weeks, months or years. The next date counts from the day
+  you last marked the task as done or skipped it. When the plant has a rest period, **Only in
+  the growing season** lets the task wait during the rest months.
+- **Once a year**: a range of months, for example March to April. Select the first month, then
+  the last. A range can run past December, such as November to February. The task is due from
+  the first day of the range to its end. If the range passes without a Done, the task shows
+  *Missed this year* and opens again the next year.
+- **Reading**: when a sensor or the weather forecast is below or above a value, for example
+  below 5 °C. See [Reading tasks](#reading-tasks).
 
-When the plant's species comes from OpenPlantBook and has care notes, **Add task** first shows
-**Suggestions** with the species' fertilizing and pruning notes. **Add Fertilize task** or
-**Add Prune task** opens the task with the default schedule and the note as its instructions;
-you can change both before saving. Long notes show three lines with **Show more**. While you
-add or edit a fertilizing, pruning or repotting task with empty instructions, **Use as
-instructions** copies the matching note (for repotting, the soil note). The notes are stored
-with the species, so suggestions work without a new OpenPlantBook request, and nothing is
-added to a task until you select it.
+A custom task needs a name. Other tasks can keep their default name. **Instructions** are
+optional and hold up to 4,000 characters. Under **More options** you can enter when the task
+was last done. Without that date, a repeating task is due right away.
 
-Each task shows its schedule, when it was last done, and its state, for example *Due today*,
-*Overdue 3 days*, *In 2 weeks*, *From Mar 1* or *Done for this year*. Dates are calendar dates
-in your Home Assistant time zone. When a task is due, **Done** marks it as done now, with
-**Undo** in the notification. The task's **⋮** menu offers:
+If the plant's species comes from OpenPlantBook with care notes, **Add task** first shows
+**Suggestions**. **Add Fertilize task** or **Add Prune task** opens a task with the default
+schedule and the species note as its instructions. You can change both before you save. While
+the instructions of a fertilizing, pruning or repotting task are empty, **Use as instructions**
+copies the matching note. Smart Plants stores the notes with the species, so suggestions need
+no new OpenPlantBook request.
 
-- **Mark as done…** – opens the care form, where you can pick another date and add a note.
-- **Skip this time** – the task counts as handled for now, with **Undo** in the notification.
-- **Edit** – change the name, schedule, instructions or last done date. The task type stays.
-- **Automate…** – the entity IDs of the task, a hint for the `smart_plants.log_care` action, and
-  a button that opens the automation editor.
-- **Delete** – asks first. The task's entities are removed, so automations that use them stop
-  working; its entries in the care history are kept.
+### Work with tasks
 
-Due tasks also appear as small chips under the plant's status in the header, at most two
-followed by *+N*.
+Each task shows its schedule, when you last did it, and its state, for example *Due today*,
+*Overdue 3 days*, *In 2 weeks* or *Done for this year*. Dates follow your Home Assistant time
+zone. When a task is due, **Done** marks it as done now. The notification that follows has
+**Undo**.
+
+The task's **⋮** menu has more:
+
+- **Mark as done…**: opens the care form, where you can pick another date and add a note.
+- **Skip this time**: counts the task as handled for now. The notification has **Undo**.
+- **Edit**: changes the name, schedule, instructions or last done date. The task type stays.
+- **Automate…**: shows the task's entity IDs and opens the automation editor.
+- **Delete**: asks first, then removes the task and its entities. Automations that use those
+  entities stop working. The care history keeps the task's entries.
+
+Due tasks also appear as chips under the plant's status in the header, at most two followed
+by *+N*.
+
+Every task has its own entities for automations, see [Entities](entities.md#care-tasks). To
+mark a task as done from an automation, for example from an NFC tag, use the
+[`smart_plants.log_care`](automations.md#log-care-with-actions) action.
 
 ### Reading tasks
 
-A reading task is due because of a sensor reading instead of a date. **Winter protection**
-starts as one ("When it gets cold"): below a temperature on the plant's temperature sensors.
-A plant without a temperature sensor starts on the weather forecast instead, when Home
-Assistant has a weather entity with a forecast (see
-[Frost warning from the forecast](#frost-warning-from-the-forecast)).
+A reading task is due because of a value, not a date. **Winter protection** starts as one: due
+when the temperature is below a value. It uses the plant's temperature sensor. A plant without
+one uses the weather forecast instead, if Home Assistant has a weather entity with a forecast
+(see [Frost warning from the forecast](#frost-warning-from-the-forecast)).
 
-- **Reading** – pick one of **This plant's sensors** (every assigned sensor role except
-  battery, with its current value) or **Any other sensor…**, which opens a sensor picker for
-  sensors with a numeric state. A plant sensor follows the role, so replacing the sensor behind
-  it on the **Sensors** tab keeps the task working, and it compares in the role's unit (°C, %,
-  lx, µS/cm or ppm). Another sensor compares in the unit it reports when you save the task.
-  With a weather entity that offers a forecast, a third group, **Weather forecast**, appears.
-- **Due when** – **Below** or **Above**, and the **Value**, with the unit shown next to it.
-- **More options** – **Only after**: the reading must stay on the due side this many whole
-  hours (0 to 72) before the task is due; after a Home Assistant restart the wait starts
-  again. **Due again after above** (or **below**): after Done, the task waits until the
-  reading passes this value instead of the value itself, so a reading that hovers around the
-  value gives one reminder. It must be on the other side of the value.
+In the task editor:
+
+- **Reading**: pick one of **This plant's sensors** or **Any other sensor…**. A plant sensor
+  follows the plant's sensor role, so the task keeps working when you replace the sensor on
+  the **Sensors** tab. Battery isn't offered. When Home Assistant has a weather entity with a
+  forecast, a third group, **Weather forecast**, appears.
+- **Due when**: **Below** or **Above**, and the **Value**. The unit appears next to the value.
+- **Only after** (under **More options**): the reading must stay on the due side this many
+  hours (0 to 72) before the task is due. After a Home Assistant restart the count starts
+  again.
+- **Due again after** (under **More options**): after Done, the task waits until the reading
+  passes this value. Use it when a reading hovers around the value, so you get one reminder
+  instead of several.
 
 The summary at the top reads the rule back, for example *When the temperature is below 5 °C ·
-for 2 h · due again above 12 °C*. When the species comes from OpenPlantBook with a minimum
-temperature, a temperature reading set to **Below** shows *OpenPlantBook: minimum 5 °C* with
-**Use**; the value is converted into the sensor's unit first, for example 41 °F. **Add task**
-also suggests **Add winter protection** with that minimum, or says *Already in the care plan*.
+for 2 h · due again above 12 °C*. If the species comes from OpenPlantBook with a minimum
+temperature, the editor offers it as the value (*OpenPlantBook: minimum 5 °C* with **Use**).
 
-A reading task shows its rule, for example *Below 5 °C · Temperature*, and one of these
-states:
+A reading task shows one of these states:
 
-- *Not needed · 9 °C* – the reading is on the safe side.
-- *Below 5 °C since 8:10 PM · due 10:10 PM* – the reading is on the due side and **Only after** is
-  still counting.
-- *Due · 3 °C* – the task is due; **Done** marks it as done.
-- *Done Nov 12 · still cold* or *Done Nov 12 · until above 12 °C* – done, and waiting until the
-  reading is back on the safe side. Then the next cold spell makes it due again.
-- *No reading* – the sensor is unavailable or doesn't report a number. The task keeps its
-  state until a reading arrives.
+- *Not needed · 9 °C*: the reading is on the safe side.
+- *Below 5 °C since 8:10 PM · due 10:10 PM*: **Only after** is still counting.
+- *Due · 3 °C*: the task is due. **Done** marks it as done.
+- *Done Nov 12 · still cold*: done, and waiting until the reading is back on the safe side.
+  The next cold spell makes it due again.
+- *No reading*: the sensor is unavailable or doesn't report a number. The task keeps its state
+  until a reading arrives.
 
-If the reading moves back to the safe side before you mark the task as done, it stops being
-due by itself. Reading tasks have no **Skip this time** and no next due date, and they keep
+If the reading moves back to the safe side before you mark the task as done, the task stops
+being due by itself. Reading tasks have no **Skip this time** and no next due date. They keep
 running during a rest period.
 
 #### Frost warning from the forecast
 
-A reading task can watch the weather forecast instead of a sensor, so it reminds you before
-the cold arrives, also for a plant without a temperature sensor. The **Weather forecast**
-group in **Reading** appears only when Home Assistant has a weather entity that offers a
-forecast. It has two rows:
+A reading task can watch the weather forecast instead of a sensor. It then reminds you before
+the cold arrives, and it works for plants without a temperature sensor.
 
-- **Lowest temperature · next 24 h** – the lowest forecast temperature in the look-ahead.
-- **Highest temperature · next 24 h** – the highest, for example for a heat warning.
+![Task editor with the weather forecast as the reading](images/forecast-task.png)
 
-With one such weather entity, its name is shown with the group; with several, a **Weather
-entity** picker appears once you pick a row. The value uses the weather entity's temperature
-unit. When you edit a forecast task, its row shows the current forecast value.
+The **Weather forecast** group in **Reading** has two rows:
 
-Example: to cover a balcony plant before a frost night, add **Winter protection**, pick
-**Lowest temperature · next 24 h**, set **Below** 2 °C, and under **More options** set **Due
-again after above** to 5 °C. The summary reads *When the forecast low for the next 24 hours is
-below 2 °C · due again above 5 °C*. During a cold spell you get one reminder: after **Done** the
-task waits until the forecast low rises above 5 °C again.
+- **Lowest temperature**: the lowest forecast temperature in the look-ahead.
+- **Highest temperature**: the highest one, for example for a heat warning.
 
-- **More options** – **Look ahead**: the next 24 hours (the default), 2 days or 3 days. Shorter
-  forecasts are more reliable. **Only after** is not offered, because a forecast already looks
-  ahead. **Due again after** works as for a sensor.
-- The OpenPlantBook minimum temperature is suggested for the lowest temperature with **Below**,
-  converted into the weather entity's unit.
-- The forecast is refreshed every 30 minutes and when the weather entity changes. Smart Plants
-  picks the forecast type (hourly, twice daily or daily) by itself.
+The group appears only when Home Assistant has a weather entity that offers a forecast. With
+several such entities, a **Weather entity** picker appears. The value uses the weather
+entity's temperature unit.
 
-The task row shows the rule, for example *Forecast low below 2 °C · Home*, and states such as
-*Not needed · forecast 6 °C*, *Due · forecast 1 °C* or *No forecast* (the weather entity is
-unavailable or has no forecast for the look-ahead). When the forecast ends before the end of
-the look-ahead, the row adds *Forecast only until …*, and the value covers only that part. If
-the weather entity is removed, editing the task shows *Weather entity not found* and **Save**
-stays disabled until you choose another one. See
-[Forecast readings](entities.md#forecast-readings) for the entity attributes.
+For example, to protect a balcony plant from frost:
+
+1. Add **Winter protection** and pick **Lowest temperature · next 24 h**.
+2. Set **Below** 2 °C.
+3. Under **More options**, set **Due again after above** to 5 °C.
+
+The task is due when the forecast low for the next 24 hours drops below 2 °C. After **Done** it
+waits until the forecast low rises above 5 °C again, so a week of frost gives one reminder.
+
+Under **More options**, **Look ahead** sets how far the forecast reaches: the next 24 hours
+(the default), 2 days or 3 days. Shorter forecasts are more reliable. **Only after** isn't
+offered for forecasts. Smart Plants refreshes the forecast every 30 minutes and when the
+weather entity changes. It picks hourly, twice daily or daily forecasts by itself.
+
+The task shows states such as *Not needed · forecast 6 °C*, *Due · forecast 1 °C* or *No
+forecast*. If the forecast ends before the end of the look-ahead, the task adds *Forecast only
+until …*. If you remove the weather entity, the editor shows *Weather entity not found* until
+you pick another one. See [Forecast readings](entities.md#forecast-readings) for the entity
+attributes.
 
 ### Rest period
 
-Many outdoor and Mediterranean plants grow little in winter and need no fertilizer then; most
-houseplants don't need a rest period. To set one, open the Care plan card's **⋮** menu and
-select **Set rest period**. Select the first rest month, then the last; a rest period can run
-past December, such as November to February, but can't cover the whole year. Below the
-months, choose which repeating tasks are **Off during rest**; for a new rest period,
-fertilizing is selected. Once-a-year tasks follow their own months, and watering alerts are
-not affected.
+Many outdoor plants grow little in winter and need no fertilizer then. Most houseplants don't
+need a rest period. To set one, open the care plan's **⋮** menu and select **Set rest period**.
 
-The card then shows a rest row with the twelve months (rest months tinted, the current month
-outlined) and one sentence, for example *Growing season · 1 task off during rest* or
-*Resting until Mar 1 · 1 task off*. A task that waits shows *Resting until Mar 1* and is due
-again on the first day of the growing season, even if it was overdue before. **Edit** in the
-rest row changes the rest period; **Remove** in the editor clears it, and the tasks keep their
-setting for a later rest period.
+1. Select the first rest month, then the last. A rest period can run past December, such as
+   November to February, but can't cover the whole year.
+2. Choose which repeating tasks are **Off during rest**. For a new rest period, fertilizing is
+   selected.
 
-Every task has its own entities for automations; see [Entities](entities.md#care-tasks). To mark
-a task as done from an automation, for example from an NFC tag, use the
-[`smart_plants.log_care`](automations.md#log-care-with-actions) action.
+Once-a-year tasks follow their own months, and watering alerts don't change.
+
+The care plan then shows the twelve months with the rest months tinted, and a sentence such as
+*Growing season · 1 task off during rest* or *Resting until Mar 1 · 1 task off*. A task that
+waits shows *Resting until Mar 1*. It is due again on the first day of the growing season,
+even if it was overdue before. **Edit** changes the rest period, and **Remove** in the editor
+clears it.
 
 ## Plant photos
 
 Add or change a photo in the **Settings** tab under **Photo** (or during creation).
 
 - Formats: JPEG, PNG, or WebP.
-- Photos larger than 2048 × 2048 pixels or 5 MiB, such as photos straight from a phone
-  camera, are scaled down in your browser before upload (up to 40 MiB and 64 megapixels).
-  The photo keeps its aspect ratio and orientation.
+- Your browser scales down photos larger than 2048 × 2048 pixels or 5 MiB before upload,
+  such as photos straight from a phone camera (up to 40 MiB and 64 megapixels). The photo
+  keeps its aspect ratio and orientation.
 
 Smart Plants re-encodes every photo to WebP and strips metadata such as EXIF (including
-location data) before storing it locally. Photos are only served to logged-in administrators.
+location data) before storing it locally. Only logged-in administrators can load the photos.
 Select **Remove photo** to delete it.
 
 ## Edit plant details
@@ -393,26 +393,29 @@ pauses saving and shows what changed, so you don't overwrite each other.
 In the **Settings** tab under **Manage**, or from the **⋮** menu:
 
 - **Pause monitoring** stops evaluation for the plant. Its entities stay registered but become
-  unavailable, and its history is kept. Use this for plants in storage or temporarily without
-  sensors.
+  unavailable, and Home Assistant keeps their history. Use this for plants in storage or
+  without sensors for a while. Pausing also ends a snooze.
 - **Resume monitoring** starts evaluation again.
 - **Delete plant** permanently removes the plant, its device and entities, its photo, and its
-  care history. You are asked to confirm first. This cannot be undone.
+  care history. The panel asks you to confirm first. You can't undo this.
 
-Automations you wrote are never changed by Smart Plants. After deleting a plant, update any
-automations that used its entities.
+Smart Plants never changes your automations. After deleting a plant, update any automations
+that used its entities.
 
 ## Going on vacation
 
-While you're away, a plant may need water that nobody can give it, and reminders would only
-pile up. Open the plant, choose **⋮ → Snooze alerts…** and pick how long: 1 day, 3 days, 1 week,
-2 weeks, or **Until date…** for any day from tomorrow up to a year ahead. The snooze lasts until
-the end of that day in Home Assistant's time zone, so **1 day** means until the end of tomorrow.
+While you're away, nobody can water a plant, and its reminders would only pile up. A snooze
+mutes them for a while. Open the plant, choose **⋮ → Snooze alerts…** and pick how long:
+1 day, 3 days, 1 week, 2 weeks, or **Until date…** for any day up to a year ahead. The snooze
+lasts until the end of that day in Home Assistant's time zone, so **1 day** means until the end
+of tomorrow.
 
-While a plant is snoozed, its header shows a grey **Snoozed until Fri, Oct 30** chip next to the
-status with a **Resume** button, and its card on the overview shows the same chip. The menu
-entry then reads **Change snooze…**, where you pick a new end or resume. The status, the
-counts, and the care reminders stay as they are.
+![Snooze dialog for a plant](images/snooze.png)
+
+A snoozed plant shows a grey **Snoozed until Fri, Oct 30** chip with **Resume** in its header,
+and the same chip on its overview card. The menu entry then reads **Change snooze…**. The
+status, the counts and the care reminders stay as they are, so you still see what the plant
+needs when you're back.
 
 To snooze several plants at once, use the `smart_plants.snooze` action, for example from
 **Developer tools → Actions** or a script you run before leaving:
@@ -434,6 +437,6 @@ attribute `snoozed: true`, which your notification automations can check to stay
 
 ## Next steps
 
-- [Sensors and health](sensors-and-health.md) – how values and problems are calculated.
-- [Entities](entities.md) – what each plant exposes to Home Assistant.
-- [Automations](automations.md) – notification and irrigation examples.
+- [Sensors and health](sensors-and-health.md): how values and problems are calculated.
+- [Entities](entities.md): what each plant exposes to Home Assistant.
+- [Automations](automations.md): notification and irrigation examples.

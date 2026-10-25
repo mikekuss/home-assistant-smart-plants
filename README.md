@@ -6,9 +6,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.8%2B-blue)
 
-Manage your plants as first-class Home Assistant objects. Create plants from a guided panel,
-pick a species, link the sensors you already have, log care, and use each plant's health in
-native Home Assistant automations — no YAML or template sensors required.
+Smart Plants turns each of your plants into a Home Assistant device. You add a plant in a
+sidebar panel, link the sensors you already have, and get a status such as *Needs water* plus
+entities you can use in normal automations. You don't need YAML or template sensors.
 
 ![Smart Plants panel overview with status tiles, search and plant cards](docs/images/overview.png)
 
@@ -17,29 +17,40 @@ native Home Assistant automations — no YAML or template sensors required.
 
 ## Features
 
-- **Plants as stable devices.** Each plant is a long-lived Home Assistant device with its own
-  area, photo, and entities. Sensors are replaceable inputs, so a plant keeps its history when
+The core is watching a plant through its sensors. Everything else is optional and stays out of
+the way until you use it.
+
+- **Plants as stable devices.** Each plant is a Home Assistant device with its own area,
+  photo, and entities. Sensors are inputs you can replace, so a plant keeps its history when
   you swap hardware.
-- **Guided panel.** A sidebar panel with an overview of all plants (status tiles, search,
-  and sorting by what needs attention first), a three-step wizard for adding plants, and a
-  page per plant for its readings, sensors, care, and settings. Plants can be paused and
-  deleted from the panel.
 - **Sensor roles.** Assign existing sensors for soil moisture, temperature, humidity,
   illuminance, conductivity, soil temperature, CO2, and battery.
-- **Health evaluation.** Each plant gets one clear status (for example *Needs water* or
-  *Healthy*) with a short explanation, problem binary sensors such as *Needs water*,
-  *Too wet*, *Low light*, *Sensor stale*, and per-role stress, and a composite health score
-  sensor. Thresholds are editable per plant.
-- **Care history.** Log watering, fertilizing, pruning, repotting, and notes. A **Watered**
-  button on each plant logs a watering in one tap.
-- **Optional species data.** Search [OpenPlantBook](https://open.plantbook.io/) and review
-  suggested values before applying them. Smart Plants works fully without it.
-- **Native Home Assistant integration.** Entities work in any automation, dashboard, or
-  notification. Repairs issues guide you when an assigned sensor disappears, and diagnostics
-  for the integration and for each plant help with bug reports.
-- **Safe by design.** Smart Plants detects plant needs but never switches valves or pumps
-  itself. You decide how to act in your own automations.
-- Setup, entity names, repairs, and the sidebar panel are available in English and German.
+- **One clear status per plant.** For example *Needs water* or *Healthy*, with a short reason.
+  Each plant also gets problem binary sensors such as *Needs water*, *Too wet*, *Low light* and
+  *Sensor stale*, stress sensors per reading, and a health score. You can edit every threshold
+  per plant.
+- **A panel for everything.** The overview shows all plants with status filters, search and
+  sorting by what needs attention. A three-step wizard adds plants, and each plant has a page
+  for its readings, sensors, care and settings.
+- **Care log.** Log watering, fertilizing, pruning, repotting and notes. The **Watered** button
+  on each plant logs a watering with one tap.
+
+Optional, when you want them:
+
+- **Care reminders.** Repeating tasks (fertilize every 4 weeks), yearly tasks (prune in March)
+  and tasks that follow a reading (winter protection below 5 °C). A reading can come from a
+  sensor or from a weather forecast for the next 24 hours, 2 days or 3 days, so a frost warning
+  arrives before the cold night. Each task has its own entity for automations.
+- **Rest period.** Pause tasks such as fertilizing during the months a plant rests.
+- **Snooze.** Mute a plant's alerts while you're on vacation. Automations check the `snoozed`
+  attribute, and the snooze ends by itself.
+- **Species data from [OpenPlantBook](https://open.plantbook.io/).** Search a species and review
+  its suggested targets before you apply them. Smart Plants works fully without it.
+
+Smart Plants never switches valves or pumps. It tells you what a plant needs, and your own
+automations decide what to do. Entities work in any automation, dashboard or notification.
+Repairs tell you when an assigned sensor disappears, and diagnostics help with bug reports.
+The panel, setup, entity names and repairs are available in English and German.
 
 ## Requirements
 
