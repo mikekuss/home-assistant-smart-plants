@@ -129,7 +129,7 @@ history.
 
 | Entity | Platform | Created | Enabled | Device class | Attributes |
 | --- | --- | --- | --- | --- | --- |
-| Task (for example *Fertilize*) | Binary sensor | Per care task | Yes | – | `status`, `next_due`, `last_done`, `task_type`; reading tasks also `reading`, `unit`, `condition`, `value`, `reset_value`, `source`, `due_since`, `due_at` |
+| Task (for example *Fertilize*) | Binary sensor | Per care task | Yes | – | `status`, `next_due`, `last_done`, `task_type`; reading tasks also `reading`, `unit`, `condition`, `value`, `reset_value`, `source`, `due_since`, `due_at`; forecast tasks also `forecast`, `forecast_until` |
 | Task *next due* | Sensor | Per care task with a date schedule | No | timestamp | – |
 | Care due | Binary sensor | While the plant has a care task | Yes | – | `due_tasks`, `resting` |
 
@@ -168,8 +168,9 @@ period are edited in the panel.
 A care task can follow a sensor reading instead of a date, for example *Winter protection*
 when the temperature drops below 5 °C. Such a task watches either one of the plant's roles
 (temperature, humidity, soil moisture, illuminance, conductivity, soil temperature, or CO2,
-using the plant's combined value in °C, %, lx, µS/cm, or ppm) or one sensor entity. Any task
-type can use a reading schedule. The panel editor for reading tasks is not available yet; they
+using the plant's combined value in °C, %, lx, µS/cm, or ppm), one sensor entity, or the
+forecast low or high temperature of a weather entity (see
+[Forecast readings](#forecast-readings)). Any task type can use a reading schedule. The panel editor for reading tasks is not available yet; they
 can be created through the `smart_plants/care_tasks/create` WebSocket command.
 
 How a reading task behaves:
@@ -204,12 +205,42 @@ Additional attributes of a reading task's binary sensor:
 - `reading`: the current reading in the task's unit, rounded to two decimals, or `null`
   without a usable reading.
 - `unit`, `condition` (`below` or `above`), `value`, `reset_value`: the task's settings.
-- `source`: the role name or the entity ID the task watches.
+- `source`: the role name, the sensor entity ID, or the weather entity ID the task watches.
 - `due_since`: when the task last became due, or `null` while it is not due.
 - `due_at`: while an *only after* count runs, when the task becomes due; otherwise `null`.
+- `forecast` (forecast tasks only): `low` or `high`, the forecast temperature the task watches.
+- `forecast_until` (forecast tasks only): the end of the part of the look-ahead window the
+  forecast covers, or `null` without a usable forecast. It is earlier than the window's end
+  when the weather entity's forecast does not reach that far.
+
+`reading`, `forecast`, and `forecast_until` are not recorded in history.
 
 Whether a reading task is due, waiting, or armed is kept across restarts. The *only after*
 count is not: after a restart it starts again from the first reading past the value.
+
+#### Forecast readings
+
+A reading task can watch a weather entity's forecast instead of a sensor, for example to be
+reminded about frost before it arrives. Its reading is the lowest (`low`) or highest (`high`)
+forecast temperature over the next 24, 48, or 72 hours, in the weather entity's temperature
+unit.
+
+- The forecast type is chosen automatically: the finest one the weather entity offers
+  (hourly, then twice daily, then daily) whose forecast reaches the end of the window. When
+  none reaches it, the finest one is used for the part of the window it covers, and
+  `forecast_until` tells how far that is.
+- Hourly forecasts use each hour's temperature. Twice-daily and daily forecasts use every
+  period that overlaps the window, with the period's low temperature for `low` when the
+  weather entity provides one.
+- The forecast is fetched when the task starts being tracked, every 30 minutes, and when the
+  weather entity changes, at most once every 5 minutes. Tasks that use the same weather
+  entity share one fetch. Nothing is fetched while no task of an enabled plant uses a
+  forecast.
+- *Only after* is not available: a forecast already looks ahead, so the task becomes due at
+  the first fetch that is past the value.
+- Without a usable forecast (the weather entity is missing or unavailable, offers no
+  forecast, the forecast fails or is empty, or none of it lies in the window), `status` is
+  `no_reading`, as for a sensor without a reading.
 
 Example: a reminder two days before fertilizing is due, using the enabled next due sensor
 (check the actual entity IDs on the device page). The time trigger's `offset` takes a

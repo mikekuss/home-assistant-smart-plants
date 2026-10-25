@@ -5,11 +5,12 @@ A reading care task becomes due because of a sensor value (see
 ``care_schedule.reading_task_state``). This module feeds the pure engine:
 
 - it reads the task's source, either the plant's aggregated role value
-  (through the role controller) or one sensor entity's state, converted into
+  (through the role controller), one sensor entity's state, or a weather
+  entity's forecast low or high (through ``ForecastReader``), converted into
   the unit the task's value was given in;
-- it re-evaluates a task whenever its source changes, when the plant record
-  changes (Done, Undo Done, schedule edits), and when an "only after" timer
-  runs out;
+- it re-evaluates a task whenever its source changes (for a forecast, after
+  each fetch), when the plant record changes (Done, Undo Done, schedule
+  edits), and when an "only after" timer runs out;
 - it keeps ``triggered_at`` and ``rearmed_at`` per task in a separate store
   (``ReadingStateStore``), so sensor-driven changes never write the inventory
   or bump a plant revision;
@@ -52,6 +53,7 @@ from homeassistant.util import dt as dt_util
 from .care import parse_utc_timestamp, utc_timestamp
 from .care_schedule import ReadingState, reading_task_state
 from .events import PlantDeletedEvent, PlantEvent
+from .forecast_reader import ForecastReader
 from .models import ReadingSchedule
 from .overview import role_reading
 from .storage import ReadingStateStore, ReadingTimestamps
@@ -76,6 +78,8 @@ class ReadingTaskInfo:
 
     state: ReadingState
     reading: float | None
+    # For a forecast task: how far the forecast covers the look-ahead window.
+    forecast_until: datetime | None = None
 
     @property
     def shown_reading(self) -> float | None:
@@ -98,6 +102,7 @@ class _TrackedTask:
     plant_id: str
     schedule: ReadingSchedule
     reading: float | None = None
+    forecast_until: datetime | None = None
     breach_since: datetime | None = None
     state: ReadingState | None = None
     timer_at: datetime | None = None
@@ -144,6 +149,7 @@ class ReadingTracker:
         ] = {}
         self._entity_ids: frozenset[str] = frozenset()
         self._unsub_entities: Callable[[], None] | None = None
+        self._forecasts = ForecastReader(hass, self._handle_forecast)
         self._listeners: list[ReadingListener] = []
         self._dirty = False
         self._closed = False
@@ -177,6 +183,7 @@ class ReadingTracker:
         # when the entry is not unloaded first.
         self._unsub_stop = None
         self._stopping = True
+        self._forecasts.close()
         for tracked in self._tracked.values():
             tracked.cancel_timer()
 
@@ -185,6 +192,7 @@ class ReadingTracker:
         if self._unsub_stop is not None:
             self._unsub_stop()
             self._unsub_stop = None
+        self._forecasts.close()
         for tracked in self._tracked.values():
             tracked.cancel_timer()
         self._tracked.clear()
@@ -229,13 +237,21 @@ class ReadingTracker:
         """Return the current state of one reading task."""
         tracked = self._tracked.get(task.id)
         if tracked is not None and tracked.state is not None:
-            return ReadingTaskInfo(state=tracked.state, reading=tracked.reading)
+            return ReadingTaskInfo(
+                state=tracked.state,
+                reading=tracked.reading,
+                forecast_until=tracked.forecast_until,
+            )
         # Untracked (disabled plant, or not loaded yet): no reading, no
         # transition, only the stored state.
         return ReadingTaskInfo(
             state=self._evaluate_state(task, None, None, dt_util.utcnow()),
             reading=None,
         )
+
+    def forecast_had_value(self, entity_id: str) -> bool | None:
+        """Return whether the weather entity's last fetch gave a value."""
+        return self._forecasts.last_fetch_had_value(entity_id)
 
     # --- Synchronization ---------------------------------------------------
 
@@ -288,12 +304,19 @@ class ReadingTracker:
     def _sync_subscriptions(self) -> None:
         roles: set[tuple[str, str]] = set()
         entity_ids: set[str] = set()
+        forecasts: dict[str, set[int]] = {}
         for tracked in self._tracked.values():
             source = tracked.schedule.source
             if source.role is not None:
                 roles.add((tracked.plant_id, source.role))
             elif source.entity_id is not None:
                 entity_ids.add(source.entity_id)
+            elif source.forecast is not None:
+                forecasts.setdefault(source.forecast.entity_id, set()).add(
+                    source.forecast.hours
+                )
+        # A closed reader (after Home Assistant stops) ignores this.
+        self._forecasts.watch(forecasts)
 
         for key in list(self._role_subscriptions):
             controller, unsub = self._role_subscriptions[key]
@@ -356,6 +379,23 @@ class ReadingTracker:
             self._notify(plant_id)
 
     @callback
+    def _handle_forecast(self, entity_id: str) -> None:
+        if self._closed:
+            return
+        now = dt_util.utcnow()
+        changed_plants: set[str] = set()
+        for task_id, tracked in list(self._tracked.items()):
+            forecast = tracked.schedule.source.forecast
+            if (
+                forecast is not None
+                and forecast.entity_id == entity_id
+                and self._evaluate(task_id, now)
+            ):
+                changed_plants.add(tracked.plant_id)
+        for plant_id in sorted(changed_plants):
+            self._notify(plant_id)
+
+    @callback
     def _handle_timer(self, task_id: str, fired_at: datetime) -> None:
         tracked = self._tracked.get(task_id)
         if self._closed or tracked is None:
@@ -375,16 +415,26 @@ class ReadingTracker:
 
     # --- Evaluation --------------------------------------------------------
 
-    def _read(self, plant: PlantRecord, schedule: ReadingSchedule) -> float | None:
+    def _read(
+        self, plant: PlantRecord, schedule: ReadingSchedule
+    ) -> tuple[float | None, datetime | None]:
+        """Return the task's reading and, for a forecast, how far it covers."""
         source = schedule.source
         if source.role is not None:
             controller = self._manager.get_role_controller(plant.id, source.role)
             if controller is None:
-                return None
-            return role_reading(source.role, controller.current_evaluation)
+                return None, None
+            return role_reading(source.role, controller.current_evaluation), None
+        if source.forecast is not None:
+            forecast = source.forecast
+            window = self._forecasts.window(forecast.entity_id, forecast.hours)
+            if window is None:
+                return None, None
+            reading = window.reading(forecast.reading, schedule.unit)
+            return reading, None if reading is None else window.until
         if source.entity_id is None:
-            return None
-        return self._read_entity(source.entity_id, schedule.unit)
+            return None, None
+        return self._read_entity(source.entity_id, schedule.unit), None
 
     def _read_entity(self, entity_id: str, unit: str | None) -> float | None:
         state = self._hass.states.get(entity_id)
@@ -443,7 +493,7 @@ class ReadingTracker:
         task = None if plant is None else plant.care_task(task_id)
         if tracked is None or plant is None or task is None:
             return False
-        reading = self._read(plant, tracked.schedule)
+        reading, forecast_until = self._read(plant, tracked.schedule)
         state = self._evaluate_state(task, reading, tracked.breach_since, now)
         tracked.breach_since = state.breach_since
 
@@ -469,9 +519,14 @@ class ReadingTracker:
                 state.due_at,
             )
 
-        changed = state != tracked.state or reading != tracked.reading
+        changed = (
+            state != tracked.state
+            or reading != tracked.reading
+            or forecast_until != tracked.forecast_until
+        )
         tracked.state = state
         tracked.reading = reading
+        tracked.forecast_until = forecast_until
         return changed
 
     def _schedule_save(self) -> None:

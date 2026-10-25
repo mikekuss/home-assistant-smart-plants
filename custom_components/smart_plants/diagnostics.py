@@ -124,11 +124,14 @@ def _inventory_summary(snapshot: Any) -> dict[str, Any]:
 
 def _reading_task_summary(manager: Any) -> list[dict[str, Any]]:
     """
-    Describe each reading care task without names, values or entity ids.
+    Describe each reading care task without names, values or sensor ids.
 
     Only the schedule kind, the condition, which kind of source is set and
-    the current status are reported; a source entity id could identify a
-    device, and readings and thresholds say nothing about a malfunction.
+    the current status are reported; a sensor entity id could identify a
+    device, and readings and thresholds say nothing about a malfunction. A
+    forecast source also reports its weather entity, its window and whether
+    the last fetch gave a value, which tells a missing forecast apart from a
+    task that is simply not due; the forecast itself is left out.
     """
     tracker = manager.reading_tracker
     summary: list[dict[str, Any]] = []
@@ -137,17 +140,27 @@ def _reading_task_summary(manager: Any) -> list[dict[str, Any]]:
             schedule = task.schedule
             if not isinstance(schedule, ReadingSchedule):
                 continue
-            summary.append(
-                {
-                    "kind": schedule.kind,
-                    "condition": schedule.condition,
-                    "role_source": schedule.source.role is not None,
-                    "entity_source": schedule.source.entity_id is not None,
-                    "status": (
-                        tracker.task_info(task).state.status
+            entry: dict[str, Any] = {
+                "kind": schedule.kind,
+                "condition": schedule.condition,
+                "role_source": schedule.source.role is not None,
+                "entity_source": schedule.source.entity_id is not None,
+                "status": (
+                    tracker.task_info(task).state.status
+                    if tracker is not None
+                    else None
+                ),
+            }
+            if (forecast := schedule.source.forecast) is not None:
+                entry["forecast_source"] = {
+                    "entity_id": forecast.entity_id,
+                    "reading": forecast.reading,
+                    "hours": forecast.hours,
+                    "last_fetch_had_value": (
+                        tracker.forecast_had_value(forecast.entity_id)
                         if tracker is not None
                         else None
                     ),
                 }
-            )
+            summary.append(entry)
     return summary

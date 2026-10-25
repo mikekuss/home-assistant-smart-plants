@@ -754,10 +754,15 @@ def _iso_timestamp(value: datetime | None) -> str | None:
 class _CareTaskDueBinary(SmartPlantsBinarySensorEntity):
     """On while one care task is due or overdue."""
 
-    # The live reading changes with every sensor update; keep it out of the
+    # The live reading changes with every sensor update, and a forecast
+    # task's coverage with every forecast fetch; keep them out of the
     # recorder so history does not grow with each value.
     # Home Assistant takes each class's own set, so it repeats the snooze ones.
-    _unrecorded_attributes = SNOOZE_ATTRIBUTES | {"reading"}
+    _unrecorded_attributes = SNOOZE_ATTRIBUTES | {
+        "reading",
+        "forecast",
+        "forecast_until",
+    }
 
     def __init__(
         self, manager: SmartPlantsManager, plant_id: str, task: CareTask
@@ -830,6 +835,11 @@ class _CareTaskDueBinary(SmartPlantsBinarySensorEntity):
                 due_since=_iso_timestamp(info.due_since),
                 due_at=_iso_timestamp(info.state.due_at),
             )
+            if (forecast := schedule.source.forecast) is not None:
+                attributes.update(
+                    forecast=forecast.reading,
+                    forecast_until=_iso_timestamp(info.forecast_until),
+                )
         return attributes
 
 

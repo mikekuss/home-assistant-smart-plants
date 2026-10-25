@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Reading care tasks can watch a weather entity's forecast low or high temperature for the
+  next 24, 48 or 72 hours. See [Entities](docs/entities.md#forecast-readings).
+
 ## [0.10.0] - 2026-10-24
 
 ### Added

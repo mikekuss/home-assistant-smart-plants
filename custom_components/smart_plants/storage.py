@@ -61,6 +61,7 @@ _MINOR_CARE_TASKS: Final = 12
 _MINOR_SPECIES_CARE_RANGES: Final = 13
 _MINOR_READING_CARE_TASKS: Final = 14
 _MINOR_ALERT_SNOOZE: Final = 15
+_MINOR_FORECAST_READINGS: Final = 16
 _SPECIES_CARE_RANGE_KEYS: Final = (
     "min_temperature",
     "max_temperature",
@@ -481,6 +482,23 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                         "older storage cannot contain an alert snooze"
                     )
                 plant["snoozed_until"] = None
+
+        if old_major_version == 1 and old_minor_version < _MINOR_FORECAST_READINGS:
+            # Minor 16 adds the weather forecast as a reading task source.
+            # Existing tasks are unchanged. A task that already reads a
+            # forecast cannot come from an older minor, so the load fails
+            # closed instead of guessing.
+            for plant in data["plants"]:
+                tasks = plant.get("care_tasks") if isinstance(plant, dict) else None
+                for task in tasks if isinstance(tasks, list) else ():
+                    schedule = task.get("schedule") if isinstance(task, dict) else None
+                    source = (
+                        schedule.get("source") if isinstance(schedule, dict) else None
+                    )
+                    if isinstance(source, dict) and "forecast" in source:
+                        raise SmartPlantsInvalidStorageError(
+                            "older storage cannot contain forecast reading tasks"
+                        )
 
         return data
 
