@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-26
+
 ### Added
 
 - Reading care tasks can watch a weather entity's forecast low or high temperature for the
@@ -15,6 +17,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   temperature sensor. The forecast is refreshed every 30 minutes. See
   [Getting started](docs/getting-started.md#frost-warning-from-the-forecast) and
   [Entities](docs/entities.md#forecast-readings).
+
+### Changed
+
+- Storage moves to a new format that can hold forecast reading tasks. Existing data is migrated
+  automatically on the first start; earlier versions cannot read the migrated data.
 
 ## [0.10.0] - 2026-10-24
 
@@ -336,7 +343,8 @@ First public release.
 - English and German translations for the integration's entities, setup, and repairs. The
   sidebar panel is English-only.
 
-[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.10.0...HEAD
+[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.11.0...HEAD
+[0.11.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.10.0...0.11.0
 [0.10.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.9.0...0.10.0
 [0.9.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.8.0...0.9.0
 [0.8.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.7.1...0.8.0
