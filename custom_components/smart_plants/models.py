@@ -17,6 +17,7 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import valid_entity_id
+from homeassistant.util.unit_conversion import TemperatureConverter
 
 from .care import (
     CARE_TASK_TYPES,
@@ -2792,23 +2793,76 @@ def _require_finite_number(value: object, field_name: str) -> float:
     return float(value)
 
 
+READING_FORECAST_READINGS: Final = ("low", "high")
+READING_FORECAST_HOURS: Final = (24, 48, 72)
+# A forecast task's value is given in the weather entity's temperature unit.
+READING_FORECAST_UNITS: Final = frozenset(TemperatureConverter.VALID_UNITS)
+
+
+@dataclass(frozen=True, slots=True)
+class ForecastSource:
+    """
+    The lowest or highest forecast temperature of one weather entity.
+
+    ``hours`` is the look-ahead window from now that ``reading`` covers.
+    """
+
+    entity_id: str
+    reading: Literal["low", "high"]
+    hours: int
+
+    @classmethod
+    def from_storage(cls, data: object) -> Self:
+        if not isinstance(data, dict) or set(data) != {"entity_id", "reading", "hours"}:
+            raise ValueError(
+                "reading source forecast must have entity_id, reading and hours"
+            )
+        entity_id = data["entity_id"]
+        if (
+            not isinstance(entity_id, str)
+            or len(entity_id) > _ENTITY_ID_MAX_LEN
+            or not valid_entity_id(entity_id)
+            or not entity_id.startswith("weather.")
+        ):
+            raise ValueError(
+                "reading source forecast entity_id must be a weather entity id"
+            )
+        reading = data["reading"]
+        if reading not in READING_FORECAST_READINGS:
+            raise ValueError("reading source forecast reading must be low or high")
+        hours = data["hours"]
+        if not _is_pure_int(hours) or hours not in READING_FORECAST_HOURS:
+            raise ValueError("reading source forecast hours must be 24, 48 or 72")
+        return cls(entity_id=entity_id, reading=reading, hours=hours)
+
+    def as_storage(self) -> dict[str, Any]:
+        return {
+            "entity_id": self.entity_id,
+            "reading": self.reading,
+            "hours": self.hours,
+        }
+
+
 @dataclass(frozen=True, slots=True)
 class ReadingSource:
     """
-    What a reading care task watches: a plant role or one sensor entity.
+    What a reading care task watches: a plant role, a sensor, or a forecast.
 
-    Exactly one of ``role`` and ``entity_id`` is set. A role reads the
-    plant's aggregated, normalized role value; an entity reads that sensor's
-    own state.
+    Exactly one of ``role``, ``entity_id`` and ``forecast`` is set. A role
+    reads the plant's aggregated, normalized role value; an entity reads that
+    sensor's own state; a forecast reads a weather entity's forecast.
     """
 
     role: str | None = None
     entity_id: str | None = None
+    forecast: ForecastSource | None = None
 
     @classmethod
     def from_storage(cls, data: object) -> Self:
         if not isinstance(data, dict) or len(data) != 1:
-            raise ValueError("reading source must have exactly one of role, entity_id")
+            raise ValueError(
+                "reading source must have exactly one of role, entity_id, forecast"
+            )
         if "role" in data:
             role = data["role"]
             if not isinstance(role, str) or role not in READING_ROLE_UNITS:
@@ -2824,17 +2878,36 @@ class ReadingSource:
             ):
                 raise ValueError("reading source entity_id must be a sensor entity id")
             return cls(entity_id=entity_id)
-        raise ValueError("reading source must have exactly one of role, entity_id")
+        if "forecast" in data:
+            return cls(forecast=ForecastSource.from_storage(data["forecast"]))
+        raise ValueError(
+            "reading source must have exactly one of role, entity_id, forecast"
+        )
 
     def as_storage(self) -> dict[str, Any]:
         if self.role is not None:
             return {"role": self.role}
+        if self.forecast is not None:
+            return {"forecast": self.forecast.as_storage()}
         return {"entity_id": self.entity_id}
 
     @property
     def label(self) -> str:
-        """Return the role name or the entity id."""
-        return self.role if self.role is not None else str(self.entity_id)
+        """Return the role name or the sensor or weather entity id."""
+        if self.role is not None:
+            return self.role
+        if self.forecast is not None:
+            return self.forecast.entity_id
+        return str(self.entity_id)
+
+
+def _validate_forecast_schedule(unit: str | None, for_minutes: int) -> None:
+    # A forecast already looks ahead, so it never waits; its value is given
+    # in the weather entity's temperature unit.
+    if unit not in READING_FORECAST_UNITS:
+        raise ValueError("reading schedule unit must be a temperature unit")
+    if for_minutes != 0:
+        raise ValueError("reading schedule for_minutes must be 0 for a forecast")
 
 
 @dataclass(frozen=True, slots=True)
@@ -2846,7 +2919,9 @@ class ReadingSchedule:
     of ``value`` for ``for_minutes``. It stops being due, or is armed again
     after a Done, once the reading reaches ``reset_value`` (``value`` when
     unset). ``unit`` is the unit ``value`` is given in: the role's normalized
-    unit for a role source, the entity's unit for an entity source.
+    unit for a role source, the entity's unit for an entity source, and the
+    weather entity's temperature unit for a forecast source. A forecast
+    source never waits: ``for_minutes`` is 0.
     """
 
     kind: ClassVar[Literal["reading"]] = "reading"
@@ -2905,6 +2980,8 @@ class ReadingSchedule:
                 "reading schedule for_minutes must be from 0 to "
                 f"{READING_MAX_FOR_MINUTES}"
             )
+        if source.forecast is not None:
+            _validate_forecast_schedule(unit, for_minutes)
         reset_value = data["reset_value"]
         if reset_value is not None:
             reset_value = _require_finite_number(

@@ -15,7 +15,7 @@ CONF_OPENPLANTBOOK_CLIENT_SECRET = "openplantbook_client_secret"  # noqa: S105
 
 STORAGE_KEY = f"{DOMAIN}.inventory"
 STORAGE_MAJOR_VERSION = 1
-STORAGE_MINOR_VERSION = 15
+STORAGE_MINOR_VERSION = 16
 # Runtime state of reading care tasks; kept apart from the inventory so
 # sensor-driven changes never bump a plant revision.
 READING_STATE_STORAGE_KEY = f"{DOMAIN}.reading_state"

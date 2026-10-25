@@ -77,7 +77,10 @@ call, derived on the server from the same evaluations the entities read:
   Assistant time zone; dates are ISO dates or ``null``. Entries of reading
   care tasks (schedule kind ``reading``) also carry ``"reading"`` (the
   current value in the task's unit, or ``null``), ``"unit"``,
-  ``"due_since"`` and ``"due_at"`` (ISO timestamps or ``null``); their status
+  ``"due_since"`` and ``"due_at"`` (ISO timestamps or ``null``),
+  ``"forecast"`` (``low`` or ``high`` for a task that reads a weather
+  forecast, otherwise ``null``) and ``"forecast_until"`` (how far the
+  forecast covers the look-ahead window, an ISO timestamp or ``null``); their status
   is ``due``, ``waiting``, ``watching`` or ``no_reading`` and their date
   fields are ``null``. Overdue tasks come first, then due tasks, then waiting
   reading tasks, then watching reading tasks and reading tasks without a

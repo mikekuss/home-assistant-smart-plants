@@ -211,6 +211,12 @@ def _care_view(
                 "unit": task.schedule.unit,
                 "due_since": _iso_timestamp(info.due_since),
                 "due_at": _iso_timestamp(info.state.due_at),
+                "forecast": (
+                    None
+                    if (forecast := task.schedule.source.forecast) is None
+                    else forecast.reading
+                ),
+                "forecast_until": _iso_timestamp(info.forecast_until),
             }
         else:
             states.append(

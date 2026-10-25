@@ -108,6 +108,113 @@ def test_every_source_role_has_its_normalized_unit() -> None:
         parse_care_schedule(_reading(source={"role": role}, unit=unit))
 
 
+def _forecast(**changes: Any) -> dict[str, Any]:
+    return {"entity_id": "weather.mock_home", "reading": "low", "hours": 24, **changes}
+
+
+def _forecast_reading(**changes: Any) -> dict[str, Any]:
+    return _reading(**{"source": {"forecast": _forecast()}, "value": 2.0, **changes})
+
+
+@pytest.mark.parametrize(
+    "schedule",
+    [
+        _forecast_reading(),
+        _forecast_reading(reset_value=5.0),
+        _forecast_reading(unit="°F", value=35),
+        _reading(
+            source={"forecast": _forecast(reading="high", hours=72)},
+            condition="above",
+            value=32,
+        ),
+        _reading(source={"forecast": _forecast(hours=48)}, unit="K", value=275),
+    ],
+)
+def test_valid_forecast_schedules_round_trip(schedule: dict[str, Any]) -> None:
+    parsed = parse_care_schedule(schedule)
+    assert isinstance(parsed, ReadingSchedule)
+    assert parsed.source.forecast is not None
+    assert parsed.source.role is None
+    assert parsed.source.entity_id is None
+    assert parsed.source.label == "weather.mock_home"
+    stored = parsed.as_storage()
+    assert stored["source"] == schedule["source"]
+    assert parse_care_schedule(stored) == parsed
+
+
+@pytest.mark.parametrize(
+    "schedule",
+    [
+        pytest.param(_reading(source={"forecast": {}}), id="empty forecast"),
+        pytest.param(
+            _reading(source={"forecast": "weather.mock_home"}),
+            id="forecast not an object",
+        ),
+        *(
+            pytest.param(
+                _reading(
+                    source={
+                        "forecast": {
+                            k: v for k, v in _forecast().items() if k != missing
+                        }
+                    }
+                ),
+                id=f"missing {missing}",
+            )
+            for missing in ("entity_id", "reading", "hours")
+        ),
+        pytest.param(
+            _reading(source={"forecast": _forecast(extra=1)}), id="extra forecast key"
+        ),
+        pytest.param(
+            _reading(source={"forecast": _forecast(entity_id="sensor.mock_home")}),
+            id="non-weather entity",
+        ),
+        pytest.param(
+            _reading(source={"forecast": _forecast(entity_id="weather.Mock Home")}),
+            id="invalid weather entity id",
+        ),
+        pytest.param(
+            _reading(source={"forecast": _forecast(entity_id="weather." + "x" * 255)}),
+            id="weather entity id too long",
+        ),
+        pytest.param(
+            _reading(source={"forecast": _forecast(entity_id=None)}),
+            id="null weather entity id",
+        ),
+        pytest.param(
+            _reading(source={"forecast": _forecast(reading="mean")}), id="bad reading"
+        ),
+        pytest.param(
+            _reading(source={"forecast": _forecast(reading=None)}), id="null reading"
+        ),
+        pytest.param(
+            _reading(source={"forecast": _forecast(hours=12)}), id="unsupported hours"
+        ),
+        pytest.param(
+            _reading(source={"forecast": _forecast(hours=24.0)}), id="float hours"
+        ),
+        pytest.param(
+            _reading(source={"forecast": _forecast(hours=True)}), id="bool hours"
+        ),
+        pytest.param(
+            _reading(source={"forecast": _forecast(hours="24")}), id="string hours"
+        ),
+        pytest.param(_forecast_reading(for_minutes=30), id="for_minutes"),
+        pytest.param(_forecast_reading(for_minutes=1), id="for_minutes 1"),
+        pytest.param(_forecast_reading(unit=None), id="no unit"),
+        pytest.param(_forecast_reading(unit="%"), id="not a temperature unit"),
+        pytest.param(
+            _reading(source={"forecast": _forecast(), "role": "temperature"}),
+            id="forecast and role",
+        ),
+    ],
+)
+def test_invalid_forecast_schedules_are_rejected(schedule: dict[str, Any]) -> None:
+    with pytest.raises(ValueError, match=r"reading|schedule"):
+        parse_care_schedule(schedule)
+
+
 def _without(key: str) -> dict[str, Any]:
     schedule = _reading()
     del schedule[key]
@@ -474,7 +581,7 @@ def _plant(tasks: list[dict[str, Any]]) -> dict[str, Any]:
 async def test_minor_thirteen_loads_unchanged_and_saves_as_current(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
-    assert STORAGE_MINOR_VERSION == 15
+    assert STORAGE_MINOR_VERSION == 16
     plant = _plant([_task_row()])
     _seed(hass_storage, minor=13, plants=[plant])
 
@@ -500,6 +607,54 @@ async def test_minor_thirteen_with_reading_tasks_fails_closed(
         await SmartPlantsStore(hass).async_load()
 
 
+async def test_minor_fifteen_loads_unchanged_and_saves_as_current(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    task = _task_row(type="winter_protection", schedule=_reading())
+    _seed(hass_storage, minor=15, plants=[_plant([task])])
+
+    snapshot = await SmartPlantsStore(hass).async_load()
+
+    assert snapshot.plants["plant-1"].care_tasks[0].as_storage() == task
+    assert hass_storage[STORAGE_KEY]["minor_version"] == STORAGE_MINOR_VERSION
+    assert hass_storage[STORAGE_KEY]["data"]["plants"][0]["care_tasks"] == [task]
+
+
+@pytest.mark.parametrize("minor", [13, 14, 15])
+async def test_older_minor_with_a_forecast_task_fails_closed(
+    hass: HomeAssistant, hass_storage: dict[str, Any], minor: int
+) -> None:
+    task = _task_row(type="custom", name="Frost", schedule=_forecast_reading())
+    _seed(hass_storage, minor=minor, plants=[_plant([task])])
+    with pytest.raises(SmartPlantsInvalidStorageError, match="reading"):
+        await SmartPlantsStore(hass).async_load()
+
+
+async def test_current_minor_keeps_forecast_tasks(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    task = _task_row(type="winter_protection", schedule=_forecast_reading())
+    _seed(hass_storage, minor=STORAGE_MINOR_VERSION, plants=[_plant([task])])
+
+    snapshot = await SmartPlantsStore(hass).async_load()
+
+    loaded = snapshot.plants["plant-1"].care_tasks[0]
+    assert isinstance(loaded.schedule, ReadingSchedule)
+    assert loaded.schedule.source.forecast is not None
+    assert loaded.as_storage() == task
+
+
+async def test_current_minor_rejects_an_invalid_forecast_source(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    task = _task_row(
+        type="winter_protection", schedule=_forecast_reading(for_minutes=60)
+    )
+    _seed(hass_storage, minor=STORAGE_MINOR_VERSION, plants=[_plant([task])])
+    with pytest.raises(SmartPlantsInvalidStorageError):
+        await SmartPlantsStore(hass).async_load()
+
+
 async def test_current_minor_keeps_reading_tasks(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
@@ -516,6 +671,7 @@ async def test_current_minor_keeps_reading_tasks(
 async def test_newer_minor_is_rejected(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
+    assert STORAGE_MINOR_VERSION + 1 == 17
     _seed(hass_storage, minor=STORAGE_MINOR_VERSION + 1, plants=[])
     with pytest.raises(SmartPlantsUnsupportedStorageError):
         await SmartPlantsStore(hass).async_load()

@@ -922,7 +922,7 @@ async def test_minor_eleven_migration_keeps_every_care_event(
             "tombstones": [],
         },
     }
-    assert STORAGE_MINOR_VERSION == 15
+    assert STORAGE_MINOR_VERSION == 16
     loaded = await SmartPlantsStore(hass).async_load()
     plant = loaded.plants["p"]
     assert plant.care_tasks == ()
