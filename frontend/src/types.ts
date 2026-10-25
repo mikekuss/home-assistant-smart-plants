@@ -141,12 +141,17 @@ export interface YearlySchedule {
   start_month: number;
   end_month: number;
 }
+// The lowest or highest forecast temperature of a weather entity over the
+// next `hours`.
+export interface ForecastSource { entity_id: string; reading: "low" | "high"; hours: number }
 // Due from a sensor reading instead of a date. A role source follows the
 // plant's sensors for that role and compares their normalized value; an
-// entity source compares that sensor converted into `unit`.
+// entity source compares that sensor converted into `unit`; a forecast
+// source compares the forecast in the weather entity's temperature unit and
+// never waits (`for_minutes` is 0).
 export interface ReadingSchedule {
   kind: "reading";
-  source: { role: string } | { entity_id: string };
+  source: { role: string } | { entity_id: string } | { forecast: ForecastSource };
   condition: "below" | "above";
   value: number;
   unit: string | null;

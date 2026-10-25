@@ -233,8 +233,8 @@ Select **Add task**, pick what you want to be reminded of, then choose when it i
   then the last; a range can run past December, such as November to February. The task is due
   from the first day of the range to its end. If the range passes without a Done, the task
   shows *Missed this year* and opens again the next year.
-- **Reading** – when a sensor reading is below or above a value, for example when the
-  temperature is below 5 °C. See [Reading tasks](#reading-tasks).
+- **Reading** – when a sensor reading or the weather forecast is below or above a value, for
+  example when the temperature is below 5 °C. See [Reading tasks](#reading-tasks).
 
 A custom task needs a name; other tasks can keep their default name. **Instructions** are
 optional and can hold up to 4,000 characters. Under **More options** you can enter when the
@@ -269,12 +269,16 @@ followed by *+N*.
 
 A reading task is due because of a sensor reading instead of a date. **Winter protection**
 starts as one ("When it gets cold"): below a temperature on the plant's temperature sensors.
+A plant without a temperature sensor starts on the weather forecast instead, when Home
+Assistant has a weather entity with a forecast (see
+[Frost warning from the forecast](#frost-warning-from-the-forecast)).
 
 - **Reading** – pick one of **This plant's sensors** (every assigned sensor role except
   battery, with its current value) or **Any other sensor…**, which opens a sensor picker for
   sensors with a numeric state. A plant sensor follows the role, so replacing the sensor behind
   it on the **Sensors** tab keeps the task working, and it compares in the role's unit (°C, %,
   lx, µS/cm or ppm). Another sensor compares in the unit it reports when you save the task.
+  With a weather entity that offers a forecast, a third group, **Weather forecast**, appears.
 - **Due when** – **Below** or **Above**, and the **Value**, with the unit shown next to it.
 - **More options** – **Only after**: the reading must stay on the due side this many whole
   hours (0 to 72) before the task is due; after a Home Assistant restart the wait starts
@@ -303,6 +307,42 @@ states:
 If the reading moves back to the safe side before you mark the task as done, it stops being
 due by itself. Reading tasks have no **Skip this time** and no next due date, and they keep
 running during a rest period.
+
+#### Frost warning from the forecast
+
+A reading task can watch the weather forecast instead of a sensor, so it reminds you before
+the cold arrives, also for a plant without a temperature sensor. The **Weather forecast**
+group in **Reading** appears only when Home Assistant has a weather entity that offers a
+forecast. It has two rows:
+
+- **Lowest temperature · next 24 h** – the lowest forecast temperature in the look-ahead.
+- **Highest temperature · next 24 h** – the highest, for example for a heat warning.
+
+With one such weather entity, its name is shown with the group; with several, a **Weather
+entity** picker appears once you pick a row. The value uses the weather entity's temperature
+unit. When you edit a forecast task, its row shows the current forecast value.
+
+Example: to cover a balcony plant before a frost night, add **Winter protection**, pick
+**Lowest temperature · next 24 h**, set **Below** 2 °C, and under **More options** set **Due
+again after above** to 5 °C. The summary reads *When the forecast low for the next 24 hours is
+below 2 °C · due again above 5 °C*. During a cold spell you get one reminder: after **Done** the
+task waits until the forecast low rises above 5 °C again.
+
+- **More options** – **Look ahead**: the next 24 hours (the default), 2 days or 3 days. Shorter
+  forecasts are more reliable. **Only after** is not offered, because a forecast already looks
+  ahead. **Due again after** works as for a sensor.
+- The OpenPlantBook minimum temperature is suggested for the lowest temperature with **Below**,
+  converted into the weather entity's unit.
+- The forecast is refreshed every 30 minutes and when the weather entity changes. Smart Plants
+  picks the forecast type (hourly, twice daily or daily) by itself.
+
+The task row shows the rule, for example *Forecast low below 2 °C · Home*, and states such as
+*Not needed · forecast 6 °C*, *Due · forecast 1 °C* or *No forecast* (the weather entity is
+unavailable or has no forecast for the look-ahead). When the forecast ends before the end of
+the look-ahead, the row adds *Forecast only until …*, and the value covers only that part. If
+the weather entity is removed, editing the task shows *Weather entity not found* and **Save**
+stays disabled until you choose another one. See
+[Forecast readings](entities.md#forecast-readings) for the entity attributes.
 
 ### Rest period
 

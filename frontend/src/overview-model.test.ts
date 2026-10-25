@@ -51,7 +51,7 @@ describe("parseOverview care fields", () => {
   it("keeps the backend order of care tasks and the rest period", () => {
     const parsed = parseOverview(raw)!;
     // Backends without reading tasks omit the reading fields; they parse as null.
-    const none = { reading: null, unit: null, due_since: null, due_at: null };
+    const none = { reading: null, unit: null, due_since: null, due_at: null, forecast: null, forecast_until: null };
     expect(parsed.care).toEqual([{ ...due, ...none }, { ...resting, ...none }, { ...yearly, ...none }]);
     expect(parsed.rest_period).toEqual({ start_month: 6, end_month: 8 });
     expect(parsed.resting).toBe(true);
@@ -66,16 +66,20 @@ describe("parseOverview care fields", () => {
   });
   it("parses the state of a reading task", () => {
     const watching = { task_id: "2c9e6679742540de944be07fc1f90ae7", type: "winter_protection", name: null, status: "watching", is_due: false, next_due: null, days: null, window_end: null, resume_on: null,
-      reading: 9.5, unit: "°C", due_since: null, due_at: "2026-11-12T22:10:00+00:00" };
+      reading: 9.5, unit: "°C", due_since: null, due_at: "2026-11-12T22:10:00+00:00", forecast: null, forecast_until: null };
     expect(parseOverview({ ...raw, care: [watching] })!.care).toEqual([watching]);
     for (const status of ["waiting", "no_reading"]) expect(parseOverview({ ...raw, care: [{ ...watching, status, reading: null }] })).not.toBeNull();
     // A due task whose sensor goes away stays due without a reading.
     const lost = { ...watching, status: "no_reading", is_due: true, reading: null, due_since: "2026-11-12T20:10:00+00:00", due_at: null };
     expect(parseOverview({ ...raw, care: [lost] })!.care).toEqual([lost]);
     expect(parseOverview({ ...raw, care: [{ ...watching, status: "due", is_due: true, due_since: "2026-11-12T20:10:00+00:00" }] })).not.toBeNull();
+     // A forecast task says which forecast it reads and how far it reaches.
+    const forecast = { ...watching, due_at: null, forecast: "low", forecast_until: "2026-11-13T12:00:00+00:00" };
+    expect(parseOverview({ ...raw, care: [forecast] })!.care).toEqual([forecast]);
   });
   it.each([
     { reading: "9" }, { reading: Number.NaN }, { unit: 5 }, { due_since: "yesterday" }, { due_at: 1 }, { status: "watching", is_due: true }, { status: "due", is_due: false },
+    { forecast: "rain" }, { forecast: 1 }, { forecast_until: "tomorrow" },
   ])("rejects a malformed reading task summary %#", change => {
     expect(parseOverview({ ...raw, care: [{ ...due, status: "watching", is_due: false, ...change }] })).toBeNull();
   });

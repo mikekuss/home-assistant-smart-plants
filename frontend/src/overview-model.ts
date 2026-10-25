@@ -36,6 +36,11 @@ export interface CareTaskSummary {
   unit: string | null;
   due_since: string | null;
   due_at: string | null;
+  // Forecast reading tasks only, else null: the forecast temperature the
+  // task watches, and the end of the part of the look-ahead window the
+  // forecast covers (ISO timestamp, null without a usable forecast).
+  forecast: "low" | "high" | null;
+  forecast_until: string | null;
 }
 export interface PlantOverview {
   plant_id: string;
@@ -68,7 +73,7 @@ function parseCareTask(raw: unknown): CareTaskSummary | null {
   if (!isRecord(raw)) return null;
   const { task_id, type, name, status, is_due, next_due, days, window_end, resume_on } = raw;
   // Backends without reading tasks omit the reading fields.
-  const { reading = null, unit = null, due_since = null, due_at = null } = raw;
+  const { reading = null, unit = null, due_since = null, due_at = null, forecast = null, forecast_until = null } = raw;
   if (typeof task_id !== "string" || !/^[0-9a-f]{32}$/.test(task_id) || !CARE_TASK_TYPES.includes(type as CareTaskType)) return null;
   if (!(name === null ? type !== "custom" : typeof name === "string" && name.length > 0 && name.length <= 60)) return null;
   // A reading task that loses its reading keeps whether it was due, so
@@ -77,7 +82,8 @@ function parseCareTask(raw: unknown): CareTaskSummary | null {
   if (!dateOrNull(next_due) || !dateOrNull(window_end) || !dateOrNull(resume_on)) return null;
   if (!(days === null || (typeof days === "number" && Number.isSafeInteger(days) && days >= 0))) return null;
   if (!numOrNull(reading) || !strOrNull(unit) || !timestampOrNull(due_since) || !timestampOrNull(due_at)) return null;
-  return { task_id, type: type as CareTaskType, name: name as string | null, status: status as CareTaskStatus, is_due, next_due, days, window_end, resume_on, reading, unit, due_since, due_at };
+  if (!(forecast === null || forecast === "low" || forecast === "high") || !timestampOrNull(forecast_until)) return null;
+  return { task_id, type: type as CareTaskType, name: name as string | null, status: status as CareTaskStatus, is_due, next_due, days, window_end, resume_on, reading, unit, due_since, due_at, forecast, forecast_until };
 }
 
 function parseRestPeriod(raw: unknown): RestPeriod | null | undefined {

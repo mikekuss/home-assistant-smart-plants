@@ -59,14 +59,21 @@ const READING_ROLES = ["temperature", "humidity", "moisture", "illuminance", "co
 function validReadingSource(v: unknown): boolean {
   if (!object(v)) return false;
   if (exactKeys(v, ["role"])) return READING_ROLES.includes(String(v.role));
+  if (exactKeys(v, ["forecast"])) {
+    const f = v.forecast;
+    return object(f) && exactKeys(f, ["entity_id", "reading", "hours"]) && typeof f.entity_id === "string" && /^weather\.[a-z0-9_]+$/.test(f.entity_id) &&
+      (f.reading === "low" || f.reading === "high") && (f.hours === 24 || f.hours === 48 || f.hours === 72);
+  }
   return exactKeys(v, ["entity_id"]) && typeof v.entity_id === "string" && /^sensor\.[a-z0-9_]+$/.test(v.entity_id);
 }
+// A forecast already looks ahead, so it never waits, and its unit is a temperature.
+const forecastSchedule = (v: Record<string, unknown>) => !(object(v.source) && Object.hasOwn(v.source, "forecast")) || (v.for_minutes === 0 && ["°C", "°F", "K"].includes(String(v.unit)));
 function validSchedule(v: unknown): boolean {
   if (!object(v)) return false;
   if (v.kind === "yearly") return monthRange(v, ["kind", "start_month", "end_month"]);
   if (v.kind === "reading") {
     return exactKeys(v, ["kind", "source", "condition", "value", "unit", "for_minutes", "reset_value"]) && validReadingSource(v.source) &&
-      (v.condition === "below" || v.condition === "above") && finite(v.value) && (v.unit === null || text(v.unit, 32)) && integer(v.for_minutes, 0, 4320) &&
+      (v.condition === "below" || v.condition === "above") && finite(v.value) && (v.unit === null || text(v.unit, 32)) && integer(v.for_minutes, 0, 4320) && forecastSchedule(v) &&
       (v.reset_value === null || (finite(v.reset_value) && (v.condition === "below" ? v.reset_value >= v.value : v.reset_value <= v.value)));
   }
   return v.kind === "interval" && exactKeys(v, ["kind", "every", "unit", "growing_season_only"]) && integer(v.every, 1, 999) &&

@@ -6,7 +6,7 @@ import type { Localizer, MessageKey } from "./localize.js";
 import type { CareTaskSummary, PlantOverview } from "./overview-model.js";
 import { formatValue, readingLabel } from "./status.js";
 import type { ReadingRole } from "./status.js";
-import type { CareEvent, CareSchedule, CareTask, CareTaskChanges, CareTaskInput, CareTaskType, HAState, IntervalSchedule, PlantRecord, ReadingSchedule, RestPeriod, YearlySchedule } from "./types.js";
+import type { CareEvent, CareSchedule, CareTask, CareTaskChanges, CareTaskInput, CareTaskType, ForecastSource, HAState, IntervalSchedule, PlantRecord, ReadingSchedule, RestPeriod, YearlySchedule } from "./types.js";
 
 export const CARE_TASK_TYPES: readonly CareTaskType[] = ["fertilize", "prune", "repot", "pests", "winter_protection", "custom"];
 export const TASK_ICONS: Record<CareTaskType, string> = {
@@ -31,6 +31,8 @@ export const ROLE_UNITS: Readonly<Record<ReadingSourceRole, string>> = {
 };
 export const READING_SOURCE_ROLES = Object.keys(ROLE_UNITS) as ReadingSourceRole[];
 export const MAX_FOR_HOURS = 72;
+// Look-ahead windows of a forecast reading, in hours.
+export const FORECAST_HOURS = [24, 48, 72] as const;
 export const INTERVAL_UNITS: readonly IntervalSchedule["unit"][] = ["days", "weeks", "months", "years"];
 export const TASK_NAME_MAX = 60;
 export const TASK_INSTRUCTIONS_MAX = 4000;
@@ -79,13 +81,23 @@ export function shortDate(l: Localizer, isoDate: string, today: string): string 
 
 // `states` names the sensor of a reading task that follows another sensor.
 export function scheduleText(l: Localizer, schedule: CareSchedule, restPeriod: RestPeriod | null, states?: Record<string, HAState>): string {
-  if (schedule.kind === "reading") return l.t("care_plan.schedule_reading", { rule: l.t(`care_plan.condition_${schedule.condition}`, { value: readingValue(l, schedule.value, schedule.unit) }), source: sourceName(l, schedule.source, states) });
+  if (schedule.kind === "reading") return l.t("care_plan.schedule_reading", { rule: readingRule(l, schedule), source: sourceName(l, schedule.source, states) });
   if (schedule.kind === "yearly") return l.t("care_plan.schedule_yearly", { months: monthRange(l, schedule.start_month, schedule.end_month) });
   const every = l.tn(schedule.every, `care_plan.every_${schedule.unit}_one`, `care_plan.every_${schedule.unit}_other`);
   return schedule.growing_season_only && restPeriod ? l.t("care_plan.schedule_growing_only", { every }) : every;
 }
 
 // ---- Reading tasks ----
+
+// "Below 5 °C", or for a forecast "Forecast low below 2 °C", with the
+// look-ahead when it is longer than the default 24 hours.
+function readingRule(l: Localizer, schedule: ReadingSchedule): string {
+  const value = readingValue(l, schedule.value, schedule.unit);
+  if (!("forecast" in schedule.source)) return l.t(`care_plan.condition_${schedule.condition}`, { value });
+  const { reading, hours } = schedule.source.forecast;
+  const rule = l.t(`care_plan.forecast_rule_${reading}_${schedule.condition}`, { value });
+  return hours === 24 ? rule : `${rule} · ${forecastWindow(l, hours)}`;
+}
 
 export function isSourceRole(role: string): role is ReadingSourceRole {
   return Object.hasOwn(ROLE_UNITS, role);
@@ -96,18 +108,85 @@ export function readingValue(l: Localizer, value: number, unit: string | null): 
   return formatValue(l, value, unit ?? "");
 }
 
-// The source of a reading task: the role's name, or the sensor's friendly name.
+// The source of a reading task: the role's name, or the sensor's or weather
+// entity's friendly name.
 export function sourceName(l: Localizer, source: ReadingSchedule["source"], states?: Record<string, HAState>): string {
   if ("role" in source) return isSourceRole(source.role) ? readingLabel(l, source.role) : source.role;
-  const name = states?.[source.entity_id]?.attributes.friendly_name;
-  return typeof name === "string" && name.trim() ? name : source.entity_id;
+  const entityId = "forecast" in source ? source.forecast.entity_id : source.entity_id;
+  const name = states?.[entityId]?.attributes.friendly_name;
+  return typeof name === "string" && name.trim() ? name : entityId;
+}
+
+// ---- Forecast readings ----
+
+// "next 24 h", "next 2 days", "next 3 days".
+export function forecastWindow(l: Localizer, hours: number): string {
+  return l.t(hours === 72 ? "care_plan.forecast_window_72" : hours === 48 ? "care_plan.forecast_window_48" : "care_plan.forecast_window_24");
+}
+
+// A weather entity that offers a forecast: daily (1), hourly (2) or twice
+// daily (4) in its supported features.
+export function forecastCapable(state: HAState | undefined): boolean {
+  const features = state?.attributes.supported_features;
+  return !!state && state.entity_id.startsWith("weather.") && typeof features === "number" && Number.isInteger(features) && (features & 7) !== 0;
+}
+
+// Weather entities a forecast reading can watch, sorted by name.
+export function forecastEntities(l: Localizer, states?: Record<string, HAState>): HAState[] {
+  const name = (s: HAState) => sourceName(l, { entity_id: s.entity_id }, states);
+  return Object.values(states ?? {}).filter(forecastCapable).sort((a, b) => name(a).localeCompare(name(b)) || a.entity_id.localeCompare(b.entity_id));
+}
+
+// The temperature unit a weather entity reports its forecast in.
+export function forecastUnit(entityId: string, states?: Record<string, HAState>): string | null {
+  const unit = states?.[entityId]?.attributes.temperature_unit;
+  return typeof unit === "string" && TEMPERATURE_UNITS.has(unit) ? unit : null;
+}
+
+// True when a forecast draft's weather entity no longer exists. Without any
+// states yet (still loading) nothing counts as missing.
+export function forecastMissing(draft: TaskDraft, states?: Record<string, HAState>): boolean {
+  return draft.mode === "reading" && !draft.role && !draft.entityId && !!draft.forecast && !!draft.weatherEntityId
+    && !!states && Object.keys(states).length > 0 && !states[draft.weatherEntityId];
+}
+
+// The current forecast value of a task being edited, for its row in the
+// Reading picker: only while the draft still names the saved forecast.
+export function forecastRowValue(plant: PlantRecord, overview: PlantOverview | undefined, taskId: string | null, source: ForecastSource): { value: number; unit: string | null } | null {
+  const saved = plant.care_tasks?.find(task => task.id === taskId)?.schedule;
+  const state = overview?.care.find(item => item.task_id === taskId);
+  if (saved?.kind !== "reading" || !("forecast" in saved.source) || !state || state.reading === null) return null;
+  const stored = saved.source.forecast;
+  if (stored.entity_id !== source.entity_id || stored.hours !== source.hours || stored.reading !== source.reading) return null;
+  return { value: state.reading, unit: state.unit ?? saved.unit };
+}
+
+// The end of a forecast task's coverage when the forecast stops before the
+// end of its look-ahead window, else null. The window is counted from the
+// last fetch, which can be up to half an hour old, so an hour of slack
+// keeps a fully covered window from looking short.
+export function forecastShortUntil(state: CareTaskSummary, schedule: CareSchedule, now: number): string | null {
+  if (schedule.kind !== "reading" || !("forecast" in schedule.source) || !state.forecast_until) return null;
+  const until = Date.parse(state.forecast_until);
+  return Number.isFinite(until) && until < now + (schedule.source.forecast.hours - 1) * 3600000 ? state.forecast_until : null;
+}
+
+// "Forecast only until Tue 6:00 PM" in the Home Assistant time zone.
+export function forecastShortText(l: Localizer, until: string, timeZone: string | undefined): string {
+  const options: Intl.DateTimeFormatOptions = { weekday: "short", hour: "numeric", minute: "2-digit" };
+  let format: Intl.DateTimeFormat;
+  try { format = new Intl.DateTimeFormat(l.language, { ...options, ...(timeZone ? { timeZone } : {}) }); }
+  catch { format = new Intl.DateTimeFormat(l.language, options); }
+  return l.t("care_plan.forecast_short", { time: format.format(Date.parse(until)) });
 }
 
 const TEMPERATURE_UNITS = new Set(["°C", "°F", "K"]);
-// True for the temperature roles and sensors with the temperature device class.
+// True for the temperature roles, sensors with the temperature device class
+// and forecasts.
 export function isTemperatureSource(source: ReadingSchedule["source"] | null, states?: Record<string, HAState>): boolean {
   if (!source) return false;
   if ("role" in source) return source.role === "temperature" || source.role === "soil_temperature";
+  if ("forecast" in source) return true;
   return states?.[source.entity_id]?.attributes.device_class === "temperature";
 }
 
@@ -126,11 +205,13 @@ export function minTemperature(plant: PlantRecord): number | null {
 }
 
 // The value the OpenPlantBook minimum temperature suggests for a reading
-// draft, in the draft's unit: only for a temperature source and the Below
-// condition.
+// draft, in the draft's unit: only for a temperature source (of a forecast,
+// its low) and the Below condition.
 export function readingSuggestion(plant: PlantRecord, draft: TaskDraft, states?: Record<string, HAState>): number | null {
   const min = minTemperature(plant);
-  if (min === null || draft.mode !== "reading" || draft.condition !== "below" || !isTemperatureSource(draftSource(draft), states)) return null;
+  const source = draftSource(draft);
+  if (min === null || draft.mode !== "reading" || draft.condition !== "below" || !isTemperatureSource(source, states)) return null;
+  if (source && "forecast" in source && source.forecast.reading !== "low") return null;
   return fromCelsius(min, draft.readingUnit ?? "°C");
 }
 
@@ -152,7 +233,10 @@ export function numericSensor(state: HAState | undefined): boolean {
 // A value from the OpenPlantBook suggestion follows into the new unit, so
 // 5 °C becomes 41 °F; a draft without a source yet holds it in Celsius.
 export function pickSource(draft: TaskDraft, source: ReadingSchedule["source"] | null, unit: string | null, plant: PlantRecord): Partial<TaskDraft> {
-  const changes: Partial<TaskDraft> = { role: source && "role" in source ? source.role : null, entityId: source && "entity_id" in source ? source.entity_id : null, readingUnit: unit };
+  const forecast = source && "forecast" in source ? source.forecast : null;
+  const changes: Partial<TaskDraft> = { role: source && "role" in source ? source.role : null, entityId: source && "entity_id" in source ? source.entity_id : null,
+    forecast: forecast?.reading ?? null, weatherEntityId: forecast?.entity_id ?? null, readingUnit: unit };
+  if (forecast) changes.forecastHours = forecast.hours;
   const min = minTemperature(plant);
   const before = min === null ? null : fromCelsius(min, draft.readingUnit ?? "°C");
   const after = min === null ? null : fromCelsius(min, unit);
@@ -163,6 +247,7 @@ export function pickSource(draft: TaskDraft, source: ReadingSchedule["source"] |
 // The unit a role source compares in, or the unit a sensor reports.
 export function sourceUnit(source: ReadingSchedule["source"], states?: Record<string, HAState>): string | null {
   if ("role" in source) return isSourceRole(source.role) ? ROLE_UNITS[source.role] : null;
+  if ("forecast" in source) return forecastUnit(source.forecast.entity_id, states);
   const unit = states?.[source.entity_id]?.attributes.unit_of_measurement;
   return typeof unit === "string" && unit ? unit : null;
 }
@@ -175,9 +260,12 @@ function clockTime(l: Localizer, time: number, timeZone: string | undefined): st
 }
 
 // Status chip of a reading task: not needed, waiting out "only after", due,
-// done and waiting for the safe side, or no reading.
+// done and waiting for the safe side, or no reading. A forecast's value says
+// "forecast" in front of it.
 function readingChip(l: Localizer, state: CareTaskSummary, schedule: ReadingSchedule, today: string, lastDoneAt: string | null, timeZone: string | undefined): TaskChip {
-  const reading = state.reading === null ? null : readingValue(l, state.reading, state.unit ?? schedule.unit);
+  const forecast = "forecast" in schedule.source;
+  const value = state.reading === null ? null : readingValue(l, state.reading, state.unit ?? schedule.unit);
+  const reading = value !== null && forecast ? l.t("care_plan.forecast_value", { value }) : value;
   switch (state.status) {
     case "due": case "overdue": return { tone: "care", icon: "mdi:alert-circle-outline", text: reading ? l.t("care_plan.reading_due", { reading }) : l.t("care_plan.due_now") };
     case "waiting": {
@@ -188,7 +276,7 @@ function readingChip(l: Localizer, state: CareTaskSummary, schedule: ReadingSche
       const done = lastDoneAt ? localDate(lastDoneAt, timeZone) : null;
       return { tone: "done", icon: "mdi:check", text: done ? l.t("care_plan.reading_done_on", { date: shortDate(l, done, today), until }) : l.t("care_plan.reading_waiting", { until }) };
     }
-    case "no_reading": return { tone: "later", icon: "mdi:help-circle-outline", text: l.t("care_plan.reading_none") };
+    case "no_reading": return { tone: "later", icon: "mdi:help-circle-outline", text: l.t(forecast ? "care_plan.forecast_none" : "care_plan.reading_none") };
     default: {
       const dueAt = state.due_at ? Date.parse(state.due_at) : NaN;
       if (Number.isFinite(dueAt)) {
@@ -277,9 +365,14 @@ export interface TaskDraft {
   growingSeasonOnly: boolean;
   startMonth: number | null;
   endMonth: number | null;
-  // Reading tasks: one of the plant's roles or another sensor, never both.
+  // Reading tasks: one of the plant's roles, another sensor, or a weather
+  // entity's forecast low or high; only one of them.
   role: string | null;
   entityId: string | null;
+  forecast: ForecastSource["reading"] | null;
+  weatherEntityId: string | null;
+  // Look-ahead of a forecast in hours, kept while another source is picked.
+  forecastHours: number;
   condition: ReadingSchedule["condition"];
   value: string;
   // Unit of the reading values: the role's normalized unit or the sensor's unit.
@@ -293,31 +386,36 @@ export type DraftField = "name" | "every" | "months" | "source" | "value" | "for
 export type DraftErrors = Partial<Record<DraftField, MessageKey>>;
 
 type ScheduleFields = Omit<TaskDraft, "type" | "name" | "instructions" | "lastDone">;
-const DEFAULT_FIELDS: ScheduleFields = { mode: "interval", every: "4", unit: "weeks", growingSeasonOnly: false, startMonth: null, endMonth: null, role: null, entityId: null, condition: "below", value: "", readingUnit: null, forHours: "", resetValue: "" };
+const DEFAULT_FIELDS: ScheduleFields = { mode: "interval", every: "4", unit: "weeks", growingSeasonOnly: false, startMonth: null, endMonth: null, role: null, entityId: null, forecast: null, weatherEntityId: null, forecastHours: 24, condition: "below", value: "", readingUnit: null, forHours: "", resetValue: "" };
 
 function draftFromSchedule(schedule: CareSchedule): ScheduleFields {
   switch (schedule.kind) {
     case "interval": return { ...DEFAULT_FIELDS, every: String(schedule.every), unit: schedule.unit, growingSeasonOnly: schedule.growing_season_only };
     case "yearly": return { ...DEFAULT_FIELDS, mode: "yearly", startMonth: schedule.start_month, endMonth: schedule.end_month };
     case "reading": return { ...DEFAULT_FIELDS, mode: "reading", role: "role" in schedule.source ? schedule.source.role : null, entityId: "entity_id" in schedule.source ? schedule.source.entity_id : null,
+      ...("forecast" in schedule.source ? { forecast: schedule.source.forecast.reading, weatherEntityId: schedule.source.forecast.entity_id, forecastHours: schedule.source.forecast.hours } : {}),
       condition: schedule.condition, value: String(schedule.value), readingUnit: schedule.unit, forHours: schedule.for_minutes ? String(schedule.for_minutes / 60) : "", resetValue: schedule.reset_value === null ? "" : String(schedule.reset_value) };
   }
 }
 
 // A new task from a preset tile. Winter protection follows the plant's
-// temperature when it has one; otherwise the person picks a sensor first.
-export function presetDraft(type: CareTaskType, plant?: PlantRecord): TaskDraft {
+// temperature when it has one, else the forecast low of the first weather
+// entity with a forecast; otherwise the person picks a sensor first.
+export function presetDraft(type: CareTaskType, plant?: PlantRecord, states?: Record<string, HAState>, l?: Localizer): TaskDraft {
   const draft: TaskDraft = { type, name: "", instructions: "", lastDone: "", ...draftFromSchedule(PRESETS[type]) };
   if (type !== "winter_protection") return draft;
-  const temperature = !!plant && plantReadingRoles(plant).includes("temperature");
-  return { ...draft, mode: "reading", condition: "below", role: temperature ? "temperature" : null, readingUnit: temperature ? ROLE_UNITS.temperature : null };
+  const reading: TaskDraft = { ...draft, mode: "reading", condition: "below" };
+  if (plant && plantReadingRoles(plant).includes("temperature")) return { ...reading, role: "temperature", readingUnit: ROLE_UNITS.temperature };
+  const weather = l ? forecastEntities(l, states)[0] : undefined;
+  if (weather) return { ...reading, forecast: "low", weatherEntityId: weather.entity_id, readingUnit: forecastUnit(weather.entity_id, states) };
+  return reading;
 }
 
 // Winter protection with the species' minimum temperature as its value.
-export function winterDraft(plant: PlantRecord): TaskDraft | null {
+export function winterDraft(plant: PlantRecord, states?: Record<string, HAState>, l?: Localizer): TaskDraft | null {
   const min = minTemperature(plant);
   if (min === null) return null;
-  const draft = presetDraft("winter_protection", plant);
+  const draft = presetDraft("winter_protection", plant, states, l);
   return { ...draft, value: String(fromCelsius(min, draft.readingUnit ?? "°C")) };
 }
 
@@ -342,8 +440,8 @@ export function careSuggestions(plant: PlantRecord): CareSuggestion[] {
   return SUGGESTED_TYPES.flatMap(type => { const text = careNote(plant, type); return text ? [{ type, text }] : []; });
 }
 
-export function suggestionDraft(type: CareTaskType, text: string, plant?: PlantRecord): TaskDraft {
-  return { ...presetDraft(type, plant), instructions: text };
+export function suggestionDraft(type: CareTaskType, text: string, plant?: PlantRecord, states?: Record<string, HAState>, l?: Localizer): TaskDraft {
+  return { ...presetDraft(type, plant, states, l), instructions: text };
 }
 
 export function draftFromTask(task: CareTask): TaskDraft {
@@ -368,7 +466,14 @@ export function parseNumber(text: string): number | null {
 }
 
 export function draftSource(draft: TaskDraft): ReadingSchedule["source"] | null {
-  return draft.role ? { role: draft.role } : draft.entityId ? { entity_id: draft.entityId } : null;
+  if (draft.role) return { role: draft.role };
+  if (draft.entityId) return { entity_id: draft.entityId };
+  return draft.forecast && draft.weatherEntityId ? { forecast: { entity_id: draft.weatherEntityId, reading: draft.forecast, hours: draft.forecastHours } } : null;
+}
+
+export function isForecastDraft(draft: TaskDraft): boolean {
+  const source = draftSource(draft);
+  return !!source && "forecast" in source;
 }
 
 // "Only after" in minutes from hours; empty means at once. Fractions that
@@ -384,12 +489,17 @@ function forMinutes(text: string): number | null {
   return rounded;
 }
 
-function readingErrors(draft: TaskDraft): DraftErrors {
+// A forecast never waits ("only after" is hidden) and needs its weather
+// entity and that entity's temperature unit.
+function readingErrors(draft: TaskDraft, states?: Record<string, HAState>): DraftErrors {
   const errors: DraftErrors = {};
+  const forecast = isForecastDraft(draft);
   if (!draftSource(draft)) errors.source = "care_plan.error_source";
+  else if (forecastMissing(draft, states)) errors.source = "care_plan.error_weather_missing";
+  else if (forecast && !TEMPERATURE_UNITS.has(draft.readingUnit ?? "")) errors.source = "care_plan.error_weather_unit";
   const value = parseNumber(draft.value);
   if (value === null) errors.value = "care_plan.error_value";
-  if (forMinutes(draft.forHours) === null) errors.forHours = "care_plan.error_for_hours";
+  if (!forecast && forMinutes(draft.forHours) === null) errors.forHours = "care_plan.error_for_hours";
   if (draft.resetValue.trim()) {
     const reset = parseNumber(draft.resetValue);
     // "Due again after" lies on the safe side of the value, or equals it.
@@ -399,10 +509,10 @@ function readingErrors(draft: TaskDraft): DraftErrors {
   return errors;
 }
 
-export function draftSchedule(draft: TaskDraft): CareSchedule | null {
+export function draftSchedule(draft: TaskDraft, states?: Record<string, HAState>): CareSchedule | null {
   if (draft.mode === "reading") {
-    const source = draftSource(draft); const value = parseNumber(draft.value); const minutes = forMinutes(draft.forHours);
-    if (!source || value === null || minutes === null || Object.keys(readingErrors(draft)).length) return null;
+    const source = draftSource(draft); const value = parseNumber(draft.value); const minutes = isForecastDraft(draft) ? 0 : forMinutes(draft.forHours);
+    if (!source || value === null || minutes === null || Object.keys(readingErrors(draft, states)).length) return null;
     return { kind: "reading", source, condition: draft.condition, value, unit: draft.readingUnit, for_minutes: minutes, reset_value: draft.resetValue.trim() ? parseNumber(draft.resetValue) : null };
   }
   if (draft.mode === "yearly") {
@@ -414,14 +524,15 @@ export function draftSchedule(draft: TaskDraft): CareSchedule | null {
 }
 
 // Validates a draft against the same limits the backend enforces. `today` is
-// the Home Assistant local date; "last done" cannot be after it.
-export function validateDraft(draft: TaskDraft, today: string): { input: CareTaskInput; errors: null } | { input: null; errors: DraftErrors } {
+// the Home Assistant local date; "last done" cannot be after it. `states`
+// tells whether a forecast's weather entity still exists.
+export function validateDraft(draft: TaskDraft, today: string, states?: Record<string, HAState>): { input: CareTaskInput; errors: null } | { input: null; errors: DraftErrors } {
   const errors: DraftErrors = {};
   const name = draft.name.trim();
   if (draft.type === "custom" && !name) errors.name = "care_plan.error_name_required";
   else if (name.length > TASK_NAME_MAX) errors.name = "care_plan.error_name_length";
-  const schedule = draftSchedule(draft);
-  if (draft.mode === "reading") Object.assign(errors, readingErrors(draft));
+  const schedule = draftSchedule(draft, states);
+  if (draft.mode === "reading") Object.assign(errors, readingErrors(draft, states));
   else if (!schedule) errors[draft.mode === "yearly" ? "months" : "every"] = draft.mode === "yearly" ? "care_plan.error_months" : "care_plan.error_every";
   const instructions = draft.instructions.trim();
   if (instructions.length > TASK_INSTRUCTIONS_MAX) errors.instructions = "care_plan.error_instructions_length";
@@ -459,20 +570,27 @@ export function draftSummary(l: Localizer, draft: TaskDraft, restPeriod: RestPer
   return l.t(draft.mode === "yearly" ? "care_plan.summary_pick_months" : "care_plan.summary_enter_interval");
 }
 
-// "When the temperature is below 5 °C · for 2 h · due again above 12 °C".
+// "When the temperature is below 5 °C · for 2 h · due again above 12 °C", or
+// "When the forecast low for the next 24 hours is below 2 °C".
 function readingSummary(l: Localizer, draft: TaskDraft, states?: Record<string, HAState>): string {
   const source = draftSource(draft);
   if (!source) return l.t("care_plan.summary_pick_source");
-  const subject = "role" in source && isSourceRole(source.role) ? l.t(`care_plan.subject_${source.role}`) : sourceName(l, source, states);
+  const subject = "role" in source && isSourceRole(source.role) ? l.t(`care_plan.subject_${source.role}`)
+    : "forecast" in source ? l.t(`care_plan.subject_forecast_${source.forecast.reading}`, { window: forecastWindowLong(l, source.forecast.hours) })
+    : sourceName(l, source, states);
   const value = parseNumber(draft.value);
   const below = draft.condition === "below";
   if (value === null) return l.t(below ? "care_plan.summary_below_enter" : "care_plan.summary_above_enter", { subject });
   const parts = [l.t(below ? "care_plan.summary_below" : "care_plan.summary_above", { subject, value: readingValue(l, value, draft.readingUnit) })];
-  const minutes = forMinutes(draft.forHours);
+  const minutes = "forecast" in source ? 0 : forMinutes(draft.forHours);
   if (minutes) parts.push(l.tn(minutes / 60, "care_plan.summary_for_hours_one", "care_plan.summary_for_hours_other"));
   const reset = draft.resetValue.trim() ? parseNumber(draft.resetValue) : null;
   if (reset !== null && reset !== value) parts.push(l.t(below ? "care_plan.summary_again_above" : "care_plan.summary_again_below", { value: readingValue(l, reset, draft.readingUnit) }));
   return parts.join(" · ");
+}
+
+function forecastWindowLong(l: Localizer, hours: number): string {
+  return l.t(hours === 72 ? "care_plan.forecast_window_long_72" : hours === 48 ? "care_plan.forecast_window_long_48" : "care_plan.forecast_window_long_24");
 }
 
 // True when two revisions of a plant differ only in care: its care history,

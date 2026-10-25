@@ -187,6 +187,15 @@ describe("care tasks and linked care events", () => {
     expect(validCareTask({ ...task, type: "winter_protection", schedule: reading })).toBe(true);
     expect(validCareTask({ ...task, schedule: { ...reading, source: { entity_id: "sensor.mock_balcony_temperature" }, unit: null, reset_value: null, condition: "above", value: -2.5 } })).toBe(true);
     expect(validCareTask({ ...task, schedule: { ...reading, condition: "above", reset_value: 3 } })).toBe(true);
+     for (const hours of [24, 48, 72]) expect(validCareTask({ ...task, schedule: { ...forecast, source: { forecast: { ...forecast.source.forecast, hours } } } })).toBe(true);
+    expect(validCareTask({ ...task, schedule: { ...forecast, unit: "°F", source: { forecast: { ...forecast.source.forecast, reading: "high" } }, condition: "above", value: 90, reset_value: null } })).toBe(true);
+  });
+  const forecast = { ...reading, source: { forecast: { entity_id: "weather.mock_home", reading: "low", hours: 24 } }, value: 2, for_minutes: 0, reset_value: 5 };
+  it.each([{ for_minutes: 60 }, { unit: "%" }, { unit: null }, { source: { forecast: { entity_id: "sensor.mock_x", reading: "low", hours: 24 } } },
+    { source: { forecast: { entity_id: "weather.mock_home", reading: "rain", hours: 24 } } }, { source: { forecast: { entity_id: "weather.mock_home", reading: "low", hours: 12 } } },
+    { source: { forecast: { entity_id: "weather.mock_home", reading: "low" } } }, { source: { forecast: { entity_id: "weather.mock_home", reading: "low", hours: 24, type: "daily" } } },
+    { source: { forecast: { entity_id: "weather.mock_home", reading: "low", hours: 24 }, role: "temperature" } }])("rejects a malformed forecast schedule %#", change => {
+    expect(validCareTask({ ...task, schedule: { ...forecast, ...change } })).toBe(false);
   });
   it.each([{ source: { role: "battery" } }, { source: { entity_id: "light.mock_lamp" } }, { source: { role: "temperature", entity_id: "sensor.mock_x" } }, { condition: "equal" },
     { value: Number.NaN }, { value: "5" }, { for_minutes: 4321 }, { for_minutes: 1.5 }, { reset_value: 4 }, { condition: "above", reset_value: 6 }, { unit: 5 }, { extra: 1 }])("rejects a malformed reading schedule %#", change => {

@@ -170,8 +170,10 @@ when the temperature drops below 5 °C. Such a task watches either one of the pl
 (temperature, humidity, soil moisture, illuminance, conductivity, soil temperature, or CO2,
 using the plant's combined value in °C, %, lx, µS/cm, or ppm), one sensor entity, or the
 forecast low or high temperature of a weather entity (see
-[Forecast readings](#forecast-readings)). Any task type can use a reading schedule. The panel editor for reading tasks is not available yet; they
-can be created through the `smart_plants/care_tasks/create` WebSocket command.
+[Forecast readings](#forecast-readings)). Any task type can use a reading schedule. Reading
+tasks are created and edited in the panel (see
+[Reading tasks](getting-started.md#reading-tasks)) or through the
+`smart_plants/care_tasks/create` WebSocket command.
 
 How a reading task behaves:
 

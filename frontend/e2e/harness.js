@@ -158,9 +158,25 @@ state.seedReading = (cold = false, winter = false) => {
   registry(613, "binary_sensor.office_aloe_winter_protection", `care_task:${taskId(4)}:due`);
   registry(612, "binary_sensor.office_aloe_care_due", "care_due");
 };
-// The current value of a reading task's source: the role's first sensor or the
-// sensor itself, as a number, else null.
+// Opt-in forecast setup for the first plant: no temperature sensor, an
+// OpenPlantBook minimum of 5 °C and a synthetic weather entity whose forecast
+// low and high for the look-ahead are 1 °C and 9 °C. `frost` adds a Winter
+// protection task on the forecast low; `short` makes the forecast end after
+// 18 hours.
+state.seedForecast = (frost = false, short = false) => {
+  const p = state.plants[0];
+  state.states.push({ entity_id: "weather.mock_home", state: "cloudy", attributes: { friendly_name: "Home", temperature: 8, temperature_unit: "°C", supported_features: 3 }, last_updated: now });
+  state.forecast = { low: 1, high: 9, hours: short ? 18 : null };
+  const snap = p.species.snapshot;
+  snap.min_temperature = 5; snap.field_sources = { ...snap.field_sources, min_temperature: attribution };
+  if (!frost) return;
+  p.care_tasks = [{ id: taskId(4), type: "winter_protection", name: null, schedule: { kind: "reading", source: { forecast: { entity_id: "weather.mock_home", reading: "low", hours: 24 } }, condition: "below", value: 2, unit: "°C", for_minutes: 0, reset_value: 5 },
+    instructions: null, baseline_done_on: null, last_done_at: null, last_skipped_on: null, created_on: today() }];
+};
+// The current value of a reading task's source: the role's first sensor, the
+// sensor itself or the weather entity's forecast, as a number, else null.
 function sourceValue(p, source) {
+  if (source.forecast) return state.forecast && state.states.some(s => s.entity_id === source.forecast.entity_id) ? state.forecast[source.forecast.reading] : null;
   const entityId = source.role ? p.roles[source.role]?.sources?.[0]?.entity_id : source.entity_id;
   const raw = state.states.find(s => s.entity_id === entityId)?.state;
   const value = raw === undefined || raw.trim() === "" ? NaN : Number(raw);
@@ -171,7 +187,9 @@ function sourceValue(p, source) {
 function readingStateOf(p, task, base) {
   const { condition, value, reset_value: reset, unit } = task.schedule;
   const reading = sourceValue(p, task.schedule.source);
-  const extra = { next_due: null, days: null, reading, unit, due_since: null, due_at: null };
+  const forecast = task.schedule.source.forecast;
+  const until = forecast && reading !== null ? new Date(Date.now() + (state.forecast.hours ?? forecast.hours) * 3600000).toISOString() : null;
+  const extra = { next_due: null, days: null, reading, unit, due_since: null, due_at: null, forecast: forecast?.reading ?? null, forecast_until: until };
   if (reading === null) return { ...base, ...extra, status: "no_reading", is_due: false };
   const dueSide = condition === "below" ? reading < value : reading > value;
   const safe = condition === "below" ? reading > (reset ?? value) : reading < (reset ?? value);
@@ -186,7 +204,7 @@ const UNIT_DAYS = { days: 1, weeks: 7, months: 30, years: 365 };
 const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 86400000);
 const restMonths = rest => { const months = []; for (let m = rest.start_month; ; m = m % 12 + 1) { months.push(m); if (m === rest.end_month || months.length === 12) return months; } };
 function careStateOf(task, rest, p) {
-  const base = { task_id: task.id, type: task.type, name: task.name, window_end: null, resume_on: null, reading: null, unit: null, due_since: null, due_at: null };
+  const base = { task_id: task.id, type: task.type, name: task.name, window_end: null, resume_on: null, reading: null, unit: null, due_since: null, due_at: null, forecast: null, forecast_until: null };
   if (task.schedule.kind === "reading") return readingStateOf(p, task, base);
   const now = today();
   if (rest && task.schedule.kind === "interval" && task.schedule.growing_season_only && restMonths(rest).includes(Number(now.slice(5, 7)))) {
@@ -249,6 +267,7 @@ state.seedSuggestions = () => {
 };
 if (params.has("care")) state.seedCare();
 if (params.has("reading")) state.seedReading(params.has("cold"), params.has("winter"));
+if (params.has("forecast")) state.seedForecast(params.has("frost"), params.has("short"));
 if (params.has("suggest")) state.seedSuggestions();
 // Opt-in snoozed first plant; tests pin the clock so the end date reads the same.
 if (params.has("snoozed")) state.plants[0].snoozed_until = "2026-10-30T23:59:59Z";
