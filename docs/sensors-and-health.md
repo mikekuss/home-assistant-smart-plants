@@ -95,7 +95,7 @@ period doesn't change the moisture value, *Too wet*, *Sensor stale*, or the heal
 
 ### Low light
 
-Low light is judged from daytime readings only (08:00–18:00 in Home Assistant's time zone).
+Low light counts daytime readings only (08:00–18:00 in Home Assistant's time zone).
 It uses the brightest reading of the last two hours and needs at least two daytime readings;
 until then it's unavailable. Outside daytime, *Low light* stays off and illuminance is left
 out of the health score.
@@ -162,7 +162,7 @@ The score's attributes tell you how complete it is:
 ## When a source sensor changes
 
 Smart Plants stores assigned sensors by their entity registry ID, so the plant keeps working
-when you rename a sensor's entity ID. The assignment is updated automatically.
+when you rename a sensor's entity ID. Smart Plants updates the assignment by itself.
 
 Sensors that are not in the entity registry (no unique ID) are tracked by entity ID only;
 renames of those can't be followed.

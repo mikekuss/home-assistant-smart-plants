@@ -76,8 +76,8 @@ Go to **Settings → Devices & services → Smart Plants → Configure**.
 | --- | --- | --- |
 | Preserve inventory when the integration is removed | Off | Keeps your plant data and photos on disk when you delete the integration, so a later reinstall picks them up again. |
 | Enable direct OpenPlantBook provider | Off | Turns OpenPlantBook species search on or off. |
-| OpenPlantBook client ID | – | Your client ID. |
-| OpenPlantBook client secret | – | The stored secret is never shown. Leave the field empty to keep the current secret. |
+| OpenPlantBook client ID | none | Your client ID. |
+| OpenPlantBook client secret | none | The stored secret is never shown. Leave the field empty to keep the current secret. |
 
 Saving the options reloads the integration. Turning OpenPlantBook off, or a provider outage,
 never affects your local plants.
@@ -88,7 +88,7 @@ never affects your local plants.
 - **Manual:** replace the `custom_components/smart_plants` folder with the new version and
   restart.
 
-Your plant data is stored outside `custom_components/`, so updating never touches it.
+Smart Plants keeps your plant data outside `custom_components/`, so updating never touches it.
 
 A browser tab that stays open while Home Assistant restarts keeps running the previous
 version of the panel until the page is reloaded. The panel notices this and shows
@@ -112,25 +112,27 @@ What happens to your data when you delete the integration:
 | Data | Default | With "Preserve inventory" enabled |
 | --- | --- | --- |
 | Plant inventory (`.storage/smart_plants.inventory`), including species data, thresholds, sensor assignments, and care history | Deleted | Kept |
+| Reading task state (`.storage/smart_plants.reading_state`) | Deleted | Kept |
 | Plant photos (`smart_plants/images/`) | Deleted | Kept |
 | Plant devices and entities in Home Assistant | Removed | Removed (recreated when you add the integration again) |
 | Your own automations, scripts, and dashboards | Not changed | Not changed |
 
 Automations that reference removed plant entities stay in place but stop working until the
 entities exist again. If you preserved the inventory but decide not to reinstall, you can
-delete the two paths above yourself.
+delete the paths above yourself.
 
 ## Backup and restore
 
-Smart Plants keeps all of its user data in two places inside the Home Assistant configuration
-directory:
+Smart Plants keeps all of its user data inside the Home Assistant configuration directory:
 
-- `.storage/smart_plants.inventory` – the plant inventory: plants, species data, thresholds,
-  sensor assignments, care history, and references to photos.
-- `smart_plants/images/` – the plant photos, stored as WebP files.
+- `.storage/smart_plants.inventory`: the plant inventory with plants, species data,
+  thresholds, sensor assignments, care tasks, care history, and references to photos.
+- `.storage/smart_plants.reading_state`: whether each reading task is due or waiting. Without
+  it, reading tasks start fresh, which can mean one extra reminder.
+- `smart_plants/images/`: the plant photos, stored as WebP files.
 
-A full Home Assistant backup that includes the configuration directory contains both. A
-backup of only one of them, or of `custom_components/smart_plants`, is **not** a complete
+A full Home Assistant backup that includes the configuration directory contains all of them. A
+backup of only some of them, or of `custom_components/smart_plants`, is **not** a complete
 Smart Plants backup.
 
 When restoring:

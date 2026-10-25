@@ -42,12 +42,23 @@ automation with safeguards; see the [safe irrigation pattern](automations.md#saf
 
 Locally, in your Home Assistant configuration directory:
 
-- `.storage/smart_plants.inventory` – plants, species data, thresholds, sensor assignments,
-  and care history,
-- `smart_plants/images/` – plant photos.
+- `.storage/smart_plants.inventory`: plants, species data, thresholds, sensor assignments,
+  care tasks, and care history,
+- `.storage/smart_plants.reading_state`: whether each reading task is due or waiting,
+- `smart_plants/images/`: plant photos.
 
 Nothing is sent to a cloud service, except OpenPlantBook searches if you enable that
 provider. See [backup and restore](installation.md#backup-and-restore).
+
+## What's the difference between snooze and pause?
+
+A snooze mutes a plant's alerts for a while, for example during a vacation. Everything keeps
+running. The entities keep their real states and only get the attribute `snoozed: true`, which
+your automations check. The snooze ends by itself. See
+[Going on vacation](getting-started.md#going-on-vacation).
+
+Pausing stops monitoring until you resume the plant. Its entities become unavailable. Use it
+for a plant in storage or without sensors for a while. Pausing also ends a snooze.
 
 ## How far back does the history chart go?
 

@@ -5,10 +5,10 @@
 1. Go to **Settings → Devices & services → Smart Plants**.
 2. Open the **⋮** menu and select **Download diagnostics**.
 
-The file is designed to be safe to share. It contains:
+The file is safe to share. It contains:
 
 - whether OpenPlantBook is enabled and whether credentials are configured (yes/no only; the
-  client ID and secret themselves are never included),
+  file never includes the client ID or secret),
 - whether "Preserve inventory when the integration is removed" is on,
 - OpenPlantBook connection status, such as whether a token and cached results exist,
 - inventory counts: number of plants, active vs. paused (`disabled`) plants, species
@@ -133,12 +133,42 @@ saving again.
 
 Each plant keeps up to 256 care entries. When a new entry would go over that limit, Smart
 Plants removes one old entry to make room: first the oldest watering (never the latest one),
-then the oldest note, then the oldest entry that is not the latest of its type. Nothing is
-ever refused because the history is full.
+then the oldest note, then the oldest entry that is not the latest of its type. Smart Plants
+never refuses a new entry because the history is full.
+
+### A reading task shows "No reading"
+
+The task's sensor doesn't deliver a number Smart Plants can use. The task keeps its state (a
+due task stays due) until a reading arrives.
+
+- Check the sensor in **Developer tools → States**. It must report a number, not `unknown` or
+  `unavailable`.
+- For one of the plant's own sensors, check the reading on the **Sensors** tab. If the sensor
+  is stale, the task has no reading either.
+- For another sensor, its unit must be convertible into the unit you saved the task with. A
+  temperature sensor that switched from °C to °F still works; a sensor that lost its unit
+  doesn't.
+- A paused plant's reading tasks show no reading until you resume the plant.
+
+### A forecast task shows "No forecast"
+
+Smart Plants couldn't get a usable forecast from the weather entity.
+
+- The weather entity must be available and offer a forecast. In **Developer tools →
+  Actions**, run `weather.get_forecasts` with the entity and `type: hourly` or `type: daily`.
+  If both fail, the weather integration provides no forecast.
+- The weather entity must report a temperature unit (°C or °F).
+- Smart Plants refreshes the forecast every 30 minutes. Right after a restart or a change to
+  the task, the first value can take a few seconds.
+- If you removed or renamed the weather entity, edit the task and pick the weather entity
+  again.
+
+With debug logging enabled (see above), each failed fetch logs one line with the weather
+entity and the reason, for example `Forecast for weather.home skipped: no forecast type`.
 
 ## Report a bug
 
-Please open an issue on
+Open an issue on
 [GitHub](https://github.com/mikekuss/home-assistant-smart-plants/issues) and include:
 
 - your Home Assistant version (**Settings → About**),

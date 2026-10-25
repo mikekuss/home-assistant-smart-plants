@@ -228,14 +228,14 @@ are listed under **Smart Plants** in the action picker.
 
 `smart_plants.log_care` accepts these fields:
 
-- `kind` – what was done: `watering`, `fertilizing`, `pruning`, `repotting`, `note`, or
+- `kind`: what was done, one of `watering`, `fertilizing`, `pruning`, `repotting`, `note`, or
   `task` (another task). Required when you target a plant device. When you target a care
   task, you can leave it out; if you set it, it must match the task (for example
   `fertilizing` for a fertilizing task).
-- `occurred_at` – when it happened. Defaults to now and can't be in the future; a time up to
+- `occurred_at`: when it happened. Defaults to now and can't be in the future; a time up to
   five minutes ahead of Home Assistant's clock is saved as now. A time
   without a time zone is Home Assistant's local time.
-- `note` – an optional note of up to 500 characters. Required for `kind: note`.
+- `note`: an optional note of up to 500 characters. Required for `kind: note`.
 
 You can target several plants or care tasks in one call. If any target is invalid (not a
 Smart Plants plant or care task, deleted, or belonging to a disabled plant), nothing is
@@ -335,8 +335,8 @@ the chosen day in Home Assistant's time zone.
 Smart Plants entities (an entity target snoozes the whole plant it belongs to), and takes
 exactly one of these fields:
 
-- `duration` – how long to snooze, counted from now, for example `days: 7`.
-- `until` – when the snooze ends. A time without a time zone is Home Assistant's local time.
+- `duration`: how long to snooze, counted from now, for example `days: 7`.
+- `until`: when the snooze ends. A time without a time zone is Home Assistant's local time.
 
 The snooze can last at most 366 days and must end in the future; otherwise the action reports
 an error and nothing changes. Snoozing an already snoozed plant replaces the end. The snooze
