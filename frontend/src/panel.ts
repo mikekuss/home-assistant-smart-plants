@@ -1049,13 +1049,13 @@ export class SmartPlantsPanel extends LitElement {
     const editor = this._taskEditor;
     if (!editor) return;
     const draft = { ...editor.draft, ...changes };
-    const errors = Object.keys(editor.errors).length ? validateDraft(draft, this._today()).errors ?? {} : {};
+    const errors = Object.keys(editor.errors).length ? validateDraft(draft, this._today(), this._states).errors ?? {} : {};
     this._taskEditor = { ...editor, draft, errors };
   }
   private async _saveTask(plantId: string): Promise<void> {
     const editor = this._taskEditor; const hass = this.hass; const l = this._l;
     if (!editor || !hass || this._formBusy || this._blocked) return;
-    const checked = validateDraft(editor.draft, this._today());
+    const checked = validateDraft(editor.draft, this._today(), this._states);
     if (!checked.input) {
       this._setTaskEditor({ errors: checked.errors, moreOpen: editor.moreOpen || !!checked.errors.lastDone || !!checked.errors.forHours || !!checked.errors.resetValue });
       void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("dialog [aria-invalid=true], dialog .monthpick button")?.focus());
@@ -1212,8 +1212,8 @@ export class SmartPlantsPanel extends LitElement {
       const editor = this._taskEditor;
       title = taskEditorTitle(l, editor);
       body = renderTaskEditor({ l, plant, overview: this._overview[plant.id], hass: this.hass, states: this._states, state: editor, today: this._today(), busy: this._formBusy || this._blocked,
-        onPreset: type => this._setTaskEditor({ step: 2, draft: presetDraft(type, plant), errors: {}, error: "", moreOpen: false, otherSensor: false }, true),
-        onSuggestion: (type, text) => this._setTaskEditor({ step: 2, draft: suggestionDraft(type, text, plant), errors: {}, error: "", moreOpen: false, otherSensor: false }, true),
+        onPreset: type => this._setTaskEditor({ step: 2, draft: presetDraft(type, plant, this._states, l), errors: {}, error: "", moreOpen: false, otherSensor: false }, true),
+        onSuggestion: (type, text) => this._setTaskEditor({ step: 2, draft: suggestionDraft(type, text, plant, this._states, l), errors: {}, error: "", moreOpen: false, otherSensor: false }, true),
         onDraft: draft => this._setTaskEditor({ step: 2, draft, errors: {}, error: "", moreOpen: false, otherSensor: false }, true),
         onEditor: changes => this._setTaskEditor(changes),
         onExpand: type => this._setTaskEditor({ expanded: type }),

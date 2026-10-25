@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SmartPlantsPanel } from "./panel.js";
 import { ENGLISH, createLocalizer } from "./localize.js";
-import { careLine, careNote, careOnlyChange, careSuggestions, draftFromTask, draftSummary, fromCelsius, lastDone, localDate, matchingTask, monthsInRange, numericSensor, pickMonth, pickSource, plantReadingRoles, presetDraft, readingSuggestion, restDraft, restSentence, restTaskChanges, resumeDate, scheduleText, shortDate, sourceUnit, taskChanges, taskChip, validateDraft, validateRest, winterDraft } from "./care-plan.js";
+import { careLine, careNote, careOnlyChange, careSuggestions, draftFromTask, draftSummary, forecastEntities, forecastMissing, forecastShortText, forecastShortUntil, forecastUnit, fromCelsius, lastDone, localDate, matchingTask, monthsInRange, numericSensor, pickMonth, pickSource, plantReadingRoles, presetDraft, readingSuggestion, restDraft, restSentence, restTaskChanges, resumeDate, scheduleText, shortDate, sourceUnit, taskChanges, taskChip, validateDraft, validateRest, winterDraft } from "./care-plan.js";
 import { matchesFilter } from "./overview-model.js";
 import type { CareTaskSummary, PlantOverview } from "./overview-model.js";
 import type { CareEvent, CareTask, HAEntity, HAState, HomeAssistantLike, PlantRecord, PlantSpecies, RestPeriod } from "./types.js";
@@ -13,7 +13,7 @@ const FERTILIZE_ID = "0f8fad5bd9cb469fa16570867728950e";
 const PESTS_ID = "7c9e6679742540de944be07fc1f90ae7";
 const fertilize: CareTask = { id: FERTILIZE_ID, type: "fertilize", name: null, schedule: { kind: "interval", every: 4, unit: "weeks", growing_season_only: true }, instructions: null, baseline_done_on: null, last_done_at: null, last_skipped_on: null, created_on: "2026-09-01" };
 const pests: CareTask = { id: PESTS_ID, type: "pests", name: null, schedule: { kind: "interval", every: 2, unit: "weeks", growing_season_only: false }, instructions: null, baseline_done_on: null, last_done_at: null, last_skipped_on: null, created_on: "2026-09-01" };
-const state = (task_id: string, changes: Partial<CareTaskSummary> = {}): CareTaskSummary => ({ task_id, type: "fertilize", name: null, status: "scheduled", is_due: false, next_due: "2026-10-22", days: 3, window_end: null, resume_on: null, reading: null, unit: null, due_since: null, due_at: null, ...changes });
+const state = (task_id: string, changes: Partial<CareTaskSummary> = {}): CareTaskSummary => ({ task_id, type: "fertilize", name: null, status: "scheduled", is_due: false, next_due: "2026-10-22", days: 3, window_end: null, resume_on: null, reading: null, unit: null, due_since: null, due_at: null, forecast: null, forecast_until: null, ...changes });
 
 afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); vi.unstubAllGlobals(); localStorage.clear(); });
 
@@ -714,9 +714,9 @@ describe("reading task draft", () => {
     expect(fromCelsius(-1.5, "°F")).toBe(29.3);
     expect(fromCelsius(5, "%")).toBeNull();
     // A suggested value follows into the new unit; a typed one stays.
-    expect(pickSource({ ...draft, value: "5" }, { entity_id: fahrenheit.entity_id }, "°F", plant)).toEqual({ role: null, entityId: fahrenheit.entity_id, readingUnit: "°F", value: "41" });
-    expect(pickSource({ ...draft, value: "7" }, { entity_id: fahrenheit.entity_id }, "°F", plant)).toEqual({ role: null, entityId: fahrenheit.entity_id, readingUnit: "°F" });
-    expect(pickSource({ ...draft, role: null, readingUnit: null, value: "5" }, { role: "temperature" }, "°C", plant)).toEqual({ role: "temperature", entityId: null, readingUnit: "°C" });
+    expect(pickSource({ ...draft, value: "5" }, { entity_id: fahrenheit.entity_id }, "°F", plant)).toEqual({ role: null, entityId: fahrenheit.entity_id, forecast: null, weatherEntityId: null, readingUnit: "°F", value: "41" });
+    expect(pickSource({ ...draft, value: "7" }, { entity_id: fahrenheit.entity_id }, "°F", plant)).toEqual({ role: null, entityId: fahrenheit.entity_id, forecast: null, weatherEntityId: null, readingUnit: "°F" });
+    expect(pickSource({ ...draft, role: null, readingUnit: null, value: "5" }, { role: "temperature" }, "°C", plant)).toEqual({ role: "temperature", entityId: null, forecast: null, weatherEntityId: null, readingUnit: "°C" });
     expect(sourceUnit({ entity_id: fahrenheit.entity_id }, states)).toBe("°F");
     expect(sourceUnit({ role: "conductivity" })).toBe("µS/cm");
     expect(Object.values(states).filter(numericSensor).map(s => s.entity_id)).toEqual([fahrenheit.entity_id, humidity.entity_id]);
@@ -853,5 +853,198 @@ describe("reading tasks in the panel", () => {
     // In the add step, the suggestion says the task already exists.
     carePlan(el).querySelector<HTMLButtonElement>(".card-h button")!.click(); await settle(el);
     expect(dialog(el)!.querySelector(".suggestions")!.textContent).toContain("Already in the care plan");
+  });
+});
+
+// ---- Forecast readings ----
+
+const weatherHome: HAState = { entity_id: "weather.mock_home", state: "cloudy", attributes: { friendly_name: "Home", temperature: 8, temperature_unit: "°C", supported_features: 3 }, last_updated: "2026-10-19T08:00:00Z" };
+const weatherCabin: HAState = { entity_id: "weather.mock_cabin", state: "sunny", attributes: { friendly_name: "Cabin", temperature: 46, temperature_unit: "°F", supported_features: 1 }, last_updated: "2026-10-19T08:00:00Z" };
+const weatherPlain: HAState = { entity_id: "weather.mock_plain", state: "sunny", attributes: { friendly_name: "No forecast", temperature: 8, temperature_unit: "°C", supported_features: 0 }, last_updated: "2026-10-19T08:00:00Z" };
+const FROST_ID = "4e9e6679742540de944be07fc1f90ae7";
+const frostSchedule = { kind: "reading" as const, source: { forecast: { entity_id: weatherHome.entity_id, reading: "low" as const, hours: 24 } }, condition: "below" as const, value: 2, unit: "°C", for_minutes: 0, reset_value: 5 };
+const frost: CareTask = { ...winter, id: FROST_ID, schedule: frostSchedule };
+const forecastState = (changes: Partial<CareTaskSummary> = {}) => state(FROST_ID, { type: "winter_protection", status: "watching", next_due: null, days: null, reading: 6, unit: "°C", forecast: "low", forecast_until: null, ...changes });
+
+describe("forecast reading draft", () => {
+  const withWeather = { ...states, [weatherHome.entity_id]: weatherHome, [weatherCabin.entity_id]: weatherCabin, [weatherPlain.entity_id]: weatherPlain };
+
+  it("lists weather entities that offer a forecast", () => {
+    expect(forecastEntities(l, withWeather).map(s => s.entity_id)).toEqual([weatherCabin.entity_id, weatherHome.entity_id]);
+    expect(forecastEntities(l, states)).toEqual([]);
+    expect(forecastEntities(l, { x: { ...weatherHome, attributes: { ...weatherHome.attributes, supported_features: 4 } } })).toHaveLength(1);
+    expect(forecastEntities(l, { x: { ...weatherHome, attributes: { ...weatherHome.attributes, supported_features: "3" } } })).toEqual([]);
+    expect(forecastEntities(l, { x: { ...weatherHome, entity_id: "sensor.mock_weather" } })).toEqual([]);
+    expect(forecastUnit(weatherCabin.entity_id, withWeather)).toBe("°F");
+    expect(forecastUnit(weatherHome.entity_id, { [weatherHome.entity_id]: { ...weatherHome, attributes: { supported_features: 3 } } })).toBeNull();
+  });
+
+  it("starts winter protection on the forecast low without a temperature sensor", () => {
+    const home = { [weatherHome.entity_id]: weatherHome };
+    expect(presetDraft("winter_protection", plantWith({}), home, l)).toMatchObject({ mode: "reading", role: null, entityId: null, forecast: "low", weatherEntityId: weatherHome.entity_id, forecastHours: 24, readingUnit: "°C" });
+    // The plant's temperature still comes first, and without a forecast the draft stays empty.
+    expect(presetDraft("winter_protection", plantWith({ roles: { ...sample.roles!, temperature: temperatureRole } }), home, l)).toMatchObject({ role: "temperature", forecast: null });
+    expect(presetDraft("winter_protection", plantWith({}), states, l)).toMatchObject({ role: null, entityId: null, forecast: null, readingUnit: null });
+    // The first weather entity by name, with the minimum converted into its unit.
+    expect(winterDraft(plantWith({ species: withMinimum(5) }), withWeather, l)).toMatchObject({ forecast: "low", weatherEntityId: weatherCabin.entity_id, readingUnit: "°F", value: "41" });
+  });
+
+  it("saves a forecast without a delay and validates it like the backend", () => {
+    const draft = { ...presetDraft("winter_protection", plantWith({}), withWeather, l), weatherEntityId: weatherHome.entity_id, readingUnit: "°C", value: "2", resetValue: "5", forHours: "3" };
+    expect(validateDraft(draft, TODAY, withWeather).input!.schedule).toEqual(frostSchedule);
+    expect(validateDraft({ ...draft, forecastHours: 72, forecast: "high", condition: "above", value: "32", resetValue: "" }, TODAY, withWeather).input!.schedule)
+      .toEqual({ kind: "reading", source: { forecast: { entity_id: weatherHome.entity_id, reading: "high", hours: 72 } }, condition: "above", value: 32, unit: "°C", for_minutes: 0, reset_value: null });
+    // A hidden "only after" never blocks a forecast.
+    expect(validateDraft({ ...draft, forHours: "x" }, TODAY, withWeather).errors).toBeNull();
+    expect(validateDraft({ ...draft, weatherEntityId: "weather.mock_gone" }, TODAY, withWeather).errors).toEqual({ source: "care_plan.error_weather_missing" });
+    // While states are still loading, the weather entity does not count as gone.
+    expect(validateDraft({ ...draft, weatherEntityId: "weather.mock_gone" }, TODAY, {}).errors).toBeNull();
+    expect(validateDraft({ ...draft, readingUnit: null }, TODAY, withWeather).errors).toEqual({ source: "care_plan.error_weather_unit" });
+    expect(forecastMissing({ ...draft, weatherEntityId: "weather.mock_gone" }, withWeather)).toBe(true);
+    expect(forecastMissing({ ...draft, weatherEntityId: "weather.mock_gone", role: "temperature" }, withWeather)).toBe(false);
+  });
+
+  it("round-trips a stored forecast task and picks other sources", () => {
+    const draft = draftFromTask(frost);
+    expect(draft).toMatchObject({ mode: "reading", role: null, entityId: null, forecast: "low", weatherEntityId: weatherHome.entity_id, forecastHours: 24, forHours: "" });
+    expect(taskChanges(frost, validateDraft(draft, TODAY, withWeather).input!)).toEqual({});
+    expect(taskChanges(frost, validateDraft({ ...draft, forecastHours: 48 }, TODAY, withWeather).input!).schedule).toMatchObject({ source: { forecast: { hours: 48 } } });
+    // Another source clears the forecast but keeps the look-ahead for later.
+    const plant = plantWith({});
+    expect(pickSource({ ...draft, forecastHours: 72 }, { role: "temperature" }, "°C", plant)).toEqual({ role: "temperature", entityId: null, forecast: null, weatherEntityId: null, readingUnit: "°C" });
+    expect(pickSource(draft, { forecast: { entity_id: weatherCabin.entity_id, reading: "high", hours: 48 } }, "°F", plant)).toEqual({ role: null, entityId: null, forecast: "high", weatherEntityId: weatherCabin.entity_id, forecastHours: 48, readingUnit: "°F" });
+    expect(sourceUnit(frostSchedule.source, withWeather)).toBe("°C");
+  });
+
+  it("suggests the OpenPlantBook minimum for a forecast low below a value only", () => {
+    const plant = plantWith({ species: withMinimum(5) });
+    const draft = { ...presetDraft("winter_protection", plant, { [weatherCabin.entity_id]: weatherCabin }, l), value: "" };
+    expect(readingSuggestion(plant, draft, withWeather)).toBe(41);
+    expect(readingSuggestion(plant, { ...draft, forecast: "high" }, withWeather)).toBeNull();
+    expect(readingSuggestion(plant, { ...draft, condition: "above" }, withWeather)).toBeNull();
+  });
+});
+
+describe("forecast reading wording", () => {
+  const de = createLocalizer({ language: "de" });
+  const withWeather = { [weatherHome.entity_id]: weatherHome };
+
+  it("reads the forecast rule back in the summary and the task row", () => {
+    const draft = draftFromTask(frost);
+    expect(draftSummary(l, draft, null, withWeather)).toBe("When the forecast low for the next 24 hours is below 2 °C · due again above 5 °C");
+    expect(draftSummary(l, { ...draft, forecast: "high", condition: "above", value: "32", resetValue: "", forecastHours: 72, forHours: "2" }, null, withWeather)).toBe("When the forecast high for the next 3 days is above 32 °C");
+    expect(draftSummary(de, draft, null, withWeather)).toBe("Wenn der vorhergesagte Tiefstwert der nächsten 24 Stunden unter 2 °C liegt · wieder fällig über 5 °C");
+    expect(scheduleText(l, frostSchedule, null, withWeather)).toBe("Forecast low below 2 °C · Home");
+    expect(scheduleText(l, { ...frostSchedule, source: { forecast: { ...frostSchedule.source.forecast, hours: 48 } } }, null, {})).toBe("Forecast low below 2 °C · next 2 days · weather.mock_home");
+    expect(scheduleText(de, frostSchedule, null, withWeather)).toBe("Vorhergesagter Tiefstwert unter 2 °C · Home");
+  });
+
+  it("labels forecast states with the word forecast", () => {
+    expect(taskChip(l, forecastState(), frostSchedule, TODAY)).toEqual({ tone: "later", icon: "mdi:gauge", text: "Not needed · forecast 6 °C" });
+    expect(taskChip(l, forecastState({ status: "due", is_due: true, reading: 1 }), frostSchedule, TODAY)).toMatchObject({ tone: "care", text: "Due · forecast 1 °C" });
+    expect(taskChip(l, forecastState({ status: "no_reading", reading: null }), frostSchedule, TODAY)).toEqual({ tone: "later", icon: "mdi:help-circle-outline", text: "No forecast" });
+    expect(taskChip(de, forecastState(), frostSchedule, TODAY).text).toBe("Nicht nötig · Vorhersage 6 °C");
+    expect(taskChip(de, forecastState({ status: "no_reading", reading: null }), frostSchedule, TODAY).text).toBe("Keine Vorhersage");
+  });
+
+  it("tells when the forecast does not reach the end of the look-ahead", () => {
+    const now = Date.parse("2026-10-19T12:00:00Z");
+    const short = forecastState({ forecast_until: "2026-10-20T06:00:00Z" });
+    expect(forecastShortUntil(short, frostSchedule, now)).toBe("2026-10-20T06:00:00Z");
+    // A window counted from a fetch up to half an hour ago is still complete.
+    expect(forecastShortUntil(forecastState({ forecast_until: "2026-10-20T11:30:00Z" }), frostSchedule, now)).toBeNull();
+    expect(forecastShortUntil(forecastState(), frostSchedule, now)).toBeNull();
+    expect(forecastShortUntil(short, winter.schedule, now)).toBeNull();
+    expect(forecastShortText(l, "2026-10-20T06:00:00Z", "UTC")).toBe("Forecast only until Tue 6:00 AM");
+  });
+});
+
+describe("forecast reading tasks in the panel", () => {
+  const field = (el: SmartPlantsPanel, label: string) => [...dialog(el)!.querySelectorAll("label")].find(item => [...item.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join("").trim() === label)?.querySelector<HTMLInputElement & HTMLSelectElement>("input, select");
+  const choose = async (el: SmartPlantsPanel, select: HTMLSelectElement, value: string) => { select.value = value; select.dispatchEvent(new Event("change", { bubbles: true })); await settle(el); };
+  const open = async (backend: ReturnType<typeof careBackend>, extra: Record<string, HAState>) => { backend.h.hass.states = { ...states, ...extra }; return openCare(backend); };
+  const addWinter = async (el: SmartPlantsPanel) => {
+    carePlan(el).querySelector<HTMLButtonElement>("button.btn.tonal")!.click(); await settle(el);
+    [...dialog(el)!.querySelectorAll<HTMLButtonElement>("button.preset")].find(b => b.textContent?.includes("Winter protection"))!.click(); await settle(el);
+  };
+
+  it("keeps the editor unchanged without a weather forecast", async () => {
+    const el = await open(careBackend(plantWith({})), { [weatherPlain.entity_id]: weatherPlain });
+    await addWinter(el);
+    expect([...field(el, "Reading")!.querySelectorAll("optgroup")].map(group => group.label)).toEqual(["Other sensor"]);
+    expect(dialog(el)!.textContent).not.toMatch(/forecast/i);
+    expect(dialog(el)!.querySelector(".more-options")!.textContent).toContain("· delay, due again");
+  });
+
+  it("adds frost protection from the only weather forecast", async () => {
+    const backend = careBackend(plantWith({ species: withMinimum(5) }));
+    const el = await open(backend, { [weatherHome.entity_id]: weatherHome });
+    await addWinter(el);
+    const source = field(el, "Reading")!;
+    expect([...source.querySelectorAll("optgroup")].map(group => group.label)).toEqual(["Other sensor", "Weather forecast · Home"]);
+    expect(source.selectedOptions[0]!.textContent).toBe("Lowest temperature · next 24 h");
+    expect(field(el, "Weather entity")).toBeUndefined();
+    expect(dialog(el)!.querySelector(".suffix")!.textContent).toBe("°C");
+    expect(dialog(el)!.textContent).toContain("OpenPlantBook: minimum 5 °C");
+    dialogButton(el, "Use the OpenPlantBook minimum of 5 °C").click(); await settle(el);
+    expect(dialog(el)!.querySelector(".more-options")!.textContent).toContain("· look ahead, due again");
+    dialog(el)!.querySelector<HTMLButtonElement>(".more-options button")!.click(); await settle(el);
+    expect(field(el, "Only after (optional)")).toBeUndefined();
+    expect(dialog(el)!.textContent).toContain("The forecast is refreshed every 30 minutes.");
+    await choose(el, field(el, "Look ahead")!, "48");
+    expect(field(el, "Reading")!.selectedOptions[0]!.textContent).toBe("Lowest temperature · next 2 days");
+    expect(dialog(el)!.querySelector(".task-summary")!.textContent).toContain("When the forecast low for the next 2 days is below 5 °C");
+    // The highest temperature drops the OpenPlantBook minimum.
+    await choose(el, field(el, "Reading")!, "forecast:high");
+    expect(dialog(el)!.textContent).not.toContain("OpenPlantBook: minimum");
+    await choose(el, field(el, "Reading")!, "forecast:low");
+    dialogButton(el, "Add task").click(); await settle(el);
+    expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/create")).toMatchObject({ task_type: "winter_protection",
+      schedule: { kind: "reading", source: { forecast: { entity_id: weatherHome.entity_id, reading: "low", hours: 48 } }, condition: "below", value: 5, unit: "°C", for_minutes: 0, reset_value: null } });
+  });
+
+  it("asks for the weather entity when there are several", async () => {
+    const backend = careBackend(plantWith({ roles: { ...sample.roles!, temperature: temperatureRole } }));
+    const el = await open(backend, { [weatherHome.entity_id]: weatherHome, [weatherCabin.entity_id]: weatherCabin });
+    await addWinter(el);
+    const source = field(el, "Reading")!;
+    expect([...source.querySelectorAll("optgroup")].map(group => group.label)).toEqual(["This plant's sensors", "Other sensor", "Weather forecast"]);
+    expect(field(el, "Weather entity")).toBeUndefined();
+    await choose(el, source, "forecast:low");
+    const weather = field(el, "Weather entity")!;
+    expect([...weather.options].map(option => option.textContent)).toEqual(["Cabin", "Home"]);
+    expect(dialog(el)!.querySelector(".suffix")!.textContent).toBe("°F");
+    await choose(el, weather, weatherHome.entity_id);
+    expect(dialog(el)!.querySelector(".suffix")!.textContent).toBe("°C");
+    await typeInto(el, field(el, "Value")!, "1");
+    dialogButton(el, "Add task").click(); await settle(el);
+    expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/create")).toMatchObject({ schedule: { source: { forecast: { entity_id: weatherHome.entity_id, reading: "low", hours: 24 } }, unit: "°C", for_minutes: 0 } });
+  });
+
+  it("shows a forecast task with its value and coverage, and a missing weather entity", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-19T12:00:00Z"));
+    const backend = careBackend(plantWith({ care_tasks: [frost] }), () => [forecastState({ forecast_until: "2026-10-20T06:00:00Z" })]);
+    const el = await open(backend, { [weatherHome.entity_id]: weatherHome });
+    expect(carePlan(el).textContent).toContain("Forecast low below 2 °C · Home");
+    expect(carePlan(el).textContent).toContain("Not needed · forecast 6 °C");
+    expect(carePlan(el).textContent).toContain("Forecast only until Tue");
+    await menu(el, 0, "edit");
+    expect(field(el, "Reading")!.selectedOptions[0]!.textContent).toBe("Lowest temperature · next 24 h · 6 °C");
+    dialogButton(el, "Cancel").click(); await settle(el);
+  });
+
+  it("asks for another weather entity when the saved one is gone", async () => {
+    const other: HAState = { ...weatherHome, entity_id: "weather.mock_other", attributes: { ...weatherHome.attributes, friendly_name: "Other" } };
+    const backend = careBackend(plantWith({ care_tasks: [frost] }), () => [forecastState({ status: "no_reading", reading: null })]);
+    const el = await open(backend, { [other.entity_id]: other });
+    expect(carePlan(el).textContent).toContain("No forecast");
+    await menu(el, 0, "edit");
+    expect(dialog(el)!.textContent).toContain("Weather entity not found. Choose another one.");
+    expect(dialogButton(el, "Save").disabled).toBe(true);
+    await choose(el, field(el, "Weather entity")!, other.entity_id);
+    expect(dialog(el)!.textContent).not.toContain("Weather entity not found");
+    expect(dialogButton(el, "Save").disabled).toBe(false);
+    dialogButton(el, "Save").click(); await settle(el);
+    expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/update")).toMatchObject({ schedule: { ...frostSchedule, source: { forecast: { ...frostSchedule.source.forecast, entity_id: other.entity_id } } } });
   });
 });

@@ -228,3 +228,47 @@ test("a reading task can follow another sensor in its own unit", async ({ page }
   expect(updated).toMatchObject({ schedule: { kind: "reading", source: { entity_id: "sensor.greenhouse_temp" }, condition: "below", value: 41, unit: "°F", for_minutes: 0, reset_value: null } });
   await expect(page.locator("smart-plants-panel .care-plan")).toContainText("Below 41 °F · Greenhouse thermometer");
 });
+
+// Forecast readings: the plant has no temperature sensor, and the synthetic
+// weather.mock_home forecasts a low of 1 °C and a high of 9 °C.
+test("winter protection watches the forecast low without a temperature sensor", async ({ page }, info) => {
+  if (info.project.name === "mobile") await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${url}?seed&forecast`);
+  await button(page, "Office Aloe").click();
+  await page.getByRole("tab", { name: "Care", exact: true }).click();
+  await page.locator("smart-plants-panel .care-plan").getByRole("button", { name: "Add task", exact: true }).click();
+  await dialogButton(page, "Add winter protection").click();
+  const source = dialog(page).getByRole("combobox", { name: "Reading", exact: true });
+  await expect(source).toHaveValue("forecast:low");
+  await expect(source.locator("optgroup").last()).toHaveAttribute("label", "Weather forecast · Home");
+  await expect(dialog(page).getByRole("textbox", { name: "Value °C", exact: true })).toHaveValue("5");
+  await expect(dialog(page)).toContainText("From OpenPlantBook's minimum temperature.");
+  await expect(dialog(page).locator(".task-summary")).toContainText("When the forecast low for the next 24 hours is below 5 °C");
+  await dialog(page).getByRole("button", { name: /More options/ }).click();
+  await expect(dialog(page).getByRole("spinbutton", { name: "Only after (optional) h", exact: true })).toHaveCount(0);
+  await dialog(page).getByRole("combobox", { name: "Look ahead", exact: true }).selectOption("48");
+  await expect(dialog(page).locator(".task-summary")).toContainText("When the forecast low for the next 2 days is below 5 °C");
+  await noHorizontalScroll(page);
+  await audit(page, info, "forecast-editor");
+  await dialogButton(page, "Add task").click();
+  await expect(dialog(page)).toHaveCount(0);
+  const created = (await harnessMessages(page)).find(m => m.type === "smart_plants/care_tasks/create");
+  expect(created).toMatchObject({ task_type: "winter_protection",
+    schedule: { kind: "reading", source: { forecast: { entity_id: "weather.mock_home", reading: "low", hours: 48 } }, condition: "below", value: 5, unit: "°C", for_minutes: 0, reset_value: null } });
+  const plan = page.locator("smart-plants-panel .care-plan");
+  await expect(plan).toContainText("Forecast low below 5 °C · next 2 days · Home");
+  await expect(plan).toContainText("Due · forecast 1 °C");
+  await audit(page, info, "forecast-row");
+});
+
+test("a forecast task says when the forecast ends early", async ({ page }, info) => {
+  if (info.project.name === "mobile") await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${url}?seed&forecast&frost&short`);
+  await button(page, "Office Aloe").click();
+  await page.getByRole("tab", { name: "Care", exact: true }).click();
+  const plan = page.locator("smart-plants-panel .care-plan");
+  await expect(plan).toContainText("Forecast low below 2 °C · Home");
+  await expect(plan).toContainText("Due · forecast 1 °C");
+  await expect(plan).toContainText("Forecast only until");
+  await audit(page, info, "forecast-short");
+});

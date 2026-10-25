@@ -2,7 +2,7 @@
 // Automate… sheet. Pure render functions: the panel owns state and writes.
 import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
-import { CARE_TASK_TYPES, INTERVAL_UNITS, MAX_CARE_TASKS, MAX_FOR_HOURS, ROLE_UNITS, TASK_ICONS, TASK_INSTRUCTIONS_MAX, TASK_NAME_MAX, careNote, careSuggestions, draftSummary, existingTypes, inRestPeriod, isSourceRole, lastDone, minTemperature, monthName, monthRange, monthsInRange, numericSensor, parseNumber, pickSource, plantReadingRoles, presetDraft, readingSuggestion, readingValue, restSentence, scheduleText, shortDate, sourceName, sourceUnit, taskChip, taskName, winterDraft } from "../care-plan.js";
+import { CARE_TASK_TYPES, FORECAST_HOURS, INTERVAL_UNITS, MAX_CARE_TASKS, MAX_FOR_HOURS, ROLE_UNITS, TASK_ICONS, TASK_INSTRUCTIONS_MAX, TASK_NAME_MAX, careNote, careSuggestions, draftSummary, existingTypes, forecastEntities, forecastMissing, forecastRowValue, forecastShortText, forecastShortUntil, forecastUnit, forecastWindow, inRestPeriod, isForecastDraft, isSourceRole, lastDone, minTemperature, monthName, monthRange, monthsInRange, numericSensor, parseNumber, pickSource, plantReadingRoles, presetDraft, readingSuggestion, readingValue, restSentence, scheduleText, shortDate, sourceName, sourceUnit, taskChip, taskName, winterDraft } from "../care-plan.js";
 import type { DraftErrors, ReadingSourceRole, RestDraft, TaskDraft } from "../care-plan.js";
 import { isDefined } from "../ha-elements.js";
 import type { Localizer } from "../localize.js";
@@ -72,6 +72,7 @@ function taskRow(ctx: CarePlanContext, task: CareTask): TemplateResult {
   const state = ctx.overview?.care.find(item => item.task_id === task.id);
   const chip = state ? taskChip(l, state, task.schedule, ctx.today, { lastDoneAt: task.last_done_at, timeZone: ctx.timeZone }) : null;
   const done = lastDone(task, ctx.timeZone);
+  const shortUntil = state ? forecastShortUntil(state, task.schedule, Date.now()) : null;
   const busy = ctx.disabled || ctx.pending.has(task.id);
   // Reading tasks have no Skip: the next reading decides when they are due.
   const actions: [TaskAction, string, string][] = [
@@ -84,7 +85,7 @@ function taskRow(ctx: CarePlanContext, task: CareTask): TemplateResult {
   return html`<li class="li task">
     <span class="ic tonal" aria-hidden="true"><ha-icon .icon=${TASK_ICONS[task.type]}></ha-icon></span>
     <span class="li-main"><span class="li-title">${name}</span>
-      <span class="li-sub">${scheduleText(l, task.schedule, ctx.plant.rest_period ?? null, ctx.states)} · ${done ? l.t("care_plan.last_done", { date: shortDate(l, done, ctx.today) }) : l.t("care_plan.never_done")}</span></span>
+      <span class="li-sub">${scheduleText(l, task.schedule, ctx.plant.rest_period ?? null, ctx.states)} · ${done ? l.t("care_plan.last_done", { date: shortDate(l, done, ctx.today) }) : l.t("care_plan.never_done")}${shortUntil ? html`<br>${forecastShortText(l, shortUntil, ctx.timeZone)}` : nothing}</span></span>
     <span class="task-side">${chip ? html`<span class="cchip tone-${chip.tone}"><ha-icon aria-hidden="true" .icon=${chip.icon}></ha-icon><span>${chip.text}</span></span>` : nothing}
       ${state?.is_due ? html`<button type="button" class="btn tonal sm" ?disabled=${busy} aria-label=${l.t("care_plan.done_label", { name })} @click=${() => ctx.onDone(task)}><ha-icon aria-hidden="true" icon="mdi:check"></ha-icon>${l.t("care_plan.done")}</button>` : nothing}</span>
     <ha-dropdown class="task-menu" @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => ctx.onAction(task, e.detail.item.value as TaskAction)}>
@@ -151,7 +152,7 @@ function presetStep(ctx: TaskEditorContext): TemplateResult {
   const taken = existingTypes(plant.care_tasks ?? []);
   const suggestions = careSuggestions(plant);
   const minTemp = minTemperature(plant);
-  const winter = minTemp === null ? null : winterDraft(plant);
+  const winter = minTemp === null ? null : winterDraft(plant, ctx.states, l);
   const species = plant.species?.snapshot.latin_name ?? plant.species?.snapshot.common_name ?? "";
   return html`<p class="muted">${l.t("care_plan.add_intro")}</p>
     ${suggestions.length || winter ? html`<section class="suggestions" aria-labelledby="suggestions-heading">
@@ -197,14 +198,41 @@ function readingFields(ctx: TaskEditorContext, err: (field: keyof DraftErrors) =
   const roles: ReadingSourceRole[] = plantReadingRoles(plant);
   // A task can follow a role whose sensors were removed since; keep it listed.
   if (draft.role && isSourceRole(draft.role) && !roles.includes(draft.role)) roles.push(draft.role);
-  const other = !draft.role && (!!draft.entityId || !!state.otherSensor);
-  const selected = draft.role ? `role:${draft.role}` : other ? "other" : "";
+  const forecast = isForecastDraft(draft) ? draft.forecast : null;
+  const other = !draft.role && !forecast && (!!draft.entityId || !!state.otherSensor);
+  const selected = draft.role ? `role:${draft.role}` : forecast ? `forecast:${forecast}` : other ? "other" : "";
+  // The forecast group appears only with a weather entity that has a
+  // forecast, or for a task that already reads one.
+  const weather = forecastEntities(l, states);
+  const showForecast = weather.length > 0 || !!forecast;
+  const missing = forecastMissing(draft, states);
+  const hours = draft.forecastHours;
+  const forecastText = (reading: "low" | "high") => {
+    const text = l.t(`care_plan.forecast_row_${reading}`, { window: forecastWindow(l, hours) });
+    const current = draft.weatherEntityId ? forecastRowValue(plant, ctx.overview, state.taskId, { entity_id: draft.weatherEntityId, reading, hours }) : null;
+    return current ? l.t("care_plan.reading_role_value", { role: text, value: readingValue(l, current.value, current.unit) }) : text;
+  };
+  // With several weather entities, or one the task reads that is no longer
+  // offered, a weather entity picker follows the Reading picker.
+  const listed = weather.some(s => s.entity_id === draft.weatherEntityId);
+  const forecastGroup = weather.length === 1 && (listed || !forecast) ? l.t("care_plan.reading_group_forecast_entity", { name: sourceName(l, { entity_id: weather[0]!.entity_id }, states) }) : l.t("care_plan.reading_group_forecast");
+  const pickForecast = (reading: "low" | "high", entityId: string | null) => {
+    if (!entityId) return;
+    ctx.onEditor({ otherSensor: false });
+    ctx.onChange(pickSource(draft, { forecast: { entity_id: entityId, reading, hours } }, forecastUnit(entityId, states), plant));
+  };
   const roleText = (role: ReadingSourceRole) => {
     const value = ctx.overview?.roles[role]?.value;
     return typeof value === "number" ? l.t("care_plan.reading_role_value", { role: readingLabel(l, role), value: readingValue(l, value, ROLE_UNITS[role]) }) : readingLabel(l, role);
   };
   const pick = (value: string) => {
     if (value === "other") { ctx.onEditor({ otherSensor: true }); ctx.onChange(pickSource(draft, null, null, plant)); return; }
+    if (value === "forecast:low" || value === "forecast:high") {
+      // Keep the chosen weather entity; else the only or first one.
+      const keep = draft.weatherEntityId && weather.some(s => s.entity_id === draft.weatherEntityId) ? draft.weatherEntityId : null;
+      pickForecast(value === "forecast:low" ? "low" : "high", keep ?? weather[0]?.entity_id ?? draft.weatherEntityId);
+      return;
+    }
     const role = value.slice(5);
     if (!isSourceRole(role)) return;
     ctx.onEditor({ otherSensor: false });
@@ -217,9 +245,11 @@ function readingFields(ctx: TaskEditorContext, err: (field: keyof DraftErrors) =
   return html`<label>${l.t("care_plan.reading")}<select aria-invalid=${errors.source ? "true" : "false"} aria-describedby=${errors.source ? "task-source-error" : nothing} @change=${(e: Event) => pick((e.target as HTMLSelectElement).value)}>
       <option value="" disabled ?selected=${selected === ""}>${l.t("care_plan.reading_choose")}</option>
       ${roles.length ? html`<optgroup label=${l.t("care_plan.reading_group_plant")}>${roles.map(role => html`<option value="role:${role}" ?selected=${selected === `role:${role}`}>${roleText(role)}</option>`)}</optgroup>` : nothing}
-      <optgroup label=${l.t("care_plan.reading_group_other")}><option value="other" ?selected=${selected === "other"}>${l.t("care_plan.reading_other")}</option></optgroup></select></label>
+      <optgroup label=${l.t("care_plan.reading_group_other")}><option value="other" ?selected=${selected === "other"}>${l.t("care_plan.reading_other")}</option></optgroup>
+      ${showForecast ? html`<optgroup label=${forecastGroup}>${(["low", "high"] as const).map(reading => html`<option value="forecast:${reading}" ?selected=${selected === `forecast:${reading}`}>${forecastText(reading)}</option>`)}</optgroup>` : nothing}</select></label>
     ${other ? entityPicker(ctx, pickEntity) : nothing}
-    ${fieldError("task-source-error", err("source"))}
+    ${forecast && (weather.length > 1 || !listed) ? weatherPicker(ctx, weather, missing, entityId => pickForecast(forecast, entityId)) : nothing}
+    ${errors.source === "care_plan.error_weather_missing" ? nothing : fieldError("task-source-error", err("source"))}
     <div class="grid2">
       <label>${l.t("care_plan.due_when")}<select @change=${(e: Event) => ctx.onChange({ condition: (e.target as HTMLSelectElement).value === "above" ? "above" : "below" })}>
         <option value="below" ?selected=${draft.condition === "below"}>${l.t("care_plan.below")}</option>
@@ -232,6 +262,18 @@ function readingFields(ctx: TaskEditorContext, err: (field: keyof DraftErrors) =
       ? html`<div class="note-hint small"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.min_temp_applied")}</span></div>`
       : html`<div class="note-hint small"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.min_temp_hint", { value: readingValue(l, suggestion, draft.readingUnit ?? "°C") })}</span>
           <button type="button" class="btn text sm" ?disabled=${ctx.busy} aria-label=${l.t("care_plan.min_temp_use_label", { value: readingValue(l, suggestion, draft.readingUnit ?? "°C") })} @click=${() => ctx.onChange({ value: String(suggestion) })}>${l.t("care_plan.min_temp_use")}</button></div>`}`;
+}
+
+// The weather entity of a forecast reading, shown when there are several to
+// choose from or the chosen one is gone.
+function weatherPicker(ctx: TaskEditorContext, weather: HAState[], missing: boolean, pick: (entityId: string) => void): TemplateResult {
+  const { l } = ctx; const draft = ctx.state.draft; const states = ctx.states;
+  const current = draft.weatherEntityId;
+  const listed = !!current && weather.some(s => s.entity_id === current);
+  return html`<label>${l.t("care_plan.weather_entity")}<select aria-invalid=${missing ? "true" : "false"} aria-describedby=${missing ? "task-weather-error" : nothing} @change=${(e: Event) => pick((e.target as HTMLSelectElement).value)}>
+      ${current && !listed ? html`<option value="" disabled selected>${missing ? current : sourceName(l, { entity_id: current }, states)}</option>` : nothing}
+      ${weather.map(s => html`<option value=${s.entity_id} ?selected=${s.entity_id === current}>${sourceName(l, { entity_id: s.entity_id }, states)}</option>`)}</select></label>
+    ${missing ? fieldError("task-weather-error", l.t("care_plan.error_weather_missing")) : nothing}`;
 }
 
 // "Any other sensor": Home Assistant's entity picker limited to sensors with
@@ -249,21 +291,25 @@ function entityPicker(ctx: TaskEditorContext, pick: (entityId: string) => void):
     ${sensors.map(s => html`<option value=${s.entity_id} ?selected=${s.entity_id === draft.entityId}>${sourceName(l, { entity_id: s.entity_id }, states)}</option>`)}</select></label>`;
 }
 
-// More options of a reading task: the "only after" delay and the value the
-// reading must pass before the task can be due again.
+// More options of a reading task: the "only after" delay (for a forecast,
+// the look-ahead instead) and the value the reading must pass before the
+// task can be due again.
 function readingMore(ctx: TaskEditorContext, err: (field: keyof DraftErrors) => string | undefined): TemplateResult {
   const { l } = ctx; const draft = ctx.state.draft; const errors = ctx.state.errors;
   const unit = draft.readingUnit ?? "";
   const describe = (hint: string, error: boolean, id: string) => error ? `${hint} ${id}` : hint;
+  const forecast = isForecastDraft(draft);
   return html`<div id="task-more"><div class="grid2">
-      <label>${l.t("care_plan.for_hours")}<span class="suffix-field"><input type="number" inputmode="decimal" min="0" max=${MAX_FOR_HOURS} step="any" .value=${draft.forHours}
+      ${forecast ? html`<label>${l.t("care_plan.look_ahead")}<select aria-describedby="task-ahead-hint" @change=${(e: Event) => ctx.onChange({ forecastHours: Number((e.target as HTMLSelectElement).value) })}>
+          ${FORECAST_HOURS.map(hours => html`<option value=${hours} ?selected=${draft.forecastHours === hours}>${l.t(`care_plan.look_ahead_${hours}`)}</option>`)}</select></label>`
+        : html`<label>${l.t("care_plan.for_hours")}<span class="suffix-field"><input type="number" inputmode="decimal" min="0" max=${MAX_FOR_HOURS} step="any" .value=${draft.forHours}
           aria-invalid=${errors.forHours ? "true" : "false"} aria-describedby=${describe("task-for-hint", !!errors.forHours, "task-for-error")}
-          @input=${(e: Event) => ctx.onChange({ forHours: (e.target as HTMLInputElement).value })}><span class="suffix">${l.t("care_plan.hours")}</span></span></label>
+          @input=${(e: Event) => ctx.onChange({ forHours: (e.target as HTMLInputElement).value })}><span class="suffix">${l.t("care_plan.hours")}</span></span></label>`}
       <label>${l.t(draft.condition === "below" ? "care_plan.reset_after_above" : "care_plan.reset_after_below")}<span class="suffix-field"><input type="text" inputmode="decimal" .value=${draft.resetValue} placeholder=${draft.value.trim()}
           aria-invalid=${errors.resetValue ? "true" : "false"} aria-describedby=${describe("task-reset-hint", !!errors.resetValue, "task-reset-error")}
           @input=${(e: Event) => ctx.onChange({ resetValue: (e.target as HTMLInputElement).value })}>${unit ? html`<span class="suffix">${unit}</span>` : nothing}</span></label></div>
-    ${fieldError("task-for-error", err("forHours"))}${fieldError("task-reset-error", err("resetValue"))}
-    <span class="small muted" id="task-for-hint">${l.t("care_plan.for_hours_hint")}</span>
+    ${forecast ? nothing : fieldError("task-for-error", err("forHours"))}${fieldError("task-reset-error", err("resetValue"))}
+    ${forecast ? html`<span class="small muted" id="task-ahead-hint">${l.t("care_plan.look_ahead_hint")}</span>` : html`<span class="small muted" id="task-for-hint">${l.t("care_plan.for_hours_hint")}</span>`}
     <span class="small muted" id="task-reset-hint">${l.t("care_plan.reset_hint")}</span></div>`;
 }
 
@@ -326,7 +372,7 @@ function detailsStep(ctx: TaskEditorContext): TemplateResult {
       : note && draft.instructions === note ? html`<div class="note-hint small"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${l.t("care_plan.note_applied")}</span></div>` : nothing}
     <div class="more-options">
       <button type="button" class="btn text sm" aria-expanded=${moreOpen ? "true" : "false"} aria-controls="task-more" @click=${ctx.onToggleMore}>
-        <ha-icon aria-hidden="true" icon=${moreOpen ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>${l.t("care_plan.more_options")}${reading && !moreOpen ? html`<span class="more-hint">&nbsp;· ${l.t("care_plan.more_options_reading")}</span>` : nothing}</button>
+        <ha-icon aria-hidden="true" icon=${moreOpen ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>${l.t("care_plan.more_options")}${reading && !moreOpen ? html`<span class="more-hint">&nbsp;· ${l.t(isForecastDraft(draft) ? "care_plan.more_options_forecast" : "care_plan.more_options_reading")}</span>` : nothing}</button>
       ${moreOpen && reading ? readingMore(ctx, err) : moreOpen ? html`<div id="task-more"><label>${l.t("care_plan.last_done_field")}
         <input type="date" max=${ctx.today} .value=${draft.lastDone} aria-invalid=${errors.lastDone ? "true" : "false"} aria-describedby="task-last-done-hint${errors.lastDone ? " task-last-done-error" : ""}"
           @input=${(e: Event) => ctx.onChange({ lastDone: input(e) })}></label>
@@ -335,7 +381,7 @@ function detailsStep(ctx: TaskEditorContext): TemplateResult {
     <div class="actions dialog-actions">
       ${state.taskId ? html`<button type="button" class="danger-text" ?disabled=${ctx.busy} @click=${ctx.onDelete}>${l.t("care_plan.delete")}</button><span class="spacer"></span>` : html`<button type="button" ?disabled=${ctx.busy} @click=${ctx.onBack}>${l.t("care_plan.back")}</button><span class="spacer"></span>`}
       <button type="button" ?disabled=${ctx.busy} @click=${ctx.onCancel}>${l.t("common.cancel")}</button>
-      <button type="button" class="primary" ?disabled=${ctx.busy} @click=${ctx.onSave}>${l.t(state.taskId ? "care_plan.save" : "care_plan.add_task")}</button></div>`;
+      <button type="button" class="primary" ?disabled=${ctx.busy || forecastMissing(draft, ctx.states)} @click=${ctx.onSave}>${l.t(state.taskId ? "care_plan.save" : "care_plan.add_task")}</button></div>`;
 }
 
 // ---- Rest period editor ----

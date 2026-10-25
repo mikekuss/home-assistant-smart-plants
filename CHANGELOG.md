@@ -9,7 +9,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Added
 
 - Reading care tasks can watch a weather entity's forecast low or high temperature for the
-  next 24, 48 or 72 hours. See [Entities](docs/entities.md#forecast-readings).
+  next 24 hours, 2 days or 3 days, for example to be reminded before a frost night. The
+  **Reading** picker shows a **Weather forecast** group when Home Assistant has a weather entity
+  with a forecast, and **Winter protection** starts on the forecast low for plants without a
+  temperature sensor. The forecast is refreshed every 30 minutes. See
+  [Getting started](docs/getting-started.md#frost-warning-from-the-forecast) and
+  [Entities](docs/entities.md#forecast-readings).
 
 ## [0.10.0] - 2026-10-24
 
