@@ -277,7 +277,11 @@ state. While a binary sensor is unavailable (for example without a valid moistur
 Home Assistant shows no attributes for it, so `snoozed` is missing then; a state condition on
 `snoozed: false` doesn't match in that case.
 
-To keep an automation quiet during a snooze, use a native state condition on the attribute:
+The Smart Plants triggers skip snoozed plants by themselves, and the *Plant is not snoozed*
+condition checks the snooze without attributes (see
+[Smart Plants triggers and conditions](automations.md#smart-plants-triggers-and-conditions)).
+It reads the snooze from any available binary sensor of the plant. If you use the entities
+directly, a state condition on the attribute keeps an automation quiet during a snooze:
 
 ```yaml
 conditions:

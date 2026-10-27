@@ -1,0 +1,21 @@
+# Right away, chosen plants, quiet hours, legacy service
+alias: "Smart Plants: plant needs water"
+description: "Created in Smart Plants → Notifications. Sends a message when a plant has needed water for 30 minutes. Snoozed plants send theirs when the snooze ends."
+mode: queued
+max: 20
+triggers:
+  - trigger: smart_plants.needs_water
+    id: smart_plants_needs_water_1a2b3c4d
+    target: { device_id: [0123456789abcdef0123456789abcdef, fedcba9876543210fedcba9876543210] }
+    options: { behavior: each, for: { minutes: 30 }, include_snoozed: false }
+conditions:
+  - condition: not
+    conditions:
+      - condition: time
+        after: "22:00:00"
+        before: "07:00:00"
+actions:
+  - action: notify.mobile_app_mock_phone
+    data:
+      title: "{{ trigger.plant }} needs water"
+      message: "Water it when you get a chance."

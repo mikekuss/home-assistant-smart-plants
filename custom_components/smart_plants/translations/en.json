@@ -523,6 +523,37 @@
         "note": "Note",
         "task": "Other task"
       }
+    },
+    "problem": {
+      "options": {
+        "needs_water": "Needs water",
+        "too_wet": "Too wet",
+        "sensor_stale": "Sensor stale",
+        "temperature_stress": "Temperature stress",
+        "humidity_stress": "Humidity stress",
+        "soil_temperature_stress": "Soil temperature stress",
+        "conductivity_stress": "Conductivity stress",
+        "co2_stress": "CO2 stress",
+        "low_light": "Low light",
+        "low_battery": "Low battery"
+      }
+    },
+    "task_type": {
+      "options": {
+        "fertilize": "Fertilize",
+        "prune": "Prune",
+        "repot": "Repot",
+        "pests": "Check for pests",
+        "winter_protection": "Winter protection",
+        "custom": "Custom"
+      }
+    },
+    "report_include": {
+      "options": {
+        "needs_water": "Needs water",
+        "problems": "Problems",
+        "care_tasks": "Care tasks due"
+      }
     }
   },
   "services": {
@@ -565,6 +596,20 @@
     "unsnooze": {
       "name": "Resume alerts",
       "description": "Ends the alert snooze of Smart Plants plants now."
+    },
+    "get_report": {
+      "name": "Get plant report",
+      "description": "Returns which plants need water, have problems or have care tasks due, with a ready-to-send title and message. Paused plants are left out.",
+      "fields": {
+        "include": {
+          "name": "Include",
+          "description": "What the report lists. Problems are all problems except needs water."
+        },
+        "include_snoozed": {
+          "name": "Include snoozed plants",
+          "description": "Also list plants whose alerts are snoozed, marked as snoozed."
+        }
+      }
     }
   },
   "exceptions": {
@@ -631,5 +676,145 @@
     "snooze_rejected": {
       "message": "The snooze of {target} was not saved: {reason}"
     }
+  },
+  "triggers": {
+    "needs_water": {
+      "name": "Plant needs water",
+      "description": "Triggers when one or more plants start to need water. Snoozed plants trigger when the snooze ends. Without a target, it watches all plants.",
+      "fields": {
+        "behavior": {
+          "name": "Trigger when"
+        },
+        "for": {
+          "name": "For at least"
+        },
+        "include_snoozed": {
+          "name": "Also while snoozed",
+          "description": "Also trigger while the plant is snoozed. The end of the snooze then does not trigger again."
+        }
+      }
+    },
+    "problem_started": {
+      "name": "Plant problem started",
+      "description": "Triggers when a plant problem starts, for example too wet or too little light.",
+      "fields": {
+        "problems": {
+          "name": "Problems",
+          "description": "The problems to watch."
+        },
+        "for": {
+          "name": "For at least"
+        },
+        "include_snoozed": {
+          "name": "Also while snoozed",
+          "description": "Also trigger while the plant is snoozed. The end of the snooze then does not trigger again."
+        }
+      }
+    },
+    "problem_cleared": {
+      "name": "Plant problem cleared",
+      "description": "Triggers when a plant problem is over.",
+      "fields": {
+        "problems": {
+          "name": "Problems",
+          "description": "The problems to watch."
+        },
+        "for": {
+          "name": "For at least"
+        }
+      }
+    },
+    "care_task_due": {
+      "name": "Care task became due",
+      "description": "Triggers when a care task of a plant becomes due.",
+      "fields": {
+        "task_types": {
+          "name": "Task types",
+          "description": "The care task types to watch."
+        },
+        "for": {
+          "name": "For at least"
+        },
+        "include_snoozed": {
+          "name": "Also while snoozed",
+          "description": "Also trigger while the plant is snoozed. The end of the snooze then does not trigger again."
+        }
+      }
+    }
+  },
+  "conditions": {
+    "needs_water": {
+      "name": "Plant needs water",
+      "description": "Tests whether one or more plants need water.",
+      "fields": {
+        "behavior": {
+          "name": "Condition passes if"
+        },
+        "for": {
+          "name": "For at least"
+        }
+      }
+    },
+    "has_problem": {
+      "name": "Plant has a problem",
+      "description": "Tests whether plants have one of the selected problems.",
+      "fields": {
+        "problems": {
+          "name": "Problems",
+          "description": "The problems to watch."
+        },
+        "behavior": {
+          "name": "Condition passes if"
+        }
+      }
+    },
+    "care_task_due": {
+      "name": "Care task is due",
+      "description": "Tests whether plants have a due care task.",
+      "fields": {
+        "task_types": {
+          "name": "Task types",
+          "description": "The care task types to watch."
+        },
+        "behavior": {
+          "name": "Condition passes if"
+        }
+      }
+    },
+    "is_not_snoozed": {
+      "name": "Plant is not snoozed",
+      "description": "Tests whether the alerts of plants are not snoozed.",
+      "fields": {
+        "behavior": {
+          "name": "Condition passes if"
+        }
+      }
+    },
+    "needs_attention": {
+      "name": "Plants need attention",
+      "description": "Tests whether the plant report would list at least one plant.",
+      "fields": {
+        "include": {
+          "name": "Include",
+          "description": "What counts. Problems are all problems except needs water."
+        },
+        "include_snoozed": {
+          "name": "Include snoozed plants",
+          "description": "Also count plants whose alerts are snoozed."
+        }
+      }
+    }
+  },
+  "common": {
+    "report_title_one": "1 plant needs attention",
+    "report_title_other": "{count} plants need attention",
+    "report_title_empty": "All plants are fine",
+    "report_message_empty": "Nothing needs attention right now.",
+    "report_due": "Due: {tasks}",
+    "report_snoozed_marker": "snoozed",
+    "report_more_one": "…and 1 more plant.",
+    "report_more_other": "…and {count} more plants.",
+    "report_snoozed_left_out_one": "1 snoozed plant not included.",
+    "report_snoozed_left_out_other": "{count} snoozed plants not included."
   }
 }

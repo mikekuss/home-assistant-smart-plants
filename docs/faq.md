@@ -94,6 +94,16 @@ from Home Assistant, a Repairs issue helps you pick a replacement.
 Smart Plants only reports "no problem" when it has a valid, fresh reading. Without one, the
 entity is unavailable so that a broken sensor never looks like a healthy plant.
 
+## Why didn't my automation fire after a restart or a pause?
+
+The Smart Plants triggers fire when a problem starts, not when an entity comes back from
+unavailable. After a restart, after you resume a paused plant, or when a sensor reconnects,
+the plant's entities return with their current state, and the trigger doesn't count that as a
+new problem. Otherwise every restart would repeat all your notifications. A plant that still
+needs water shows up in the next [daily plant report](automations.md#daily-plant-report), and
+the trigger fires the next time the problem starts. The same applies to a snooze that ends
+while Home Assistant is off.
+
 ## Why doesn't the battery affect the health score?
 
 A low battery says something about the sensor, not the plant. It has its own *Low battery*

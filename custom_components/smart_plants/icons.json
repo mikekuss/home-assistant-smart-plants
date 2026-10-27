@@ -56,6 +56,40 @@
     },
     "unsnooze": {
       "service": "mdi:bell-ring-outline"
+    },
+    "get_report": {
+      "service": "mdi:clipboard-text"
+    }
+  },
+  "triggers": {
+    "needs_water": {
+      "trigger": "mdi:water-alert"
+    },
+    "problem_started": {
+      "trigger": "mdi:alert-circle"
+    },
+    "problem_cleared": {
+      "trigger": "mdi:check-circle"
+    },
+    "care_task_due": {
+      "trigger": "mdi:calendar-check"
+    }
+  },
+  "conditions": {
+    "needs_water": {
+      "condition": "mdi:water-alert"
+    },
+    "has_problem": {
+      "condition": "mdi:alert-circle"
+    },
+    "care_task_due": {
+      "condition": "mdi:calendar-check"
+    },
+    "is_not_snoozed": {
+      "condition": "mdi:bell"
+    },
+    "needs_attention": {
+      "condition": "mdi:sprout"
     }
   }
 }

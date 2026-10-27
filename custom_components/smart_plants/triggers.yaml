@@ -1,0 +1,101 @@
+# Without a target a trigger watches every plant, including plants added
+# later. A Smart Plants entity picked directly counts only if it is the kind
+# of sensor the trigger watches.
+.target: &target
+  entity:
+    - integration: smart_plants
+      domain: binary_sensor
+  device:
+    - integration: smart_plants
+
+.for: &for
+  required: true
+  default: "00:00:00"
+  selector:
+    duration:
+
+.include_snoozed: &include_snoozed
+  required: true
+  default: false
+  selector:
+    boolean:
+
+.problems: &problems
+  required: true
+  default:
+    - needs_water
+    - too_wet
+    - sensor_stale
+    - temperature_stress
+    - humidity_stress
+    - soil_temperature_stress
+    - conductivity_stress
+    - co2_stress
+    - low_light
+    - low_battery
+  selector:
+    select:
+      translation_key: problem
+      multiple: true
+      options:
+        - needs_water
+        - too_wet
+        - sensor_stale
+        - temperature_stress
+        - humidity_stress
+        - soil_temperature_stress
+        - conductivity_stress
+        - co2_stress
+        - low_light
+        - low_battery
+
+needs_water:
+  target: *target
+  fields:
+    behavior:
+      required: true
+      default: each
+      selector:
+        automation_behavior:
+          mode: trigger
+    for: *for
+    include_snoozed: *include_snoozed
+
+problem_started:
+  target: *target
+  fields:
+    problems: *problems
+    for: *for
+    include_snoozed: *include_snoozed
+
+problem_cleared:
+  target: *target
+  fields:
+    problems: *problems
+    for: *for
+
+care_task_due:
+  target: *target
+  fields:
+    task_types:
+      required: true
+      default:
+        - fertilize
+        - prune
+        - repot
+        - pests
+        - winter_protection
+        - custom
+      selector:
+        select:
+          translation_key: task_type
+          multiple: true
+          options:
+            - fertilize
+            - prune
+            - repot
+            - pests
+            - winter_protection
+            - custom
+    for: *for
+    include_snoozed: *include_snoozed
