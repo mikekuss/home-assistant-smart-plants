@@ -381,7 +381,9 @@ async def test_action_reports_real_plants(hass: HomeAssistant) -> None:
     assert nothing["count"] == 0
     assert nothing["paused"] == 0
     assert (await get_report(hass, entity_id="all"))["count"] == 2
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, aloe_id)})
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, aloe_id), entry.entry_id
+    )
     assert device is not None
     assert aloe["device_id"] == device.id
 
@@ -394,7 +396,9 @@ async def test_action_label_target_and_snooze(hass: HomeAssistant) -> None:
     await watered_plant(hass, manager, "Fern", soil="sensor.mock_soil_fern")
     await set_soil(hass, "10")
     await set_soil(hass, "10", "sensor.mock_soil_fern")
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, aloe_id)})
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, aloe_id), entry.entry_id
+    )
     assert device is not None
     dr.async_get(hass).async_update_device(device.id, labels={label.label_id})
 
