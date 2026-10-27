@@ -121,4 +121,9 @@ CI runs the same checks plus hassfest and the HACS action.
   template logic.
 - Keep health detection separate from irrigation. Any future actuation needs safe defaults
   (cooldowns, maximum runtime, explicit user confirmation) and prior discussion in an issue.
+- Monitoring a plant with sensors is the core: status, readings, watering and the care log.
+  Every other feature is optional. It must not add visible UI or entities for users who don't
+  use it, and it must still be easy to find. Put it behind a menu item, an "Add" button or an
+  empty state, or disable its entities by default. A pull request that adds visible UI or an
+  entity for every user says so in its description.
 - Avoid entity explosion: optional entities should be created lazily or disabled by default.
