@@ -157,6 +157,19 @@ describe("filtering, search and sorting", () => {
     expect(names("problems")).toEqual(["Monstera", "Snake Plant"]);
     expect(names("sensors")).toEqual(["Aloe", "Peace Lily"]);
   });
+  it("leaves snoozed plants out of every attention filter", () => {
+    const snoozed = [{ ...item("Fern", "needs_water", null), snoozed: true }, { ...item("Ivy", "problem", null), snoozed: true }, { ...item("Cactus", "stale", null), snoozed: true }, item("Basil", "needs_water", "Kitchen")];
+    expect(snoozed.filter(i => matchesFilter("all", i.status, false, i.snoozed)).map(i => i.name)).toEqual(["Fern", "Ivy", "Cactus", "Basil"]);
+    expect(snoozed.filter(i => matchesFilter("water", i.status, false, i.snoozed)).map(i => i.name)).toEqual(["Basil"]);
+    expect(snoozed.filter(i => matchesFilter("problems", i.status, false, i.snoozed))).toEqual([]);
+    expect(snoozed.filter(i => matchesFilter("sensors", i.status, false, i.snoozed))).toEqual([]);
+    expect(matchesFilter("care", "healthy", true, true)).toBe(false);
+    expect(matchesFilter("care", "healthy", true, false)).toBe(true);
+  });
+  it("sorts a snoozed plant like a healthy one", () => {
+    const list = [item("Pothos", "healthy", null), { ...item("Fern", "needs_water", null), snoozed: true }, item("Basil", "needs_water", null), { ...item("Jade", "paused", null), snoozed: true }];
+    expect(sortItems(list, "attention").map(i => i.name)).toEqual(["Basil", "Fern", "Pothos", "Jade"]);
+  });
   it("searches name, area, species, category and tags", () => {
     expect(items.filter(i => matchesSearch(i, "kitchen")).map(i => i.name)).toEqual(["Basil", "Aloe"]);
     expect(items.filter(i => matchesSearch(i, "  OCIMUM ")).map(i => i.name)).toEqual(["Basil"]);

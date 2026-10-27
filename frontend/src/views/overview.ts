@@ -9,7 +9,7 @@ import type { OverviewFilter, OverviewItem, OverviewSort, PlantOverview } from "
 import { speciesSearchNames } from "../model.js";
 import type { PlantRecord } from "../types.js";
 import { careLine, dueTasks, localDate } from "../care-plan.js";
-import { snoozeChipText } from "../snooze.js";
+import { activeSnooze, snoozeChipText } from "../snooze.js";
 
 export const DOCUMENTATION_URL = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md";
 
@@ -160,12 +160,15 @@ export class SmartPlantsOverview extends LitElement {
   }
 
   private _items(): CardItem[] {
+    const now = this.now ?? Date.now();
     return this.plants.map(plant => {
       const species = plant.species?.snapshot.latin_name ?? plant.species?.snapshot.common_name ?? null;
       const areaName = this.areaNames[plant.id] ?? null;
       const overview = this.overview[plant.id];
+      // The same end the snooze chip reads, so a snooze that has ended counts again.
+      const snoozed = activeSnooze(overview ? overview.snoozed_until : plant.snoozed_until, now) !== null;
       return {
-        id: plant.id, name: plant.name, areaName, status: overview?.status, plant, overview, species, careDue: dueTasks(overview).length > 0,
+        id: plant.id, name: plant.name, areaName, status: overview?.status, snoozed, plant, overview, species, careDue: dueTasks(overview).length > 0,
         searchText: [plant.name, areaName, ...(plant.species ? speciesSearchNames(plant.species.snapshot) : []), plant.category, ...plant.tags].filter(Boolean).join(" "),
       };
     });
@@ -179,12 +182,12 @@ export class SmartPlantsOverview extends LitElement {
     if (this.loading && !this.plants.length) return html`<p class="loading" role="status">${l.t("list.loading")}</p>`;
     if (!this.plants.length) return this._renderEmpty();
     const items = this._items();
-    const shown = items.filter(item => matchesFilter(this._filter, item.status, item.careDue) && matchesSearch(item, this._query));
-    // The Care due tile appears only while some plant has a task due.
-    const filters = OVERVIEW_FILTERS.filter(filter => filter !== "care" || items.some(item => item.careDue) || this._filter === "care");
+    const shown = items.filter(item => matchesFilter(this._filter, item.status, item.careDue, item.snoozed) && matchesSearch(item, this._query));
+    // The Care due tile appears only while some plant that is not snoozed has a task due.
+    const filters = OVERVIEW_FILTERS.filter(filter => filter !== "care" || items.some(item => matchesFilter("care", item.status, item.careDue, item.snoozed)) || this._filter === "care");
     const filtered = this._filter !== "all";
     return html`<div class="content">
-      <div class="summary ${filters.length === 5 ? "five" : ""}" role="group" aria-label=${l.t("overview.filter_label")}>${filters.map(filter => this._renderTile(filter, items.filter(item => matchesFilter(filter, item.status, item.careDue)).length))}</div>
+      <div class="summary ${filters.length === 5 ? "five" : ""}" role="group" aria-label=${l.t("overview.filter_label")}>${filters.map(filter => this._renderTile(filter, items.filter(item => matchesFilter(filter, item.status, item.careDue, item.snoozed)).length))}</div>
       <div class="listbar">
         <label class="search"><ha-icon aria-hidden="true" icon="mdi:magnify"></ha-icon>
           <input type="search" .value=${this._query} placeholder=${l.t("overview.search")} aria-label=${l.t("overview.search")} @input=${(e: Event) => { this._query = (e.target as HTMLInputElement).value; }}></label>
