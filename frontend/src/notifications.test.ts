@@ -117,10 +117,17 @@ describe("automation config", () => {
     expect(buildNotification({ ...water, delayMinutes: 15 }, ENGLISH).description).toContain("for 15 minutes.");
     expect(buildNotification({ ...daily, time: "21:30" }, ENGLISH).triggers).toEqual([{ trigger: "time", at: "21:30:00", id: "smart_plants_daily_report" }]);
   });
+  it("asks for the report in the panel language, not the system language", () => {
+    const language = (l: ReturnType<typeof createLocalizer>) => ((buildNotification(daily, l).actions as Record<string, unknown>[])[0]!.data as Record<string, unknown>).language;
+    expect(language(ENGLISH)).toBe("en");
+    expect(language(createLocalizer({ language: "de-CH" }))).toBe("de");
+    expect(language(createLocalizer({ language: "fr" }))).toBe("en");
+  });
   it("uses the German texts in German", () => {
     const report = buildNotification(daily, DE);
     expect(report.alias).toBe("Smart Plants: täglicher Pflanzenbericht");
     expect(report.description).toBe("Erstellt in Smart Plants → Benachrichtigungen. Schickt eine kurze Liste der Pflanzen, die Wasser brauchen, Probleme oder fällige Pflegeaufgaben haben.");
+    expect((report.actions as Record<string, unknown>[])[0]!.data).toEqual({ include: ["needs_water", "problems", "care_tasks"], include_snoozed: false, language: "de" });
     const config = buildNotification(water, DE);
     expect(config.alias).toBe("Smart Plants: Pflanze braucht Wasser");
     expect(config.description).toBe("Erstellt in Smart Plants → Benachrichtigungen. Schickt eine Nachricht, wenn eine Pflanze seit 30 Minuten Wasser braucht. Stummgeschaltete Pflanzen melden sich, wenn die Stummschaltung endet.");

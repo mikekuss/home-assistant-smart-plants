@@ -8048,7 +8048,8 @@ function cc(e, t) {
 			...r,
 			data: {
 				include: [...$s],
-				include_snoozed: !1
+				include_snoozed: !1,
+				language: t.language
 			},
 			response_variable: "report"
 		}, sc(e.target, e.kind, "{{ report.title }}", "{{ report.message }}")]

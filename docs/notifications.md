@@ -89,7 +89,8 @@ the automation keeps working, but the dialog no longer lists it.
 
 - The texts (name, description and message) are written in the panel's language when you open
   the editor. They don't change later if you switch Home Assistant to another language. Edit
-  the automation to change them.
+  the automation to change them. The daily report asks for the same language, so its title
+  and message match the rest of the automation.
 - Home Assistant's editor can only save automations when your `configuration.yaml` has the
   default `automation: !include automations.yaml` line. If you keep automations in split files
   or packages, saving fails or writes to a file Home Assistant doesn't load. In that case copy

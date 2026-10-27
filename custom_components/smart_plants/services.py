@@ -86,6 +86,7 @@ ATTR_DURATION: Final = "duration"
 ATTR_UNTIL: Final = "until"
 ATTR_INCLUDE: Final = "include"
 ATTR_INCLUDE_SNOOZED: Final = "include_snoozed"
+ATTR_LANGUAGE: Final = "language"
 
 ACTION_PROVENANCE: Final = "action"
 NOTE_MAX_LENGTH: Final = 500
@@ -118,6 +119,7 @@ GET_REPORT_SCHEMA = vol.Schema(
             cv.ensure_list, [vol.In(INCLUDE_OPTIONS)]
         ),
         vol.Optional(ATTR_INCLUDE_SNOOZED, default=False): cv.boolean,
+        vol.Optional(ATTR_LANGUAGE): cv.string,
     }
 )
 
@@ -509,7 +511,9 @@ def _report_target(call: ServiceCall) -> dict[str, Any] | None:
 async def _async_get_report(call: ServiceCall) -> ServiceResponse:
     hass = call.hass
     _entry, manager = _loaded_runtime(hass)
-    language = report_language(hass.config.language)
+    # An automation can ask for its own language; without one (or with an
+    # empty one) the report follows the system language.
+    language = report_language(call.data.get(ATTR_LANGUAGE) or hass.config.language)
     entity_names = await async_get_translations(hass, language, "entity", [DOMAIN])
     common = await async_get_translations(hass, language, "common", [DOMAIN])
     prefix = f"component.{DOMAIN}.common."

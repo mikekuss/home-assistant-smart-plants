@@ -464,6 +464,36 @@ async def test_action_names_tasks_and_follows_the_language(
     assert (await get_report(hass))["language"] == "en"
 
 
+@pytest.mark.parametrize(
+    ("system", "requested", "expected", "title"),
+    [
+        ("en", "de", "de", "1 Pflanze braucht Aufmerksamkeit"),
+        ("en", "de-DE", "de", "1 Pflanze braucht Aufmerksamkeit"),
+        ("de", "en", "en", "1 plant needs attention"),
+        ("de", "en-GB", "en", "1 plant needs attention"),
+        ("de", "fr", "en", "1 plant needs attention"),
+        ("de", "", "de", "1 Pflanze braucht Aufmerksamkeit"),
+        ("de", None, "de", "1 Pflanze braucht Aufmerksamkeit"),
+    ],
+)
+async def test_action_language_field_overrides_the_system_language(
+    hass: HomeAssistant,
+    system: str,
+    requested: str | None,
+    expected: str,
+    title: str,
+) -> None:
+    entry = await setup_integration(hass)
+    await watered_plant(hass, manager_of(entry), "Aloe")
+    await set_soil(hass, "10")
+    hass.config.language = system
+
+    data = {} if requested is None else {"language": requested}
+    result = await get_report(hass, **data)
+    assert result["language"] == expected
+    assert result["title"] == title
+
+
 async def test_report_without_the_integration_reads_synthetic_states(
     hass: HomeAssistant,
 ) -> None:
