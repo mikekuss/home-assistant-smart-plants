@@ -20,8 +20,9 @@ const CONFIGS: Record<string, unknown> = {
 
 afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); history.replaceState(null, "", "/"); });
 
-async function mount(options: { states?: Record<string, HAState>; services?: Record<string, Record<string, unknown>>; language?: string } = {}) {
+async function mount(options: { states?: Record<string, HAState>; services?: Record<string, Record<string, unknown>>; language?: string; entities?: unknown[] } = {}) {
   const h = harness([sample, office], msg => {
+    if (msg.type === "config/entity_registry/list" && options.entities) return options.entities;
     if (msg.type === "automation/config") return { config: CONFIGS[String(msg.entity_id)] ?? {} };
     if (msg.type === "call_service") return {};
     return undefined;
@@ -161,6 +162,21 @@ describe("notifications dialog", () => {
     expect(data.conditions).toEqual([{ condition: "not", conditions: [{ condition: "time", after: "23:00:00", before: "07:00:00" }] }]);
     expect(data.actions).toEqual([{ action: "notify.mobile_app_mock_phone", data: { title: "{{ trigger.plant }} needs water", message: "Water it when you get a chance." } }]);
     expect(dialogElement(el)).toBeNull();
+  });
+  it("names all plants through the All plants entity when Home Assistant has it", async () => {
+    const allPlants = { id: "all", entity_id: "binary_sensor.smart_plants_all_plants", device_id: null, unique_id: "smart_plants:all_plants", platform: "smart_plants" };
+    const { el } = await mount({ entities: [allPlants] });
+    await openDialog(el);
+    const editor = captureEditor();
+    buttonNamed(el, "Open in automation editor").click();
+    await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+    await settle(el);
+    editor.stop();
+    const data = (editor.opened[0]!.detail as { data: Record<string, unknown> }).data;
+    const target = { entity_id: ["binary_sensor.smart_plants_all_plants"] };
+    expect((data.triggers as Record<string, unknown>[])[0]!.id).toBe("smart_plants_daily_report");
+    expect((data.conditions as Record<string, unknown>[])[0]!.target).toEqual(target);
+    expect((data.actions as Record<string, unknown>[])[0]!.target).toEqual(target);
   });
   it("targets the chosen plants and asks for at least one", async () => {
     const { el } = await mount();

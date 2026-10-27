@@ -2,7 +2,7 @@
 // prefilled, lists the places a message can go, and finds the automations made
 // this way. Nothing here saves an automation; the user does that in the editor.
 import type { Localizer } from "./localize.js";
-import type { HAState, HomeAssistantLike } from "./types.js";
+import type { HAEntity, HAState, HomeAssistantLike } from "./types.js";
 
 export type NotificationKind = "daily_report" | "needs_water";
 export type NotifyTarget =
@@ -18,10 +18,21 @@ export interface NotificationInput {
   quiet: { from: string; to: string } | null;
   // Plant device ids, or null for all plants (including plants added later).
   plantDeviceIds: string[] | null;
+  // The All plants entity that targets all plants, or null when it is missing.
+  allPlantsEntityId: string | null;
   target: NotifyTarget;
 }
 
 export type AutomationConfig = Record<string, unknown>;
+
+export const ALL_PLANTS_UNIQUE_ID = "smart_plants:all_plants";
+
+// The entity id of the All plants entity, found by unique id so a renamed
+// entity still works. Null when it was deleted or is disabled.
+export function allPlantsEntityId(entities: readonly HAEntity[]): string | null {
+  const entry = entities.find(entity => entity.platform === "smart_plants" && entity.unique_id === ALL_PLANTS_UNIQUE_ID);
+  return entry && !entry.disabled_by ? entry.entity_id : null;
+}
 
 export const DELAY_CHOICES = [0, 15, 30, 60, 120] as const;
 export const MARKER_PREFIX = "smart_plants_";
@@ -96,7 +107,10 @@ function sendStep(target: NotifyTarget, kind: NotificationKind, title: string, m
 // and stay as they are in the saved automation.
 export function buildNotification(input: NotificationInput, l: Localizer): AutomationConfig {
   const id = notificationMarker(input.kind, input.plantDeviceIds);
-  const target = input.plantDeviceIds ? { target: { device_id: [...input.plantDeviceIds].sort() } } : {};
+  // Home Assistant's editor flags an empty target, so all plants are named
+  // through the All plants entity when it exists.
+  const target = input.plantDeviceIds ? { target: { device_id: [...input.plantDeviceIds].sort() } }
+    : input.allPlantsEntityId ? { target: { entity_id: [input.allPlantsEntityId] } } : {};
   if (input.kind === "daily_report") {
     return {
       alias: l.t("notifications.alias_daily"),

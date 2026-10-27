@@ -284,6 +284,8 @@ if (params.has("notifications")) {
     "automation.mock_daily_report": { triggers: [{ trigger: "time", at: "08:00:00", id: "smart_plants_daily_report" }] },
     "automation.mock_porch_light": { triggers: [{ trigger: "sun", event: "sunset" }] },
   };
+  // The integration's All plants entity, which notifications target for all plants.
+  state.entities.push({ id: uuid(7990), entity_id: "binary_sensor.smart_plants_all_plants", device_id: null, unique_id: "smart_plants:all_plants", platform: "smart_plants" });
 }
 // Home Assistant's root element opens its automation editor for this event.
 window.addEventListener("hass-automation-editor", event => {

@@ -292,7 +292,7 @@ export interface WizardCreateInput {
   roles?: Record<string, { sources: SensorSource[]; primary_entity_id?: string | null; aggregation?: RoleSourceConfig["aggregation"]; stale_after_seconds?: number }>;
 }
 export interface HAArea { area_id: string; name: string }
-export interface HAEntity { id: string; entity_id: string; device_id: string | null; unique_id: string; platform: string; area_id?: string | null }
+export interface HAEntity { id: string; entity_id: string; device_id: string | null; unique_id: string; platform: string; area_id?: string | null; disabled_by?: string | null }
 export interface HADevice { id: string; area_id: string | null; identifiers: [string, string][]; name_by_user?: string | null }
 // `last_reported` changes on every report, even when nothing else did; staleness
 // is measured from it. Not every state source supplies it.

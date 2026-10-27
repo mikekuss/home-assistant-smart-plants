@@ -5,13 +5,13 @@ import { LitElement, css, html, nothing } from "lit";
 import { property, state } from "lit/decorators.js";
 import type { Localizer } from "../localize.js";
 import { plantDevice } from "../model.js";
-import { DELAY_CHOICES, buildNotification, delayText, findNotifications, notificationMarker, notifyTargets, openAutomationEditor, targetValue } from "../notifications.js";
+import { DELAY_CHOICES, allPlantsEntityId, buildNotification, delayText, findNotifications, notificationMarker, notifyTargets, openAutomationEditor, targetValue } from "../notifications.js";
 import type { FoundNotification, NotificationKind, NotifyTarget } from "../notifications.js";
 import { relativeTime } from "../status.js";
 import { styles } from "../styles.js";
 import { themeFallbacks } from "../components/shared-styles.js";
 import { carePlanStyles } from "./care-plan.js";
-import type { HADevice, HAState, HomeAssistantLike, PlantRecord } from "../types.js";
+import type { HADevice, HAEntity, HAState, HomeAssistantLike, PlantRecord } from "../types.js";
 
 type NotifyHass = HomeAssistantLike & { services?: Record<string, Record<string, unknown>> };
 interface Draft { kind: NotificationKind; time: string; delayMinutes: number; quiet: boolean; quietFrom: string; quietTo: string; allPlants: boolean; plantIds: ReadonlySet<string>; target: string; error: string }
@@ -39,6 +39,7 @@ export class SmartPlantsNotifications extends LitElement {
   @property({ attribute: false }) public l!: Localizer;
   @property({ attribute: false }) public plants: PlantRecord[] = [];
   @property({ attribute: false }) public devices: HADevice[] = [];
+  @property({ attribute: false }) public entities: HAEntity[] = [];
   @property({ attribute: false }) public states: Record<string, HAState> = {};
   @state() private _draft: Draft = { kind: "daily_report", time: "08:00", delayMinutes: 30, quiet: false, quietFrom: "22:00", quietTo: "07:00", allPlants: true, plantIds: new Set(), target: "", error: "" };
   @state() private _found: FoundNotification[] = [];
@@ -110,7 +111,7 @@ export class SmartPlantsNotifications extends LitElement {
     }
     const targets = this._targets();
     const target = targets.find(item => targetValue(item) === draft.target) ?? targets[0]!;
-    const config = buildNotification({ kind: draft.kind, time: draft.time, delayMinutes: draft.delayMinutes, quiet: draft.kind === "needs_water" && draft.quiet ? { from: draft.quietFrom, to: draft.quietTo } : null, plantDeviceIds: deviceIds, target }, this.l);
+    const config = buildNotification({ kind: draft.kind, time: draft.time, delayMinutes: draft.delayMinutes, quiet: draft.kind === "needs_water" && draft.quiet ? { from: draft.quietFrom, to: draft.quietTo } : null, plantDeviceIds: deviceIds, allPlantsEntityId: allPlantsEntityId(this.entities), target }, this.l);
     const l = this.l;
     // The dialog is gone by the time the fallback runs; the panel stays.
     const host = (this.getRootNode() as ShadowRoot).host ?? this;

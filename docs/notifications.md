@@ -51,9 +51,12 @@ later. If you also have the daily report, it still lists the plant.
 
 ### Plants
 
-**All plants** (the default) includes plants you add later. **Choose plants** limits the
-notification to the plants you tick; a plant you add later is not included until you edit the
-automation.
+**All plants** (the default) includes plants you add later. In the automation editor the
+target shows as the **All plants** entity, which Smart Plants creates for this. If you deleted
+or disabled that entity, the target is left empty, which also means all plants.
+
+**Choose plants** limits the notification to the plants you tick. The editor shows them as
+devices. A plant you add later is not included until you edit the automation.
 
 ### Send to
 

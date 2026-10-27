@@ -101,7 +101,7 @@ test("adds only a menu item to the overview and opens the editor with a preset",
     description: "Created in Smart Plants → Notifications. Sends a message when a plant has needed water for 30 minutes. Snoozed plants send theirs when the snooze ends.",
     mode: "queued",
     max: 20,
-    triggers: [{ trigger: "smart_plants.needs_water", id: "smart_plants_needs_water", options: { behavior: "each", for: { minutes: 30 }, include_snoozed: false } }],
+    triggers: [{ trigger: "smart_plants.needs_water", id: "smart_plants_needs_water", target: { entity_id: ["binary_sensor.smart_plants_all_plants"] }, options: { behavior: "each", for: { minutes: 30 }, include_snoozed: false } }],
     conditions: [{ condition: "not", conditions: [{ condition: "time", after: "22:00:00", before: "07:00:00" }] }],
     actions: [{ action: "persistent_notification.create", data: { title: "{{ trigger.plant }} needs water", message: "Water it when you get a chance.", notification_id: "smart_plants_needs_water_{{ trigger.device_id }}" } }],
   });

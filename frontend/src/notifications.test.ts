@@ -5,15 +5,15 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { createLocalizer, ENGLISH } from "./localize.js";
-import { buildNotification, configMarker, findNotifications, notificationMarker, notifyTargets, openAutomationEditor, sha256Hex } from "./notifications.js";
+import { allPlantsEntityId, buildNotification, configMarker, findNotifications, notificationMarker, notifyTargets, openAutomationEditor, sha256Hex } from "./notifications.js";
 import type { NotificationInput } from "./notifications.js";
-import type { HAState, HomeAssistantLike } from "./types.js";
+import type { HAEntity, HAState, HomeAssistantLike } from "./types.js";
 
 const DE = createLocalizer({ language: "de" });
 const DEVICES = ["0123456789abcdef0123456789abcdef", "fedcba9876543210fedcba9876543210"];
 const state = (entity_id: string, attributes: Record<string, unknown> = {}, value = "on"): HAState => ({ entity_id, state: value, attributes, last_updated: "2026-10-27T08:00:00+00:00" } as HAState);
-const daily: NotificationInput = { kind: "daily_report", time: "08:00", delayMinutes: 30, quiet: null, plantDeviceIds: null, target: { kind: "entity", entityId: "notify.mock_chat", label: "Mock chat" } };
-const water: NotificationInput = { kind: "needs_water", time: "08:00", delayMinutes: 30, quiet: { from: "22:00", to: "07:00" }, plantDeviceIds: [DEVICES[1]!, DEVICES[0]!], target: { kind: "service", service: "mobile_app_mock_phone", label: "mobile_app_mock_phone" } };
+const daily: NotificationInput = { kind: "daily_report", time: "08:00", delayMinutes: 30, quiet: null, plantDeviceIds: null, allPlantsEntityId: null, target: { kind: "entity", entityId: "notify.mock_chat", label: "Mock chat" } };
+const water: NotificationInput = { kind: "needs_water", time: "08:00", delayMinutes: 30, quiet: { from: "22:00", to: "07:00" }, plantDeviceIds: [DEVICES[1]!, DEVICES[0]!], allPlantsEntityId: null, target: { kind: "service", service: "mobile_app_mock_phone", label: "mobile_app_mock_phone" } };
 
 // The two example automations shared with the backend tests, which validate
 // them against the real trigger, condition and action platforms.
@@ -55,6 +55,25 @@ describe("automation config", () => {
   it("builds the needs-water message for chosen plants with quiet hours exactly like the shared example", () => {
     const config = buildNotification(water, ENGLISH);
     expect(config).toEqual(withMarker(GOLDEN_WATER, notificationMarker("needs_water", DEVICES)));
+  });
+  it("names all plants through the All plants entity in the trigger, condition and action", () => {
+    const allPlants = "binary_sensor.smart_plants_all_plants";
+    const target = { entity_id: [allPlants] };
+    const report = buildNotification({ ...daily, allPlantsEntityId: allPlants }, ENGLISH);
+    expect(report.triggers).toEqual([{ trigger: "time", at: "08:00:00", id: "smart_plants_daily_report" }]);
+    expect((report.conditions as Record<string, unknown>[])[0]!.target).toEqual(target);
+    expect((report.actions as Record<string, unknown>[])[0]!.target).toEqual(target);
+    const config = buildNotification({ ...water, plantDeviceIds: null, allPlantsEntityId: allPlants }, ENGLISH);
+    expect((config.triggers as Record<string, unknown>[])[0]).toEqual({ trigger: "smart_plants.needs_water", id: "smart_plants_needs_water", target, options: { behavior: "each", for: { minutes: 30 }, include_snoozed: false } });
+    // Chosen plants keep their device target.
+    expect((buildNotification({ ...water, allPlantsEntityId: allPlants }, ENGLISH).triggers as Record<string, unknown>[])[0]!.target).toEqual({ device_id: DEVICES });
+  });
+  it("finds the All plants entity by unique id and leaves it out when it is missing or disabled", () => {
+    const entry = (entity_id: string, extra: Partial<HAEntity> = {}): HAEntity => ({ id: entity_id, entity_id, device_id: null, unique_id: "smart_plants:all_plants", platform: "smart_plants", ...extra });
+    expect(allPlantsEntityId([entry("binary_sensor.renamed_all_plants")])).toBe("binary_sensor.renamed_all_plants");
+    expect(allPlantsEntityId([entry("binary_sensor.smart_plants_all_plants", { disabled_by: "user" })])).toBeNull();
+    expect(allPlantsEntityId([entry("binary_sensor.other", { platform: "template" })])).toBeNull();
+    expect(allPlantsEntityId([])).toBeNull();
   });
   it("targets chosen plants in the report condition and action", () => {
     const config = buildNotification({ ...daily, plantDeviceIds: [DEVICES[1]!, DEVICES[0]!] }, ENGLISH);
