@@ -13,7 +13,7 @@ conditions:
 actions:
   - action: smart_plants.get_report
     target: { entity_id: [binary_sensor.smart_plants_all_plants] }
-    data: { include: [needs_water, problems, care_tasks], include_snoozed: false }
+    data: { include: [needs_water, problems, care_tasks], include_snoozed: false, language: en }
     response_variable: report
   - action: notify.send_message
     target: { entity_id: notify.mock_chat }

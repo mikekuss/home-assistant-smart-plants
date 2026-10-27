@@ -81,3 +81,9 @@ get_report:
       default: false
       selector:
         boolean:
+    language:
+      selector:
+        language:
+          languages:
+            - en
+            - de

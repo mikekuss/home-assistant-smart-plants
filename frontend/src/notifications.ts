@@ -104,7 +104,8 @@ function sendStep(target: NotifyTarget, kind: NotificationKind, title: string, m
 }
 
 // The automation for one preset. Texts are taken from the panel language now
-// and stay as they are in the saved automation.
+// and stay as they are in the saved automation. The report asks for the panel
+// language too, so its title and message match the rest of the automation.
 export function buildNotification(input: NotificationInput, l: Localizer): AutomationConfig {
   const id = notificationMarker(input.kind, input.plantDeviceIds);
   // Home Assistant's editor flags an empty target, so all plants are named
@@ -119,7 +120,7 @@ export function buildNotification(input: NotificationInput, l: Localizer): Autom
       triggers: [{ trigger: "time", at: seconds(input.time), id }],
       conditions: [{ condition: "smart_plants.needs_attention", ...target, options: { include: [...REPORT_INCLUDE], include_snoozed: false } }],
       actions: [
-        { action: "smart_plants.get_report", ...target, data: { include: [...REPORT_INCLUDE], include_snoozed: false }, response_variable: "report" },
+        { action: "smart_plants.get_report", ...target, data: { include: [...REPORT_INCLUDE], include_snoozed: false, language: l.language }, response_variable: "report" },
         sendStep(input.target, input.kind, "{{ report.title }}", "{{ report.message }}"),
       ],
     };

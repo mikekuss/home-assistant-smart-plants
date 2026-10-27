@@ -611,6 +611,10 @@
         "include_snoozed": {
           "name": "Stummgeschaltete Pflanzen einbeziehen",
           "description": "Auch Pflanzen auflisten, deren Hinweise stummgeschaltet sind, mit dem Vermerk stummgeschaltet."
+        },
+        "language": {
+          "name": "Sprache",
+          "description": "Sprache von Titel und Nachricht. Unterstützt werden Englisch und Deutsch; andere Sprachen ergeben Englisch. Ohne Sprache nutzt der Bericht die Systemsprache."
         }
       }
     }

@@ -611,6 +611,10 @@
         "include_snoozed": {
           "name": "Include snoozed plants",
           "description": "Also list plants whose alerts are snoozed, marked as snoozed."
+        },
+        "language": {
+          "name": "Language",
+          "description": "Language of the title and message. English and German are supported; other languages use English. Without a language, the report uses the system language."
         }
       }
     }

@@ -362,6 +362,9 @@ async def test_golden_daily_report_runs(
     entry = await setup_integration(hass)
     manager = manager_of(entry)
     await watered_plant(hass, manager, "Aloe")
+    # The example asks for an English report, so a German system language
+    # does not change the message.
+    hass.config.language = "de"
     sent = async_mock_service(hass, "notify", "send_message")
     assert await async_setup_component(
         hass, AUTOMATION, {AUTOMATION: [golden("daily_report")]}

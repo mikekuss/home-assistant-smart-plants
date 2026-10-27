@@ -6,11 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- `smart_plants.get_report` has an optional `language` field for the title and message
+  (`en` or `de`). Without it, the report still uses Home Assistant's language. See
+  [Plant report](docs/automations.md#plant-report).
+
 ### Changed
 
 - The overview leaves snoozed plants out of the tile counts and doesn't sort them first.
 - The on/off control of each notification in **⋮ → Notifications…** now looks like a Home
   Assistant switch instead of a checkbox.
+
+### Fixed
+
+- A daily plant report set up in **Notifications…** now writes its title and message in the
+  panel's language. Before, it used Home Assistant's system language, so the report could
+  arrive in English inside a German automation. Automations made before this change keep the
+  old behavior until you add `language` to the report action or set them up again.
 
 ## [0.12.0] - 2026-10-27
 

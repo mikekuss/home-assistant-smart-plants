@@ -204,6 +204,9 @@ due, with a title and a message ready to send. It changes nothing. In the editor
 - `include`: what the report lists, any of `needs_water`, `problems` and `care_tasks`.
   Default all three. `problems` covers every problem except *Needs water*.
 - `include_snoozed`: also list snoozed plants, marked as snoozed. Default `false`.
+- `language` (optional): the language of the title and message, `en` or `de`. Region codes
+  such as `de-DE` work too. Other languages give English. Without it, the report uses Home
+  Assistant's language.
 
 The report leaves out paused plants, plants with nothing to report, and snoozed plants unless
 `include_snoozed` is on. The response looks like this:
@@ -243,8 +246,9 @@ The report leaves out paused plants, plants with nothing to report, and snoozed 
 - The message has one line per plant, at most 20. After that, one line says how many more
   plants there are. With nothing to report, the title is *All plants are fine* and the
   message *Nothing needs attention right now.*
-- Title and message are in German when Home Assistant's language is German, otherwise in
-  English. The problem and task names follow the same language.
+- Title and message are in the requested `language`. Without one, they are in German when
+  Home Assistant's language is German, otherwise in English. The problem and task names
+  follow the same language. `language` in the response says which one was used.
 
 ### Daily plant report
 
