@@ -21,6 +21,8 @@ const FIXTURES = resolve(dirname(fileURLToPath(import.meta.url)), "../../tests/f
 const fixture = (name: string) => parse(readFileSync(resolve(FIXTURES, `${name}.yaml`), "utf8")) as Record<string, unknown>;
 const GOLDEN_DAILY = fixture("daily_report");
 const GOLDEN_WATER = fixture("needs_water");
+const GOLDEN_WATER_ALL = fixture("needs_water_all_plants");
+const ALL_PLANTS = "binary_sensor.smart_plants_all_plants";
 // The example uses a placeholder hash; the real one depends on the device ids.
 const withMarker = (config: Record<string, unknown>, id: string) => ({ ...config, triggers: (config.triggers as Record<string, unknown>[]).map((t, i) => i === 0 ? { ...t, id } : t) });
 
@@ -50,7 +52,11 @@ describe("notification marker", () => {
 
 describe("automation config", () => {
   it("builds the daily report for all plants exactly like the shared example", () => {
-    expect(buildNotification(daily, ENGLISH)).toEqual(GOLDEN_DAILY);
+    expect(buildNotification({ ...daily, allPlantsEntityId: ALL_PLANTS }, ENGLISH)).toEqual(GOLDEN_DAILY);
+  });
+  it("builds the needs-water message for all plants exactly like the shared example", () => {
+    const input: NotificationInput = { ...water, delayMinutes: 0, quiet: null, plantDeviceIds: null, allPlantsEntityId: ALL_PLANTS, target: daily.target };
+    expect(buildNotification(input, ENGLISH)).toEqual(GOLDEN_WATER_ALL);
   });
   it("builds the needs-water message for chosen plants with quiet hours exactly like the shared example", () => {
     const config = buildNotification(water, ENGLISH);
@@ -99,7 +105,7 @@ describe("automation config", () => {
   });
   it("leaves out quiet hours, the target and the delay when they are not set", () => {
     const config = buildNotification({ ...water, quiet: null, plantDeviceIds: null, delayMinutes: 0 }, ENGLISH);
-    expect(config.conditions).toEqual([]);
+    expect(config).not.toHaveProperty("conditions");
     expect(config.triggers).toEqual([{ trigger: "smart_plants.needs_water", id: "smart_plants_needs_water", options: { behavior: "each", include_snoozed: false } }]);
     expect(config.description).toBe("Created in Smart Plants → Notifications. Sends a message when a plant needs water. Snoozed plants send theirs when the snooze ends.");
   });

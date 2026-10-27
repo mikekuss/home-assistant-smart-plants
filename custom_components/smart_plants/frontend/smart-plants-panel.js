@@ -8066,14 +8066,14 @@ function sc(e, t) {
 				include_snoozed: !1
 			}
 		}],
-		conditions: e.quiet ? [{
+		...e.quiet ? { conditions: [{
 			condition: "not",
 			conditions: [{
 				condition: "time",
 				after: rc(e.quiet.from),
 				before: rc(e.quiet.to)
 			}]
-		}] : [],
+		}] } : {},
 		actions: [oc(e.target, e.kind, t.t("notifications.msg_water_title", { plant: "{{ trigger.plant }}" }), t.t("notifications.msg_water_body"))]
 	};
 }

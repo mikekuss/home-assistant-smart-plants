@@ -130,7 +130,7 @@ export function buildNotification(input: NotificationInput, l: Localizer): Autom
     mode: "queued",
     max: 20,
     triggers: [{ trigger: "smart_plants.needs_water", id, ...target, options: { behavior: "each", ...(input.delayMinutes ? { for: duration(input.delayMinutes) } : {}), include_snoozed: false } }],
-    conditions: input.quiet ? [{ condition: "not", conditions: [{ condition: "time", after: seconds(input.quiet.from), before: seconds(input.quiet.to) }] }] : [],
+    ...(input.quiet ? { conditions: [{ condition: "not", conditions: [{ condition: "time", after: seconds(input.quiet.from), before: seconds(input.quiet.to) }] }] } : {}),
     actions: [sendStep(input.target, input.kind, l.t("notifications.msg_water_title", { plant: "{{ trigger.plant }}" }), l.t("notifications.msg_water_body"))],
   };
 }
