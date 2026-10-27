@@ -9,6 +9,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Changed
 
 - The overview leaves snoozed plants out of the tile counts and doesn't sort them first.
+- The on/off control of each notification in **⋮ → Notifications…** now looks like a Home
+  Assistant switch instead of a checkbox.
 
 ## [0.12.0] - 2026-10-27
 

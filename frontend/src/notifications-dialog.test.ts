@@ -20,11 +20,11 @@ const CONFIGS: Record<string, unknown> = {
 
 afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); history.replaceState(null, "", "/"); });
 
-async function mount(options: { states?: Record<string, HAState>; services?: Record<string, Record<string, unknown>>; language?: string; entities?: unknown[] } = {}) {
+async function mount(options: { states?: Record<string, HAState>; services?: Record<string, Record<string, unknown>>; language?: string; entities?: unknown[]; callService?: () => Promise<unknown> } = {}) {
   const h = harness([sample, office], msg => {
     if (msg.type === "config/entity_registry/list" && options.entities) return options.entities;
     if (msg.type === "automation/config") return { config: CONFIGS[String(msg.entity_id)] ?? {} };
-    if (msg.type === "call_service") return {};
+    if (msg.type === "call_service") return options.callService?.() ?? {};
     return undefined;
   });
   const subscriptions = new Map<string, () => void>();
@@ -111,6 +111,33 @@ describe("notifications dialog", () => {
       { type: "call_service", domain: "automation", service: "turn_off", target: { entity_id: "automation.daily" } },
       { type: "call_service", domain: "automation", service: "turn_on", target: { entity_id: "automation.yaml_water" } },
     ]);
+  });
+  it("draws each on/off control as a native switch, disabled while it toggles", async () => {
+    let finish!: () => void;
+    const { el, h } = await mount({ callService: () => new Promise(resolve => { finish = () => resolve({}); }) });
+    await openDialog(el);
+    const [daily, yaml] = all(el, ".notify-list li").map(row => row.querySelector<HTMLInputElement>("input.switch")!);
+    expect(daily!.type).toBe("checkbox");
+    expect(daily!.getAttribute("role")).toBe("switch");
+    expect(daily!.getAttribute("aria-label")).toBe("Smart Plants: daily plant report");
+    const described = dialogElement(el)!.shadowRoot!.getElementById(daily!.getAttribute("aria-describedby")!);
+    expect(described!.textContent).toMatch(/^Last sent/);
+    expect(daily!.disabled).toBe(false);
+    await change(el, daily!, "off");
+    expect(daily!.disabled).toBe(true);
+    // Another row stays usable, and a second change of the busy row sends nothing.
+    expect(yaml!.disabled).toBe(false);
+    daily!.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(h.calls.filter(call => call.type === "call_service")).toHaveLength(1);
+    finish();
+    await settle(dialogElement(el)!);
+    expect(daily!.disabled).toBe(false);
+  });
+  it("disables the switch of an unavailable automation", async () => {
+    const { el } = await mount({ states: { ...STATES, "automation.yaml_water": state("automation.yaml_water", "unavailable", { friendly_name: "Plant water (YAML)" }) } });
+    await openDialog(el);
+    const switches = all<HTMLInputElement>(el, ".notify-list input.switch");
+    expect(switches.map(s => s.disabled)).toEqual([false, true]);
   });
   it("reads the automations again after a reload and stops listening when closed", async () => {
     const { el, h, subscriptions, unsubscribe } = await mount();

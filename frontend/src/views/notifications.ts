@@ -21,7 +21,34 @@ export class SmartPlantsNotifications extends LitElement {
     .notify-list { list-style: none; padding: 0; margin: 0; border: 1px solid var(--divider-color, #ddd); border-radius: 12px; }
     .notify-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 14px; margin: 0; }
     .notify-list li + li { border-top: 1px solid var(--divider-color, #ddd); }
-    .notify-list .switch { width: 44px; height: 24px; min-height: 24px; margin: 0; accent-color: var(--primary-color, #007bad); }
+    /* A native checkbox drawn like Home Assistant's own switch: a track with a
+       thumb that slides to the end when on. It uses the same theme colours, so
+       it follows light and dark themes. The input stays native so its label,
+       description, Space key and focus ring work as for any checkbox. */
+    .notify-list .switch {
+      --track: var(--ha-switch-background-color, var(--ha-color-fill-disabled-quiet-resting, var(--secondary-background-color, #f3f3f3)));
+      --edge: var(--ha-switch-border-color, var(--ha-color-border-neutral-normal, #989898));
+      --thumb: var(--ha-switch-thumb-background-color, var(--ha-color-on-neutral-normal, #5e5e5e));
+      appearance: none; -webkit-appearance: none; box-sizing: border-box; flex: none;
+      width: 48px; height: 24px; min-height: 24px; margin: 0; border: 1px solid var(--edge); border-radius: 12px; cursor: pointer;
+      background: radial-gradient(circle closest-side, var(--thumb) 8.5px, transparent 9px) no-repeat 0 50% / 22px 22px, var(--track);
+      transition: background-position 150ms ease, background-color 150ms ease, border-color 150ms ease;
+    }
+    .notify-list .switch:checked {
+      --track: var(--ha-switch-checked-background-color, var(--ha-color-fill-primary-normal-resting, #dff3fc));
+      --edge: var(--ha-switch-checked-border-color, var(--ha-color-border-primary-loud, var(--primary-color, #009ac7)));
+      --thumb: var(--ha-switch-checked-thumb-background-color, var(--ha-color-on-primary-normal, var(--primary-color, #009ac7)));
+      background-position: 100% 50%, 0 0;
+    }
+    .notify-list .switch:dir(rtl) { background-position: 100% 50%, 0 0; }
+    .notify-list .switch:checked:dir(rtl) { background-position: 0 50%, 0 0; }
+    .notify-list .switch:disabled { opacity: var(--ha-switch-disabled-opacity, 0.3); cursor: not-allowed; }
+    @media (prefers-reduced-motion: reduce) { .notify-list .switch { transition: none; } }
+    @media (forced-colors: active) {
+      .notify-list .switch { forced-color-adjust: none; --track: Canvas; --edge: CanvasText; --thumb: CanvasText; }
+      .notify-list .switch:checked { --edge: Highlight; --thumb: Highlight; }
+      .notify-list .switch:disabled { --edge: GrayText; --thumb: GrayText; opacity: 1; }
+    }
     .notify-list .row-text, .choice-text { display: flex; flex-direction: column; min-width: 0; }
     .existing { padding: 0; border: 0; margin: 0; background: none; }
     .notify-list a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; }

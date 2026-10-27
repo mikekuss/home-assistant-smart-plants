@@ -64,8 +64,17 @@ test("adds only a menu item to the overview and opens the editor with a preset",
   await expect(existing.getByRole("listitem")).toHaveCount(1);
   await expect(existing).toContainText("Smart Plants: daily plant report");
   await expect(existing).toContainText("Last sent");
-  await expect(existing.getByRole("switch", { name: "Smart Plants: daily plant report" })).toBeChecked();
-  await expect(existing.getByRole("link", { name: "Edit Smart Plants: daily plant report" })).toHaveAttribute("href", "/config/automation/edit/1761000000000");
+  const toggle = existing.getByRole("switch", { name: "Smart Plants: daily plant report" });
+  await expect(toggle).toBeChecked();
+  await expect(toggle).toHaveAccessibleDescription(/^Last sent/);
+  const edit = existing.getByRole("link", { name: "Edit Smart Plants: daily plant report" });
+  await expect(edit).toHaveAttribute("href", "/config/automation/edit/1761000000000");
+  // Drawn as a switch track rather than a checkbox, on one row with the name and Edit.
+  expect(await toggle.evaluate(e => { const c = getComputedStyle(e); return [c.appearance, c.width, c.height, c.borderRadius]; })).toEqual(["none", "48px", "24px", "12px"]);
+  const [switchBox, nameBox, editBox] = await Promise.all([toggle, existing.getByText("Smart Plants: daily plant report", { exact: true }), edit].map(async l => (await l.boundingBox())!));
+  expect(switchBox.x + switchBox.width).toBeLessThanOrEqual(nameBox.x);
+  expect(nameBox.x + nameBox.width).toBeLessThanOrEqual(editBox.x);
+  for (const box of [nameBox, editBox]) expect(Math.abs(box.y + box.height / 2 - (switchBox.y + switchBox.height / 2))).toBeLessThan(box.height);
   await expect(dialog(page).getByRole("radio", { name: /^Daily plant report/ })).toBeChecked();
   await expect(dialog(page).getByRole("status")).toHaveText("You already have this notification.");
   await expect(dialog(page).getByRole("combobox", { name: "Send to" })).toHaveValue("entity:notify.mock_chat");
@@ -75,6 +84,8 @@ test("adds only a menu item to the overview and opens the editor with a preset",
   await tabTo(page, /^Smart Plants: daily plant report$/);
   await page.keyboard.press("Space");
   await expect.poll(async () => (await harness(page)).messages.filter(m => m.type === "call_service")).toEqual([{ type: "call_service", domain: "automation", service: "turn_off", target: { entity_id: "automation.mock_daily_report" } }]);
+  await expect(toggle).not.toBeChecked();
+  await expect(toggle).toBeEnabled();
 
   // Switch to the needs-water preset with the arrow keys and turn on quiet hours.
   await tabTo(page, /^Daily plant report/);
