@@ -67,8 +67,16 @@ describe("automation config", () => {
     const send = (target: NotificationInput["target"], kind: NotificationInput["kind"] = "daily_report") => (buildNotification({ ...daily, kind, target }, ENGLISH).actions as unknown[]).at(-1);
     expect(send({ kind: "service", service: "mobile_app_mock_phone", label: "x" })).toEqual({ action: "notify.mobile_app_mock_phone", data: { title: "{{ report.title }}", message: "{{ report.message }}" } });
     expect(send({ kind: "persistent" })).toEqual({ action: "persistent_notification.create", data: { title: "{{ report.title }}", message: "{{ report.message }}", notification_id: "smart_plants_daily_report" } });
-    expect(send({ kind: "persistent" }, "needs_water")).toEqual({ action: "persistent_notification.create", data: { title: "{{ trigger.plant }} needs water", message: "Water it when you get a chance.", notification_id: "smart_plants_needs_water" } });
+    expect(send({ kind: "persistent" }, "needs_water")).toEqual({ action: "persistent_notification.create", data: { title: "{{ trigger.plant }} needs water", message: "Water it when you get a chance.", notification_id: "smart_plants_needs_water_{{ trigger.device_id }}" } });
     expect(send({ kind: "entity", entityId: "notify.mock_chat", label: "x" }, "needs_water")).toEqual({ action: "notify.send_message", target: { entity_id: "notify.mock_chat" }, data: { title: "{{ trigger.plant }} needs water", message: "Water it when you get a chance." } });
+  });
+  it("gives each plant its own Home Assistant notification for needs water and keeps one daily report", () => {
+    const id = (kind: NotificationInput["kind"]) => {
+      const send = (buildNotification({ ...daily, kind, target: { kind: "persistent" } }, ENGLISH).actions as Array<{ data: Record<string, unknown> }>).at(-1)!;
+      return send.data.notification_id;
+    };
+    expect(id("needs_water")).toBe("smart_plants_needs_water_{{ trigger.device_id }}");
+    expect(id("daily_report")).toBe("smart_plants_daily_report");
   });
   it("leaves out quiet hours, the target and the delay when they are not set", () => {
     const config = buildNotification({ ...water, quiet: null, plantDeviceIds: null, delayMinutes: 0 }, ENGLISH);

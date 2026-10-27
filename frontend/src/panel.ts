@@ -2062,7 +2062,7 @@ export class SmartPlantsPanel extends LitElement {
          <ha-dropdown-item value="delete-plant" ?disabled=${busy}>${l.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>` : html`
          ${this._view.kind !== "list" ? html`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${l.t("panel.back_to_overview")}</ha-dropdown-item>` : nothing}
          <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${l.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${ADD_ICON_PATH}></ha-svg-icon></ha-dropdown-item>
-         <ha-dropdown-item value="notifications">${l.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon></ha-dropdown-item>
+         ${this._view.kind === "list" ? html`<ha-dropdown-item value="notifications">${l.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon></ha-dropdown-item>` : nothing}
          <ha-dropdown-item value="integration-options">${l.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="documentation">${l.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>`}
        </ha-dropdown>
@@ -2073,7 +2073,7 @@ export class SmartPlantsPanel extends LitElement {
         .thumbnails=${this._thumbnails} .watering=${this._watering} .timeZone=${this._timeZone()} .loading=${this._loading} .blocked=${this._blocked}
         @open-plant=${(e: CustomEvent<OpenPlantDetail>) => this._openFromOverview(e.detail)} @add-plant=${() => this._show({ kind: "create" })} @log-watering=${(e: CustomEvent<{ plantId: string }>) => void this._logWatering(e.detail.plantId)}></smart-plants-overview>
       ${this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : nothing}
-      ${this._notificationsOpen && this._view.kind !== "detail" ? html`<smart-plants-notifications .hass=${this.hass} .l=${l} .plants=${this._plants} .devices=${this._devices} .states=${this._states}
+      ${this._notificationsOpen && this._view.kind === "list" ? html`<smart-plants-notifications .hass=${this.hass} .l=${l} .plants=${this._plants} .devices=${this._devices} .states=${this._states}
         @notifications-close=${() => { this._notificationsOpen = false; this.shadowRoot?.querySelector<HTMLElement>(".panel-appbar ha-dropdown [slot=trigger]")?.focus(); }}></smart-plants-notifications>` : nothing}
       ${this._wizardStarted && this._capabilities ? html`<div ?hidden=${this._view.kind !== "create"}><smart-plants-wizard .hass=${this.hass} .capabilities=${this._capabilities} .areas=${this._areas} .entities=${this._entities} .devices=${this._devices} .states=${this._states} .blocked=${this._blocked} .navigationContext=${this._context} .photoStatus=${this._creationPhoto} @plant-created=${(e: CustomEvent<{ plant: PlantRecord; photo: File | null; navigationContext: number }>) => void this._created(e)} @wizard-close=${() => this._closeWizard()} @wizard-open-plant=${(e: CustomEvent<{ plantId: string }>) => this._openCreated(e.detail.plantId)} @wizard-restart=${() => this._clearCreationNotice()} @backend-unavailable=${(e: CustomEvent<string>) => { this._blocked = true; this._error = e.detail; }}></smart-plants-wizard></div>` : nothing}
         <p role="status" aria-live="polite">${this._formBusy ? l.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;

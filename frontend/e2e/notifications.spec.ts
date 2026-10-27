@@ -103,9 +103,19 @@ test("adds only a menu item to the overview and opens the editor with a preset",
     max: 20,
     triggers: [{ trigger: "smart_plants.needs_water", id: "smart_plants_needs_water", options: { behavior: "each", for: { minutes: 30 }, include_snoozed: false } }],
     conditions: [{ condition: "not", conditions: [{ condition: "time", after: "22:00:00", before: "07:00:00" }] }],
-    actions: [{ action: "persistent_notification.create", data: { title: "{{ trigger.plant }} needs water", message: "Water it when you get a chance.", notification_id: "smart_plants_needs_water" } }],
+    actions: [{ action: "persistent_notification.create", data: { title: "{{ trigger.plant }} needs water", message: "Water it when you get a chance.", notification_id: "smart_plants_needs_water_{{ trigger.device_id }}" } }],
   });
   expect(new URL(page.url()).pathname).toBe("/config/automation/edit/new");
+});
+
+test("offers notifications only on the overview, not while adding a plant", async ({ page }) => {
+  await page.goto(`${url}?seed&notifications`);
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await menuItem(page, "Add plant").click();
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await expect(menuItem(page, "Back to overview")).toBeVisible();
+  await expect(menuItem(page, "Integration options")).toBeVisible();
+  await expect(menuItem(page, "Notifications…")).toHaveCount(0);
 });
 
 test("keeps focus in the dialog, closes with Escape and returns focus to the menu", async ({ page }) => {

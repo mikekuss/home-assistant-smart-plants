@@ -86,7 +86,9 @@ function sendStep(target: NotifyTarget, kind: NotificationKind, title: string, m
   switch (target.kind) {
     case "entity": return { action: "notify.send_message", target: { entity_id: target.entityId }, data: { title, message } };
     case "service": return { action: `notify.${target.service}`, data: { title, message } };
-    case "persistent": return { action: "persistent_notification.create", data: { title, message, notification_id: `${MARKER_PREFIX}${kind}` } };
+    // One id per plant for needs water, so a second plant's message does not
+    // replace the first; the daily report replaces yesterday's on purpose.
+    case "persistent": return { action: "persistent_notification.create", data: { title, message, notification_id: kind === "needs_water" ? `${MARKER_PREFIX}${kind}_{{ trigger.device_id }}` : `${MARKER_PREFIX}${kind}` } };
   }
 }
 
