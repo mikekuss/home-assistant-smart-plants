@@ -523,6 +523,37 @@
         "note": "Notiz",
         "task": "Andere Aufgabe"
       }
+    },
+    "problem": {
+      "options": {
+        "needs_water": "Braucht Wasser",
+        "too_wet": "Zu nass",
+        "sensor_stale": "Sensor veraltet",
+        "temperature_stress": "Temperaturstress",
+        "humidity_stress": "Luftfeuchtestress",
+        "soil_temperature_stress": "Bodentemperaturstress",
+        "conductivity_stress": "Leitfähigkeitsstress",
+        "co2_stress": "CO2-Stress",
+        "low_light": "Zu wenig Licht",
+        "low_battery": "Batterie niedrig"
+      }
+    },
+    "task_type": {
+      "options": {
+        "fertilize": "Düngen",
+        "prune": "Schneiden",
+        "repot": "Umtopfen",
+        "pests": "Auf Schädlinge prüfen",
+        "winter_protection": "Winterschutz",
+        "custom": "Eigene"
+      }
+    },
+    "report_include": {
+      "options": {
+        "needs_water": "Braucht Wasser",
+        "problems": "Probleme",
+        "care_tasks": "Fällige Pflegeaufgaben"
+      }
     }
   },
   "services": {
@@ -565,6 +596,20 @@
     "unsnooze": {
       "name": "Hinweise fortsetzen",
       "description": "Beendet die Stummschaltung der Hinweise von Smart-Plants-Pflanzen sofort."
+    },
+    "get_report": {
+      "name": "Pflanzenbericht abrufen",
+      "description": "Gibt zurück, welche Pflanzen Wasser brauchen, Probleme haben oder fällige Pflegeaufgaben haben, mit fertigem Titel und Text zum Versenden. Pausierte Pflanzen fehlen.",
+      "fields": {
+        "include": {
+          "name": "Einbeziehen",
+          "description": "Was der Bericht auflistet. Probleme sind alle Probleme außer Wasserbedarf."
+        },
+        "include_snoozed": {
+          "name": "Stummgeschaltete Pflanzen einbeziehen",
+          "description": "Auch Pflanzen auflisten, deren Hinweise stummgeschaltet sind, mit dem Vermerk stummgeschaltet."
+        }
+      }
     }
   },
   "exceptions": {
@@ -631,5 +676,145 @@
     "snooze_rejected": {
       "message": "Die Stummschaltung von {target} wurde nicht gespeichert: {reason}"
     }
+  },
+  "triggers": {
+    "needs_water": {
+      "name": "Pflanze braucht Wasser",
+      "description": "Löst aus, wenn eine oder mehrere Pflanzen Wasser brauchen. Stummgeschaltete Pflanzen lösen aus, wenn die Stummschaltung endet. Ohne Ziel gilt es für alle Pflanzen.",
+      "fields": {
+        "behavior": {
+          "name": "Auslösen, wenn"
+        },
+        "for": {
+          "name": "Mindestens für"
+        },
+        "include_snoozed": {
+          "name": "Auch während der Stummschaltung",
+          "description": "Auch auslösen, während die Pflanze stummgeschaltet ist. Das Ende der Stummschaltung löst dann nicht noch einmal aus."
+        }
+      }
+    },
+    "problem_started": {
+      "name": "Pflanzenproblem aufgetreten",
+      "description": "Löst aus, wenn bei einer Pflanze ein Problem auftritt, zum Beispiel zu nass oder zu wenig Licht.",
+      "fields": {
+        "problems": {
+          "name": "Probleme",
+          "description": "Die Probleme, auf die geachtet wird."
+        },
+        "for": {
+          "name": "Mindestens für"
+        },
+        "include_snoozed": {
+          "name": "Auch während der Stummschaltung",
+          "description": "Auch auslösen, während die Pflanze stummgeschaltet ist. Das Ende der Stummschaltung löst dann nicht noch einmal aus."
+        }
+      }
+    },
+    "problem_cleared": {
+      "name": "Pflanzenproblem behoben",
+      "description": "Löst aus, wenn ein Problem einer Pflanze vorbei ist.",
+      "fields": {
+        "problems": {
+          "name": "Probleme",
+          "description": "Die Probleme, auf die geachtet wird."
+        },
+        "for": {
+          "name": "Mindestens für"
+        }
+      }
+    },
+    "care_task_due": {
+      "name": "Pflegeaufgabe fällig",
+      "description": "Löst aus, wenn eine Pflegeaufgabe einer Pflanze fällig wird.",
+      "fields": {
+        "task_types": {
+          "name": "Aufgabenarten",
+          "description": "Die Arten von Pflegeaufgaben, auf die geachtet wird."
+        },
+        "for": {
+          "name": "Mindestens für"
+        },
+        "include_snoozed": {
+          "name": "Auch während der Stummschaltung",
+          "description": "Auch auslösen, während die Pflanze stummgeschaltet ist. Das Ende der Stummschaltung löst dann nicht noch einmal aus."
+        }
+      }
+    }
+  },
+  "conditions": {
+    "needs_water": {
+      "name": "Pflanze braucht Wasser",
+      "description": "Prüft, ob eine oder mehrere Pflanzen Wasser brauchen.",
+      "fields": {
+        "behavior": {
+          "name": "Bedingung erfüllt, wenn"
+        },
+        "for": {
+          "name": "Mindestens für"
+        }
+      }
+    },
+    "has_problem": {
+      "name": "Pflanze hat ein Problem",
+      "description": "Prüft, ob Pflanzen eines der gewählten Probleme haben.",
+      "fields": {
+        "problems": {
+          "name": "Probleme",
+          "description": "Die Probleme, auf die geachtet wird."
+        },
+        "behavior": {
+          "name": "Bedingung erfüllt, wenn"
+        }
+      }
+    },
+    "care_task_due": {
+      "name": "Pflegeaufgabe ist fällig",
+      "description": "Prüft, ob bei Pflanzen eine Pflegeaufgabe fällig ist.",
+      "fields": {
+        "task_types": {
+          "name": "Aufgabenarten",
+          "description": "Die Arten von Pflegeaufgaben, auf die geachtet wird."
+        },
+        "behavior": {
+          "name": "Bedingung erfüllt, wenn"
+        }
+      }
+    },
+    "is_not_snoozed": {
+      "name": "Pflanze ist nicht stummgeschaltet",
+      "description": "Prüft, ob die Hinweise von Pflanzen nicht stummgeschaltet sind.",
+      "fields": {
+        "behavior": {
+          "name": "Bedingung erfüllt, wenn"
+        }
+      }
+    },
+    "needs_attention": {
+      "name": "Pflanzen brauchen Aufmerksamkeit",
+      "description": "Prüft, ob der Pflanzenbericht mindestens eine Pflanze enthält.",
+      "fields": {
+        "include": {
+          "name": "Einbeziehen",
+          "description": "Was zählt. Probleme sind alle Probleme außer Wasserbedarf."
+        },
+        "include_snoozed": {
+          "name": "Stummgeschaltete Pflanzen einbeziehen",
+          "description": "Auch Pflanzen zählen, deren Hinweise stummgeschaltet sind."
+        }
+      }
+    }
+  },
+  "common": {
+    "report_title_one": "1 Pflanze braucht Aufmerksamkeit",
+    "report_title_other": "{count} Pflanzen brauchen Aufmerksamkeit",
+    "report_title_empty": "Alle Pflanzen sind in Ordnung",
+    "report_message_empty": "Gerade braucht nichts Aufmerksamkeit.",
+    "report_due": "Fällig: {tasks}",
+    "report_snoozed_marker": "stummgeschaltet",
+    "report_more_one": "…und 1 weitere Pflanze.",
+    "report_more_other": "…und {count} weitere Pflanzen.",
+    "report_snoozed_left_out_one": "1 stummgeschaltete Pflanze nicht enthalten.",
+    "report_snoozed_left_out_other": "{count} stummgeschaltete Pflanzen nicht enthalten."
   }
 }

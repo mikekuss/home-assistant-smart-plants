@@ -54,3 +54,30 @@ unsnooze:
     entity:
       - integration: smart_plants
         domain: binary_sensor
+
+get_report:
+  # Read only, so unlike the other actions it also accepts areas, floors and
+  # labels. Without a target the report covers every plant. The entity filter
+  # also limits the device picker to the plant devices.
+  target:
+    entity:
+      - integration: smart_plants
+        domain: binary_sensor
+  fields:
+    include:
+      default:
+        - needs_water
+        - problems
+        - care_tasks
+      selector:
+        select:
+          translation_key: report_include
+          multiple: true
+          options:
+            - needs_water
+            - problems
+            - care_tasks
+    include_snoozed:
+      default: false
+      selector:
+        boolean:

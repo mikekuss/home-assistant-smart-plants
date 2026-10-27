@@ -13,10 +13,9 @@ check; care is stored with the ``action`` provenance.
 from __future__ import annotations
 
 import logging
-import re
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final
 
@@ -31,14 +30,23 @@ from homeassistant.const import (
     ENTITY_MATCH_ALL,
     ENTITY_MATCH_NONE,
 )
-from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceCall,
+    ServiceResponse,
+    SupportsResponse,
+    callback,
+)
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
 
+from .automation_targets import DUE_UNIQUE_ID, plant_id_of_device
 from .care import CARE_EVENT_KINDS, kind_for_task_type, minimal_care_payload
+from .care_entities import translated_task_name
 from .const import DOMAIN
 from .manager import (
     CARE_CLOCK_SKEW,
@@ -49,6 +57,14 @@ from .manager import (
     SmartPlantsValidationError,
 )
 from .models import ReadingSchedule
+from .report import (
+    INCLUDE_OPTIONS,
+    TEXT_KEYS,
+    PlantFacts,
+    build_report,
+    collect_plants,
+    report_language,
+)
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -61,19 +77,19 @@ SERVICE_LOG_CARE: Final = "log_care"
 SERVICE_SKIP_CARE_TASK: Final = "skip_care_task"
 SERVICE_SNOOZE: Final = "snooze"
 SERVICE_UNSNOOZE: Final = "unsnooze"
+SERVICE_GET_REPORT: Final = "get_report"
 
 ATTR_KIND: Final = "kind"
 ATTR_OCCURRED_AT: Final = "occurred_at"
 ATTR_NOTE: Final = "note"
 ATTR_DURATION: Final = "duration"
 ATTR_UNTIL: Final = "until"
+ATTR_INCLUDE: Final = "include"
+ATTR_INCLUDE_SNOOZED: Final = "include_snoozed"
 
 ACTION_PROVENANCE: Final = "action"
 NOTE_MAX_LENGTH: Final = 500
 
-_DUE_UNIQUE_ID = re.compile(
-    rf"^{DOMAIN}:(?P<plant_id>.+):care_task:(?P<task_id>[0-9a-f]{{32}}):due$"
-)
 _UNSUPPORTED_TARGET_KEYS = (ATTR_AREA_ID, ATTR_FLOOR_ID, ATTR_LABEL_ID)
 
 LOG_CARE_SCHEMA = vol.Schema(
@@ -95,6 +111,15 @@ SNOOZE_SCHEMA = vol.Schema(
     }
 )
 UNSNOOZE_SCHEMA = vol.Schema(cv.TARGET_SERVICE_FIELDS)
+GET_REPORT_SCHEMA = vol.Schema(
+    {
+        **cv.TARGET_SERVICE_FIELDS,
+        vol.Optional(ATTR_INCLUDE, default=list(INCLUDE_OPTIONS)): vol.All(
+            cv.ensure_list, [vol.In(INCLUDE_OPTIONS)]
+        ),
+        vol.Optional(ATTR_INCLUDE_SNOOZED, default=False): cv.boolean,
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,7 +226,7 @@ def _resolve_task_entity(
     registry_entry = registry.async_get(entity_id) if entity_id else None
     if entity_id is None or registry_entry is None:
         raise _unregistered_entity_error(hass, entity_ref)
-    match = _DUE_UNIQUE_ID.fullmatch(registry_entry.unique_id)
+    match = DUE_UNIQUE_ID.fullmatch(registry_entry.unique_id)
     if (
         registry_entry.platform != DOMAIN
         or registry_entry.domain != "binary_sensor"
@@ -452,6 +477,97 @@ async def _async_unsnooze(call: ServiceCall) -> None:
         _LOGGER.debug("Ended the snooze of plant %s from an action", plant.id)
 
 
+_TARGET_KEYS = (
+    ATTR_DEVICE_ID,
+    ATTR_ENTITY_ID,
+    ATTR_AREA_ID,
+    ATTR_FLOOR_ID,
+    ATTR_LABEL_ID,
+)
+
+
+def _report_target(call: ServiceCall) -> dict[str, Any] | None:
+    """
+    Return the call's target; an empty one means all plants.
+
+    ``None`` means the call targeted nothing on purpose (``none``).
+    """
+    target: dict[str, Any] = {}
+    for key in _TARGET_KEYS:
+        value = call.data.get(key)
+        if value == ENTITY_MATCH_ALL:
+            return {}
+        if value is not None and value != ENTITY_MATCH_NONE:
+            target[key] = list(dict.fromkeys(cv.ensure_list(value)))
+    if not target and any(
+        call.data.get(key) == ENTITY_MATCH_NONE for key in _TARGET_KEYS
+    ):
+        return None
+    return target
+
+
+async def _async_get_report(call: ServiceCall) -> ServiceResponse:
+    hass = call.hass
+    _entry, manager = _loaded_runtime(hass)
+    language = report_language(hass.config.language)
+    entity_names = await async_get_translations(hass, language, "entity", [DOMAIN])
+    common = await async_get_translations(hass, language, "common", [DOMAIN])
+    prefix = f"component.{DOMAIN}.common."
+    texts = {key: common.get(f"{prefix}{key}", key) for key in TEXT_KEYS}
+
+    def problem_name(role: str, _state: Any, _plant: str) -> str:
+        key = f"component.{DOMAIN}.entity.binary_sensor.{role}.name"
+        return entity_names.get(key, role)
+
+    def task_name(entry: er.RegistryEntry, state: Any, _plant: str) -> str:
+        match = DUE_UNIQUE_ID.fullmatch(entry.unique_id)
+        plant = (
+            None if match is None else manager.snapshot.plants.get(match["plant_id"])
+        )
+        task = (
+            None
+            if plant is None or match is None
+            else plant.care_task(match["task_id"])
+        )
+        if task is None:
+            return str(state.attributes.get("friendly_name") or entry.entity_id)
+        return translated_task_name(task, entity_names)
+
+    target = _report_target(call)
+    facts = (
+        []
+        if target is None
+        else collect_plants(
+            hass, target, problem_name=problem_name, task_name=task_name
+        )
+    )
+    response = build_report(
+        [_with_manager_state(manager, hass, plant) for plant in facts],
+        include=call.data[ATTR_INCLUDE],
+        include_snoozed=call.data[ATTR_INCLUDE_SNOOZED],
+        texts=texts,
+        language=language,
+    )
+    _LOGGER.debug("Built a plant report with %s plants", response["count"])
+    return response
+
+
+def _with_manager_state(
+    manager: SmartPlantsManager, hass: HomeAssistant, plant: PlantFacts
+) -> PlantFacts:
+    """Take the pause and the snooze of a plant from the manager snapshot."""
+    device = dr.async_get(hass).async_get(plant.device_id)
+    plant_id = None if device is None else plant_id_of_device(device)
+    record = None if plant_id is None else manager.snapshot.plants.get(plant_id)
+    if record is None:
+        return plant
+    return replace(
+        plant,
+        paused=record.lifecycle_state == "disabled",
+        snoozed=record.snoozed_until is not None,
+    )
+
+
 @callback
 def async_setup_services(hass: HomeAssistant) -> None:
     """Register the Smart Plants actions."""
@@ -469,4 +585,11 @@ def async_setup_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN, SERVICE_UNSNOOZE, _async_unsnooze, schema=UNSNOOZE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_REPORT,
+        _async_get_report,
+        schema=GET_REPORT_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
     )

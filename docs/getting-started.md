@@ -430,9 +430,11 @@ data:
   until: "2026-11-15 18:00:00"
 ```
 
-The plants keep their real states and still count in the panel. Their binary sensors get the
-attribute `snoozed: true`, which your notification automations can check to stay quiet (see
-[Snooze alerts](automations.md#snooze-alerts)). The snooze ends by itself at the given time;
+The plants keep their real states and still count in the panel. The Smart Plants automation
+triggers and the plant report skip snoozed plants by themselves. If a plant still needs water
+when the snooze ends, the trigger reminds you once (see
+[Snooze alerts](automations.md#snooze-alerts)). Automations on the entities directly can check
+their `snoozed` attribute instead. The snooze ends by itself at the given time;
 `smart_plants.unsnooze` ends it earlier.
 
 ## Next steps

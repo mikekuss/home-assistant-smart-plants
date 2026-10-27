@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Automation triggers and conditions for plants: *Plant needs water*, *Plant problem started*
+  and *cleared*, *Care task became due*, and conditions such as *Plant is not snoozed* and
+  *Plants need attention*. Pick plants, areas or labels, or nothing for all plants. Snoozed
+  plants are skipped and remind you once the snooze ends. See
+  [Automations](docs/automations.md#smart-plants-triggers-and-conditions).
+- The `smart_plants.get_report` action returns which plants need attention, with a
+  ready-to-send title and message in English or German. See
+  [Plant report](docs/automations.md#plant-report).
+
 ## [0.11.0] - 2026-10-26
 
 ### Added

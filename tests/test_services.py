@@ -13,6 +13,7 @@ from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.manager import SmartPlantsManager
 from custom_components.smart_plants.models import PlantRecord
 from custom_components.smart_plants.services import (
+    SERVICE_GET_REPORT,
     SERVICE_LOG_CARE,
     SERVICE_SKIP_CARE_TASK,
     SERVICE_SNOOZE,
@@ -127,6 +128,7 @@ async def test_actions_are_registered_once_and_survive_reload(
         SERVICE_SKIP_CARE_TASK,
         SERVICE_SNOOZE,
         SERVICE_UNSNOOZE,
+        SERVICE_GET_REPORT,
     }
 
     plant_id = await _plant(hass, entry, "Aloe")

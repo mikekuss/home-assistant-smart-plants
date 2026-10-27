@@ -1,0 +1,110 @@
+# Without a target a condition checks every plant.
+.target: &target
+  entity:
+    - integration: smart_plants
+      domain: binary_sensor
+  device:
+    - integration: smart_plants
+
+.behavior: &behavior
+  required: true
+  default: any
+  selector:
+    automation_behavior:
+      mode: condition
+
+needs_water:
+  target: *target
+  fields:
+    behavior: *behavior
+    for:
+      required: true
+      default: "00:00:00"
+      selector:
+        duration:
+
+has_problem:
+  target: *target
+  fields:
+    problems:
+      required: true
+      default:
+        - needs_water
+        - too_wet
+        - sensor_stale
+        - temperature_stress
+        - humidity_stress
+        - soil_temperature_stress
+        - conductivity_stress
+        - co2_stress
+        - low_light
+        - low_battery
+      selector:
+        select:
+          translation_key: problem
+          multiple: true
+          options:
+            - needs_water
+            - too_wet
+            - sensor_stale
+            - temperature_stress
+            - humidity_stress
+            - soil_temperature_stress
+            - conductivity_stress
+            - co2_stress
+            - low_light
+            - low_battery
+    behavior: *behavior
+
+care_task_due:
+  target: *target
+  fields:
+    task_types:
+      required: true
+      default:
+        - fertilize
+        - prune
+        - repot
+        - pests
+        - winter_protection
+        - custom
+      selector:
+        select:
+          translation_key: task_type
+          multiple: true
+          options:
+            - fertilize
+            - prune
+            - repot
+            - pests
+            - winter_protection
+            - custom
+    behavior: *behavior
+
+is_not_snoozed:
+  target: *target
+  fields:
+    behavior: *behavior
+
+needs_attention:
+  target: *target
+  fields:
+    include:
+      required: true
+      default:
+        - needs_water
+        - problems
+        - care_tasks
+      selector:
+        select:
+          translation_key: report_include
+          multiple: true
+          options:
+            - needs_water
+            - problems
+            - care_tasks
+    include_snoozed:
+      required: true
+      default: false
+      selector:
+        boolean:
