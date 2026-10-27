@@ -349,7 +349,7 @@ async def test_golden_configs_validate_against_the_platforms(
     hass: HomeAssistant,
 ) -> None:
     await setup_integration(hass)
-    for name in ("daily_report", "needs_water"):
+    for name in ("daily_report", "needs_water", "needs_water_all_plants"):
         validated = await async_validate_config_item(hass, name, golden(name))
         assert validated is not None
         assert validated.validation_error is None, (name, validated.validation_error)
@@ -423,6 +423,25 @@ async def test_golden_needs_water_runs_outside_quiet_hours(
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
     assert len(sent) == 1
+
+
+async def test_golden_needs_water_for_all_plants_runs(hass: HomeAssistant) -> None:
+    entry = await setup_integration(hass)
+    aloe = mock_plant(hass, entry, "Aloe")
+    sent = async_mock_service(hass, "notify", "send_message")
+    assert await async_setup_component(
+        hass, AUTOMATION, {AUTOMATION: [golden("needs_water_all_plants")]}
+    )
+    await hass.async_block_till_done()
+
+    office = mock_plant(hass, entry, "Office Aloe")
+    await hass.async_block_till_done()
+    await change(hass, office["needs_water"], STATE_ON)
+    await change(hass, aloe["needs_water"], STATE_ON)
+    assert [call.data["title"] for call in sent] == [
+        "Office Aloe needs water",
+        "Aloe needs water",
+    ]
 
 
 # --- Strings ----------------------------------------------------------------

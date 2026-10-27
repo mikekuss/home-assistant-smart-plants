@@ -10,7 +10,9 @@ Alert triggers fire when a sensor starts *alerting*: it is on and its plant is
 not snoozed. So a plant that started needing water during a snooze triggers
 once when the snooze ends. ``include_snoozed`` tracks the state alone.
 
-Without a target a trigger watches every plant, including plants added later.
+A target that names the All plants entity, or no target, watches every plant,
+including plants added later. The All plants entity's own state never fires a
+trigger.
 """
 
 from __future__ import annotations
@@ -40,16 +42,16 @@ from homeassistant.helpers.trigger import (
 )
 
 from .automation_targets import (
+    ALL_PLANTS_SUGGESTED_ENTITY_ID,
     ATTR_TASK_TYPE,
-    BINARY_SENSOR,
     PROBLEM_ROLES,
     ROLE_NEEDS_WATER,
     TASK_TYPES,
     EntryFilter,
     all_plant_entities,
+    all_plants_entity_id,
     entity_display_name,
     filter_entities,
-    has_target,
     is_alerting,
     is_task_due_entry,
     multi_select,
@@ -57,8 +59,8 @@ from .automation_targets import (
     plant_of,
     problem_filter,
     problem_role,
+    targets_all_plants,
 )
-from .const import DOMAIN
 
 if TYPE_CHECKING:
     from homeassistant.core import CALLBACK_TYPE, Context, HomeAssistant, State
@@ -66,12 +68,6 @@ if TYPE_CHECKING:
 ATTR_INCLUDE_SNOOZED: Final = "include_snoozed"
 ATTR_PROBLEMS: Final = "problems"
 ATTR_TASK_TYPES: Final = "task_types"
-
-# Stands in for an empty target so the target tracker runs. The trigger's
-# entity filter then ignores it and returns every matching plant entity; the
-# tracker calls the filter again on every registry change, so plants added
-# later are picked up without dropping the pending delays of other plants.
-_ALL_PLANTS_TARGET: Final = {ATTR_ENTITY_ID: [f"{BINARY_SENSOR}.{DOMAIN}_all_plants"]}
 
 
 _FOR = {vol.Optional(CONF_FOR): cv.positive_time_period}
@@ -114,9 +110,15 @@ class _PlantTrigger(EntityTriggerBase):
 
     def __init__(self, hass: HomeAssistant, config: TriggerConfig) -> None:
         super().__init__(hass, config)
-        self._all_plants = not has_target(self._target)
+        self._all_plants = targets_all_plants(hass, self._target)
         if self._all_plants:
-            self._target = _ALL_PLANTS_TARGET
+            # The target tracker needs a target, also for an empty one. The
+            # entity filter then ignores it and returns every matching plant
+            # entity, never the All plants entity itself. The tracker calls
+            # the filter again on every registry change, so plants added later
+            # are picked up without dropping the pending delays of others.
+            entity_id = all_plants_entity_id(hass) or ALL_PLANTS_SUGGESTED_ENTITY_ID
+            self._target = {ATTR_ENTITY_ID: [entity_id]}
         self._include_snoozed: bool = self._options.get(ATTR_INCLUDE_SNOOZED, False)
 
     def _entry_matches(self, entry: er.RegistryEntry) -> bool:

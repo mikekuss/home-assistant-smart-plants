@@ -21,6 +21,9 @@ sensor per care task and one plant-wide "care due" binary sensor while the
 plant has at least one task. They have no device class, because a due care
 task is a reminder rather than a problem. The due sensor of a reading care
 task also reports the current reading and the task's condition.
+
+The integration-wide ``All plants`` binary sensor has no device. It is on while
+any plant needs attention, and automations use it as the target for all plants.
 """
 
 from __future__ import annotations
@@ -31,8 +34,15 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
-from homeassistant.const import EntityCategory
+from homeassistant.const import EVENT_STATE_CHANGED, EntityCategory
+from homeassistant.core import Event, EventStateChangedData, callback
+from homeassistant.helpers import entity_registry as er
 
+from .automation_targets import (
+    ALL_PLANTS_SUGGESTED_ENTITY_ID,
+    ALL_PLANTS_UNIQUE_ID,
+    plant_binary_sensor_filter,
+)
 from .care_entities import (
     ROLE_CARE_DUE,
     TASK_SUFFIX_DUE,
@@ -50,6 +60,7 @@ from .entity import (
     SmartPlantsEntity,
     async_setup_platform_lifecycle,
 )
+from .report import collect_plants, select_plants
 from .roles import EntityRole, RoleDefinition, entity_factories
 
 if TYPE_CHECKING:
@@ -993,6 +1004,63 @@ def _factory_care_due(
 ROLE_FACTORIES = entity_factories(PLATFORM)
 
 
+class AllPlantsBinarySensor(BinarySensorEntity):
+    """
+    On while any plant needs attention, the default of ``needs_attention``.
+
+    A plant needs attention when it needs water, has a problem or has a care
+    task due. Snoozed and paused plants are left out. The state follows the
+    plant binary sensors' states, so it agrees with the plant report.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "all_plants"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_unique_id = ALL_PLANTS_UNIQUE_ID
+    _attr_should_poll = False
+
+    def __init__(self) -> None:
+        self.entity_id = ALL_PLANTS_SUGGESTED_ENTITY_ID
+
+    async def async_added_to_hass(self) -> None:
+        self._attr_is_on = self._needs_attention()
+        self.async_on_remove(
+            self.hass.bus.async_listen(
+                EVENT_STATE_CHANGED,
+                self._handle_change,
+                event_filter=self._is_plant_state_change,
+            )
+        )
+        # A removed entity can leave the registry before its state goes.
+        self.async_on_remove(
+            self.hass.bus.async_listen(
+                er.EVENT_ENTITY_REGISTRY_UPDATED,
+                self._handle_change,
+                event_filter=_is_removal,
+            )
+        )
+
+    @callback
+    def _is_plant_state_change(self, event_data: EventStateChangedData) -> bool:
+        entry = er.async_get(self.hass).async_get(event_data["entity_id"])
+        return entry is not None and plant_binary_sensor_filter(entry)
+
+    @callback
+    def _handle_change(self, _event: Event[Any]) -> None:
+        is_on = self._needs_attention()
+        if is_on != self._attr_is_on:
+            self._attr_is_on = is_on
+            self.async_write_ha_state()
+
+    def _needs_attention(self) -> bool:
+        return bool(select_plants(collect_plants(self.hass, None)).plants)
+
+
+@callback
+def _is_removal(event_data: er.EventEntityRegistryUpdatedData) -> bool:
+    return event_data["action"] == "remove"
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -1015,3 +1083,4 @@ async def async_setup_entry(
     )
     lifecycle.async_on_unload(care.async_unload)
     await care.async_setup()
+    async_add_entities([AllPlantsBinarySensor()])

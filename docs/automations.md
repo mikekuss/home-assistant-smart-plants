@@ -1,7 +1,7 @@
 # Automations
 
 Smart Plants adds its own triggers, conditions and actions to Home Assistant's automation
-editor. Pick a plant, an area or a label, or leave the target empty for all plants. You don't
+editor. Pick a plant, an area, a label, or the *All plants* entity for every plant. You don't
 need entity IDs or templates. You can build everything below in the visual automation editor;
 the YAML is shown for clarity.
 
@@ -44,10 +44,16 @@ their value.
 - A target can be plant devices, areas, floors, labels, or Smart Plants entities. Areas,
   floors and labels match the plants in them, and other integrations' entities there are
   ignored.
-- With no target, a trigger or condition covers every plant, including plants you add later.
-  The editor then shows a **No target set** badge on the card. The automation still saves and
-  works for all plants.
-- A Smart Plants entity picked directly counts only if it is the kind the trigger or
+- To cover every plant, including plants you add later, pick the **All plants** entity
+  (`binary_sensor.smart_plants_all_plants`, see [Entities](entities.md#all-plants)). It still
+  works after you rename its entity ID. Next to other targets, *All plants* wins. Its own
+  state never fires a trigger.
+- *All plants* counts only when you pick the entity itself. An area or label that holds it
+  matches its plants as usual.
+- A trigger or condition without a target also covers every plant, which is handy in YAML.
+  The visual editor marks a card without a target as **No target set**, so pick *All plants*
+  there.
+- Any other Smart Plants entity picked directly counts only if it is the kind the trigger or
   condition looks at. *Too wet* picked for *Plant needs water* matches nothing, so prefer
   plants, areas and labels.
 - **Trigger when** and **Condition passes if** appear once a target is set. For *Plant has a
@@ -103,6 +109,8 @@ and `trigger.for`, the Smart Plants triggers set these:
 alias: "Plants: needs water"
 triggers:
   - trigger: smart_plants.needs_water
+    target:
+      entity_id: binary_sensor.smart_plants_all_plants
     options:
       for:
         minutes: 30
@@ -114,8 +122,8 @@ actions:
 mode: queued
 ```
 
-With no target, this covers every plant. Snoozed plants send their message when the snooze
-ends.
+*All plants* covers every plant, including plants you add later. Snoozed plants send their
+message when the snooze ends.
 
 ### Any problem in an area
 
@@ -147,6 +155,8 @@ mode: queued
 alias: "Plants: sensor stale"
 triggers:
   - trigger: smart_plants.problem_started
+    target:
+      entity_id: binary_sensor.smart_plants_all_plants
     options:
       problems:
         - sensor_stale
@@ -189,7 +199,7 @@ due, with a title and a message ready to send. It changes nothing. In the editor
 **Get plant report** under **Smart Plants**; it always needs a response variable.
 
 - **Target** (optional): plant devices, Smart Plants entities (meaning their plant), areas,
-  floors or labels. With no target the report covers every plant. A target with no plants
+  floors or labels. *All plants*, or no target, covers every plant. A target with no plants
   in it gives an empty report.
 - `include`: what the report lists, any of `needs_water`, `problems` and `care_tasks`.
   Default all three. `problems` covers every problem except *Needs water*.
@@ -247,8 +257,12 @@ triggers:
     at: "08:00:00"
 conditions:
   - condition: smart_plants.needs_attention
+    target:
+      entity_id: binary_sensor.smart_plants_all_plants
 actions:
   - action: smart_plants.get_report
+    target:
+      entity_id: binary_sensor.smart_plants_all_plants
     response_variable: report
   - action: notify.mobile_app_my_phone
     data:

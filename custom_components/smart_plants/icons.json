@@ -1,6 +1,9 @@
 {
   "entity": {
     "binary_sensor": {
+      "all_plants": {
+        "default": "mdi:flower-outline"
+      },
       "care_task_fertilize": {
         "default": "mdi:flask-outline"
       },
