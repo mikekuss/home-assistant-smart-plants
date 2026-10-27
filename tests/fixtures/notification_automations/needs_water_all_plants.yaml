@@ -1,0 +1,16 @@
+# Right away, all plants, notify entity
+alias: "Smart Plants: plant needs water"
+description: "Created in Smart Plants → Notifications. Sends a message when a plant needs water. Snoozed plants send theirs when the snooze ends."
+mode: queued
+max: 20
+triggers:
+  - trigger: smart_plants.needs_water
+    id: smart_plants_needs_water
+    target: { entity_id: [binary_sensor.smart_plants_all_plants] }
+    options: { behavior: each, include_snoozed: false }
+actions:
+  - action: notify.send_message
+    target: { entity_id: notify.mock_chat }
+    data:
+      title: "{{ trigger.plant }} needs water"
+      message: "Water it when you get a chance."

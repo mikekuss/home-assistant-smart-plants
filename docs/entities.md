@@ -43,6 +43,8 @@ them in automations. You can rename entity IDs in Home Assistant like any other 
   battery) get their sensor and problem indicator the first time you assign a source to that
   role. If you later remove all sources, the entities stay (and read unavailable) so their
   history and your customizations are kept.
+- **All plants** exists once for the whole integration, whether or not you have plants (see
+  [All plants](#all-plants)).
 - **Care task entities** appear when you add a care task and go away when you delete it. *Care due* exists while the plant has at least one care task (see
   [Care tasks](#care-tasks)).
 
@@ -97,6 +99,21 @@ The `reason` attribute explains the current state, for example `cold_stress`, `h
 *Needs water* and *Too wet* are unavailable while there is no valid moisture reading.
 *Sensor stale* stays available: it's off when no moisture sensor is assigned and on while any
 assigned moisture sensor is stale.
+
+## All plants
+
+Smart Plants also adds one *All plants* binary sensor
+(`binary_sensor.smart_plants_all_plants`, *Alle Pflanzen* in German). It belongs to no plant
+device, has the device class `problem` and no attributes.
+
+It's on while at least one plant needs water, has a problem or has a care task due. Snoozed
+and paused plants don't count, the same as the
+[*Plants need attention*](automations.md#smart-plants-triggers-and-conditions) condition with
+its defaults. With no plants it's off. You can show it on a dashboard as "a plant needs
+something".
+
+As a target in Smart Plants triggers, conditions and the plant report it means every plant,
+including plants you add later (see [Targets](automations.md#targets)).
 
 ## Number entities
 

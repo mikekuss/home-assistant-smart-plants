@@ -103,6 +103,9 @@
       }
     },
     "binary_sensor": {
+      "all_plants": {
+        "name": "All plants"
+      },
       "needs_water": {
         "name": "Needs water",
         "state_attributes": {

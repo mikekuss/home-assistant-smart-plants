@@ -8,9 +8,11 @@ triggers:
     id: smart_plants_daily_report
 conditions:
   - condition: smart_plants.needs_attention
+    target: { entity_id: [binary_sensor.smart_plants_all_plants] }
     options: { include: [needs_water, problems, care_tasks], include_snoozed: false }
 actions:
   - action: smart_plants.get_report
+    target: { entity_id: [binary_sensor.smart_plants_all_plants] }
     data: { include: [needs_water, problems, care_tasks], include_snoozed: false }
     response_variable: report
   - action: notify.send_message

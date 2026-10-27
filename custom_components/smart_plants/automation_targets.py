@@ -9,6 +9,10 @@ A plant is its device: every Smart Plants plant device has the identifier
 ``(smart_plants, <plant_id>)``. Plant entities are recognized by their entity
 registry platform and unique ID, so a user's entity renames never change what
 a trigger watches.
+
+The integration-wide *All plants* binary sensor stands for every plant. A
+target that names it, or no target at all, means all plants, including plants
+added later.
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ from typing import Any, Final
 
 import voluptuous as vol
 from homeassistant.const import (
+    ATTR_ENTITY_ID,
     CONF_OPTIONS,
     CONF_TARGET,
     STATE_ON,
@@ -39,6 +44,9 @@ from homeassistant.helpers.target import (
 from .const import DOMAIN
 
 BINARY_SENSOR: Final = "binary_sensor"
+
+ALL_PLANTS_UNIQUE_ID: Final = f"{DOMAIN}:all_plants"
+ALL_PLANTS_SUGGESTED_ENTITY_ID: Final = f"{BINARY_SENSOR}.{DOMAIN}_all_plants"
 
 ROLE_NEEDS_WATER: Final = "needs_water"
 # Every problem-class binary sensor, in the order reports list them.
@@ -103,7 +111,11 @@ def options_schema(options: dict[Any, Any]) -> vol.Schema:
 
 
 def _is_plant_binary_sensor(entry: er.RegistryEntry) -> bool:
-    return entry.platform == DOMAIN and entry.domain == BINARY_SENSOR
+    return (
+        entry.platform == DOMAIN
+        and entry.domain == BINARY_SENSOR
+        and entry.unique_id != ALL_PLANTS_UNIQUE_ID
+    )
 
 
 def problem_role(entry: er.RegistryEntry) -> str | None:
@@ -149,7 +161,7 @@ def filter_entities(
 
 def all_plant_entities(hass: HomeAssistant, entry_filter: EntryFilter) -> set[str]:
     """
-    Return every matching plant entity, for a trigger or condition without target.
+    Return every matching plant entity, for a target that means all plants.
 
     Disabled and hidden entities are left out, as Home Assistant leaves them
     out when it expands a device or area target.
@@ -166,13 +178,36 @@ def has_target(target: Mapping[str, Any] | None) -> bool:
     return bool(target) and TargetSelection(dict(target or {})).has_any_target
 
 
+def all_plants_entity_id(hass: HomeAssistant) -> str | None:
+    """Return the current entity ID of the All plants entity, if it exists."""
+    return er.async_get(hass).async_get_entity_id(
+        BINARY_SENSOR, DOMAIN, ALL_PLANTS_UNIQUE_ID
+    )
+
+
+def targets_all_plants(hass: HomeAssistant, target: Mapping[str, Any] | None) -> bool:
+    """
+    Return whether a target means all plants.
+
+    That is a target without anything in it, or one that names the All plants
+    entity. Mixed with other targets, all plants wins. Only a direct entity
+    reference counts: an area or label holding the entity selects as usual.
+    """
+    if not has_target(target):
+        return True
+    entity_id = all_plants_entity_id(hass)
+    return entity_id is not None and entity_id in cv.ensure_list(
+        (target or {}).get(ATTR_ENTITY_ID)
+    )
+
+
 def resolve_entities(
     hass: HomeAssistant,
     target: Mapping[str, Any] | None,
     entry_filter: EntryFilter,
 ) -> set[str]:
     """Return the matching plant entities of a target, or of all plants."""
-    if not has_target(target):
+    if targets_all_plants(hass, target):
         return all_plant_entities(hass, entry_filter)
     selected = async_extract_referenced_entity_ids(
         hass,
@@ -276,13 +311,13 @@ def resolve_plant_devices(
     hass: HomeAssistant, target: Mapping[str, Any] | None
 ) -> list[dr.DeviceEntry]:
     """
-    Return the plant devices of a target, or every plant without a target.
+    Return the plant devices of a target, or every plant for all plants.
 
     Devices, areas, floors and labels resolve to the plants among them; a
     Smart Plants entity resolves to its plant.
     """
     devices = dr.async_get(hass)
-    if not has_target(target):
+    if targets_all_plants(hass, target):
         return [
             device
             for device in devices.devices.values()

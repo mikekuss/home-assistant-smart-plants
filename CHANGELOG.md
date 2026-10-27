@@ -10,12 +10,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Automation triggers and conditions for plants: *Plant needs water*, *Plant problem started*
   and *cleared*, *Care task became due*, and conditions such as *Plant is not snoozed* and
-  *Plants need attention*. Pick plants, areas or labels, or nothing for all plants. Snoozed
+  *Plants need attention*. Pick plants, areas or labels, or *All plants*. Snoozed
   plants are skipped and remind you once the snooze ends. See
   [Automations](docs/automations.md#smart-plants-triggers-and-conditions).
 - The `smart_plants.get_report` action returns which plants need attention, with a
   ready-to-send title and message in English or German. See
   [Plant report](docs/automations.md#plant-report).
+- An *All plants* binary sensor. It's on while any plant needs water, has a problem or has a
+  care task due, leaving out snoozed and paused plants. As the target of a Smart Plants
+  trigger, condition or plant report it means every plant, so the automation editor no
+  longer shows *No target set*. See [Entities](docs/entities.md#all-plants).
 
 ## [0.11.0] - 2026-10-26
 
