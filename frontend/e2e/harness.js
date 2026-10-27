@@ -271,6 +271,27 @@ if (params.has("forecast")) state.seedForecast(params.has("frost"), params.has("
 if (params.has("suggest")) state.seedSuggestions();
 // Opt-in snoozed first plant; tests pin the clock so the end date reads the same.
 if (params.has("snoozed")) state.plants[0].snoozed_until = "2026-10-30T23:59:59Z";
+// Opt-in notification setup: one notify entity, one legacy notify service and
+// two automations, one of them made by the Notifications dialog.
+state.automationConfigs = {};
+state.editorRequests = [];
+if (params.has("notifications")) {
+  state.states.push(
+    { entity_id: "notify.mock_chat", state: "unknown", attributes: { friendly_name: "Mock chat" }, last_updated: now },
+    { entity_id: "automation.mock_daily_report", state: "on", attributes: { friendly_name: "Smart Plants: daily plant report", id: "1761000000000", last_triggered: "2026-10-23T06:00:00+00:00" }, last_updated: now },
+    { entity_id: "automation.mock_porch_light", state: "on", attributes: { friendly_name: "Porch light", id: "1761000000001" }, last_updated: now });
+  state.automationConfigs = {
+    "automation.mock_daily_report": { triggers: [{ trigger: "time", at: "08:00:00", id: "smart_plants_daily_report" }] },
+    "automation.mock_porch_light": { triggers: [{ trigger: "sun", event: "sunset" }] },
+  };
+  // The integration's All plants entity, which notifications target for all plants.
+  state.entities.push({ id: uuid(7990), entity_id: "binary_sensor.smart_plants_all_plants", device_id: null, unique_id: "smart_plants:all_plants", platform: "smart_plants" });
+}
+// Home Assistant's root element opens its automation editor for this event.
+window.addEventListener("hass-automation-editor", event => {
+  state.editorRequests.push(copy(event.detail));
+  history.pushState(null, "", "/config/automation/edit/new");
+});
 const drafts = new Map();
 const previews = new Map();
 function preview(message) {
@@ -307,6 +328,13 @@ async function respond(message) {
     case "config/device_registry/list": return copy(state.devices);
     case "get_states": return copy(state.states);
     case "search/related": return { automation: ["automation.plant_reminder"] };
+    case "automation/config": if (!state.automationConfigs[message.entity_id]) reject("not_found"); return { config: copy(state.automationConfigs[message.entity_id]) };
+    case "call_service": {
+      const target = state.states.find(s => s.entity_id === message.target?.entity_id);
+      if (message.domain !== "automation" || !target) { state.unexpected.push(`call_service ${message.domain}.${message.service}`); throw new Error("Unexpected service call"); }
+      target.state = message.service === "turn_on" ? "on" : "off";
+      return { context: { id: "mock" } };
+    }
     // Home Assistant's recorder: statistics rows per requested entity.
     case "recorder/statistics_during_period": return Object.fromEntries(message.statistic_ids.filter(id => state.statistics[id]).map(id => [id, state.statistics[id](message.period)]));
     case "smart_plants/moisture/evaluation": return { evaluation: copy(p?.lifecycle_state === "disabled" ? unavailable : state.evaluations[message.plant_id] ?? unavailable) };
@@ -508,6 +536,8 @@ if (!customElements.get("ha-icon-button")) {
     set label(value) { this._label = value; this.render(); }
     get label() { return this._label; }
     set path(value) { this._path = value; }
+    // Like Home Assistant's element, focusing it focuses its button.
+    focus(options) { this.shadowRoot?.querySelector("button")?.focus(options); }
     connectedCallback() { this.render(); }
     constructor() { super(); this.attachShadow({ mode: "open" }); }
     render() {
@@ -661,6 +691,6 @@ const language = params.get("lang") ?? "en";
 document.documentElement.lang = language;
 // `?tz=UTC` sets Home Assistant's time zone; without it the panel uses the browser's.
 const timeZone = params.get("tz");
-panel.hass = { auth: { accessToken: "playwright-token" }, connection, language, locale: { language, number_format: "language", time_format: "language", date_format: "language" }, user: { is_admin: true, name: "Synthetic browser admin" }, ...(timeZone ? { config: { time_zone: timeZone } } : {}) };
+panel.hass = { auth: { accessToken: "playwright-token" }, connection, language, ...(params.has("notifications") ? { services: { notify: { send_message: {}, notify: {}, mobile_app_mock_phone: {} } } } : {}), locale: { language, number_format: "language", time_format: "language", date_format: "language" }, user: { is_admin: true, name: "Synthetic browser admin" }, ...(timeZone ? { config: { time_zone: timeZone } } : {}) };
 panel.panel = { title: "Smart Plants", url_path: "smart-plants" };
 document.body.append(panel);

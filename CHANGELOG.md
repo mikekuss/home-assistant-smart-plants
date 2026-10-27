@@ -20,6 +20,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   care task due, leaving out snoozed and paused plants. As the target of a Smart Plants
   trigger, condition or plant report it means every plant, so the automation editor no
   longer shows *No target set*. See [Entities](docs/entities.md#all-plants).
+- **⋮ → Notifications…** on the plants overview sets up a daily plant report or a message when
+  a plant needs water. You check and save it in Home Assistant's automation editor, and from
+  then on it is a normal automation. See [Notifications](docs/notifications.md).
+
+### Changed
+
+- The plant page's Automations card points to the new triggers and to notifications.
 
 ## [0.11.0] - 2026-10-26
 

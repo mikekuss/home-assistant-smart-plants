@@ -36,8 +36,8 @@ Select **Watered** on a card to log a watering right now. A message confirms it 
 **Undo** for a few seconds.
 
 Use **Add plant** at the bottom right (or **⋮ → Add plant** in the top bar) to start the
-creation wizard. Select a plant's name to open its page. The **⋮** menu also links to the
-integration options and this documentation.
+creation wizard. Select a plant's name to open its page. The **⋮** menu also opens
+[Notifications](notifications.md) and links to the integration options and this documentation.
 
 ## Create your first plant
 
@@ -441,4 +441,5 @@ their `snoozed` attribute instead. The snooze ends by itself at the given time;
 
 - [Sensors and health](sensors-and-health.md): how values and problems are calculated.
 - [Entities](entities.md): what each plant exposes to Home Assistant.
+- [Notifications](notifications.md): a daily plant report or a message when a plant needs water, set up from **⋮ → Notifications…**.
 - [Automations](automations.md): notification and irrigation examples.
