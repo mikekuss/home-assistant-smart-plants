@@ -79,6 +79,7 @@ Manual installation, updating, and removal are covered in [docs/installation.md]
 - [Entities](docs/entities.md)
 - [OpenPlantBook](docs/openplantbook.md)
 - [Automation examples](docs/automations.md)
+- [Notifications](docs/notifications.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [FAQ](docs/faq.md)
 
