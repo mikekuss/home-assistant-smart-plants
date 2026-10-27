@@ -45,6 +45,23 @@ describe("overview view", () => {
     tile(el, "Needs water").click(); await settle(el);
     expect(cardNames(el)).toHaveLength(3);
   });
+  it("leaves a snoozed plant out of the counts and the attention order until the snooze ends", async () => {
+    const fern = withMoisture(plant("fern", "Fern"));
+    const dry = (p: PlantRecord, snoozedUntil: string | null): PlantOverview => ({ ...overview.basil!, ...overviewFor(p), status: "needs_water", problems: [{ role: "moisture", kind: "needs_water" }], snoozed_until: snoozedUntil });
+    const counts = (el: SmartPlantsOverview) => qa(el, ".tile").map(t => `${t.querySelector(".lbl")!.textContent} ${t.querySelector(".num")!.textContent}`);
+    const snoozed = await mountView({ plants: [...plants, fern], overview: { ...overview, basil: dry(basil, "2026-09-30T23:59:59+00:00"), fern: dry(fern, null) } });
+    expect(counts(snoozed)).toEqual(["All plants 4", "Needs water 1", "Problems 1", "Sensor issues 1"]);
+    expect(cardNames(snoozed)).toEqual(["Fern", "Monstera", "Peace Lily", "Basil"]);
+    expect(qa(snoozed, ".card sp-snooze-chip")).toHaveLength(1);
+    expect(qa(snoozed, ".card sp-status-chip").map(c => (c as unknown as { status: string }).status)).toEqual(["needs_water", "too_wet", "no_sensors", "needs_water"]);
+    tile(snoozed, "Needs water").click(); await settle(snoozed);
+    expect(cardNames(snoozed)).toEqual(["Fern"]);
+    document.body.replaceChildren();
+    const ended = await mountView({ plants: [...plants, fern], overview: { ...overview, basil: dry(basil, "2026-09-28T11:00:00+00:00"), fern: dry(fern, null) } });
+    expect(counts(ended)).toEqual(["All plants 4", "Needs water 2", "Problems 1", "Sensor issues 1"]);
+    expect(cardNames(ended)).toEqual(["Basil", "Fern", "Monstera", "Peace Lily"]);
+    expect(qa(ended, ".card sp-snooze-chip")).toHaveLength(0);
+  });
   it("puts plants that need attention first and can sort by name or group by area", async () => {
     const el = await mountView();
     expect(cardNames(el)).toEqual(["Basil", "Monstera", "Peace Lily"]);

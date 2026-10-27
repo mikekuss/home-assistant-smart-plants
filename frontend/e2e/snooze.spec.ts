@@ -82,7 +82,7 @@ test("snoozes until a picked day and explains a day out of range", async ({ page
   expect((await snoozes(page)).at(-1)!.until).toBe("2026-12-24T23:59:59+00:00");
 });
 
-test("a snoozed plant shows the grey chip on its overview card and keeps its counts", async ({ page }, info) => {
+test("a snoozed plant shows the grey chip on its overview card and leaves the counts", async ({ page }, info) => {
   await page.clock.setFixedTime(new Date("2026-10-24T12:00:00Z"));
   await page.goto(`${url}?seed&snoozed&tz=UTC`);
   const card = page.locator("smart-plants-overview article.card").filter({ hasText: "Office Aloe" });
@@ -90,7 +90,8 @@ test("a snoozed plant shows the grey chip on its overview card and keeps its cou
   await expect(card.locator("sp-status-chip")).toContainText("Needs water");
   await expect(card.getByRole("button", { name: /Resume/ })).toHaveCount(0);
   await expect(page.locator("smart-plants-overview article.card sp-snooze-chip")).toHaveCount(1);
-  await expect(page.getByRole("button", { name: /Needs water/ })).toContainText("1");
+  // The card keeps its real status, but the Needs water tile leaves the snoozed plant out.
+  await expect(page.getByRole("button", { name: /Needs water/ })).toContainText("0");
   await audit(page, info, "snooze-overview");
 });
 

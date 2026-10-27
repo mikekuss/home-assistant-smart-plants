@@ -18,6 +18,7 @@ The overview shows:
   as too little light. *Sensor issues* covers no recent data and no soil moisture sensor.
   While a care task is due, a fifth tile, **Care due**, appears. Select a tile to filter,
   select it again to show all plants. On a phone the tiles become one row of compact chips.
+  [Snoozed](#going-on-vacation) plants count only in **All plants**.
 - A search field and a sort menu. The search matches the plant name, area, species
   (scientific and common names in English and German), category and tags. The sort menu has
   **Needs attention first** (the default), **Name** and **Group by area**.
@@ -414,8 +415,10 @@ of tomorrow.
 
 A snoozed plant shows a grey **Snoozed until Fri, Oct 30** chip with **Resume** in its header,
 and the same chip on its overview card. The menu entry then reads **Change snooze…**. The
-status, the counts and the care reminders stay as they are, so you still see what the plant
-needs when you're back.
+status and the care reminders stay as they are, so you still see what the plant needs when
+you're back. The overview leaves a snoozed plant out of the counts on its tiles, such as
+**Needs water**, and doesn't sort it first as needing attention. Once the snooze ends, the
+plant counts again.
 
 To snooze several plants at once, use the `smart_plants.snooze` action, for example from
 **Developer tools → Actions** or a script you run before leaving:

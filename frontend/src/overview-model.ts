@@ -227,9 +227,12 @@ export type OverviewFilter = "all" | "water" | "problems" | "sensors" | "care";
 // "care" lists plants with a care task due today or overdue. Care never changes
 // a plant's status, so it is a filter of its own.
 export const OVERVIEW_FILTERS: readonly OverviewFilter[] = ["all", "water", "problems", "sensors", "care"];
-export function matchesFilter(filter: OverviewFilter, status: PlantStatus | undefined, careDue = false): boolean {
+// A snoozed plant keeps its real status but leaves every attention filter, so
+// the tiles count only plants whose alerts are on.
+export function matchesFilter(filter: OverviewFilter, status: PlantStatus | undefined, careDue = false, snoozed = false): boolean {
+  if (filter === "all") return true;
+  if (snoozed) return false;
   switch (filter) {
-    case "all": return true;
     case "care": return careDue;
     case "water": return status === "needs_water";
     case "problems": return status === "too_wet" || status === "problem";
@@ -245,6 +248,8 @@ export interface OverviewItem {
   name: string;
   areaName: string | null;
   status: PlantStatus | undefined;
+  // The plant's alerts are snoozed right now.
+  snoozed?: boolean;
   // Name, area, species, category and tags for search.
   searchText: string;
 }
@@ -256,9 +261,12 @@ export function matchesSearch(item: OverviewItem, query: string): boolean {
 
 const byName = (a: OverviewItem, b: OverviewItem) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
 
+// A snoozed plant sorts like a healthy one, so it never comes first as needing attention.
+const attentionStatus = (item: OverviewItem): PlantStatus => item.snoozed && item.status !== "paused" ? "healthy" : item.status ?? "healthy";
+
 export function sortItems<T extends OverviewItem>(items: readonly T[], sort: OverviewSort): T[] {
   const sorted = [...items];
-  if (sort === "attention") sorted.sort((a, b) => compareStatus(a.status ?? "healthy", b.status ?? "healthy") || byName(a, b));
+  if (sort === "attention") sorted.sort((a, b) => compareStatus(attentionStatus(a), attentionStatus(b)) || byName(a, b));
   else sorted.sort(byName);
   return sorted;
 }
