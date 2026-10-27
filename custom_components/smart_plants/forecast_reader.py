@@ -10,14 +10,16 @@ forecasts and reduces them to one value per weather entity and window:
 - the finest forecast type the entity supports whose entries reach the end of
   the window (hourly, then twice daily, then daily); when none does, the
   finest supported type with the part of the window it covers;
+- a type whose fetch fails (the service raises, or the response is missing
+  or malformed) is skipped and the next coarser type is tried;
 - hourly entries give ``temperature``; twice daily and daily entries cover
   12 or 24 hours and give ``templow`` for the low when present;
 - a fetch when an entity starts being watched, every 30 minutes, and when the
   weather entity changes, at most once per 5 minutes;
 - nothing at all for a weather entity no active task uses.
 
-Any problem (a missing or unavailable entity, a failing service, no forecast
-type, an empty or malformed response) leaves the window without a value, so
+Any other problem (a missing or unavailable entity, no forecast type, every
+type failing, or no entry in the window) leaves the window without a value, so
 the task reports ``no_reading``. Debug logs name the entity and the reason
 only, never forecast values.
 """
@@ -379,18 +381,22 @@ class ForecastReader:
             return {}
 
         # Fetch from finest to coarsest until one type reaches the end of the
-        # longest window; each window then takes the finest type that reaches
-        # its own end, or the finest type with any entry in it.
+        # longest window, skipping types whose fetch fails; each window then
+        # takes the finest type that reaches its own end, or the finest type
+        # with any entry in it.
         now = dt_util.utcnow()
         longest = now + timedelta(hours=max(hours))
         fetched: list[tuple[str, list[ForecastEntry]]] = []
         for forecast_type, period in types:
             entries = await self._async_get_forecast(entity_id, forecast_type, period)
             if entries is None:
-                return {}
+                continue
             fetched.append((forecast_type, entries))
             if reaches(entries, longest):
                 break
+        if not fetched:
+            _LOGGER.debug("Forecast for %s failed for every type", entity_id)
+            return {}
 
         windows: dict[int, ForecastWindow] = {}
         for window_hours in hours:
@@ -421,12 +427,21 @@ class ForecastReader:
         except asyncio.CancelledError:
             raise
         except Exception as err:  # noqa: BLE001 - any failure means no value
-            _LOGGER.debug("Forecast for %s failed: %s", entity_id, type(err).__name__)
+            _LOGGER.debug(
+                "Forecast for %s (%s) failed: %s",
+                entity_id,
+                forecast_type,
+                type(err).__name__,
+            )
             return None
         entries = parse_forecast(
             response.get(entity_id) if isinstance(response, Mapping) else None,
             period,
         )
         if entries is None:
-            _LOGGER.debug("Forecast for %s failed: malformed response", entity_id)
+            _LOGGER.debug(
+                "Forecast for %s (%s) failed: malformed response",
+                entity_id,
+                forecast_type,
+            )
         return entries

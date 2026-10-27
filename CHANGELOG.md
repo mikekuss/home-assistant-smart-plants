@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- A forecast reading task whose weather entity fails to return one forecast type (for
+  example hourly) now tries the next type (twice daily, then daily) instead of showing no
+  reading.
+
 ## [0.13.0] - 2026-10-28
 
 ### Added

@@ -407,11 +407,15 @@ def _malformed(entity_id: str) -> Any:
             {},
             HomeAssistantError("no forecast 1.5"),
             None,
-            ["hourly"],
+            ["hourly", "daily"],
             id="service error",
         ),
-        pytest.param({}, None, _no_entity, ["hourly"], id="response without entity"),
-        pytest.param({}, None, _malformed, ["hourly"], id="malformed forecast"),
+        pytest.param(
+            {}, None, _no_entity, ["hourly", "daily"], id="response without entity"
+        ),
+        pytest.param(
+            {}, None, _malformed, ["hourly", "daily"], id="malformed forecast"
+        ),
         pytest.param({}, None, None, ["hourly", "daily"], id="empty forecasts"),
     ],
 )
@@ -440,6 +444,118 @@ async def test_errors_give_no_value(  # noqa: PLR0913, PLR0917
     assert recorder.updates == [WEATHER]
     assert WEATHER in caplog.text
     assert "1.5" not in caplog.text
+    reader.close()
+
+
+class _FailingTypes(_WeatherService):
+    """A fake ``weather.get_forecasts`` where some types fail."""
+
+    def __init__(
+        self, hass: HomeAssistant, failures: dict[str, Callable[[str], Any] | None]
+    ) -> None:
+        super().__init__(hass)
+        self.failures = failures
+
+    async def _handle(self, call: ServiceCall) -> Any:
+        forecast_type = call.data["type"]
+        if forecast_type not in self.failures:
+            return await super()._handle(call)
+        self.calls.append(forecast_type)
+        failure = self.failures[forecast_type]
+        if failure is None:
+            raise HomeAssistantError("no forecast 1.5")
+        return failure(call.data["entity_id"])
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        pytest.param(None, id="service error"),
+        pytest.param(_no_entity, id="response without entity"),
+        pytest.param(_malformed, id="malformed forecast"),
+    ],
+)
+async def test_a_failing_type_falls_back_to_the_next(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    caplog: pytest.LogCaptureFixture,
+    failure: Callable[[str], Any] | None,
+) -> None:
+    freezer.move_to(NOW)
+    service = _FailingTypes(hass, {"hourly": failure})
+    service.forecasts = {
+        "twice_daily": _periods(
+            _TWICE_DAILY_START, _HALF_DAY, [(10, 4), (6, 1), (14, None)]
+        ),
+        "daily": _periods(_DAY_START, _DAY, [(9, -7), (7, -9)]),
+    }
+    _set_weather(hass, features=HOURLY | TWICE_DAILY | DAILY)
+    caplog.set_level(logging.DEBUG, logger="custom_components.smart_plants")
+
+    reader, recorder = await _reader(hass, {WEATHER: {24}})
+
+    # Twice daily reaches the window, so daily is never asked for and its
+    # colder values are not used.
+    assert service.calls == ["hourly", "twice_daily"]
+    window = reader.window(WEATHER, 24)
+    assert window is not None
+    assert (window.low, window.high) == (1.0, 14.0)
+    assert reader.last_fetch_had_value(WEATHER) is True
+    assert recorder.updates == [WEATHER]
+    assert "hourly" in caplog.text
+    assert "1.5" not in caplog.text
+    reader.close()
+
+
+async def test_every_type_failing_gives_no_value(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    freezer.move_to(NOW)
+    service = _FailingTypes(
+        hass, {"hourly": None, "twice_daily": _malformed, "daily": _no_entity}
+    )
+    _set_weather(hass, features=HOURLY | TWICE_DAILY | DAILY)
+    caplog.set_level(logging.DEBUG, logger="custom_components.smart_plants")
+
+    reader, recorder = await _reader(hass, {WEATHER: {24}})
+
+    assert service.calls == ["hourly", "twice_daily", "daily"]
+    assert reader.window(WEATHER, 24) is None
+    assert reader.last_fetch_had_value(WEATHER) is False
+    assert recorder.updates == [WEATHER]
+    assert "failed for every type" in caplog.text
+    reader.close()
+
+
+async def test_a_failed_type_is_tried_again_on_the_next_fetch(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(NOW)
+    service = _FailingTypes(hass, {"hourly": None})
+    service.forecasts = {
+        "hourly": _HOURLY_30,
+        "daily": _periods(_DAY_START, _DAY, [(9, -7), (7, -9)]),
+    }
+    _set_weather(hass)
+
+    reader, _recorder = await _reader(hass, {WEATHER: {24}})
+    assert service.calls == ["hourly", "daily"]
+    window = reader.window(WEATHER, 24)
+    assert window is not None
+    assert window.low == -9.0
+
+    # Once hourly works again, the next fetch uses it.
+    service.failures.clear()
+    service.calls.clear()
+    freezer.tick(timedelta(minutes=31))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert service.calls == ["hourly"]
+    window = reader.window(WEATHER, 24)
+    assert window is not None
+    assert (window.low, window.high) == (1.0, 9.0)
     reader.close()
 
 
