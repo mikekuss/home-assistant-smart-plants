@@ -27,6 +27,7 @@ from pytest_homeassistant_custom_component.common import async_fire_time_changed
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
 from .test_reading_tasks import _create, _due_state, _plant, _reading, _unload
+from .test_websocket_api import _connect
 
 WEATHER = "weather.mock_home"
 NOW = datetime(2026, 11, 2, 18, 20, tzinfo=UTC)
@@ -688,7 +689,7 @@ async def test_websocket_accepts_forecast_tasks_and_shows_them(
     freezer: FrozenDateTimeFactory,
 ) -> None:
     # The client signs in before the clock moves, while its token is valid.
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     freezer.move_to(NOW)
     service = _WeatherService(hass)
     service.forecasts = {"hourly": _HOURLY_30}

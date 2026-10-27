@@ -18,7 +18,7 @@ from pytest_homeassistant_custom_component.typing import (
     WebSocketGenerator,
 )
 
-from .test_websocket_api import _setup
+from .test_websocket_api import _connect, _setup
 
 NOW = "2026-06-15T10:00:00+00:00"
 MISSING_TASK_ID = "7c9e6679742540de944be07fc1f90ae7"
@@ -109,7 +109,7 @@ _COMMAND_COUNT = 7
 async def test_create_update_and_delete_task(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     freezer.move_to(NOW)
     entry = await _setup(hass)
     plant = await entry.runtime_data.manager.async_create_plant(name="Aloe")
@@ -177,7 +177,7 @@ async def test_create_update_and_delete_task(
 async def test_create_and_update_reject_invalid_tasks(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     freezer.move_to(NOW)
     _entry, manager, plant, task_id = await _plant_with_task(hass)
     create = {
@@ -231,7 +231,7 @@ async def test_create_and_update_reject_invalid_tasks(
 async def test_create_and_update_accept_longest_instructions(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     freezer.move_to(NOW)
     _entry, manager, plant, task_id = await _plant_with_task(hass)
     longest = "x" * CARE_TASK_INSTRUCTIONS_MAX_LEN
@@ -271,7 +271,7 @@ async def test_create_and_update_accept_longest_instructions(
 async def test_complete_returns_event_for_undo(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     _entry, _manager, plant, task_id = await _plant_with_task(hass)
     occurred = (
         (datetime.now(UTC) - timedelta(hours=2)).replace(microsecond=0).isoformat()
@@ -312,7 +312,7 @@ async def test_complete_returns_event_for_undo(
 async def test_complete_defaults_to_now_and_rejects_bad_times(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     freezer.move_to(NOW)
     _entry, manager, plant, task_id = await _plant_with_task(hass, "pests")
     msg = {
@@ -341,7 +341,7 @@ async def test_complete_defaults_to_now_and_rejects_bad_times(
 async def test_skip_and_undo_skip(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     freezer.move_to(NOW)
     await hass.config.async_set_time_zone("UTC")
     _entry, _manager, plant, task_id = await _plant_with_task(hass)
@@ -396,7 +396,7 @@ async def test_skip_and_undo_skip(
 async def test_set_rest_period(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     entry = await _setup(hass)
     manager: SmartPlantsManager = entry.runtime_data.manager
     plant = await manager.async_create_plant(name="Aloe")
@@ -439,7 +439,7 @@ async def test_set_rest_period(
 async def test_edit_task_care_event_keeps_task_link(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     _entry, manager, plant, task_id = await _plant_with_task(hass, "custom")
     first = (datetime.now(UTC) - timedelta(days=2)).replace(microsecond=0)
     plant, event = await manager.async_complete_care_task(
@@ -487,7 +487,7 @@ async def test_edit_task_care_event_keeps_task_link(
 async def test_edit_cannot_turn_an_event_into_a_task_event(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     entry = await _setup(hass)
     manager: SmartPlantsManager = entry.runtime_data.manager
     plant = await manager.async_create_plant(name="Aloe")
@@ -517,7 +517,7 @@ async def test_edit_cannot_turn_an_event_into_a_task_event(
 async def test_commands_report_revision_conflict(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, index: int
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     _entry, manager, plant, task_id = await _plant_with_task(hass)
     msg = _commands(plant.id, task_id, plant.revision + 5)[index]
     assert await _error(client, msg) == "revision_conflict"
@@ -528,7 +528,7 @@ async def test_commands_report_revision_conflict(
 async def test_commands_report_unknown_plant(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, index: int
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     _entry, _manager, plant, task_id = await _plant_with_task(hass)
     msg = _commands("missing", task_id, plant.revision)[index]
     assert await _error(client, msg) == "not_found"
@@ -538,7 +538,7 @@ async def test_commands_report_unknown_plant(
 async def test_commands_require_expected_revision(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, index: int
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     _entry, manager, plant, task_id = await _plant_with_task(hass)
     msg = _commands(plant.id, task_id, plant.revision)[index]
     del msg["expected_revision"]
@@ -553,7 +553,7 @@ async def test_commands_require_expected_revision(
 async def test_commands_report_not_loaded(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, index: int
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     entry, _manager, plant, task_id = await _plant_with_task(hass)
     assert await hass.config_entries.async_unload(entry.entry_id)
     msg = _commands(plant.id, task_id, plant.revision)[index]
@@ -580,7 +580,7 @@ async def test_commands_require_admin(
 async def test_commands_succeed_with_valid_messages(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, index: int
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     _entry, manager, plant, task_id = await _plant_with_task(hass)
     result = await _result(client, _commands(plant.id, task_id, plant.revision)[index])
     assert result["plant"]["id"] == plant.id

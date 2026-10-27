@@ -24,7 +24,7 @@ from pytest_homeassistant_custom_component.typing import (
     WebSocketGenerator,
 )
 
-from .test_websocket_api import _setup
+from .test_websocket_api import _connect, _setup
 from .test_wizard import ThresholdProvider, _credentials, _moisture
 
 _PERCENT = {"unit_of_measurement": PERCENTAGE}
@@ -381,7 +381,7 @@ async def test_overview_care_order_and_statuses(
 ) -> None:
     # Connect before moving the clock: the client's access token is issued at
     # the real time and would not be valid at the frozen date.
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     # 22:30 UTC on June 14 is already June 15 in Berlin; the overview must use
     # the Home Assistant time zone's date.
     await hass.config.async_set_time_zone("Europe/Berlin")
@@ -503,7 +503,7 @@ async def test_overview_care_order_and_statuses(
 async def test_overview_without_rest_period_is_not_resting(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
 ) -> None:
-    client = await hass_ws_client(hass)
+    client = await _connect(hass, hass_ws_client)
     await hass.config.async_set_time_zone("UTC")
     freezer.move_to("2026-01-15T12:00:00+00:00")
     entry = await _setup(hass)

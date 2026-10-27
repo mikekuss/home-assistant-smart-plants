@@ -21,7 +21,10 @@ from custom_components.smart_plants.websocket_api import (
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-from pytest_homeassistant_custom_component.typing import WebSocketGenerator
+from pytest_homeassistant_custom_component.typing import (
+    MockHAClientWebSocket,
+    WebSocketGenerator,
+)
 
 from .test_provider import MalformedSearchProvider, SyntheticProvider
 
@@ -35,6 +38,26 @@ async def _setup(hass: HomeAssistant) -> MockConfigEntry:
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     return entry
+
+
+async def _connect(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator
+) -> MockHAClientWebSocket:
+    """
+    Connect a WebSocket client before the config entry is set up.
+
+    Creating the client starts the HTTP server, and aiohttp freezes the
+    router when a server starts. Depending on plugin load order, the
+    ``aiohttp_client`` fixture comes either from
+    pytest-homeassistant-custom-component, which keeps the router open, or
+    from pytest-aiohttp, which does not. Setting the integration up first
+    registers every route it and its ``frontend`` and ``panel_custom``
+    dependencies need while the router still accepts them. The config entry
+    can then be set up after connecting, for example once a test has moved
+    the clock, since the client's access token is only valid at the real time.
+    """
+    assert await async_setup_component(hass, DOMAIN, {})
+    return await hass_ws_client(hass)
 
 
 async def test_list_empty(
