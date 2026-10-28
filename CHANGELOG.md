@@ -25,6 +25,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A forecast reading task whose weather entity fails to return one forecast type (for
   example hourly) now tries the next type (twice daily, then daily) instead of showing no
   reading.
+- A save that would make the plant storage larger than its 8 MiB limit is now refused
+  instead of written. Before, many long care notes could push storage past the limit, and
+  Smart Plants then failed to set up after the next restart. Actions such as
+  `smart_plants.log_care` now fail with "Smart Plants storage is full".
 
 ## [0.13.0] - 2026-10-28
 

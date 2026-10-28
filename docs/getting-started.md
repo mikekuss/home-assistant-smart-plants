@@ -205,7 +205,10 @@ Notes can be up to 500 characters and other details up to 120. The **⋮** menu 
 edits or deletes it. An entry that marks a care task as done keeps its care type when you edit
 it. Pest checks and custom tasks appear under the task's name. Each plant keeps up to 256 care
 entries. After that, Smart Plants removes the oldest waterings to make room (see
-[Troubleshooting](troubleshooting.md#old-care-entries-disappeared)).
+[Troubleshooting](troubleshooting.md#old-care-entries-disappeared)). All plants share one storage file
+with a size limit of 8 MiB. When a change would make it larger, Smart Plants doesn't save it:
+the panel shows an error and the `smart_plants.log_care` action fails with "Smart Plants
+storage is full", until you delete old care entries or notes.
 
 Logging a **watering** pauses the plant's *Needs water* alert for 24 hours from the time you
 entered. That gives the soil sensor time to catch up. The Log care form says this for waterings. See

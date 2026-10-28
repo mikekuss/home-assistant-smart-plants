@@ -37,7 +37,7 @@ from homeassistant.core import (
     SupportsResponse,
     callback,
 )
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -65,6 +65,7 @@ from .report import (
     collect_plants,
     report_language,
 )
+from .storage import SmartPlantsStorageFullError
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -279,6 +280,10 @@ def _manager_errors(target: str, rejected_key: str = "care_rejected") -> Iterato
         raise _error("unknown_target", target=target) from err
     except SmartPlantsValidationError as err:
         raise _error(rejected_key, target=target, reason=str(err)) from err
+    except SmartPlantsStorageFullError as err:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN, translation_key="storage_full"
+        ) from err
 
 
 def _unique_plants(plants: Iterable[PlantRecord]) -> list[PlantRecord]:

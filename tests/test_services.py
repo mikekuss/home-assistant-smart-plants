@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import timedelta
 from typing import Any
@@ -9,6 +10,7 @@ from unittest.mock import patch
 
 import pytest
 import voluptuous as vol
+from custom_components.smart_plants import storage as storage_module
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.manager import SmartPlantsManager
 from custom_components.smart_plants.models import PlantRecord
@@ -20,12 +22,14 @@ from custom_components.smart_plants.services import (
     SERVICE_UNSNOOZE,
     async_setup_services,
 )
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.auth.const import GROUP_ID_USER
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.core import Context, HomeAssistant
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import MockConfigEntry, MockUser
 
 from tests.helpers import plant_device
 
@@ -701,3 +705,63 @@ async def test_skip_care_task_requires_task_entities(hass: HomeAssistant) -> Non
         {"label_id": "plants"},
         "unsupported_target",
     )
+
+
+# --- Storage size limit ------------------------------------------------------
+
+
+def _inventory_size(manager: SmartPlantsManager) -> int:
+    return len(
+        json.dumps(
+            manager.snapshot.as_storage(), ensure_ascii=False, separators=(",", ":")
+        ).encode()
+    )
+
+
+async def test_log_care_refuses_a_save_the_loader_would_refuse(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    note = "n" * 500
+    plant_ids = [await _plant(hass, entry, name) for name in ("Aloe", "Office Aloe")]
+    for plant_id in plant_ids:
+        for minutes in range(1, 41):
+            await manager.async_add_care_event(
+                plant_id,
+                expected_revision=None,
+                kind="note",
+                occurred_at=(dt_util.utcnow() - timedelta(minutes=minutes)).isoformat(),
+                payload={"text": note},
+            )
+    # Lower the limit so the stored inventory just fits; one more
+    # 500-character note does not.
+    monkeypatch.setattr(
+        storage_module, "_INVENTORY_MAX_BYTES", _inventory_size(manager) + 200
+    )
+    before = _plant_record(entry, plant_ids[0]).care_events
+    group = await hass.auth.async_get_group(GROUP_ID_USER)
+    assert group is not None
+    user = MockUser(groups=[group]).add_to_hass(hass)
+    assert not user.is_admin
+
+    with pytest.raises(HomeAssistantError) as info:
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_LOG_CARE,
+            {
+                "device_id": _device_id(hass, plant_ids[0]),
+                "kind": "note",
+                "note": note,
+            },
+            blocking=True,
+            context=Context(user_id=user.id),
+        )
+    assert info.value.translation_domain == DOMAIN
+    assert info.value.translation_key == "storage_full"
+    assert _plant_record(entry, plant_ids[0]).care_events == before
+
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.LOADED
+    assert _plant_record(entry, plant_ids[0]).care_events == before

@@ -85,6 +85,17 @@ class SmartPlantsUnsupportedStorageError(SmartPlantsStorageError):
     pass
 
 
+class SmartPlantsStorageFullError(SmartPlantsStorageError):
+    pass
+
+
+def _encoded_inventory_size(inventory: object) -> int:
+    """Return the size the size limit applies to, for saves and loads alike."""
+    return len(
+        json.dumps(inventory, ensure_ascii=False, separators=(",", ":")).encode()
+    )
+
+
 class _SmartPlantsHAStore(Store[dict[str, Any]]):
     """HA Store subclass that owns migration and rejects unsupported versions."""
 
@@ -590,8 +601,15 @@ class SmartPlantsStore:
             raise SmartPlantsStorageError(
                 "Smart Plants cannot persist mutations while Home Assistant is stopping"
             )
+        payload = snapshot.as_storage()
+        # Refuse a snapshot the loader would reject, so a save can never
+        # leave storage that makes the next setup fail.
+        if _encoded_inventory_size(payload) > _INVENTORY_MAX_BYTES:
+            raise SmartPlantsStorageFullError(
+                "Smart Plants storage would exceed its size limit"
+            )
         self._store._last_write_error = None  # noqa: SLF001
-        await self._store.async_save(snapshot.as_storage())
+        await self._store.async_save(payload)
         # Read through a fresh reference so mypy does not treat the attribute
         # as still-narrowed to None from the assignment above; the executor
         # thread may mutate it while ``async_save`` is awaited.
@@ -735,9 +753,7 @@ def _snapshot_from_payload(  # noqa: PLR0912
 ) -> InventorySnapshot:
     inventory = _strip_legacy_envelope(data)
     try:
-        encoded_size = len(
-            json.dumps(inventory, ensure_ascii=False, separators=(",", ":")).encode()
-        )
+        encoded_size = _encoded_inventory_size(inventory)
     except (RecursionError, TypeError, ValueError) as err:
         raise SmartPlantsInvalidStorageError(
             "Smart Plants storage must be JSON serializable"
