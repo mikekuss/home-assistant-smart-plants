@@ -760,7 +760,7 @@ describe("reading task wording", () => {
 
 describe("reading tasks in the panel", () => {
   const plant = (changes: Partial<PlantRecord> = {}) => plantWith({ roles: { ...sample.roles!, temperature: temperatureRole }, ...changes });
-  const temperatureReading: Partial<PlantOverview> = { roles: { ...overviewFor(sample).roles, temperature: { value: 9, unit: "°C", state: "ok", range: { min: 10, target: null, max: 30 }, last_reported: "2026-10-19T08:00:00+00:00", sources: ["sensor.mock_balcony_temperature"] } } };
+  const temperatureReading: Partial<PlantOverview> = { roles: { ...overviewFor(sample).roles, temperature: { value: 9, unit: "°C", state: "ok", range: { min: 10, target: null, max: 30 }, clear: { min: null, max: null }, last_reported: "2026-10-19T08:00:00+00:00", sources: ["sensor.mock_balcony_temperature"] } } };
   const open = async (backend: ReturnType<typeof careBackend>) => { backend.h.hass.states = { ...states }; return openCare(backend); };
   const field = (el: SmartPlantsPanel, label: string) => [...dialog(el)!.querySelectorAll("label")].find(item => [...item.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join("").trim() === label)!.querySelector<HTMLInputElement & HTMLSelectElement>("input, select")!;
   const choose = async (el: SmartPlantsPanel, select: HTMLSelectElement, value: string) => { select.value = value; select.dispatchEvent(new Event("change", { bubbles: true })); await settle(el); };

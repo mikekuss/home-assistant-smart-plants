@@ -11,6 +11,9 @@ export interface RoleReading {
   unit: string;
   state: ReadingState;
   range: TargetRange;
+  // The values that turn the alert at each bound of `range` off again; null
+  // where the role has no such alert or an older backend sends none.
+  clear: { min: number | null; max: number | null };
   last_reported: string | null;
   sources: string[];
 }
@@ -94,11 +97,18 @@ function parseRestPeriod(raw: unknown): RestPeriod | null | undefined {
 
 function parseReading(raw: unknown): RoleReading | null {
   if (!isRecord(raw) || !isRecord(raw.range)) return null;
-  const { value, unit, state, range, last_reported, sources } = raw;
+  // Older backends send no clear values.
+  const { value, unit, state, range, clear = null, last_reported, sources } = raw;
   if (!numOrNull(value) || !(unit === null || typeof unit === "string") || !READING_STATES.includes(state as ReadingState)) return null;
   if (!numOrNull(range.min) || !numOrNull(range.target) || !numOrNull(range.max) || !strOrNull(last_reported)) return null;
+  const parsedClear = clear === null ? { min: null, max: null }
+    : isRecord(clear) && numOrNull(clear.min) && numOrNull(clear.max) ? { min: clear.min, max: clear.max } : null;
+  if (!parsedClear) return null;
   if (!Array.isArray(sources) || !sources.every(s => typeof s === "string")) return null;
-  return { value, unit: unit ?? "", state: state as ReadingState, range: { min: range.min, target: range.target, max: range.max }, last_reported, sources: [...sources] };
+  return {
+    value, unit: unit ?? "", state: state as ReadingState, range: { min: range.min, target: range.target, max: range.max },
+    clear: parsedClear, last_reported, sources: [...sources],
+  };
 }
 
 // Validates one overview entry; returns null for anything malformed so a bad
@@ -172,6 +182,18 @@ export function problemReason(l: Localizer, overview: PlantOverview, problem: Pl
   const name = role ? readingLabel(l, role) : problem.role;
   const value = valueText(l, reading);
   const limit = (bound: number | null | undefined) => bound === null || bound === undefined || !reading ? null : formatValue(l, bound, reading.unit);
+  // An alert turns on past a bound and stays on until the reading gets back to
+  // the clear value, a little inside the bound. While the reading is no longer
+  // past the bound, the sentence names the clear value instead.
+  const clearing = (side: "min" | "max"): string | null => {
+    const bound = reading?.range[side];
+    if (!reading || reading.value === null || !value || bound === null || bound === undefined) return null;
+    const past = side === "min" ? reading.value < bound : reading.value > bound;
+    // A reading that only rounds to the bound would read "15% is below 15%".
+    if (past && value !== limit(bound)) return null;
+    const clear = limit(reading.clear[side]);
+    return clear ? l.t("reason.turns_off_at", { role: name, value, limit: clear }) : l.t("reason.outside_target", { role: name });
+  };
   switch (problem.kind) {
     case "stale":
       return reading?.last_reported
@@ -183,7 +205,7 @@ export function problemReason(l: Localizer, overview: PlantOverview, problem: Pl
       return l.t("reason.no_sensors");
     case "low_light": {
       const min = limit(reading?.range.min);
-      return value && min ? l.t("reason.low_light", { value, limit: min }) : l.t("problem_kind.low_light");
+      return clearing("min") ?? (value && min ? l.t("reason.low_light", { value, limit: min }) : l.t("problem_kind.low_light"));
     }
     case "battery_low":
       return value ? l.t("reason.battery_low", { value }) : l.t("problem_kind.battery_low");
@@ -192,11 +214,11 @@ export function problemReason(l: Localizer, overview: PlantOverview, problem: Pl
     : ["too_wet", "too_hot", "too_humid", "high_conductivity", "high_co2"].includes(problem.kind) ? "high" : null;
   if (direction === "low") {
     const min = limit(reading?.range.min);
-    if (value && min) return l.t("reason.below_min", { role: name, value, limit: min });
+    if (value && min) return clearing("min") ?? l.t("reason.below_min", { role: name, value, limit: min });
   }
   if (direction === "high") {
     const max = limit(reading?.range.max);
-    if (value && max) return l.t("reason.above_max", { role: name, value, limit: max });
+    if (value && max) return clearing("max") ?? l.t("reason.above_max", { role: name, value, limit: max });
   }
   return l.t("reason.outside_target", { role: name });
 }

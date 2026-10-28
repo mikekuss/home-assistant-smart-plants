@@ -641,6 +641,7 @@ export const en = {
 
   "reason.below_min": "{role} {value} is below the minimum of {limit}",
   "reason.above_max": "{role} {value} is above the maximum of {limit}",
+  "reason.turns_off_at": "{role} {value}, alert turns off at {limit}",
   "reason.low_light": "Light {value}, needs at least {limit}",
   "reason.battery_low": "Sensor battery at {value}",
   "reason.stale": "{role}: last reading {age}",

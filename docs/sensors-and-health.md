@@ -74,6 +74,11 @@ All problem indicators are binary sensors with the *problem* device class: **on*
 "problem". They use two thresholds each (hysteresis): one to turn on and a separate "clear"
 value to turn off, so they don't flicker around a single boundary.
 
+The status text on the plant card and plant page follows the same rule. While the reading is
+past the limit, it says so, for example *Soil moisture 12% is below the minimum of 15%*.
+Once the reading is back inside the limit but the alert is still on, it names the value at
+which the alert turns off, for example *Soil moisture 16%, alert turns off at 17%*.
+
 When a role has no valid value, its indicator is **unavailable**, never "off". Unavailable
 does not mean healthy.
 

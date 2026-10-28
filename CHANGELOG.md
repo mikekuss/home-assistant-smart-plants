@@ -49,6 +49,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   Assistant's read-only group get an *Unauthorized* error instead of changing the plant.
   Automations and ordinary users are not affected. See
   [Log care with actions](docs/automations.md#log-care-with-actions).
+- A plant's status text no longer says a reading is below the minimum (or above the maximum)
+  once the reading is back inside that limit. An alert turns off only at its clear value, a
+  little inside the limit, so until then the text names that value, for example *Soil
+  moisture 16%, alert turns off at 17%*. A reading exactly at a limit gets the same text. See
+  [Problem indicators](docs/sensors-and-health.md#problem-indicators).
 
 ## [0.13.0] - 2026-10-28
 

@@ -60,7 +60,7 @@ export function overviewFor(plant: PlantRecord): PlantOverview {
     plant_id: plant.id, revision: plant.revision, lifecycle_state: plant.lifecycle_state,
     status: plant.lifecycle_state === "disabled" ? "paused" : sources.length ? "healthy" : "no_sensors",
     problems: sources.length || plant.lifecycle_state === "disabled" ? [] : [{ role: "moisture", kind: "no_sensors" }],
-    roles: sources.length ? { moisture: { value: 30, unit: "%", state: "ok", range: { min: 20, target: 40, max: 60 }, last_reported: "2026-09-10T00:00:00+00:00", sources: sources.map(s => s.entity_id) } } : {},
+    roles: sources.length ? { moisture: { value: 30, unit: "%", state: "ok", range: { min: 20, target: 40, max: 60 }, clear: { min: 22, max: 58 }, last_reported: "2026-09-10T00:00:00+00:00", sources: sources.map(s => s.entity_id) } } : {},
     last_watered_at: plant.care_events?.[0]?.occurred_at ?? null,
     image: plant.image ? { id: plant.image.id } : null,
     care: [],
