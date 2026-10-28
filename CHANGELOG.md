@@ -30,6 +30,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   Smart Plants then failed to set up after the next restart. Actions such as
   `smart_plants.log_care` now fail with "Smart Plants storage is full". An action with
   several targets saves all of them or, if it fails, none.
+- The actions that change plants (`smart_plants.log_care`, `skip_care_task`, `snooze` and
+  `unsnooze`) now check that the calling user may control Smart Plants. Users in Home
+  Assistant's read-only group get an *Unauthorized* error instead of changing the plant.
+  Automations and ordinary users are not affected. See
+  [Log care with actions](docs/automations.md#log-care-with-actions).
 
 ## [0.13.0] - 2026-10-28
 

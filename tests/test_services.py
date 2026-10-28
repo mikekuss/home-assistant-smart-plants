@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import timedelta
+from http import HTTPStatus
 from typing import Any
 from unittest.mock import patch
 
@@ -29,14 +30,22 @@ from custom_components.smart_plants.services import (
     SERVICE_UNSNOOZE,
     async_setup_services,
 )
-from homeassistant.auth.const import GROUP_ID_USER
+from homeassistant.auth.const import GROUP_ID_ADMIN, GROUP_ID_USER
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import Context, HomeAssistant
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import (
+    HomeAssistantError,
+    ServiceValidationError,
+    Unauthorized,
+)
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry, MockUser
+from pytest_homeassistant_custom_component.typing import (
+    ClientSessionGenerator,
+    WebSocketGenerator,
+)
 
 from tests.helpers import plant_device
 
@@ -836,3 +845,122 @@ async def test_failed_multi_target_action_changes_no_target(
     await _call(hass, service, targets[0])
     assert manager.snapshot.revision == before.revision + 1
     assert manager.snapshot.plants[plant_ids[1]] == before.plants[plant_ids[1]]
+
+
+# --- Control permission -----------------------------------------------------
+
+
+async def _plant_for(
+    hass: HomeAssistant, entry: MockConfigEntry, service: str
+) -> tuple[str, dict[str, Any]]:
+    """Create a plant that ``service`` changes; return (plant_id, action data)."""
+    plant_id = await _plant(hass, entry, "Aloe")
+    device = {"device_id": _device_id(hass, plant_id)}
+    if service == SERVICE_LOG_CARE:
+        return plant_id, {**device, "kind": "watering"}
+    if service == SERVICE_SKIP_CARE_TASK:
+        _task_id, entity_id = await _task(hass, entry, plant_id)
+        return plant_id, {"entity_id": entity_id}
+    if service == SERVICE_SNOOZE:
+        return plant_id, {**device, "duration": {"days": 7}}
+    await _manager(entry).async_snooze_plant(
+        plant_id, expected_revision=None, until=dt_util.now() + timedelta(days=7)
+    )
+    return plant_id, device
+
+
+async def _user(hass: HomeAssistant, group_id: str) -> MockUser:
+    group = await hass.auth.async_get_group(group_id)
+    assert group is not None
+    return MockUser(groups=[group]).add_to_hass(hass)
+
+
+MUTATING_SERVICES = (
+    SERVICE_LOG_CARE,
+    SERVICE_SKIP_CARE_TASK,
+    SERVICE_SNOOZE,
+    SERVICE_UNSNOOZE,
+)
+
+
+@pytest.mark.parametrize("service", MUTATING_SERVICES)
+async def test_read_only_user_cannot_change_plants(
+    hass: HomeAssistant, hass_read_only_user: MockUser, service: str
+) -> None:
+    entry = await _setup(hass)
+    plant_id, data = await _plant_for(hass, entry, service)
+    before = _plant_record(entry, plant_id)
+
+    with pytest.raises(Unauthorized):
+        await hass.services.async_call(
+            DOMAIN,
+            service,
+            data,
+            blocking=True,
+            context=Context(user_id=hass_read_only_user.id),
+        )
+
+    assert _plant_record(entry, plant_id) == before
+
+
+@pytest.mark.parametrize("service", MUTATING_SERVICES)
+@pytest.mark.parametrize("group_id", [GROUP_ID_ADMIN, GROUP_ID_USER, None])
+async def test_users_who_may_control_and_automations_change_plants(
+    hass: HomeAssistant, service: str, group_id: str | None
+) -> None:
+    entry = await _setup(hass)
+    plant_id, data = await _plant_for(hass, entry, service)
+    before = _plant_record(entry, plant_id).revision
+    user_id = None if group_id is None else (await _user(hass, group_id)).id
+
+    await hass.services.async_call(
+        DOMAIN, service, data, blocking=True, context=Context(user_id=user_id)
+    )
+
+    assert _plant_record(entry, plant_id).revision > before
+
+
+async def test_read_only_user_is_refused_over_websocket(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    hass_read_only_access_token: str,
+) -> None:
+    entry = await _setup(hass)
+    plant_id, data = await _plant_for(hass, entry, SERVICE_LOG_CARE)
+    before = _plant_record(entry, plant_id)
+    client = await hass_ws_client(hass, hass_read_only_access_token)
+
+    await client.send_json_auto_id(
+        {
+            "type": "call_service",
+            "domain": DOMAIN,
+            "service": SERVICE_LOG_CARE,
+            "service_data": data,
+        }
+    )
+    response = await client.receive_json()
+
+    assert response["success"] is False
+    # The WebSocket call_service command reports every HomeAssistantError,
+    # Unauthorized included, with this generic code.
+    assert response["error"] == {
+        "code": "home_assistant_error",
+        "message": "Unauthorized",
+    }
+    assert _plant_record(entry, plant_id) == before
+
+
+async def test_read_only_user_is_refused_over_rest(
+    hass: HomeAssistant,
+    hass_client: ClientSessionGenerator,
+    hass_read_only_access_token: str,
+) -> None:
+    entry = await _setup(hass)
+    plant_id, data = await _plant_for(hass, entry, SERVICE_SNOOZE)
+    before = _plant_record(entry, plant_id)
+    client = await hass_client(hass_read_only_access_token)
+
+    response = await client.post(f"/api/services/{DOMAIN}/{SERVICE_SNOOZE}", json=data)
+
+    assert response.status == HTTPStatus.UNAUTHORIZED
+    assert _plant_record(entry, plant_id) == before
