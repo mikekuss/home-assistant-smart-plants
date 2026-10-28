@@ -686,6 +686,9 @@
     },
     "snooze_rejected": {
       "message": "The snooze of {target} was not saved: {reason}"
+    },
+    "storage_full": {
+      "message": "Smart Plants storage is full. Delete old care log entries or notes, then try again."
     }
   },
   "triggers": {

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import timedelta
 from typing import Any
@@ -9,10 +10,18 @@ from unittest.mock import patch
 
 import pytest
 import voluptuous as vol
+from custom_components.smart_plants import storage as storage_module
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
-from custom_components.smart_plants.manager import SmartPlantsManager
+from custom_components.smart_plants.manager import (
+    PlantChange,
+    SmartPlantsManager,
+    care_event_change,
+    skip_task_change,
+    snooze_change,
+)
 from custom_components.smart_plants.models import PlantRecord
 from custom_components.smart_plants.services import (
+    ACTION_PROVENANCE,
     SERVICE_GET_REPORT,
     SERVICE_LOG_CARE,
     SERVICE_SKIP_CARE_TASK,
@@ -20,12 +29,14 @@ from custom_components.smart_plants.services import (
     SERVICE_UNSNOOZE,
     async_setup_services,
 )
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.auth.const import GROUP_ID_USER
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.core import Context, HomeAssistant
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import MockConfigEntry, MockUser
 
 from tests.helpers import plant_device
 
@@ -701,3 +712,127 @@ async def test_skip_care_task_requires_task_entities(hass: HomeAssistant) -> Non
         {"label_id": "plants"},
         "unsupported_target",
     )
+
+
+# --- Storage size limit ------------------------------------------------------
+
+
+def _inventory_size(manager: SmartPlantsManager) -> int:
+    return len(
+        json.dumps(
+            manager.snapshot.as_storage(), ensure_ascii=False, separators=(",", ":")
+        ).encode()
+    )
+
+
+async def test_log_care_refuses_a_save_the_loader_would_refuse(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    note = "n" * 500
+    plant_ids = [await _plant(hass, entry, name) for name in ("Aloe", "Office Aloe")]
+    for plant_id in plant_ids:
+        for minutes in range(1, 41):
+            await manager.async_add_care_event(
+                plant_id,
+                expected_revision=None,
+                kind="note",
+                occurred_at=(dt_util.utcnow() - timedelta(minutes=minutes)).isoformat(),
+                payload={"text": note},
+            )
+    # Lower the limit so the stored inventory just fits; one more
+    # 500-character note does not.
+    monkeypatch.setattr(
+        storage_module, "_INVENTORY_MAX_BYTES", _inventory_size(manager) + 200
+    )
+    before = _plant_record(entry, plant_ids[0]).care_events
+    group = await hass.auth.async_get_group(GROUP_ID_USER)
+    assert group is not None
+    user = MockUser(groups=[group]).add_to_hass(hass)
+    assert not user.is_admin
+
+    with pytest.raises(HomeAssistantError) as info:
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_LOG_CARE,
+            {
+                "device_id": _device_id(hass, plant_ids[0]),
+                "kind": "note",
+                "note": note,
+            },
+            blocking=True,
+            context=Context(user_id=user.id),
+        )
+    assert info.value.translation_domain == DOMAIN
+    assert info.value.translation_key == "storage_full"
+    assert _plant_record(entry, plant_ids[0]).care_events == before
+
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.LOADED
+    assert _plant_record(entry, plant_ids[0]).care_events == before
+
+
+@pytest.mark.parametrize(
+    "service", [SERVICE_LOG_CARE, SERVICE_SKIP_CARE_TASK, SERVICE_SNOOZE]
+)
+async def test_failed_multi_target_action_changes_no_target(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch, service: str
+) -> None:
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    plant_ids = [await _plant(hass, entry, name) for name in ("Aloe", "Office Aloe")]
+    note = "n" * 500
+    targets: list[dict[str, Any]]
+    first_change: PlantChange
+    if service == SERVICE_SKIP_CARE_TASK:
+        tasks = [await _task(hass, entry, plant_id) for plant_id in plant_ids]
+        targets = [{"entity_id": entity_id} for _task_id, entity_id in tasks]
+        first_change = skip_task_change(tasks[0][0])
+    elif service == SERVICE_LOG_CARE:
+        targets = [
+            {"device_id": _device_id(hass, plant_id), "kind": "note", "note": note}
+            for plant_id in plant_ids
+        ]
+        first_change = care_event_change(
+            kind="note",
+            occurred_at=dt_util.now().replace(microsecond=0).isoformat(),
+            payload={"text": note},
+            provenance=ACTION_PROVENANCE,
+        )
+    else:
+        targets = [
+            {"device_id": _device_id(hass, plant_id), "duration": {"days": 7}}
+            for plant_id in plant_ids
+        ]
+        first_change = snooze_change(dt_util.utcnow() + timedelta(days=7))
+    # The limit fits the first target's change, but not both.
+    first = manager.snapshot.plants[plant_ids[0]]
+    one_fits = manager.snapshot.with_plant(first_change(first))
+    monkeypatch.setattr(
+        storage_module,
+        "_INVENTORY_MAX_BYTES",
+        len(
+            json.dumps(
+                one_fits.as_storage(), ensure_ascii=False, separators=(",", ":")
+            ).encode()
+        ),
+    )
+    before = manager.snapshot
+    both = {
+        key: [target[key] for target in targets]
+        if key in ("device_id", "entity_id")
+        else value
+        for key, value in targets[0].items()
+    }
+
+    with pytest.raises(HomeAssistantError) as info:
+        await _call(hass, service, both)
+    assert info.value.translation_key == "storage_full"
+    assert manager.snapshot is before
+
+    # The first target alone still fits.
+    await _call(hass, service, targets[0])
+    assert manager.snapshot.revision == before.revision + 1
+    assert manager.snapshot.plants[plant_ids[1]] == before.plants[plant_ids[1]]

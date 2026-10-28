@@ -686,6 +686,9 @@
     },
     "snooze_rejected": {
       "message": "Die Stummschaltung von {target} wurde nicht gespeichert: {reason}"
+    },
+    "storage_full": {
+      "message": "Der Speicher von Smart Plants ist voll. Lösche alte Einträge oder Notizen im Pflegeprotokoll und versuche es erneut."
     }
   },
   "triggers": {

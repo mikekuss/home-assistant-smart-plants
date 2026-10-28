@@ -37,7 +37,7 @@ from homeassistant.core import (
     SupportsResponse,
     callback,
 )
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -51,10 +51,16 @@ from .const import DOMAIN
 from .manager import (
     CARE_CLOCK_SKEW,
     SNOOZE_MAX_AHEAD,
+    PlantChange,
     SmartPlantsManager,
     SmartPlantsManagerUnavailableError,
     SmartPlantsPlantNotFoundError,
     SmartPlantsValidationError,
+    care_event_change,
+    complete_task_change,
+    skip_task_change,
+    snooze_change,
+    watering_change,
 )
 from .models import ReadingSchedule
 from .report import (
@@ -65,6 +71,7 @@ from .report import (
     collect_plants,
     report_language,
 )
+from .storage import SmartPlantsStorageFullError
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -281,6 +288,45 @@ def _manager_errors(target: str, rejected_key: str = "care_rejected") -> Iterato
         raise _error(rejected_key, target=target, reason=str(err)) from err
 
 
+async def _async_apply(
+    manager: SmartPlantsManager,
+    changes: list[tuple[str, str, PlantChange]],
+    rejected_key: str = "care_rejected",
+) -> None:
+    """
+    Apply the changes of all targets with one save.
+
+    Each change is ``(plant_id, target, change)``; ``target`` names the
+    target in error messages. A failed action changes nothing, so a retry
+    does not repeat the targets that would otherwise have been saved.
+    """
+
+    def labelled(target: str, change: PlantChange) -> PlantChange:
+        def apply(current: PlantRecord) -> PlantRecord:
+            with _manager_errors(target, rejected_key):
+                return change(current)
+
+        return apply
+
+    targets = {plant_id: target for plant_id, target, _change in changes}
+    try:
+        await manager.async_apply_plant_changes(
+            [
+                (plant_id, labelled(target, change))
+                for plant_id, target, change in changes
+            ]
+        )
+    except SmartPlantsPlantNotFoundError as err:
+        plant_id = str(err.args[0]) if err.args else ""
+        raise _error("unknown_target", target=targets.get(plant_id, plant_id)) from err
+    except SmartPlantsManagerUnavailableError as err:
+        raise _error("integration_not_loaded") from err
+    except SmartPlantsStorageFullError as err:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN, translation_key="storage_full"
+        ) from err
+
+
 def _unique_plants(plants: Iterable[PlantRecord]) -> list[PlantRecord]:
     return list({plant.id: plant for plant in plants}.values())
 
@@ -319,42 +365,44 @@ async def _async_log_care(call: ServiceCall) -> None:
             )
     plant_writes = [(plant, _device_kind(kind, note)) for plant in plants]
 
+    changes: list[tuple[str, str, PlantChange]] = []
     for plant, plant_kind in plant_writes:
-        with _manager_errors(plant.name):
-            if plant_kind == "watering":
-                await manager.async_add_watering(
-                    plant.id,
-                    expected_revision=None,
-                    occurred_at=occurred_at,
-                    note=note,
-                    provenance=ACTION_PROVENANCE,
-                )
-            else:
-                await manager.async_add_care_event(
-                    plant.id,
-                    expected_revision=None,
-                    kind=plant_kind,
-                    occurred_at=occurred_at,
-                    payload=(
-                        {"text": note}
-                        if plant_kind == "note"
-                        else minimal_care_payload(plant_kind, note)
-                    ),
-                    provenance=ACTION_PROVENANCE,
-                )
+        if plant_kind == "watering":
+            change = watering_change(
+                occurred_at=occurred_at, note=note, provenance=ACTION_PROVENANCE
+            )
+        else:
+            change = care_event_change(
+                kind=plant_kind,
+                occurred_at=occurred_at,
+                payload=(
+                    {"text": note}
+                    if plant_kind == "note"
+                    else minimal_care_payload(plant_kind, note)
+                ),
+                provenance=ACTION_PROVENANCE,
+            )
+        changes.append((plant.id, plant.name, change))
+    changes.extend(
+        (
+            target.plant.id,
+            target.entity_id,
+            complete_task_change(
+                target.task.id,
+                occurred_at=occurred_at,
+                note=note,
+                provenance=ACTION_PROVENANCE,
+            ),
+        )
+        for target in tasks
+    )
+    await _async_apply(manager, changes)
+
+    for plant, plant_kind in plant_writes:
         _LOGGER.debug(
             "Logged %s care for plant %s from an action", plant_kind, plant.id
         )
     for target in tasks:
-        with _manager_errors(target.entity_id):
-            await manager.async_complete_care_task(
-                target.plant.id,
-                target.task.id,
-                expected_revision=None,
-                occurred_at=occurred_at,
-                note=note,
-                provenance=ACTION_PROVENANCE,
-            )
         _LOGGER.debug(
             "Completed care task %s of plant %s from an action",
             target.task.id,
@@ -375,11 +423,14 @@ async def _async_skip_care_task(call: ServiceCall) -> None:
     for target in targets:
         if isinstance(target.task.schedule, ReadingSchedule):
             raise _error("reading_task_skip", target=target.entity_id)
+    await _async_apply(
+        manager,
+        [
+            (target.plant.id, target.entity_id, skip_task_change(target.task.id))
+            for target in targets
+        ],
+    )
     for target in targets:
-        with _manager_errors(target.entity_id):
-            await manager.async_skip_care_task(
-                target.plant.id, target.task.id, expected_revision=None
-            )
         _LOGGER.debug(
             "Skipped care task %s of plant %s from an action",
             target.task.id,
@@ -462,20 +513,25 @@ async def _async_snooze(call: ServiceCall) -> None:
     entry, manager = _loaded_runtime(call.hass)
     plants = _snooze_plants(call, entry, manager, "plant_disabled_snooze")
     end = _snooze_end(call)
+    await _async_apply(
+        manager,
+        [(plant.id, plant.name, snooze_change(end)) for plant in plants],
+        "snooze_rejected",
+    )
     for plant in plants:
-        with _manager_errors(plant.name, "snooze_rejected"):
-            await manager.async_snooze_plant(
-                plant.id, expected_revision=None, until=end
-            )
         _LOGGER.debug("Snoozed plant %s from an action", plant.id)
 
 
 async def _async_unsnooze(call: ServiceCall) -> None:
     entry, manager = _loaded_runtime(call.hass)
     # A disabled plant is never snoozed, so ending its snooze is a no-op.
-    for plant in _snooze_plants(call, entry, manager, None):
-        with _manager_errors(plant.name, "snooze_rejected"):
-            await manager.async_unsnooze_plant(plant.id, expected_revision=None)
+    plants = _snooze_plants(call, entry, manager, None)
+    await _async_apply(
+        manager,
+        [(plant.id, plant.name, snooze_change(None)) for plant in plants],
+        "snooze_rejected",
+    )
+    for plant in plants:
         _LOGGER.debug("Ended the snooze of plant %s from an action", plant.id)
 
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import copy
+import json
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any
@@ -24,6 +26,7 @@ from custom_components.smart_plants.models import (
 from custom_components.smart_plants.storage import (
     SmartPlantsInvalidStorageError,
     SmartPlantsStorageError,
+    SmartPlantsStorageFullError,
     SmartPlantsStore,
     SmartPlantsUnsupportedStorageError,
     _snapshot_from_payload,
@@ -853,6 +856,60 @@ async def test_save_while_ha_is_stopping_is_rejected(hass: HomeAssistant) -> Non
 
     with pytest.raises(SmartPlantsStorageError):
         await store.async_save(InventorySnapshot.empty())
+
+
+def _sized_snapshot() -> tuple[InventorySnapshot, int]:
+    """Return a snapshot with non-ASCII text and its size as the loader measures it."""
+    plant = PlantRecord(
+        id="plant-1",
+        revision=1,
+        name=("Grüne Aloë " * 15).strip(),
+        created_at="2026-09-05T00:00:00Z",
+    )
+    snapshot = InventorySnapshot(revision=1, plants={plant.id: plant})
+    size = len(
+        json.dumps(
+            snapshot.as_storage(), ensure_ascii=False, separators=(",", ":")
+        ).encode()
+    )
+    return snapshot, size
+
+
+async def test_save_over_the_size_limit_is_refused(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = SmartPlantsStore(hass)
+    await store.async_save(InventorySnapshot.empty())
+    stored = copy.deepcopy(hass_storage[STORAGE_KEY])
+    snapshot, size = _sized_snapshot()
+    monkeypatch.setattr(storage_module, "_INVENTORY_MAX_BYTES", size - 1)
+
+    with (
+        patch.object(store._store, "async_save") as ha_save,
+        pytest.raises(SmartPlantsStorageFullError),
+    ):
+        await store.async_save(snapshot)
+    ha_save.assert_not_called()
+    with pytest.raises(SmartPlantsStorageError):
+        await store.async_save(snapshot)
+
+    assert hass_storage[STORAGE_KEY] == stored
+
+
+async def test_save_at_the_size_limit_saves_and_loads_back(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot, size = _sized_snapshot()
+    monkeypatch.setattr(storage_module, "_INVENTORY_MAX_BYTES", size)
+
+    await SmartPlantsStore(hass).async_save(snapshot)
+
+    loaded = await SmartPlantsStore(hass).async_load()
+    assert loaded.plants["plant-1"].name == snapshot.plants["plant-1"].name
 
 
 async def test_failed_automatic_migration_save_rejects_load(
