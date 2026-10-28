@@ -158,12 +158,20 @@ def _moisture_value_problem(evaluation: Any) -> str | None:
 
 
 def _moisture_reading_problem(evaluation: Any) -> str | None:
-    """Return ``stale``/``unavailable`` for an assigned but unusable reading."""
+    """
+    Return why an assigned moisture reading has no usable value, if it has none.
+
+    ``stale`` or ``unavailable`` point at the sensors; ``no_main_sensor`` means
+    several sensors are combined with ``primary`` but none is chosen, so the
+    sensors themselves may be fine.
+    """
     if not _has_sources(evaluation):
         return None
     if evaluation.sensor_stale:
         return "stale"
     if not evaluation.computed_available:
+        if "no_primary" in getattr(evaluation, "reasons", ()):
+            return "no_main_sensor"
         return "unavailable"
     return None
 

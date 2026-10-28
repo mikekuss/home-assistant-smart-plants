@@ -164,7 +164,7 @@ async def test_low_battery_does_not_change_moisture_health(
         expected_revision=plant.revision,
         sources=[{"entity_id": "sensor.soil"}],
     )
-    await manager.async_set_moisture_primary(
+    moisture_primary = await manager.async_set_moisture_primary(
         plant.id,
         expected_revision=moisture_sources.revision,
         primary_entity_id="sensor.soil",
@@ -177,7 +177,7 @@ async def test_low_battery_does_not_change_moisture_health(
     await manager.async_set_role_sources(
         plant.id,
         role="battery",
-        expected_revision=moisture_sources.revision + 1,
+        expected_revision=moisture_primary.revision,
         sources=[{"entity_id": "sensor.battery"}],
     )
     assert moisture_controller.current_evaluation.health_score == before

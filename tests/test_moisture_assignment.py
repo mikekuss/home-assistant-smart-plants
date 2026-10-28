@@ -125,7 +125,11 @@ async def test_removing_primary_from_sources_clears_primary(
     await manager.async_set_moisture_sources(
         plant.id,
         expected_revision=1,
-        sources=[{"entity_id": "sensor.a"}, {"entity_id": "sensor.b"}],
+        sources=[
+            {"entity_id": "sensor.a"},
+            {"entity_id": "sensor.b"},
+            {"entity_id": "sensor.c"},
+        ],
     )
     await manager.async_set_moisture_primary(
         plant.id, expected_revision=2, primary_entity_id="sensor.a"
@@ -133,7 +137,7 @@ async def test_removing_primary_from_sources_clears_primary(
     updated = await manager.async_set_moisture_sources(
         plant.id,
         expected_revision=3,
-        sources=[{"entity_id": "sensor.b"}],
+        sources=[{"entity_id": "sensor.b"}, {"entity_id": "sensor.c"}],
     )
     assert updated.moisture.primary_entity_id is None
 

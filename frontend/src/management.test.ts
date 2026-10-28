@@ -338,11 +338,35 @@ describe("detail saves and conflict review", () => {
     const all = field(el.shadowRoot!, "Show all sensors, including ones that don't look like a match") as HTMLInputElement; all.checked = true; all.dispatchEvent(new Event("change")); await settle(el); expect(options()).toContain("sensor.odd");
     await fill(el, "Add moisture sensor", "sensor.odd"); expect(el.shadowRoot?.textContent).toContain("Unexpected metadata");
     await fill(el, "Add moisture sensor", "sensor.soil");
-    await openMoisture(el, "combine"); expect(field(el.shadowRoot!, "Main sensor").value).toBe("");
+    // The first sensor added to an empty reading is its main sensor.
+    await openMoisture(el, "combine"); expect(field(el.shadowRoot!, "Main sensor").value).toBe("sensor.odd");
     expect([...(field(el.shadowRoot!, "Main sensor") as HTMLSelectElement).options].map(o => o.textContent)).toEqual(["None", "sensor.odd", "Soil probe · sensor.soil"]);
     await fill(el, "Main sensor", "sensor.soil"); await fill(el, "Combine readings", "average"); await fill(el, "Not updating after (seconds, 60–604800)", "3600");
     await click(el, "Settings"); await fill(el, "Ideal", "40"); await click(el, "Save targets");
     expect(h.calls.find(c => c.type === "smart_plants/moisture/configure")).toEqual({ type: "smart_plants/moisture/configure", plant_id: sample.id, expected_revision: 1, moisture: { sources: [{ entity_id: "sensor.odd", registry_id: "uuid-2" }, { entity_id: "sensor.soil", registry_id: "uuid-1" }], primary_entity_id: "sensor.soil", aggregation: "average", stale_after_seconds: 3600, threshold_overrides: { min: null, target: 40, max: null } } });
+  });
+  it("makes the replacement of the only moisture sensor its main sensor", async () => {
+    const plant = { ...sample, roles: { moisture: { ...role, sources: [{ entity_id: "sensor.old_soil", registry_id: null }], primary_entity_id: "sensor.old_soil" } } };
+    const h = harness([plant], msg => {
+      if (msg.type === "config/entity_registry/list") return [entity];
+      if (msg.type === "get_states") return [sourceState];
+      return undefined;
+    }); const el = await detail(h.hass, "Sensors"); await openMoisture(el, "pick");
+    await click(el, "Remove sensor.old_soil"); await fill(el, "Add moisture sensor", "sensor.soil");
+    expect(el.shadowRoot!.querySelector("#moisture-sources-editor li")!.textContent).toContain("· Main sensor");
+    await click(el, "Save soil moisture sensors");
+    expect(h.calls.find(c => c.type === "smart_plants/moisture/configure")).toMatchObject({ moisture: { sources: [{ entity_id: "sensor.soil", registry_id: "uuid-1" }], primary_entity_id: "sensor.soil", aggregation: "primary" } });
+  });
+  it("refuses soil moisture Main sensor only with several sensors and no main sensor", async () => {
+    const sources = ["sensor.soil", "sensor.backup", "sensor.spare"].map(entity_id => ({ entity_id, registry_id: null }));
+    const plant = { ...sample, roles: { moisture: { ...role, sources, primary_entity_id: "sensor.soil" } } };
+    const h = harness([plant]); const el = await detail(h.hass, "Sensors"); await openMoisture(el, "pick");
+    await click(el, "Remove sensor.soil"); await click(el, "Save soil moisture sensors");
+    expect(el.shadowRoot!.querySelector("#moisture-sources-editor [role=\"alert\"]")!.textContent).toBe("With Main sensor only, choose a main sensor.");
+    expect(h.calls.some(c => c.type === "smart_plants/moisture/configure")).toBe(false);
+    await fill(el, "Main sensor", "sensor.spare"); await click(el, "Save soil moisture sensors");
+    expect(h.calls.find(c => c.type === "smart_plants/moisture/configure")).toMatchObject({ moisture: { sources: sources.slice(1), primary_entity_id: "sensor.spare" } });
+    expect(el.shadowRoot!.querySelector("#moisture-sources-editor")).toBeNull();
   });
   it("preserves removed UUID identity despite reused entity ID and links repairs; renames resolve by UUID", async () => {
     const plant = { ...sample, roles: { moisture: { ...role, sources: [{ entity_id: "sensor.soil", registry_id: "gone" }, { entity_id: "sensor.old", registry_id: "uuid-renamed" }], primary_entity_id: "sensor.old" } } };

@@ -593,7 +593,7 @@ async def test_reenable_refreshes_source_changed_while_disabled(
     assigned = await manager.async_set_moisture_sources(
         plant.id, expected_revision=1, sources=[{"entity_id": "sensor.probe"}]
     )
-    await manager.async_set_moisture_primary(
+    assigned = await manager.async_set_moisture_primary(
         plant.id,
         expected_revision=assigned.revision,
         primary_entity_id="sensor.probe",
@@ -601,7 +601,9 @@ async def test_reenable_refreshes_source_changed_while_disabled(
     controller = manager.get_moisture_controller(plant.id)
     assert controller.current_evaluation.computed_percent == pytest.approx(20)
 
-    disabled = await manager.async_disable_plant(plant.id, expected_revision=3)
+    disabled = await manager.async_disable_plant(
+        plant.id, expected_revision=assigned.revision
+    )
     hass.states.async_set("sensor.probe", "80", {"unit_of_measurement": "%"})
     await hass.async_block_till_done()
     assert controller.current_evaluation.computed_percent == pytest.approx(20)

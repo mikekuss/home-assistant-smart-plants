@@ -167,6 +167,10 @@ export function chipText(l: Localizer, overview: PlantOverview): { label: string
   if (overview.status === "no_sensors" && Object.keys(overview.roles).length) {
     return { label: l.t("plant_status.no_moisture"), more };
   }
+  // The moisture sensors may report fine; only the main sensor is not chosen.
+  if (overview.status === "stale" && first?.kind === "no_main_sensor") {
+    return { label: l.t("plant_status.no_main_sensor"), more };
+  }
   return { label: statusLabel(l, overview.status), more };
 }
 
@@ -201,6 +205,8 @@ export function problemReason(l: Localizer, overview: PlantOverview, problem: Pl
         : l.t("reason.not_reporting", { role: name });
     case "unavailable":
       return l.t("reason.not_reporting", { role: name });
+    case "no_main_sensor":
+      return l.t("reason.no_main_sensor", { role: name });
     case "no_sensors":
       return l.t("reason.no_sensors");
     case "low_light": {

@@ -319,6 +319,21 @@ def test_unavailable_moisture_reads_as_stale_status() -> None:
     ) == ("stale", [("moisture", "unavailable")])
 
 
+def test_moisture_without_main_sensor_names_it() -> None:
+    assert _status(moisture=_moisture(percent=None, reasons=("no_primary",))) == (
+        "stale",
+        [("moisture", "no_main_sensor")],
+    )
+
+
+def test_stale_moisture_without_main_sensor_reads_as_stale() -> None:
+    assert _status(
+        moisture=_moisture(
+            percent=None, stale=True, reasons=("stale:sensor.mock_a", "no_primary")
+        )
+    ) == ("stale", [("moisture", "stale")])
+
+
 def test_no_sensors() -> None:
     assert _status(moisture=_no_moisture_sources()) == (
         "no_sensors",

@@ -84,7 +84,7 @@ async def test_temperature_entity_metadata_and_state(hass: HomeAssistant) -> Non
         expected_revision=plant.revision,
         sources=[{"entity_id": "sensor.room_temp"}],
     )
-    await manager.async_set_role_primary(
+    primary = await manager.async_set_role_primary(
         plant.id,
         role="temperature",
         expected_revision=assigned.revision,
@@ -93,7 +93,7 @@ async def test_temperature_entity_metadata_and_state(hass: HomeAssistant) -> Non
     await manager.async_set_role_aggregation(
         plant.id,
         role="temperature",
-        expected_revision=assigned.revision + 1,
+        expected_revision=primary.revision,
         aggregation="primary",
     )
     await hass.async_block_till_done()
@@ -167,7 +167,7 @@ async def test_temperature_stress_does_not_change_moisture_health(
         expected_revision=plant.revision,
         sources=[{"entity_id": "sensor.soil"}],
     )
-    await manager.async_set_moisture_primary(
+    moisture_primary = await manager.async_set_moisture_primary(
         plant.id,
         expected_revision=moisture_sources.revision,
         primary_entity_id="sensor.soil",
@@ -182,7 +182,7 @@ async def test_temperature_stress_does_not_change_moisture_health(
     await manager.async_set_role_sources(
         plant.id,
         role="temperature",
-        expected_revision=moisture_sources.revision + 1,
+        expected_revision=moisture_primary.revision,
         sources=[{"entity_id": "sensor.temp"}],
     )
     assert moisture_controller.current_evaluation.health_score == before

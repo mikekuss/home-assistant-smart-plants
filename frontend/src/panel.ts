@@ -6,7 +6,7 @@ import type { UpdatePlantInput } from "./api.js";
 import { aggregationLabel, areaEditor, moistureEditor, placementEditor, placementLabel, roleSourcesEditor, selectField, snapshotView, textField } from "./editors.js";
 import { createLocalizer, isMessageKey } from "./localize.js";
 import type { Localizer, MessageKey } from "./localize.js";
-import { CO2_STRESS_BUILTIN_DEFAULTS, CO2_STRESS_KEYS, CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, CONDUCTIVITY_STRESS_KEYS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_KEYS, LOW_BATTERY_STRESS_BUILTIN_DEFAULTS, LOW_BATTERY_STRESS_KEYS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_KEYS, SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, SOIL_TEMPERATURE_STRESS_KEYS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_KEYS, builtin, canonicalMoisture, co2StressInput, conductivityStressInput, confidenceGloss, confidenceLabel, contributorLabel, effectiveThresholds, humidityStressInput, keys, lowBatteryInput, lowLightInput, manualSpecies, moistureInput, moistureRole, plantDevice, problemBinaries, resolveSource, roleSourceConfig, roleSourceInput, roleSourceSpec, ROLE_SOURCE_SPECS, canonicalRoleSources, validateRoleSources, soilTemperatureStressInput, speciesCommonName, tags, temperatureStressInput, validateCo2StressOverrides, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowBatteryOverrides, validateLowLightOverrides, validateMoisture, validateSoilTemperatureStressOverrides, validateTaxonomy, validateTemperatureStressOverrides } from "./model.js";
+import { CO2_STRESS_BUILTIN_DEFAULTS, CO2_STRESS_KEYS, CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, CONDUCTIVITY_STRESS_KEYS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_KEYS, LOW_BATTERY_STRESS_BUILTIN_DEFAULTS, LOW_BATTERY_STRESS_KEYS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_KEYS, SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, SOIL_TEMPERATURE_STRESS_KEYS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_KEYS, builtin, canonicalMoisture, co2StressInput, conductivityStressInput, confidenceGloss, confidenceLabel, contributorLabel, effectiveThresholds, humidityStressInput, keys, lowBatteryInput, lowLightInput, manualSpecies, missingMainSensor, moistureInput, moistureRole, plantDevice, problemBinaries, resolveSource, roleSourceConfig, roleSourceInput, roleSourceSpec, ROLE_SOURCE_SPECS, canonicalRoleSources, validateRoleSources, soilTemperatureStressInput, speciesCommonName, tags, temperatureStressInput, validateCo2StressOverrides, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowBatteryOverrides, validateLowLightOverrides, validateMoisture, validateSoilTemperatureStressOverrides, validateTaxonomy, validateTemperatureStressOverrides } from "./model.js";
 import type { ProblemBinaryRole, SourceRole } from "./model.js";
 import "./components/index.js";
 import { themeFallbacks } from "./components/shared-styles.js";
@@ -261,6 +261,7 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _sourceMode: SourceMode = "combine";
   // The soil moisture sensor editor edits the moisture draft in `_edits`.
   @state() private _moistureMode: SourceMode | null = null;
+  @state() private _moistureSourceError = "";
   @state() private _expanded: ReadonlySet<Expandable> = new Set();
   @state() private _settingsOpen: ReadonlySet<SettingRow> = new Set();
   @state() private _careFilter: CareEvent["kind"] | "all" = "all";
@@ -506,7 +507,7 @@ export class SmartPlantsPanel extends LitElement {
     const m = moistureRole(plant); this._base = structuredClone(plant); this._baseArea = plantDevice(plant, this._devices)?.area_id ?? "";
     this._edits = { name: plant.name, acquired: plant.acquired_at ?? "", placement: structuredClone(plant.placement), category: plant.category ?? "", tagText: plant.tags.join(", "), area: this._baseArea, common: plant.species?.snapshot.common_name ?? "", latin: plant.species?.snapshot.latin_name ?? "", moisture: m ? moistureInput(m) : null };
     this._conflict = null; this._areaReview = false; this._preview = null; this._results = []; this._provider = "manual"; this._related = []; this._thresholdRole = null; this._thresholdEdits = null; this._thresholdBaseline = null; this._thresholdError = ""; this._thresholdSaved = {}; this._pendingThresholdSwitch = null;
-    this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._sourceSaved = {}; this._pendingSourceSwitch = null; this._allSourceSensors = false; this._sourceUnavailable = null;
+    this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._sourceSaved = {}; this._pendingSourceSwitch = null; this._allSourceSensors = false; this._sourceUnavailable = null; this._moistureSourceError = "";
     const device = plantDevice(plant, this._devices);
     const context = this._context;
     if (device && this.hass) void api.related(this.hass, device.id).then(ids => { if (context === this._context && this._base?.id === plant.id) this._related = ids; }).catch(() => { if (context === this._context && this._base?.id === plant.id) this._notice = this._l.t("notice.related_failed"); });
@@ -1508,9 +1509,11 @@ export class SmartPlantsPanel extends LitElement {
       const base = moistureInput(m);
       this._edit({ moisture: { ...this._edits.moisture, sources: base.sources, primary_entity_id: base.primary_entity_id, aggregation: base.aggregation, stale_after_seconds: base.stale_after_seconds } });
     }
-    this._moistureMode = null;
+    this._moistureMode = null; this._moistureSourceError = "";
   }
   private async _saveMoistureSensors(): Promise<void> {
+    if (this._edits?.moisture && missingMainSensor(this._edits.moisture)) { this._moistureSourceError = this._l.t("validation.main_sensor"); return; }
+    this._moistureSourceError = "";
     await this._save("moisture");
     if (!this._error) this._moistureMode = null;
   }
@@ -1537,6 +1540,12 @@ export class SmartPlantsPanel extends LitElement {
     if (!this.hass || this._formBusy || this._blocked || this._conflict) return;
     if (this._registryError) { this._error = this._l.t("error.sources_reconnect"); return; }
     const hass = this.hass;
+    // Removing the main sensor of several would leave none, and "Main sensor
+    // only" then has no value, so another sensor must become the main sensor first.
+    const current = role === "moisture" ? moistureRole(plant) : roleSourceConfig(plant, role);
+    if (action === "remove" && current?.primary_entity_id === entityId && missingMainSensor({ ...current, sources: current.sources.filter(s => s.entity_id !== entityId), primary_entity_id: null })) {
+      this._notice = ""; this._error = this._l.t("error.remove_main_sensor", { name: friendlyName(this._l, this._states, entityId) }); return;
+    }
     if (role === "moisture") {
       const m = moistureRole(plant); if (!m) return;
       const next = moistureInput(m);
@@ -1610,6 +1619,7 @@ export class SmartPlantsPanel extends LitElement {
     let body;
     if (role === "moisture") {
       body = edit?.moisture ? html`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${disabled}>${moistureEditor(l, edit.moisture, this._defaults(plant), this._entities, this._states, this._allSensors, v => this._allSensors = v, v => this._edit({ moisture: v }), "pick")}
+        ${this._moistureSourceError ? html`<p class="error" role="alert">${this._moistureSourceError}</p>` : nothing}
         <div class="actions"><button type="button" @click=${() => this._closeMoistureEditor()}>${l.t("common.cancel")}</button><button type="button" class="primary" @click=${() => void this._saveMoistureSensors()}>${l.t("sensors.save_moisture")}</button></div></fieldset></div>`
         : html`<p class="error" role="alert">${l.t("moisture.incompatible")}</p>`;
     } else body = this._renderSourceEditor(role, plant);
@@ -1636,6 +1646,7 @@ export class SmartPlantsPanel extends LitElement {
         <dt>${readingLabel(l, "moisture")}</dt><dd>${this._sourceSummary(plant, "moisture")}
           <button class="source-toggle btn text sm" type="button" aria-expanded=${moistureOpen ? "true" : "false"} aria-controls="moisture-sources-editor" aria-label=${moistureOpen ? l.t("common.cancel") : l.t("combine.edit_label", { role: readingPhrase(l, "moisture") })} ?disabled=${disabled || !edit?.moisture} @click=${() => { if (moistureOpen) this._closeMoistureEditor(); else this._moistureMode = "combine"; }}>${moistureOpen ? l.t("common.cancel") : l.t("sensors.edit")}</button>
           ${moistureOpen && edit?.moisture ? html`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${disabled}>${moistureEditor(l, edit.moisture, this._defaults(plant), this._entities, this._states, this._allSensors, v => this._allSensors = v, v => this._edit({ moisture: v }), "combine")}
+            ${this._moistureSourceError ? html`<p class="error" role="alert">${this._moistureSourceError}</p>` : nothing}
             <div class="actions"><button type="button" @click=${() => this._closeMoistureEditor()}>${l.t("common.cancel")}</button><button type="button" class="primary" @click=${() => void this._saveMoistureSensors()}>${l.t("sensors.save_moisture")}</button></div></fieldset></div>` : nothing}</dd>
         ${ROLE_SOURCE_SPECS.map(spec => {
           const editing = this._sourceRole === spec.role && this._sourceEdits !== null && this._sourceMode === "combine";
@@ -1864,7 +1875,8 @@ export class SmartPlantsPanel extends LitElement {
   private async _saveRoleSources(role: SourceRole, plant: PlantRecord): Promise<void> {
     if (!this.hass || !this._sourceEdits || this._formBusy || this._blocked || this._conflict) return;
     if (this._registryError) { this._sourceError = this._l.t("error.sources_reconnect"); return; }
-    const error = validateRoleSources(this._sourceEdits, this._l); if (error) { this._sourceError = error; return; }
+    const error = validateRoleSources(this._sourceEdits, this._l) ?? (missingMainSensor(this._sourceEdits) ? this._l.t("validation.main_sensor") : null);
+    if (error) { this._sourceError = error; return; }
     this._sourceError = "";
     const hass = this.hass;
     const desired = canonicalRoleSources(this._sourceEdits, this._entities);
@@ -1873,11 +1885,12 @@ export class SmartPlantsPanel extends LitElement {
       let revision = plant.revision; let latest = plant;
       // Issue only the granular commands whose values changed, chaining the
       // revision from each reply. set_sources first (it may clear a removed
-      // primary), then primary, aggregation, and staleness.
+      // primary or make a single sensor the primary), then primary,
+      // aggregation, and staleness.
       if (!base || JSON.stringify(base.sources) !== JSON.stringify(desired.sources)) {
         latest = await api.setRoleSources(hass, plant.id, revision, role, desired.sources); revision = latest.revision;
       }
-      if (!base || base.primary_entity_id !== desired.primary_entity_id) {
+      if (!base || roleSourceConfig(latest, role)?.primary_entity_id !== desired.primary_entity_id) {
         latest = await api.setRolePrimary(hass, plant.id, revision, role, desired.primary_entity_id); revision = latest.revision;
       }
       if (!base || base.aggregation !== desired.aggregation) {

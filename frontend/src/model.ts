@@ -580,6 +580,16 @@ export function validateRoleSources(c: RoleSourceInput, l: Localizer = ENGLISH):
   if (!Number.isInteger(c.stale_after_seconds) || c.stale_after_seconds < 60 || c.stale_after_seconds > 604800) return l.t("validation.stale_after");
   return null;
 }
+// A reading's only sensor is its main sensor when none is chosen, the same
+// rule the backend applies when it stores sources. With several sensors the
+// main sensor stays the user's choice.
+export function singleSourcePrimary(sources: SensorSource[], primary: string | null): string | null {
+  return primary === null && sources.length === 1 ? sources[0]!.entity_id : primary;
+}
+// "Main sensor only" with several sensors and none chosen never has a value.
+export function missingMainSensor(c: { sources: SensorSource[]; primary_entity_id: string | null; aggregation: string }): boolean {
+  return c.aggregation === "primary" && c.sources.length > 1 && c.primary_entity_id === null;
+}
 export function canonicalRoleSources(c: RoleSourceInput, entities: HAEntity[]): RoleSourceInput {
   const primary = c.sources.find(s => s.entity_id === c.primary_entity_id);
   return { ...structuredClone(c), sources: c.sources.map(s => {
