@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-29
+
 ### Added
 
 - A **Forecast refresh interval** option (Settings → Devices & services → Smart Plants →
@@ -449,7 +451,8 @@ First public release.
 - English and German translations for the integration's entities, setup, and repairs. The
   sidebar panel is English-only.
 
-[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.13.0...HEAD
+[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.14.0...HEAD
+[0.14.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.13.0...0.14.0
 [0.13.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.12.0...0.13.0
 [0.12.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.10.0...0.11.0
