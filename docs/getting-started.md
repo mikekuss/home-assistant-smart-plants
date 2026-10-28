@@ -156,7 +156,7 @@ Open the plant and go to the **Sensors** tab.
   plant.
 - **Add sensor** lists the readings that have no sensor yet: soil moisture, temperature,
   humidity, light, battery, fertilizer level (conductivity), soil temperature and CO₂. Pick
-  one, add one or more sensors and save.
+  one, add one or more sensors and save. The first sensor you add is the main sensor.
 - **Several sensors for one reading** (collapsed) lists every reading with a short summary.
   Select **Change** to set **Combine readings** (which value counts when more than one sensor
   is assigned: **Main sensor only**, **Average**, **Lowest** or **Highest**), which sensor is

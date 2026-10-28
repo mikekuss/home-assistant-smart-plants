@@ -62,10 +62,11 @@ in with an administrator account.
 ### A plant shows no moisture reading
 
 - Check that at least one moisture sensor is assigned in the plant's **Sensors** tab.
-- With **Main sensor only** (the default), a main sensor must be selected. In the
-  **Sensors** tab, open **Several sensors for one reading**, select **Change** next to the
-  reading, and either pick a **Main sensor** or set **Combine readings** to **Average**,
-  **Lowest**, or **Highest**.
+- With several sensors and **Main sensor only**, the default, you must select a main
+  sensor. Until then the plant shows *No main sensor*. In the **Sensors** tab, open
+  **Several sensors for one reading**, select **Change** next to the reading, and either
+  pick a **Main sensor** or set **Combine readings** to **Average**, **Lowest**, or
+  **Highest**. A single sensor is always the main sensor.
 - The source must report a numeric value with the unit `%`, between 0 and 100. Sensors with a
   different or missing unit are ignored. Check the source in **Developer tools → States**.
 - A source that is not updating (stale) is excluded. With **Main sensor only**, a stale main

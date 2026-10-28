@@ -2,10 +2,16 @@ import { afterEach, describe, expect, it } from "vitest";
 import { SmartPlantsPanel } from "./panel.js";
 import type { HAEntity, HAState, PlantRecord, RoleSourceConfig } from "./types.js";
 import { roleSourceConfig, ROLE_SOURCE_SPECS } from "./model.js";
-import { backendRoleDefaults, click, harness, newPlantView, sample, settle } from "./test-helpers.js";
+import { backendRoleDefaults, click, field, fill, harness, newPlantView, sample, settle } from "./test-helpers.js";
 
 function emptyRole(): RoleSourceConfig {
   return { sources: [], primary_entity_id: null, aggregation: "primary", stale_after_seconds: 21600 };
+}
+// The role as the backend stores new sources: a listed main sensor stays, and
+// a single sensor without one becomes the main sensor.
+function stored(c: RoleSourceConfig, sources: RoleSourceConfig["sources"]): RoleSourceConfig {
+  const kept = sources.some(s => s.entity_id === c.primary_entity_id) ? c.primary_entity_id : null;
+  return { ...c, sources, primary_entity_id: kept ?? (sources.length === 1 ? sources[0]!.entity_id : null) };
 }
 
 // A plant whose seven non-moisture roles all carry a valid (empty) source config.
@@ -24,6 +30,36 @@ function tempState(): HAState {
 }
 function moistureState(): HAState {
   return { entity_id: "sensor.soil_moist", state: "40", attributes: { device_class: "moisture", unit_of_measurement: "%", friendly_name: "Soil moist" }, last_updated: "2026-09-18T00:00:00Z" };
+}
+const LAMPS = ["sensor.mock_lamp_a", "sensor.mock_lamp_b", "sensor.mock_lamp_c"];
+function lampEntities(): HAEntity[] {
+  return LAMPS.map((entity_id, i) => ({ id: `reg-lamp-${i}`, entity_id, device_id: "device-x", unique_id: `lamp_${i}`, platform: "mqtt" }));
+}
+function lampStates(): HAState[] {
+  return LAMPS.map((entity_id, i) => ({ entity_id, state: String(1000 + i), attributes: { device_class: "illuminance", unit_of_measurement: "lx", friendly_name: `Lamp ${"ABC"[i]}` }, last_updated: "2026-09-18T00:00:00Z" }));
+}
+function lampSources(count: number): RoleSourceConfig["sources"] {
+  return lampEntities().slice(0, count).map(e => ({ entity_id: e.entity_id, registry_id: e.id }));
+}
+// Mounts a plant whose light reading has `count` lamps and answers the role
+// commands the way the backend stores them.
+async function mountLamps(count: number, primary: string | null) {
+  let current = withRoles({ illuminance: { ...emptyRole(), sources: lampSources(count), primary_entity_id: primary } });
+  const mounted = await mountDetail(current, lampEntities(), lampStates(), msg => {
+    if (msg.type === "smart_plants/plants/list") return { plants: [current] };
+    const light = current.roles!.illuminance as RoleSourceConfig;
+    if (msg.type === "smart_plants/roles/set_sources") current = { ...current, revision: current.revision + 1, roles: { ...current.roles!, illuminance: stored(light, msg.sources as RoleSourceConfig["sources"]) } };
+    else if (msg.type === "smart_plants/roles/set_primary") current = { ...current, revision: current.revision + 1, roles: { ...current.roles!, illuminance: { ...light, primary_entity_id: msg.primary_entity_id as string | null } } };
+    else if (msg.type === "smart_plants/roles/set_aggregation") current = { ...current, revision: current.revision + 1, roles: { ...current.roles!, illuminance: { ...light, aggregation: msg.aggregation as RoleSourceConfig["aggregation"] } } };
+    else return undefined;
+    return { plant: current };
+  });
+  return { ...mounted, current: () => current };
+}
+const roleWrites = (calls: Record<string, unknown>[]) => calls.filter(c => String(c.type).startsWith("smart_plants/roles/set_")).map(({ type, expected_revision, sources, primary_entity_id, aggregation }) => ({ type, expected_revision, sources, primary_entity_id, aggregation }));
+async function pickLamp(el: SmartPlantsPanel, entityId: string) {
+  const picker = sensorsSection(el).querySelector<HTMLSelectElement>("#illuminance-sources-editor select")!;
+  picker.value = entityId; picker.dispatchEvent(new Event("change", { bubbles: true })); await settle(el);
 }
 
 async function mountDetail(plant: PlantRecord, entities: HAEntity[], states: HAState[], extra?: (msg: Record<string, unknown>) => unknown) {
@@ -122,7 +158,10 @@ describe("Sensors section", () => {
 
   it("opens and saves a role editor on a new plant from the backend defaults", async () => {
     const { el, calls } = await mountDetail(structuredClone(newPlantView), [tempEntity()], [tempState()], msg => {
-      if (msg.type === "smart_plants/roles/set_sources") return { plant: { ...structuredClone(newPlantView), revision: 2 } };
+      if (msg.type === "smart_plants/roles/set_sources") {
+        const plant = structuredClone(newPlantView);
+        return { plant: { ...plant, revision: 2, roles: { ...plant.roles!, temperature: stored(plant.roles!.temperature as RoleSourceConfig, msg.sources as RoleSourceConfig["sources"]) } } };
+      }
       return undefined;
     });
     const section = sensorsSection(el);
@@ -201,6 +240,87 @@ describe("Sensors section", () => {
     expect(calls.some(c => c.type === "smart_plants/roles/set_stale_after")).toBe(false);
   });
 
+  it("makes the first sensor of a reading its main sensor", async () => {
+    const { el, calls, current } = await mountLamps(0, null);
+    await addSensor(el, "illuminance");
+    await pickLamp(el, "sensor.mock_lamp_a");
+    expect(sensorsSection(el).querySelector("#illuminance-sources-editor li")!.textContent).toContain("· Main sensor");
+    await click(el, "Save light sensors");
+    // The backend makes a single sensor the main sensor, so no second command is needed.
+    expect(roleWrites(calls)).toEqual([{ type: "smart_plants/roles/set_sources", expected_revision: 1, sources: lampSources(1), primary_entity_id: undefined, aggregation: undefined }]);
+    expect(current().roles!.illuminance).toMatchObject({ primary_entity_id: "sensor.mock_lamp_a", aggregation: "primary" });
+  });
+
+  it("keeps the first of several new sensors as the main sensor", async () => {
+    const { el, calls } = await mountLamps(0, null);
+    await addSensor(el, "illuminance");
+    await pickLamp(el, "sensor.mock_lamp_a"); await pickLamp(el, "sensor.mock_lamp_b");
+    await click(el, "Save light sensors");
+    expect(roleWrites(calls)).toEqual([
+      { type: "smart_plants/roles/set_sources", expected_revision: 1, sources: lampSources(2), primary_entity_id: undefined, aggregation: undefined },
+      { type: "smart_plants/roles/set_primary", expected_revision: 2, sources: undefined, primary_entity_id: "sensor.mock_lamp_a", aggregation: undefined },
+    ]);
+  });
+
+  it("makes the sensor left after a removal the main sensor", async () => {
+    const { el, current } = await mountLamps(2, "sensor.mock_lamp_a");
+    await click(el, "Change light sensors");
+    await click(el, "Remove sensor.mock_lamp_a");
+    expect(sensorsSection(el).querySelector("#illuminance-sources-editor li")!.textContent).toContain("· Main sensor");
+    await click(el, "Save light sensors");
+    expect(current().roles!.illuminance).toMatchObject({ sources: [{ entity_id: "sensor.mock_lamp_b" }], primary_entity_id: "sensor.mock_lamp_b" });
+  });
+
+  it("refuses Main sensor only with several sensors and no main sensor", async () => {
+    const { el, calls } = await mountLamps(3, "sensor.mock_lamp_a");
+    await click(el, "Change light sensors");
+    const editor = () => sensorsSection(el).querySelector<HTMLElement>("#illuminance-sources-editor")!;
+    await click(el, "Remove sensor.mock_lamp_a");
+    // The sensor list offers the main sensor because none is left.
+    expect(field(el.shadowRoot!, "Main sensor").value).toBe("");
+    await click(el, "Save light sensors");
+    expect(editor().querySelector('[role="alert"]')!.textContent).toBe("With Main sensor only, choose a main sensor.");
+    expect(roleWrites(calls)).toEqual([]);
+    await fill(el, "Main sensor", "sensor.mock_lamp_c");
+    await click(el, "Save light sensors");
+    expect(roleWrites(calls)).toEqual([
+      { type: "smart_plants/roles/set_sources", expected_revision: 1, sources: lampSources(3).slice(1), primary_entity_id: undefined, aggregation: undefined },
+      { type: "smart_plants/roles/set_primary", expected_revision: 2, sources: undefined, primary_entity_id: "sensor.mock_lamp_c", aggregation: undefined },
+    ]);
+  });
+
+  it("accepts no main sensor once the readings are combined another way", async () => {
+    const { el, calls } = await mountLamps(2, "sensor.mock_lamp_a");
+    await openCombine(el, "Light");
+    await fill(el, "Main sensor", "");
+    await click(el, "Save light sensors");
+    expect(sensorsSection(el).querySelector("#illuminance-sources-editor [role=\"alert\"]")!.textContent).toBe("With Main sensor only, choose a main sensor.");
+    await fill(el, "Combine readings", "average");
+    await click(el, "Save light sensors");
+    expect(roleWrites(calls)).toEqual([
+      { type: "smart_plants/roles/set_primary", expected_revision: 1, sources: undefined, primary_entity_id: null, aggregation: undefined },
+      { type: "smart_plants/roles/set_aggregation", expected_revision: 2, sources: undefined, primary_entity_id: undefined, aggregation: "average" },
+    ]);
+  });
+
+  it("asks for another main sensor before removing the main sensor of several", async () => {
+    const { el, calls, current } = await mountLamps(3, "sensor.mock_lamp_a");
+    const select = async (index: number, value: string) => {
+      sensorsSection(el).querySelectorAll("ul.list li")[index]!.querySelector("ha-dropdown")!.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value } } })); await settle(el);
+    };
+    const top = (kind: "error" | "notice") => el.shadowRoot!.querySelector(`.panel-content > p.${kind}`)?.textContent ?? null;
+    await select(1, "primary");
+    expect(top("notice")).toBe("Saved.");
+    await select(1, "remove");
+    expect(top("error")).toBe("Lamp B is the main sensor. Use another sensor as main sensor first.");
+    // The earlier notice must not read as if the removal was saved.
+    expect(top("notice")).toBeNull();
+    expect(roleWrites(calls).map(c => c.type)).toEqual(["smart_plants/roles/set_primary"]);
+    await select(0, "primary");
+    await select(1, "remove");
+    expect(current().roles!.illuminance).toMatchObject({ sources: [lampSources(3)[0], lampSources(3)[2]], primary_entity_id: "sensor.mock_lamp_a" });
+  });
+
   it("guards a single active editor with a switch confirmation", async () => {
     const { el } = await mountDetail(withRoles(), [tempEntity()], [tempState()]);
     // Open temperature editor and make a change (stale after).
@@ -229,8 +349,8 @@ describe("Sensors section", () => {
       }
       if (typeof msg.type === "string" && msg.type.startsWith("smart_plants/roles/set_")) {
         const role = current.roles!.temperature as RoleSourceConfig;
-        const next = msg.type === "smart_plants/roles/set_sources" ? { sources: msg.sources as RoleSourceConfig["sources"] } : { stale_after_seconds: msg.stale_after_seconds as number };
-        current = { ...current, revision: current.revision + 1, roles: { ...current.roles!, temperature: { ...role, ...next } } };
+        const next = msg.type === "smart_plants/roles/set_sources" ? stored(role, msg.sources as RoleSourceConfig["sources"]) : { ...role, stale_after_seconds: msg.stale_after_seconds as number };
+        current = { ...current, revision: current.revision + 1, roles: { ...current.roles!, temperature: next } };
         return { plant: current };
       }
       return undefined;
@@ -268,7 +388,7 @@ describe("Sensors section", () => {
       if (msg.type === "config/entity_registry/list") return [tempEntity()];
       if (msg.type === "get_states") return [tempState()];
       if (msg.type === "smart_plants/roles/set_sources") {
-        current = { ...current, revision: 2, roles: { ...current.roles!, temperature: { ...emptyRole(), sources: msg.sources as RoleSourceConfig["sources"] } } };
+        current = { ...current, revision: 2, roles: { ...current.roles!, temperature: stored(emptyRole(), msg.sources as RoleSourceConfig["sources"]) } };
         return { plant: current };
       }
       if (msg.type === "smart_plants/roles/set_stale_after") {

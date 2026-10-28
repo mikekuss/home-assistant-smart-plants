@@ -606,7 +606,8 @@ test("UUID rename and successful retained missing-source saves never bind a reus
   await page.getByRole("combobox", { name: "Add moisture sensor", exact: true }).selectOption("sensor.renamed");
   await button(page, "Save soil moisture sensors").click();
   await expect(button(page, "Add sensor")).toBeEnabled();
-  expect((await messages(page, "moisture/configure"))[2]).toMatchObject({ expected_revision: 3, moisture: { sources: [{ entity_id: "sensor.renamed", registry_id: id(999) }], primary_entity_id: null } });
+  // The replacement of the only sensor becomes the main sensor.
+  expect((await messages(page, "moisture/configure"))[2]).toMatchObject({ expected_revision: 3, moisture: { sources: [{ entity_id: "sensor.renamed", registry_id: id(999) }], primary_entity_id: "sensor.renamed" } });
 });
 
 test("source metadata fallback and explicit unregistered input display availability warnings", async ({ page }) => {

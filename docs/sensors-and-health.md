@@ -43,10 +43,21 @@ reading**:
 | Lowest | Lowest valid, fresh source. |
 | Highest | Highest valid, fresh source. |
 
-With **Main sensor only**, a main sensor must be chosen, otherwise the role has no value.
-Every sensor picked in the add-plant wizard becomes the main sensor for its reading. With
-**Average**, **Lowest**, and **Highest**, sources that are not updating or invalid are left
-out; if none remain, the value is unavailable.
+A reading with a single sensor always uses it as its main sensor. That covers a sensor picked
+in the add-plant wizard, the first sensor you add to a reading, and the sensor left after you
+remove the others. With several sensors, Smart Plants never chooses or replaces the main
+sensor by itself. **Main sensor only** then needs a main sensor, otherwise the role has no
+value:
+
+- The panel doesn't save **Main sensor only** for several sensors without a main sensor.
+  Choose one under **Main sensor**, or pick another way to combine the readings.
+- To remove the main sensor of several, first select **Use as main sensor** in another
+  sensor's **⋮** menu under **Assigned sensors**.
+- A plant whose soil moisture sensors have no main sensor shows *No main sensor* and
+  *Soil moisture: no main sensor chosen*.
+
+With **Average**, **Lowest**, and **Highest**, sources that are not updating or invalid are
+left out; if none remain, the value is unavailable.
 
 ## Staleness
 
@@ -181,6 +192,7 @@ and creates a **Repairs** issue: "Smart Plants: assigned source missing".
 2. Choose a replacement sensor, or leave the field empty to remove the assignment.
 3. Submit.
 
-If the missing sensor was the main sensor, the replacement becomes the main sensor. The
-issue disappears on its own if the sensor comes back or you change the assignment in the
-panel. Paused plants don't raise these issues.
+If the missing sensor was the main sensor, the replacement becomes the main sensor. If you
+remove it and one sensor is left, that sensor becomes the main sensor. The issue disappears
+on its own if the sensor comes back or you change the assignment in the panel. Paused plants
+don't raise these issues.

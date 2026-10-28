@@ -1582,7 +1582,13 @@ class SmartPlantsManager:
                 if registered is not None
                 else source
             )
-        return replace(candidate, sources=tuple(sources))
+        return replace(
+            candidate,
+            sources=tuple(sources),
+            primary_entity_id=_single_source_primary(
+                sources, candidate.primary_entity_id
+            ),
+        )
 
     async def async_configure_moisture(
         self,
@@ -1760,7 +1766,9 @@ class SmartPlantsManager:
                 raise SmartPlantsValidationError(
                     "primary_entity_id must reference an assigned source"
                 )
-            config = definition.replace_sources(config, parsed, primary)
+            config = definition.replace_sources(
+                config, parsed, _single_source_primary(parsed, primary)
+            )
             if "aggregation" in values:
                 aggregation = values["aggregation"]
                 config = _validate_role_aggregation(definition, aggregation)(
@@ -1802,8 +1810,9 @@ class SmartPlantsManager:
         ``sources`` is an iterable of {'entity_id', 'registry_id'?} dicts.
         Sources are validated for uniqueness by entity_id and for shape.
         If the current ``primary_entity_id`` is no longer among the
-        supplied sources, it is cleared silently: callers must set the
-        primary explicitly via ``async_set_moisture_primary`` afterwards.
+        supplied sources, it is cleared silently. A single remaining source
+        then becomes the primary; with several, callers must set the primary
+        explicitly via ``async_set_role_primary`` afterwards.
         """
         try:
             definition = require_role(role)
@@ -1828,7 +1837,7 @@ class SmartPlantsManager:
             new_config = definition.replace_sources(
                 config,
                 tuple(parsed),
-                new_primary,
+                _single_source_primary(parsed, new_primary),
             )
             if new_config == config:
                 return current
@@ -1864,10 +1873,11 @@ class SmartPlantsManager:
         primary_entity_id: str | None,
     ) -> PlantRecord:
         """
-        Select or clear the primary moisture source.
+        Select or clear the primary source of ``role``.
 
         ``primary_entity_id`` must reference an entity_id currently in the
-        plant's source list, or be ``None`` to clear the selection.
+        plant's source list, or be ``None`` to clear the selection. A role
+        with a single source keeps that source as its primary.
         """
         try:
             definition = require_role(role)
@@ -1890,11 +1900,13 @@ class SmartPlantsManager:
                         "primary_entity_id must reference an assigned source"
                     )
             config = definition.config_for(current)
+            sources = tuple(getattr(config, "sources", ()))
+            primary_entity_id = _single_source_primary(sources, primary_entity_id)
             if getattr(config, "primary_entity_id", None) == primary_entity_id:
                 return current
             new_config = definition.replace_sources(
                 config,
-                tuple(getattr(config, "sources", ())),
+                sources,
                 primary_entity_id,
             )
             updated = current.with_role_config(role, new_config).with_next_revision()
@@ -3099,6 +3111,22 @@ def _validate_primary_shape(primary_entity_id: object) -> None:
         )
 
 
+def _single_source_primary(
+    sources: Sequence[SensorSource], primary_entity_id: str | None
+) -> str | None:
+    """
+    Return the primary to store with ``sources``.
+
+    A role's only source becomes its primary when none is set. The ``primary``
+    aggregation gives no value without one, so a single working sensor would
+    otherwise never report. With several sources the primary stays the
+    user's choice, and nothing picks or replaces it automatically.
+    """
+    if primary_entity_id is None and len(sources) == 1:
+        return sources[0].entity_id
+    return primary_entity_id
+
+
 def _validate_role_aggregation(
     definition: RoleDefinition, aggregation: object
 ) -> Callable[[Any, str], Any]:
@@ -3323,7 +3351,11 @@ def _apply_rename_to_plant(
             )
         updated = updated.with_role_config(
             definition.key,
-            definition.replace_sources(config, tuple(new_sources), primary_entity_id)
+            definition.replace_sources(
+                config,
+                tuple(new_sources),
+                _single_source_primary(new_sources, primary_entity_id),
+            )
             if definition.replace_sources is not None
             else config,
         )
@@ -3334,7 +3366,13 @@ def _apply_rename_to_plant(
 def _canonicalize_plant_sources(
     plant: PlantRecord, registry: Any
 ) -> PlantRecord | None:
-    """Canonicalize UUID-backed IDs without corrupting collision cases."""
+    """
+    Canonicalize UUID-backed IDs without corrupting collision cases.
+
+    Also gives a role whose only source is not its primary that source as
+    primary. Earlier versions could store that state, in which the
+    ``primary`` aggregation never has a value.
+    """
     updated = plant
     changed_any = False
     for definition in role_definitions():
@@ -3367,6 +3405,16 @@ def _canonicalize_plant_sources(
             sources.append(canonical)
             resolved.append(entry is not None)
         if not changed:
+            stored_primary = getattr(config, "primary_entity_id", None)
+            repaired = _single_source_primary(configured_sources, stored_primary)
+            if repaired != stored_primary and definition.replace_sources is not None:
+                updated = updated.with_role_config(
+                    definition.key,
+                    definition.replace_sources(
+                        config, tuple(configured_sources), repaired
+                    ),
+                )
+                changed_any = True
             continue
         deduplicated: list[SensorSource] = []
         deduplicated_resolved: list[bool] = []
@@ -3396,7 +3444,11 @@ def _canonicalize_plant_sources(
         )
         updated = updated.with_role_config(
             definition.key,
-            definition.replace_sources(config, tuple(sources), primary_entity_id)
+            definition.replace_sources(
+                config,
+                tuple(sources),
+                _single_source_primary(sources, primary_entity_id),
+            )
             if definition.replace_sources is not None
             else config,
         )

@@ -156,6 +156,13 @@ describe("chip and reason text", () => {
     expect(cardReason(en, offline)).toBe("Soil moisture: sensor is not reporting");
     expect(problemReason(en, offline, { role: "co2", kind: "stress" })).toBe("CO₂ is outside its target");
   });
+  it("names a missing main sensor instead of a sensor that is not reporting", () => {
+    const aloe = entry("stale", [{ role: "moisture", kind: "no_main_sensor" }], { moisture: reading(null, "%", { min: 15, target: 35, max: 55 }, "unavailable") });
+    expect(chipText(en, aloe)).toEqual({ label: "No main sensor", more: 0 });
+    expect(cardReason(en, aloe)).toBe("Soil moisture: no main sensor chosen");
+    expect(chipText(de, aloe).label).toBe("Kein Hauptsensor");
+    expect(cardReason(de, aloe)).toBe("Bodenfeuchte: kein Hauptsensor gewählt");
+  });
   it("shows no reason for healthy, paused and sensorless plants", () => {
     expect(cardReason(en, entry("healthy", []))).toBe("");
     expect(cardReason(en, entry("paused", [{ role: "moisture", kind: "needs_water" }]))).toBe("");

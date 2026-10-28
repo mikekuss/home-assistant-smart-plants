@@ -31,9 +31,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   yourself.
 - The optional photo in the add-plant wizard is a compact row with a small thumbnail and
   **Change** and **Remove** buttons instead of a large drop area.
+- The sensor editors no longer save **Main sensor only** for a reading with several sensors
+  and no main sensor, since that reading never has a value. **Add sensor** and **Change**
+  show the **Main sensor** field for such a reading, and removing the main sensor of several
+  asks you to use another sensor as the main sensor first. A plant whose soil moisture still
+  has no main sensor shows *No main sensor* instead of *No recent data*. See
+  [Multiple sensors per role](docs/sensors-and-health.md#multiple-sensors-per-role).
 
 ### Fixed
 
+- A reading with a single sensor now always uses it as its main sensor. Before, adding the
+  first sensor of a reading under **Sensors → Add sensor**, or replacing a plant's only
+  sensor, left the reading without a main sensor. With **Main sensor only**, the default for
+  soil moisture, light, fertilizer level and soil temperature, it then had no value although
+  its sensor reported, and soil moisture showed *No recent data*. Smart Plants repairs plants
+  saved like that when Home Assistant starts.
 - The value read out below the **History** chart no longer disappears after a few seconds
   while you point at the chart; any Home Assistant state update used to clear it.
 - A forecast reading task whose weather entity fails to return one forecast type (for
