@@ -164,6 +164,64 @@ describe("sp-history-chart", () => {
     slider.dispatchEvent(new Event("blur")); await chart.updateComplete;
     expect(chart.shadowRoot!.querySelectorAll(".cursor")).toHaveLength(0);
   });
+  it("keeps the readout when the panel re-renders with the same series", async () => {
+    const chart = await mount("sp-history-chart", props);
+    const slider = chart.shadowRoot!.querySelector<HTMLInputElement>("input[type=range]")!;
+    slider.value = "1"; slider.dispatchEvent(new Event("input")); await chart.updateComplete;
+    // A new array with a fresher live value, as every Home Assistant update hands over.
+    chart.points = [...points.slice(0, -1), { ...at(8, 60), t: end - 7.5 * HOUR }]; chart.start = props.start + 1000; await chart.updateComplete;
+    expect(chart.shadowRoot!.querySelector(".readout")!.textContent).toMatch(/: 49% \(48–50%\)$/);
+    // Another range drops it.
+    chart.periodMs = 24 * HOUR; await chart.updateComplete;
+    expect(chart.shadowRoot!.querySelector(".readout")!.textContent).toBe("");
+    slider.value = "1"; slider.dispatchEvent(new Event("input")); await chart.updateComplete;
+    chart.points = points.slice(2); await chart.updateComplete;
+    expect(chart.shadowRoot!.querySelector(".readout")!.textContent).toBe("");
+  });
+  it("pins a clicked point and offers the action for it", async () => {
+    const chart = await mount("sp-history-chart", { ...props, actionLabel: "Log watering at this time" });
+    const root = chart.shadowRoot!;
+    const svg = root.querySelector("svg")!;
+    svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 600, height: 200, right: 600, bottom: 200, x: 0, y: 0, toJSON: () => ({}) });
+    // 46 px padding left, 542 px for 48 hours: 10 hours ago sits near x = 475.
+    const pointer = (type: string, clientX: number) => svg.dispatchEvent(new PointerEvent(type, { clientX, bubbles: true, composed: true }));
+    const readout = () => root.querySelector(".readout")!.textContent!;
+    const action = () => root.querySelector<HTMLButtonElement>("button.action");
+    pointer("pointermove", 475); await chart.updateComplete;
+    expect(readout()).toMatch(/: 66% \(65–67%\)$/);
+    expect(action()).toBeNull();
+    pointer("pointerdown", 475); pointer("pointermove", 100); pointer("pointerleave", 0); await chart.updateComplete;
+    expect(readout()).toMatch(/: 66% \(65–67%\)$/);
+    expect(action()!.textContent).toBe("Log watering at this time");
+    const fired: unknown[] = []; chart.addEventListener("point-action", e => fired.push((e as CustomEvent).detail));
+    action()!.click(); await chart.updateComplete;
+    expect(fired).toEqual([{ t: end - 10 * HOUR }]);
+    expect(action()).toBeNull();
+    // A click on the pinned point, Escape or a click outside unpins it.
+    pointer("pointerdown", 475); await chart.updateComplete;
+    pointer("pointerdown", 475); await chart.updateComplete;
+    expect(action()).toBeNull();
+    pointer("pointerdown", 475); await chart.updateComplete;
+    root.querySelector(".plot")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); await chart.updateComplete;
+    expect(action()).toBeNull();
+    pointer("pointerdown", 475); await chart.updateComplete;
+    document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); await chart.updateComplete;
+    expect(action()).toBeNull();
+  });
+  it("pins the slider's point with Enter and keeps it while focus moves to the action", async () => {
+    const chart = await mount("sp-history-chart", { ...props, actionLabel: "Log watering at this time" });
+    const slider = chart.shadowRoot!.querySelector<HTMLInputElement>("input[type=range]")!;
+    slider.value = "0"; slider.dispatchEvent(new Event("input"));
+    slider.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); await chart.updateComplete;
+    slider.dispatchEvent(new Event("blur")); await chart.updateComplete;
+    expect(chart.shadowRoot!.querySelector(".readout")!.textContent).toMatch(/: 50% \(49–51%\)$/);
+    expect(chart.shadowRoot!.querySelector("button.action")).not.toBeNull();
+    const plain = await mount("sp-history-chart", props);
+    const plainSlider = plain.shadowRoot!.querySelector<HTMLInputElement>("input[type=range]")!;
+    plainSlider.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); await plain.updateComplete;
+    expect(plain.shadowRoot!.querySelector(".readout")!.textContent).toMatch(/: 64% \(63–65%\)$/);
+    expect(plain.shadowRoot!.querySelector("button.action")).toBeNull();
+  });
   it("omits the spread and the slider when there is nothing to show", async () => {
     const flat = await mount("sp-history-chart", { ...props, points: [at(3, 21, 0), at(2, 21, 0)], unit: "°C", band: null, markers: [], bandLabel: "", l: de });
     expect(flat.shadowRoot!.querySelectorAll("path.spread")).toHaveLength(0);

@@ -700,6 +700,7 @@ export const de: Catalog = {
   "history.point_label": "Zeitpunkt",
   "history.point": "{time}: {value}",
   "history.point_spread": "{time}: {value} ({min}–{max})",
+  "history.log_watering_at": "Gießen zu diesem Zeitpunkt eintragen",
   "history.rate": "Sinkt um etwa {rate} pro Tag.",
   "history.rate_since_watering": "Sinkt seit dem letzten Gießen um etwa {rate} pro Tag.",
   "history.forecast_one": "Bei diesem Tempo ist das Minimum von {limit} in etwa {count} Tag erreicht.",

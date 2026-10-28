@@ -137,6 +137,9 @@ export interface HistoryCard {
   markerLabel: string;
   lastWatered: number | null;
   now: number;
+  // Offered for a pinned point on the soil moisture chart, to log a watering
+  // that was forgotten at that time; omitted when care cannot be logged.
+  onLogWatering: ((t: number) => void) | null;
   onRole: (role: ReadingRole) => void;
   onRange: (range: HistoryRange) => void;
   onOpen: () => void;
@@ -167,7 +170,8 @@ export function renderHistoryCard(l: Localizer, card: HistoryCard) {
       ${card.status === "error" ? html`<div class="row"><span class="error-text" role="alert">${l.t("history.error")}</span><button type="button" class="btn text sm" @click=${card.onRetry}>${l.t("history.retry")}</button></div>`
         : message ? html`<p class="muted history-message" role="status">${message}</p>`
         : html`<sp-history-chart .points=${points} .start=${card.now - spec.spanMs} .end=${card.now} .periodMs=${spec.periodMs} .unit=${unit} .band=${band} .markers=${card.markers}
-            .summary=${historySummary(l, readingLabel(l, role), range, points, unit)} .bandLabel=${target ? l.t("history.legend_target", { range: target }) : ""} .markerLabel=${card.markerLabel} .l=${l}></sp-history-chart>`}
+            .summary=${historySummary(l, readingLabel(l, role), range, points, unit)} .bandLabel=${target ? l.t("history.legend_target", { range: target }) : ""} .markerLabel=${card.markerLabel}
+            .actionLabel=${role === "moisture" && card.onLogWatering ? l.t("history.log_watering_at") : ""} @point-action=${(e: CustomEvent<{ t: number }>) => card.onLogWatering?.(e.detail.t)} .l=${l}></sp-history-chart>`}
       ${drying ? html`<p class="small history-rate"><strong>${drying.rate}</strong>${drying.forecast ? html` <span class="muted">${drying.forecast}</span>` : nothing}</p>` : nothing}
     </div></section>`;
 }

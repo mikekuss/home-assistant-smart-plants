@@ -700,6 +700,7 @@ export class SmartPlantsPanel extends LitElement {
       roles: target.roles, role: target.role, range: this._historyRange, status: data?.status ?? "loading", points: data?.points ?? [],
       reading: o?.roles[target.role], markers, markerLabel: markerKind ? l.t(`history.legend_${markerKind}`) : "",
       lastWatered: Number.isFinite(lastWatered) ? lastWatered : null, now: Date.now(),
+      onLogWatering: this._blocked ? null : t => this._logCareAt("watering", t),
       onRole: role => { this._historyRole = role; store(HISTORY_ROLE_KEY, role); },
       onRange: range => { this._historyRange = range; store(HISTORY_RANGE_KEY, range); },
       // Home Assistant's own dialog for the sensor, with its chart and the link to History.
@@ -773,6 +774,13 @@ export class SmartPlantsPanel extends LitElement {
     if (this._careTaskId) { this._careTaskId = null; this._careKind = "watering"; this._careFields = {}; }
     this._careFormOpen = true;
     this._goTo("care", "#care-form select, #care-form input");
+  }
+  // Opens the care form for a new entry of this kind at a past time, picked on the History chart.
+  private _logCareAt(kind: CareEvent["kind"], t: number): void {
+    const when = new Date(Math.min(t, Date.now()));
+    this._careEditingId = null; this._careTaskId = null; this._careKind = kind; this._careFields = {}; this._careNote = ""; this._careError = "";
+    this._careDate = new Date(when.getTime() - when.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    this._careFormOpen = true; this._goTo("care", "#care-form input[type=datetime-local]");
   }
   private _closeCareForm(): void {
     this._careFormOpen = false; this._careEditingId = null; this._careTaskId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; this._careError = "";

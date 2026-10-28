@@ -699,6 +699,7 @@ export const en = {
   "history.point_label": "Point in time",
   "history.point": "{time}: {value}",
   "history.point_spread": "{time}: {value} ({min}–{max})",
+  "history.log_watering_at": "Log watering at this time",
   "history.rate": "Dropping about {rate} per day.",
   "history.rate_since_watering": "Dropping about {rate} per day since the last watering.",
   "history.forecast_one": "At this rate it reaches the minimum of {limit} in about {count} day.",
