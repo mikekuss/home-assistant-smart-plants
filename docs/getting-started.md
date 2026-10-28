@@ -49,8 +49,9 @@ go back at any time without losing your entries. Only the name is required.
 
 1. **Plant**: enter a name and optionally choose a Home Assistant **Area**. The plant's
    device is placed in that area, and sensors from the same area are suggested in the next
-   step. You can also add a photo: drop an image on the photo field or choose a file (JPEG,
-   PNG, or WebP up to 5 MB). It is uploaded right after the plant is created.
+   step. You can also add a photo: drop an image on the photo row or choose a file (JPEG,
+   PNG, or WebP up to 5 MB); **Change** and **Remove** replace or drop it again. It is
+   uploaded right after the plant is created.
 2. **Sensors**: pick a **Soil moisture sensor**; it gives the plant its watering alerts. The
    list only shows moisture sensors, with their current values. Under **Suggested from**
    *area*, other sensors from the chosen area are listed with what they measure and their
@@ -278,7 +279,9 @@ mark a task as done from an automation, for example from an NFC tag, use the
 A reading task is due because of a value, not a date. **Winter protection** starts as one: due
 when the temperature is below a value. It uses the plant's temperature sensor. A plant without
 one uses the weather forecast instead, if Home Assistant has a weather entity with a forecast
-(see [Frost warning from the forecast](#frost-warning-from-the-forecast)).
+(see [Frost warning from the forecast](#frost-warning-from-the-forecast)). When there is
+neither, the **Winter protection** tile says *Needs a temperature sensor or a weather
+forecast*; you can still add it and pick another temperature sensor in the editor.
 
 In the task editor:
 

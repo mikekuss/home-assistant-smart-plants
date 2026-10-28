@@ -1119,9 +1119,24 @@ test("axe full-rule audit and screenshots cover overview, every wizard step, det
   await audit(page, info, "wizard-plant-empty");
   await page.getByLabel("Plant name", { exact: true }).fill("Accessible Aloe");
   await page.getByLabel("Area", { exact: true }).selectOption("office");
+  // The optional photo stays one compact row, empty and with a photo.
+  const drop = wizard(page).locator(".drop");
+  expect((await drop.boundingBox())!.height).toBeLessThanOrEqual(56);
   await photo(page, "Add a photo (optional)");
   await expect(wizard(page).getByText("Uploaded when you create the plant", { exact: true })).toBeVisible();
+  expect((await drop.boundingBox())!.height).toBeLessThanOrEqual(56);
+  await noOverflow(page);
   await audit(page, info, "wizard-plant"); await screenshot(page, info, "wizard-plant");
+  await photo(page, "Choose another photo");
+  await expect(wizard(page).locator(".drop img")).toBeVisible();
+  // Dropping an image on the row replaces the photo as well.
+  const dropped = await page.evaluateHandle(async () => {
+    const canvas = document.createElement("canvas"); canvas.width = 80; canvas.height = 60;
+    const blob = await new Promise<Blob>(resolve => canvas.toBlob(b => resolve(b!), "image/png"));
+    const transfer = new DataTransfer(); transfer.items.add(new File([blob], "dropped.png", { type: "image/png" })); return transfer;
+  });
+  await drop.dispatchEvent("drop", { dataTransfer: dropped });
+  await expect(drop).toContainText("dropped.png");
   await next(page);
   await expect(button(page, "Skip for now")).toBeVisible();
   await audit(page, info, "wizard-sensors-suggested"); await screenshot(page, info, "wizard-sensors-suggested");

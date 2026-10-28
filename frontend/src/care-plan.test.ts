@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SmartPlantsPanel } from "./panel.js";
 import { ENGLISH, createLocalizer } from "./localize.js";
-import { careLine, careNote, careOnlyChange, careSuggestions, draftFromTask, draftSummary, forecastEntities, forecastMissing, forecastShortText, forecastShortUntil, forecastUnit, fromCelsius, lastDone, localDate, matchingTask, monthsInRange, numericSensor, pickMonth, pickSource, plantReadingRoles, presetDraft, readingSuggestion, restDraft, restSentence, restTaskChanges, resumeDate, scheduleText, shortDate, sourceUnit, taskChanges, taskChip, validateDraft, validateRest, winterDraft } from "./care-plan.js";
+import { careLine, careNote, careOnlyChange, careSuggestions, draftFromTask, draftSummary, forecastEntities, forecastMissing, forecastShortText, forecastShortUntil, forecastUnit, fromCelsius, lastDone, localDate, matchingTask, monthsInRange, numericSensor, pickMonth, pickSource, plantReadingRoles, presetDraft, readingSuggestion, restDraft, restSentence, restTaskChanges, resumeDate, scheduleText, shortDate, sourceUnit, taskChanges, taskChip, validateDraft, validateRest, winterDraft, winterSourceMissing } from "./care-plan.js";
 import { matchesFilter } from "./overview-model.js";
 import type { CareTaskSummary, PlantOverview } from "./overview-model.js";
 import type { CareEvent, CareTask, HAEntity, HAState, HomeAssistantLike, PlantRecord, PlantSpecies, RestPeriod } from "./types.js";
@@ -889,6 +889,12 @@ describe("forecast reading draft", () => {
     expect(winterDraft(plantWith({ species: withMinimum(5) }), withWeather, l)).toMatchObject({ forecast: "low", weatherEntityId: weatherCabin.entity_id, readingUnit: "°F", value: "41" });
   });
 
+  it("knows when winter protection has neither a temperature sensor nor a forecast", () => {
+    expect(winterSourceMissing(plantWith({}), { [weatherPlain.entity_id]: weatherPlain, ...states }, l)).toBe(true);
+    expect(winterSourceMissing(plantWith({}), { [weatherHome.entity_id]: weatherHome }, l)).toBe(false);
+    expect(winterSourceMissing(plantWith({ roles: { ...sample.roles!, temperature: temperatureRole } }), states, l)).toBe(false);
+  });
+
   it("saves a forecast without a delay and validates it like the backend", () => {
     const draft = { ...presetDraft("winter_protection", plantWith({}), withWeather, l), weatherEntityId: weatherHome.entity_id, readingUnit: "°C", value: "2", resetValue: "5", forHours: "3" };
     expect(validateDraft(draft, TODAY, withWeather).input!.schedule).toEqual(frostSchedule);
@@ -967,6 +973,24 @@ describe("forecast reading tasks in the panel", () => {
     carePlan(el).querySelector<HTMLButtonElement>("button.btn.tonal")!.click(); await settle(el);
     [...dialog(el)!.querySelectorAll<HTMLButtonElement>("button.preset")].find(b => b.textContent?.includes("Winter protection"))!.click(); await settle(el);
   };
+
+  it("tells on the winter protection tile when there is nothing to follow", async () => {
+    const hint = "Needs a temperature sensor or a weather forecast";
+    const tile = (el: SmartPlantsPanel) => [...dialog(el)!.querySelectorAll<HTMLButtonElement>("button.preset")].find(b => b.textContent?.includes("Winter protection"))!;
+    const show = async (el: SmartPlantsPanel) => { carePlan(el).querySelector<HTMLButtonElement>("button.btn.tonal")!.click(); await settle(el); };
+    const bare = await open(careBackend(plantWith({})), { [weatherPlain.entity_id]: weatherPlain });
+    await show(bare);
+    expect(tile(bare).querySelector(".preset-hint")!.textContent).toBe(hint);
+    expect(tile(bare).disabled).toBe(false);
+    // The other tiles never carry it.
+    expect(dialog(bare)!.querySelectorAll(".preset-hint")).toHaveLength(1);
+    const forecast = await open(careBackend(plantWith({})), { [weatherHome.entity_id]: weatherHome });
+    await show(forecast);
+    expect(tile(forecast).textContent).not.toContain(hint);
+    const sensor = await open(careBackend(plantWith({ roles: { ...sample.roles!, temperature: temperatureRole } })), {});
+    await show(sensor);
+    expect(tile(sensor).textContent).not.toContain(hint);
+  });
 
   it("keeps the editor unchanged without a weather forecast", async () => {
     const el = await open(careBackend(plantWith({})), { [weatherPlain.entity_id]: weatherPlain });

@@ -75,14 +75,16 @@ export class SmartPlantsWizard extends LitElement {
     .helper { font-size: 12px; color: var(--wz-muted); padding: 4px 12px 0; }
     ha-area-picker, ha-entity-picker, ha-selector { display: block; }
 
-    .drop { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1.5px dashed var(--wz-divider); border-radius: 12px; }
-    .drop.has { border-style: solid; }
+    /* One compact row; the hint or upload note sits below it like a field helper. */
+    .drop { display: flex; align-items: center; gap: 10px; min-height: 48px; padding-block: 4px; padding-inline: 12px 4px; border: 1.5px dashed var(--wz-divider); border-radius: 12px; }
+    .drop.has { border-style: solid; padding-inline-start: 6px; }
     .drop.over { border-color: var(--sp-primary); background: var(--wz-tonal); }
-    .drop:focus-within { outline: 2px solid var(--sp-primary); outline-offset: 2px; }
-    .drop label { display: flex; align-items: center; gap: 14px; flex: 1; cursor: pointer; }
-    .drop ha-icon { --mdc-icon-size: 28px; color: var(--wz-tonal-fg); }
-    .drop .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-    .drop img { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; flex: none; }
+    .drop:not(.has):focus-within, .drop .pick:focus-within { outline: 2px solid var(--sp-primary); outline-offset: 2px; }
+    .drop > label { display: flex; align-items: center; gap: 10px; flex: 1; align-self: stretch; cursor: pointer; }
+    .drop ha-icon { --mdc-icon-size: 22px; color: var(--wz-tonal-fg); flex: none; }
+    .drop .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .drop .pick { cursor: pointer; }
+    .drop img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; flex: none; }
 
     .caption { margin: 6px 0 0; font-size: 12px; font-weight: 400; letter-spacing: .05em; text-transform: uppercase; color: var(--wz-muted); }
     .rows { display: flex; flex-direction: column; gap: 8px; }
@@ -517,15 +519,18 @@ export class SmartPlantsWizard extends LitElement {
   private renderPhoto() {
     const l = this.l;
     const drag = (e: DragEvent, over: boolean) => { e.preventDefault(); this.dragging = over; };
-    return html`<div class="drop ${this.photo ? "has" : ""} ${this.dragging ? "over" : ""}" @dragover=${(e: DragEvent) => drag(e, true)} @dragleave=${(e: DragEvent) => drag(e, false)}
+    const input = (label: string) => html`<input class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" aria-label=${label} aria-describedby="photo-hint" ?disabled=${this.busy || this.blocked}
+      @change=${(e: Event) => { const input = e.target as HTMLInputElement; void this.pickPhoto(input.files?.[0]); input.value = ""; }}>`;
+    const hint = this.photoChecking ? l.t("wizard.photo_checking") : this.photo ? l.t("wizard.photo_pending") : l.t("wizard.photo_hint");
+    return html`<div><div class="drop ${this.photo ? "has" : ""} ${this.dragging ? "over" : ""}" @dragover=${(e: DragEvent) => drag(e, true)} @dragleave=${(e: DragEvent) => drag(e, false)}
         @drop=${(e: DragEvent) => { drag(e, false); if (!this.busy && !this.blocked) void this.pickPhoto(e.dataTransfer?.files?.[0]); }}>
       ${this.photo && this.photoUrl ? html`<img src=${this.photoUrl} alt="">
-          <div class="grow"><span>${this.photo.name}</span><span class="small muted">${l.t("wizard.photo_pending")}</span></div>
+          <span class="grow" dir="auto" title=${this.photo.name}>${this.photo.name}</span>
+          <label class="btn text sm pick">${l.t("wizard.photo_change")}${input(l.t("wizard.photo_change_label"))}</label>
           <button type="button" class="btn text sm" aria-label=${l.t("wizard.photo_remove_label")} @click=${() => this.clearPhoto()}>${l.t("wizard.photo_remove")}</button>`
         : html`<label><ha-icon aria-hidden="true" icon="mdi:camera-plus-outline"></ha-icon>
-          <span class="grow"><span>${l.t("wizard.photo_add")} <span class="muted">${l.t("wizard.photo_optional")}</span></span><span class="small muted" id="photo-hint">${this.photoChecking ? l.t("wizard.photo_checking") : l.t("wizard.photo_hint")}</span></span>
-          <input class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" aria-label=${l.t("wizard.photo_label")} aria-describedby="photo-hint" @change=${(e: Event) => { const input = e.target as HTMLInputElement; void this.pickPhoto(input.files?.[0]); input.value = ""; }}></label>`}
-      </div>${this.photoError ? html`<p class="error" role="alert">${this.photoError}</p>` : nothing}`;
+          <span class="grow">${l.t("wizard.photo_add")} <span class="muted">${l.t("wizard.photo_optional")}</span></span>${input(l.t("wizard.photo_label"))}</label>`}
+      </div><div class="helper" id="photo-hint">${hint}</div>${this.photoError ? html`<p class="error" role="alert">${this.photoError}</p>` : nothing}</div>`;
   }
 
   private sensorPicker(role: ReadingRole, label: string) {

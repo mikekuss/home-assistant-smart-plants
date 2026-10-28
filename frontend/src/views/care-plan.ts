@@ -2,7 +2,7 @@
 // Automate… sheet. Pure render functions: the panel owns state and writes.
 import { css, html, nothing } from "lit";
 import type { TemplateResult } from "lit";
-import { CARE_TASK_TYPES, FORECAST_HOURS, INTERVAL_UNITS, MAX_CARE_TASKS, MAX_FOR_HOURS, ROLE_UNITS, TASK_ICONS, TASK_INSTRUCTIONS_MAX, TASK_NAME_MAX, careNote, careSuggestions, draftSummary, existingTypes, forecastEntities, forecastMissing, forecastRowValue, forecastShortText, forecastShortUntil, forecastUnit, forecastWindow, inRestPeriod, isForecastDraft, isSourceRole, lastDone, minTemperature, monthName, monthRange, monthsInRange, numericSensor, parseNumber, pickSource, plantReadingRoles, presetDraft, readingSuggestion, readingValue, restSentence, scheduleText, shortDate, sourceName, sourceUnit, taskChip, taskName, winterDraft } from "../care-plan.js";
+import { CARE_TASK_TYPES, FORECAST_HOURS, INTERVAL_UNITS, MAX_CARE_TASKS, MAX_FOR_HOURS, ROLE_UNITS, TASK_ICONS, TASK_INSTRUCTIONS_MAX, TASK_NAME_MAX, careNote, careSuggestions, draftSummary, existingTypes, forecastEntities, forecastMissing, forecastRowValue, forecastShortText, forecastShortUntil, forecastUnit, forecastWindow, inRestPeriod, isForecastDraft, isSourceRole, lastDone, minTemperature, monthName, monthRange, monthsInRange, numericSensor, parseNumber, pickSource, plantReadingRoles, presetDraft, readingSuggestion, readingValue, restSentence, scheduleText, shortDate, sourceName, sourceUnit, taskChip, taskName, winterDraft, winterSourceMissing } from "../care-plan.js";
 import type { DraftErrors, ReadingSourceRole, RestDraft, TaskDraft } from "../care-plan.js";
 import { isDefined } from "../ha-elements.js";
 import type { Localizer } from "../localize.js";
@@ -178,11 +178,13 @@ function presetStep(ctx: TaskEditorContext): TemplateResult {
       <span class="field-label">${l.t("care_plan.from_scratch")}</span>` : nothing}
     <div class="presets" role="list">${CARE_TASK_TYPES.map(type => {
       const exists = taken.has(type);
+      const needsSource = !exists && type === "winter_protection" && winterSourceMissing(plant, ctx.states, l);
       const description = exists ? l.t("care_plan.preset_exists")
         : type === "custom" ? l.t("care_plan.preset_custom") : type === "winter_protection" ? l.t("care_plan.preset_winter") : scheduleText(l, scheduleOf(presetDraft(type)), plant.rest_period ?? null);
       return html`<div role="listitem"><button type="button" class="preset" ?disabled=${exists || ctx.busy} @click=${() => ctx.onPreset(type)}>
         <span class="ic tonal" aria-hidden="true"><ha-icon .icon=${TASK_ICONS[type]}></ha-icon></span>
-        <span class="preset-text"><span class="preset-name">${l.t(`care_task_type.${type}`)}</span><span class="preset-d">${description}</span></span></button></div>`;
+        <span class="preset-text"><span class="preset-name">${l.t(`care_task_type.${type}`)}</span><span class="preset-d">${description}</span>
+          ${needsSource ? html`<span class="preset-hint">${l.t("care_plan.preset_winter_needs_source")}</span>` : nothing}</span></button></div>`;
     })}</div>
     <div class="actions dialog-actions"><span class="spacer"></span><button type="button" @click=${ctx.onCancel}>${l.t("common.cancel")}</button></div>`;
 }
@@ -497,6 +499,7 @@ export const carePlanStyles = css`
   .care-dialog .preset-text { display: flex; flex-direction: column; min-width: 0; }
   .care-dialog .preset-name { font-weight: 500; }
   .care-dialog .preset-d { font-size: 12.5px; color: var(--sp-text-secondary); }
+  .care-dialog .preset-hint { margin-top: 2px; font-size: 12px; color: var(--sp-text-secondary); }
   .care-dialog .task-summary { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--sp-text) 6%, transparent); }
   .care-dialog .summary-name { font-weight: 500; }
   .care-dialog .field-group { display: flex; flex-direction: column; gap: 6px; }
