@@ -15,7 +15,10 @@ export interface ChartBand { min: number | null; max: number | null; target: num
 // One reading over time: the mean as a line, the spread of each period as a
 // faint area, the target range as a band and care events as vertical markers.
 // Pointing at the chart, or moving the hidden slider with the keyboard, reads
-// out one point below it.
+// out one point below it. Clicking the chart, or pressing Enter on the slider,
+// pins that point until Escape, a click outside or a click on the same point;
+// with an action label set, a pinned point offers a button that fires
+// "point-action" with the point's time.
 export class SpHistoryChart extends LitElement {
   static styles = [themeFallbacks, srOnly, css`
     :host { display: block; color: var(--sp-text); }
@@ -33,7 +36,11 @@ export class SpHistoryChart extends LitElement {
     .marker-dot { fill: var(--sp-info); }
     .cursor { stroke: color-mix(in srgb, var(--sp-text) 45%, transparent); stroke-width: 1; }
     .cursor-dot { fill: var(--sp-card); stroke: var(--sp-primary); stroke-width: 2; }
-    .readout { min-height: 20px; margin-top: 2px; font-size: 13px; font-variant-numeric: tabular-nums; }
+    .readout-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-height: 28px; margin-top: 2px; }
+    .readout { font-size: 13px; font-variant-numeric: tabular-nums; }
+    .action { padding: 2px 6px; border: 0; border-radius: 4px; background: none; color: var(--sp-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+    .action:hover { background: color-mix(in srgb, var(--sp-primary) 10%, transparent); }
+    .action:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: 1px; }
     .legend { display: flex; flex-wrap: wrap; gap: 2px 16px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
     .legend span { display: inline-flex; align-items: center; gap: 6px; }
     .key { display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
@@ -54,10 +61,14 @@ export class SpHistoryChart extends LitElement {
   @property() public summary = "";
   @property() public bandLabel = "";
   @property() public markerLabel = "";
+  // Text of the button offered for a pinned point; empty shows none.
+  @property() public actionLabel = "";
   @property({ attribute: false }) public l: Localizer = ENGLISH;
   @state() private _width = 600;
   @state() private _active: number | null = null;
+  @state() private _pinned = false;
   private _observer: ResizeObserver | undefined;
+  private readonly _outside = (e: Event) => { if (this._pinned && !e.composedPath().includes(this)) this._unpin(); };
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -68,10 +79,26 @@ export class SpHistoryChart extends LitElement {
     });
     this._observer.observe(this);
   }
-  disconnectedCallback(): void { this._observer?.disconnect(); this._observer = undefined; super.disconnectedCallback(); }
+  disconnectedCallback(): void { this._observer?.disconnect(); this._observer = undefined; document.removeEventListener("pointerdown", this._outside); super.disconnectedCallback(); }
 
+  // The panel hands over a new array on every Home Assistant update, often with
+  // the same buckets and only a fresher live value, so the point read out stays
+  // until the series itself changes: another range, reading or set of buckets.
   protected willUpdate(changed: Map<PropertyKey, unknown>): void {
-    if (changed.has("points") && this._active !== null) this._active = null;
+    if (this._active === null) return;
+    const before = changed.get("points") as HistoryPoint[] | undefined;
+    const replaced = changed.has("points") && (!before || before.length !== this.points.length || before[0]?.t !== this.points[0]?.t);
+    if (replaced || changed.has("periodMs") || changed.has("unit") || this._active >= this.points.length) { this._active = null; this._unpin(); }
+  }
+
+  private _pin(index: number | null): void {
+    this._active = index;
+    this._pinned = index !== null;
+    if (this._pinned) document.addEventListener("pointerdown", this._outside);
+  }
+  private _unpin(): void {
+    this._pinned = false;
+    document.removeEventListener("pointerdown", this._outside);
   }
 
   private _pointText(point: HistoryPoint): string {
@@ -91,6 +118,11 @@ export class SpHistoryChart extends LitElement {
     let best = 0;
     for (let i = 1; i < this.points.length; i++) if (Math.abs(this.points[i]!.t - t) < Math.abs(this.points[best]!.t - t)) best = i;
     return best;
+  }
+
+  private _fire(t: number): void {
+    this._unpin();
+    this.dispatchEvent(new CustomEvent<{ t: number }>("point-action", { detail: { t }, bubbles: true, composed: true }));
   }
 
   protected render() {
@@ -114,11 +146,21 @@ export class SpHistoryChart extends LitElement {
     const markers = this.markers.filter(t => t >= this.start && t <= this.end);
     const active = this._active !== null ? points[this._active] : undefined;
     const showSpread = points.some(p => p.max - p.min >= 0.1);
-    const move = (e: PointerEvent) => { this._active = this._nearest(e.clientX); };
+    const move = (e: PointerEvent) => { if (!this._pinned) this._active = this._nearest(e.clientX); };
+    const down = (e: PointerEvent) => {
+      const index = this._nearest(e.clientX);
+      if (this._pinned && index === this._active) { this._unpin(); return; }
+      this._pin(index);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && points.length) { e.preventDefault(); this._pin(this._active ?? points.length - 1); }
+      else if (e.key === "Escape" && this._pinned) { e.stopPropagation(); this._unpin(); }
+    };
+    const action = this.actionLabel && this._pinned && active;
     return html`
-      <div class="plot">
+      <div class="plot" @keydown=${key}>
         <svg viewBox="0 0 ${width} ${HEIGHT}" role="img" aria-label=${this.summary}
-          @pointermove=${move} @pointerdown=${move} @pointerleave=${() => { this._active = null; }}>
+          @pointermove=${move} @pointerdown=${down} @pointerleave=${() => { if (!this._pinned) this._active = null; }}>
           ${bandTop !== null && bandBottom !== null && bandBottom > bandTop ? svg`<rect class="band" x=${PAD.left} y=${bandTop} width=${inner} height=${bandBottom - bandTop}></rect>` : nothing}
           ${scale.ticks.map(tick => svg`<line class="grid" x1=${PAD.left} x2=${width - PAD.right} y1=${y(tick)} y2=${y(tick)}></line>
             <text x=${PAD.left - 6} y=${y(tick) + 4} text-anchor="end">${l.number(tick, compact ? { notation: "compact" } : {})}</text>`)}
@@ -134,9 +176,12 @@ export class SpHistoryChart extends LitElement {
         </svg>
         ${points.length ? html`<input class="sr-only" type="range" min="0" max=${points.length - 1} step="1" .value=${String(this._active ?? points.length - 1)}
           aria-label=${l.t("history.point_label")} aria-valuetext=${this._pointText(points[this._active ?? points.length - 1]!)}
-          @input=${(e: Event) => { this._active = Number((e.target as HTMLInputElement).value); }} @blur=${() => { this._active = null; }}>` : nothing}
+          @input=${(e: Event) => { this._active = Number((e.target as HTMLInputElement).value); }} @blur=${() => { if (!this._pinned) this._active = null; }}>` : nothing}
       </div>
-      <div class="readout" aria-hidden="true">${active ? this._pointText(active) : nothing}</div>
+      <div class="readout-row" @keydown=${(e: KeyboardEvent) => { if (e.key === "Escape" && this._pinned) { e.stopPropagation(); this._unpin(); } }}>
+        <span class="readout" aria-hidden="true">${active ? this._pointText(active) : nothing}</span>
+        ${action ? html`<button type="button" class="action" @click=${() => this._fire(active.t)}>${this.actionLabel}</button>` : nothing}
+      </div>
       <div class="legend">
         ${this.bandLabel ? html`<span><i class="key band"></i>${this.bandLabel}</span>` : nothing}
         ${showSpread ? html`<span><i class="key spread"></i>${l.t("history.legend_spread")}</span>` : nothing}

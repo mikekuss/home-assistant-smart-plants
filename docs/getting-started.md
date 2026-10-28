@@ -128,6 +128,13 @@ appears as soon as the plant has at least one assigned sensor.
   logged fertilizing on the fertilizer level chart.
 - Point at the chart to read the value at that time. With the keyboard, focus the chart and
   use the arrow keys.
+- Click or tap the chart to pin the value so it stays while you move away; press **Enter**
+  to pin it with the keyboard. Click the same point again, click outside the chart or press
+  **Escape** to unpin it.
+- On the soil moisture chart, a pinned value offers **Log watering at this time** for a
+  watering you forgot to log. It opens the **Care** tab with a watering entry at that time;
+  check the time and select **Record care**. On the **1 year** range one point covers a
+  whole day, so set the hour yourself.
 - For soil moisture, the line below the chart says how fast the value is dropping since the
   last watering (or since it last rose), for example *Dropping about 5.5% per day*, and
   estimates when it reaches the minimum at that rate. The estimate needs at least twelve hours

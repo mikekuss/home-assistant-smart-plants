@@ -11,6 +11,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A **Forecast refresh interval** option (Settings → Devices & services → Smart Plants →
   Configure) sets how often forecast reading tasks fetch their weather forecast, from 15 to
   180 minutes. The default stays 30 minutes. See [Options](docs/installation.md#options).
+- Clicking the **History** chart pins the value at that point. On the soil moisture chart a
+  pinned value offers **Log watering at this time**, which opens the care form with a
+  watering at that time, for a watering you forgot to log. See
+  [History](docs/getting-started.md#history).
 
 ### Changed
 
@@ -22,6 +26,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- The value read out below the **History** chart no longer disappears after a few seconds
+  while you point at the chart; any Home Assistant state update used to clear it.
 - A forecast reading task whose weather entity fails to return one forecast type (for
   example hourly) now tries the next type (twice daily, then daily) instead of showing no
   reading.

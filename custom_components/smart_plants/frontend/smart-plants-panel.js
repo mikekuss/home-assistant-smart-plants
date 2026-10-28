@@ -2512,6 +2512,7 @@ var zn = {
 	"history.point_label": "Zeitpunkt",
 	"history.point": "{time}: {value}",
 	"history.point_spread": "{time}: {value} ({min}–{max})",
+	"history.log_watering_at": "Gießen zu diesem Zeitpunkt eintragen",
 	"history.rate": "Sinkt um etwa {rate} pro Tag.",
 	"history.rate_since_watering": "Sinkt seit dem letzten Gießen um etwa {rate} pro Tag.",
 	"history.forecast_one": "Bei diesem Tempo ist das Minimum von {limit} in etwa {count} Tag erreicht.",
@@ -3590,6 +3591,7 @@ var zn = {
 	"history.point_label": "Point in time",
 	"history.point": "{time}: {value}",
 	"history.point_spread": "{time}: {value} ({min}–{max})",
+	"history.log_watering_at": "Log watering at this time",
 	"history.rate": "Dropping about {rate} per day.",
 	"history.rate_since_watering": "Dropping about {rate} per day since the last watering.",
 	"history.forecast_one": "At this rate it reaches the minimum of {limit} in about {count} day.",
@@ -5333,7 +5335,9 @@ var ca, la = 200, U = {
 	left: 46
 }, W = class extends S {
 	constructor(...e) {
-		super(...e), this.points = [], this.start = 0, this.end = 0, this.periodMs = 36e5, this.unit = "", this.band = null, this.markers = [], this.summary = "", this.bandLabel = "", this.markerLabel = "", this.l = F, this._width = 600, this._active = null;
+		super(...e), this.points = [], this.start = 0, this.end = 0, this.periodMs = 36e5, this.unit = "", this.band = null, this.markers = [], this.summary = "", this.bandLabel = "", this.markerLabel = "", this.actionLabel = "", this.l = F, this._width = 600, this._active = null, this._pinned = !1, this._outside = (e) => {
+			this._pinned && !e.composedPath().includes(this) && this._unpin();
+		};
 	}
 	connectedCallback() {
 		super.connectedCallback(), typeof ResizeObserver < "u" && (this._observer = new ResizeObserver((e) => {
@@ -5342,10 +5346,18 @@ var ca, la = 200, U = {
 		}), this._observer.observe(this));
 	}
 	disconnectedCallback() {
-		this._observer?.disconnect(), this._observer = void 0, super.disconnectedCallback();
+		this._observer?.disconnect(), this._observer = void 0, document.removeEventListener("pointerdown", this._outside), super.disconnectedCallback();
 	}
 	willUpdate(e) {
-		e.has("points") && this._active !== null && (this._active = null);
+		if (this._active === null) return;
+		let t = e.get("points");
+		(e.has("points") && (!t || t.length !== this.points.length || t[0]?.t !== this.points[0]?.t) || e.has("periodMs") || e.has("unit") || this._active >= this.points.length) && (this._active = null, this._unpin());
+	}
+	_pin(e) {
+		this._active = e, this._pinned = e !== null, this._pinned && document.addEventListener("pointerdown", this._outside);
+	}
+	_unpin() {
+		this._pinned = !1, document.removeEventListener("pointerdown", this._outside);
 	}
 	_pointText(e) {
 		let t = this.l, n = (e) => j(t, Math.round(e * 10) / 10, this.unit), r = t.dateTime(new Date(e.t).toISOString());
@@ -5366,19 +5378,35 @@ var ca, la = 200, U = {
 		for (let e = 1; e < this.points.length; e++) Math.abs(this.points[e].t - r) < Math.abs(this.points[i].t - r) && (i = e);
 		return i;
 	}
+	_fire(e) {
+		this._unpin(), this.dispatchEvent(new CustomEvent("point-action", {
+			detail: { t: e },
+			bubbles: !0,
+			composed: !0
+		}));
+	}
 	render() {
 		let e = this.l, t = this.points, n = Math.max(this._width, 240), r = n - U.left - U.right, i = la - U.bottom, a = this.band, o = Tn(t, [
 			a?.min,
 			a?.max,
 			a?.target
 		], this.unit), s = Math.max(this.end - this.start, 1), c = (e) => U.left + (e - this.start) / s * r, l = (e) => i - (Math.min(o.max, Math.max(o.min, e)) - o.min) / (o.max - o.min) * (i - U.top), u = (e, t) => `${c(e).toFixed(1)} ${l(t).toFixed(1)}`, d = Cn(t, this.periodMs), f = (e) => e != null && e >= o.min && e <= o.max, p = a && (a.min !== null || a.max !== null) ? l(a.max ?? o.max) : null, m = a && (a.min !== null || a.max !== null) ? l(a.min ?? o.min) : null, h = o.max >= 1e4, g = En(this.start, this.end, e.language), _ = Math.max(1, Math.ceil(g.length * 52 / r)), ee = g.filter((e, t) => (g.length - 1 - t) % _ == 0), te = this.markers.filter((e) => e >= this.start && e <= this.end), v = this._active === null ? void 0 : t[this._active], ne = t.some((e) => e.max - e.min >= .1), re = (e) => {
-			this._active = this._nearest(e.clientX);
-		};
+			this._pinned || (this._active = this._nearest(e.clientX));
+		}, ie = (e) => {
+			let t = this._nearest(e.clientX);
+			if (this._pinned && t === this._active) {
+				this._unpin();
+				return;
+			}
+			this._pin(t);
+		}, y = (e) => {
+			e.key === "Enter" && t.length ? (e.preventDefault(), this._pin(this._active ?? t.length - 1)) : e.key === "Escape" && this._pinned && (e.stopPropagation(), this._unpin());
+		}, ae = this.actionLabel && this._pinned && v;
 		return b`
-      <div class="plot">
+      <div class="plot" @keydown=${y}>
         <svg viewBox="0 0 ${n} ${la}" role="img" aria-label=${this.summary}
-          @pointermove=${re} @pointerdown=${re} @pointerleave=${() => {
-			this._active = null;
+          @pointermove=${re} @pointerdown=${ie} @pointerleave=${() => {
+			this._pinned || (this._active = null);
 		}}>
           ${p !== null && m !== null && m > p ? De`<rect class="band" x=${U.left} y=${p} width=${r} height=${m - p}></rect>` : x}
           ${o.ticks.map((t) => De`<line class="grid" x1=${U.left} x2=${n - U.right} y1=${l(t)} y2=${l(t)}></line>
@@ -5396,10 +5424,15 @@ var ca, la = 200, U = {
           @input=${(e) => {
 			this._active = Number(e.target.value);
 		}} @blur=${() => {
-			this._active = null;
+			this._pinned || (this._active = null);
 		}}>` : x}
       </div>
-      <div class="readout" aria-hidden="true">${v ? this._pointText(v) : x}</div>
+      <div class="readout-row" @keydown=${(e) => {
+			e.key === "Escape" && this._pinned && (e.stopPropagation(), this._unpin());
+		}}>
+        <span class="readout" aria-hidden="true">${v ? this._pointText(v) : x}</span>
+        ${ae ? b`<button type="button" class="action" @click=${() => this._fire(v.t)}>${this.actionLabel}</button>` : x}
+      </div>
       <div class="legend">
         ${this.bandLabel ? b`<span><i class="key band"></i>${this.bandLabel}</span>` : x}
         ${ne ? b`<span><i class="key spread"></i>${e.t("history.legend_spread")}</span>` : x}
@@ -5426,7 +5459,11 @@ ca = W, ca.styles = [
     .marker-dot { fill: var(--sp-info); }
     .cursor { stroke: color-mix(in srgb, var(--sp-text) 45%, transparent); stroke-width: 1; }
     .cursor-dot { fill: var(--sp-card); stroke: var(--sp-primary); stroke-width: 2; }
-    .readout { min-height: 20px; margin-top: 2px; font-size: 13px; font-variant-numeric: tabular-nums; }
+    .readout-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-height: 28px; margin-top: 2px; }
+    .readout { font-size: 13px; font-variant-numeric: tabular-nums; }
+    .action { padding: 2px 6px; border: 0; border-radius: 4px; background: none; color: var(--sp-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+    .action:hover { background: color-mix(in srgb, var(--sp-primary) 10%, transparent); }
+    .action:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: 1px; }
     .legend { display: flex; flex-wrap: wrap; gap: 2px 16px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
     .legend span { display: inline-flex; align-items: center; gap: 6px; }
     .key { display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
@@ -5434,7 +5471,7 @@ ca = W, ca.styles = [
     .key.spread { background: color-mix(in srgb, var(--sp-primary) 30%, transparent); }
     .key.marker { width: 8px; border-radius: 50%; background: var(--sp-info); }
   `
-], H([C({ attribute: !1 })], W.prototype, "points", void 0), H([C({ attribute: !1 })], W.prototype, "start", void 0), H([C({ attribute: !1 })], W.prototype, "end", void 0), H([C({ attribute: !1 })], W.prototype, "periodMs", void 0), H([C()], W.prototype, "unit", void 0), H([C({ attribute: !1 })], W.prototype, "band", void 0), H([C({ attribute: !1 })], W.prototype, "markers", void 0), H([C()], W.prototype, "summary", void 0), H([C()], W.prototype, "bandLabel", void 0), H([C()], W.prototype, "markerLabel", void 0), H([C({ attribute: !1 })], W.prototype, "l", void 0), H([w()], W.prototype, "_width", void 0), H([w()], W.prototype, "_active", void 0), customElements.get("sp-history-chart") || customElements.define("sp-history-chart", W);
+], H([C({ attribute: !1 })], W.prototype, "points", void 0), H([C({ attribute: !1 })], W.prototype, "start", void 0), H([C({ attribute: !1 })], W.prototype, "end", void 0), H([C({ attribute: !1 })], W.prototype, "periodMs", void 0), H([C()], W.prototype, "unit", void 0), H([C({ attribute: !1 })], W.prototype, "band", void 0), H([C({ attribute: !1 })], W.prototype, "markers", void 0), H([C()], W.prototype, "summary", void 0), H([C()], W.prototype, "bandLabel", void 0), H([C()], W.prototype, "markerLabel", void 0), H([C()], W.prototype, "actionLabel", void 0), H([C({ attribute: !1 })], W.prototype, "l", void 0), H([w()], W.prototype, "_width", void 0), H([w()], W.prototype, "_active", void 0), H([w()], W.prototype, "_pinned", void 0), customElements.get("sp-history-chart") || customElements.define("sp-history-chart", W);
 //#endregion
 //#region src/components/sp-snooze-chip.ts
 var ua, da = class extends S {
@@ -5568,7 +5605,8 @@ function Da(e, t) {
         <div class="seg" role="group" aria-label=${e.t("history.range_label")}>${hn.map((n) => b`<button type="button" aria-pressed=${n === r ? "true" : "false"} @click=${() => t.onRange(n)}>${e.t(Ea[n])}</button>`)}</div>
       </div>
       ${t.status === "error" ? b`<div class="row"><span class="error-text" role="alert">${e.t("history.error")}</span><button type="button" class="btn text sm" @click=${t.onRetry}>${e.t("history.retry")}</button></div>` : p ? b`<p class="muted history-message" role="status">${p}</p>` : b`<sp-history-chart .points=${c} .start=${t.now - a.spanMs} .end=${t.now} .periodMs=${a.periodMs} .unit=${o} .band=${l} .markers=${t.markers}
-            .summary=${Pn(e, A(e, n), r, c, o)} .bandLabel=${u ? e.t("history.legend_target", { range: u }) : ""} .markerLabel=${t.markerLabel} .l=${e}></sp-history-chart>`}
+            .summary=${Pn(e, A(e, n), r, c, o)} .bandLabel=${u ? e.t("history.legend_target", { range: u }) : ""} .markerLabel=${t.markerLabel}
+            .actionLabel=${n === "moisture" && t.onLogWatering ? e.t("history.log_watering_at") : ""} @point-action=${(e) => t.onLogWatering?.(e.detail.t)} .l=${e}></sp-history-chart>`}
       ${f ? b`<p class="small history-rate"><strong>${f.rate}</strong>${f.forecast ? b` <span class="muted">${f.forecast}</span>` : x}</p>` : x}
     </div></section>`;
 }
@@ -9266,6 +9304,7 @@ var $ = class e extends S {
 			markerLabel: a ? n.t(`history.legend_${a}`) : "",
 			lastWatered: Number.isFinite(s) ? s : null,
 			now: Date.now(),
+			onLogWatering: this._blocked ? null : (e) => this._logCareAt("watering", e),
 			onRole: (e) => {
 				this._historyRole = e, Fc(Dc, e);
 			},
@@ -9362,6 +9401,10 @@ var $ = class e extends S {
 	}
 	_openCareForm() {
 		this._careTaskId && (this._careTaskId = null, this._careKind = "watering", this._careFields = {}), this._careFormOpen = !0, this._goTo("care", "#care-form select, #care-form input");
+	}
+	_logCareAt(e, t) {
+		let n = new Date(Math.min(t, Date.now()));
+		this._careEditingId = null, this._careTaskId = null, this._careKind = e, this._careFields = {}, this._careNote = "", this._careError = "", this._careDate = (/* @__PURE__ */ new Date(n.getTime() - n.getTimezoneOffset() * 6e4)).toISOString().slice(0, 16), this._careFormOpen = !0, this._goTo("care", "#care-form input[type=datetime-local]");
 	}
 	_closeCareForm() {
 		this._careFormOpen = !1, this._careEditingId = null, this._careTaskId = null, this._careKind = "watering", this._careFields = {}, this._careNote = "", this._careError = "";
