@@ -9,7 +9,7 @@ import logging
 import secrets
 import time
 from collections import OrderedDict
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -841,24 +841,14 @@ class SmartPlantsManager:
             self._raise_if_unavailable()
             current = self._require_plant(plant_id)
             self._require_optional_expected_revision(current, expected_revision)
-            if provenance not in CARE_PROVENANCES:
-                raise SmartPlantsValidationError(
-                    "care event provenance is not supported"
-                )
-            if task_id is not None:
-                task = _require_care_task(current, task_id)
-                if kind_for_task_type(task.type) != kind:
-                    raise SmartPlantsValidationError(
-                        "care event kind does not match the care task"
-                    )
-            event = _build_care_event(
+            updated, event = _with_care_event(
+                current,
                 kind=kind,
                 occurred_at=occurred_at,
                 payload=payload,
                 provenance=provenance,
                 task_id=task_id,
             )
-            updated = current.with_next_revision(**_care_append_changes(current, event))
             change = await self._async_publish_plant_change(current, updated)
         await self._dispatch_event(change)
         return updated, event
@@ -1072,17 +1062,11 @@ class SmartPlantsManager:
     ) -> tuple[PlantRecord, str | None]:
         """Skip the current occurrence; return the previous skip date for undo."""
         today = _local_today()
-
-        def skip(task: CareTask) -> CareTask:
-            if isinstance(task.schedule, ReadingSchedule):
-                raise SmartPlantsValidationError(
-                    "a care task that follows a sensor reading cannot be skipped; "
-                    "mark it as done instead"
-                )
-            return replace(task, last_skipped_on=today)
-
         return await self._async_change_care_task(
-            plant_id, task_id, expected_revision=expected_revision, change=skip
+            plant_id,
+            task_id,
+            expected_revision=expected_revision,
+            change=lambda task: _skipped_task(task, today),
         )
 
     async def async_undo_skip_care_task(
@@ -1153,12 +1137,9 @@ class SmartPlantsManager:
             self._raise_if_unavailable()
             current = self._require_plant(plant_id)
             self._require_optional_expected_revision(current, expected_revision)
-            snoozed_until = _validate_snooze_until(until, dt_util.utcnow())
-            if snoozed_until is not None and current.lifecycle_state != "active":
-                raise SmartPlantsValidationError("a disabled plant cannot be snoozed")
-            if snoozed_until == current.snoozed_until:
+            updated = _with_snooze(current, until)
+            if updated is current:
                 return current
-            updated = current.with_next_revision(snoozed_until=snoozed_until)
             change = await self._async_publish_plant_change(current, updated)
         await self._dispatch_event(change)
         return updated
@@ -1263,18 +1244,45 @@ class SmartPlantsManager:
             current = self._require_plant(plant_id)
             self._require_optional_expected_revision(current, expected_revision)
             task = _require_care_task(current, task_id)
-            replacement = change(task)
-            updated = current.with_next_revision(
-                care_tasks=_checked_tasks(
-                    tuple(
-                        replacement if item.id == task_id else item
-                        for item in current.care_tasks
-                    )
-                )
-            )
+            updated = _with_task_change(current, task, change)
             plant_change = await self._async_publish_plant_change(current, updated)
         await self._dispatch_event(plant_change)
         return updated, task.last_skipped_on
+
+    async def async_apply_plant_changes(
+        self, changes: Sequence[tuple[str, PlantChange]]
+    ) -> None:
+        """
+        Apply changes to one or more plants with a single save.
+
+        Each change receives the plant as the earlier changes left it and
+        returns it unchanged to leave it out. If a change raises or the save
+        fails, none of the changes is published.
+        """
+        self._raise_if_unavailable()
+        async with self._mutation_lock:
+            self._raise_if_unavailable()
+            snapshot = self._snapshot
+            steps: list[tuple[PlantRecord, PlantRecord]] = []
+            for plant_id, change in changes:
+                current = snapshot.plants.get(plant_id)
+                if current is None:
+                    raise SmartPlantsPlantNotFoundError(plant_id)
+                updated = change(current)
+                if updated is not current:
+                    snapshot = snapshot.with_plant(updated)
+                    steps.append((current, updated))
+            if not steps:
+                return
+            await self._async_publish(snapshot)
+            events = [
+                PlantUpdatedEvent(kind="plant_updated", plant=updated, previous=current)
+                for current, updated in steps
+            ]
+            for event in events:
+                self._prepare_event(event)
+        for event in events:
+            await self._dispatch_event(event)
 
     async def _async_publish_plant_change(
         self, current: PlantRecord, updated: PlantRecord
@@ -2747,6 +2755,152 @@ def _validate_snooze_until(value: object, now: datetime) -> str | None:
     if until > now + SNOOZE_MAX_AHEAD:
         raise SmartPlantsValidationError("until must be at most 366 days ahead")
     return utc_timestamp(until)
+
+
+PlantChange = Callable[[PlantRecord], PlantRecord]
+
+
+def care_event_change(
+    *,
+    kind: str,
+    occurred_at: str,
+    payload: Mapping[str, Any],
+    provenance: str = "manual",
+) -> PlantChange:
+    """Return a change for ``async_apply_plant_changes`` that logs care."""
+    return lambda current: _with_care_event(
+        current,
+        kind=kind,
+        occurred_at=occurred_at,
+        payload=payload,
+        provenance=provenance,
+        task_id=None,
+    )[0]
+
+
+def watering_change(
+    *, occurred_at: str, note: str | None, provenance: str = "manual"
+) -> PlantChange:
+    """Return a change for ``async_apply_plant_changes`` that logs a watering."""
+
+    def change(current: PlantRecord) -> PlantRecord:
+        return _with_care_event(
+            current,
+            kind="watering",
+            occurred_at=occurred_at,
+            payload={"note": _clean_care_note(note)},
+            provenance=provenance,
+            task_id=None,
+        )[0]
+
+    return change
+
+
+def complete_task_change(
+    task_id: str,
+    *,
+    occurred_at: str,
+    note: str | None,
+    provenance: str = "manual",
+) -> PlantChange:
+    """Return a change for ``async_apply_plant_changes`` that marks a task done."""
+
+    def change(current: PlantRecord) -> PlantRecord:
+        kind = kind_for_task_type(_require_care_task(current, task_id).type)
+        return _with_care_event(
+            current,
+            kind=kind,
+            occurred_at=occurred_at,
+            payload=minimal_care_payload(kind, _clean_care_note(note)),
+            provenance=provenance,
+            task_id=task_id,
+        )[0]
+
+    return change
+
+
+def skip_task_change(task_id: str) -> PlantChange:
+    """Return a change for ``async_apply_plant_changes`` that skips a task."""
+    today = _local_today()
+    return lambda current: _with_task_change(
+        current,
+        _require_care_task(current, task_id),
+        lambda task: _skipped_task(task, today),
+    )
+
+
+def snooze_change(until: datetime | str | None) -> PlantChange:
+    """Return a change for ``async_apply_plant_changes`` that sets a snooze."""
+    return lambda current: _with_snooze(current, until)
+
+
+def _clean_care_note(note: str | None) -> str | None:
+    try:
+        return clean_note(note)
+    except ValueError as err:
+        raise SmartPlantsValidationError(str(err)) from err
+
+
+def _with_care_event(  # noqa: PLR0913
+    current: PlantRecord,
+    *,
+    kind: str,
+    occurred_at: str,
+    payload: Mapping[str, Any],
+    provenance: str,
+    task_id: str | None,
+) -> tuple[PlantRecord, CareEvent]:
+    """Return the plant with a validated care event appended, and the event."""
+    if provenance not in CARE_PROVENANCES:
+        raise SmartPlantsValidationError("care event provenance is not supported")
+    if task_id is not None:
+        task = _require_care_task(current, task_id)
+        if kind_for_task_type(task.type) != kind:
+            raise SmartPlantsValidationError(
+                "care event kind does not match the care task"
+            )
+    event = _build_care_event(
+        kind=kind,
+        occurred_at=occurred_at,
+        payload=payload,
+        provenance=provenance,
+        task_id=task_id,
+    )
+    updated = current.with_next_revision(**_care_append_changes(current, event))
+    return updated, event
+
+
+def _with_task_change(
+    current: PlantRecord, task: CareTask, change: Callable[[CareTask], CareTask]
+) -> PlantRecord:
+    replacement = change(task)
+    return current.with_next_revision(
+        care_tasks=_checked_tasks(
+            tuple(
+                replacement if item.id == task.id else item
+                for item in current.care_tasks
+            )
+        )
+    )
+
+
+def _skipped_task(task: CareTask, today: str) -> CareTask:
+    if isinstance(task.schedule, ReadingSchedule):
+        raise SmartPlantsValidationError(
+            "a care task that follows a sensor reading cannot be skipped; "
+            "mark it as done instead"
+        )
+    return replace(task, last_skipped_on=today)
+
+
+def _with_snooze(current: PlantRecord, until: datetime | str | None) -> PlantRecord:
+    """Return the plant with a new snooze end, or unchanged if it is the same."""
+    snoozed_until = _validate_snooze_until(until, dt_util.utcnow())
+    if snoozed_until is not None and current.lifecycle_state != "active":
+        raise SmartPlantsValidationError("a disabled plant cannot be snoozed")
+    if snoozed_until == current.snoozed_until:
+        return current
+    return current.with_next_revision(snoozed_until=snoozed_until)
 
 
 def _local_today() -> str:

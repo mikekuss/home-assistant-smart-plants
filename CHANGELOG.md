@@ -28,7 +28,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A save that would make the plant storage larger than its 8 MiB limit is now refused
   instead of written. Before, many long care notes could push storage past the limit, and
   Smart Plants then failed to set up after the next restart. Actions such as
-  `smart_plants.log_care` now fail with "Smart Plants storage is full".
+  `smart_plants.log_care` now fail with "Smart Plants storage is full". An action with
+  several targets saves all of them or, if it fails, none.
 
 ## [0.13.0] - 2026-10-28
 

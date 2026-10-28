@@ -12,9 +12,16 @@ import pytest
 import voluptuous as vol
 from custom_components.smart_plants import storage as storage_module
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
-from custom_components.smart_plants.manager import SmartPlantsManager
+from custom_components.smart_plants.manager import (
+    PlantChange,
+    SmartPlantsManager,
+    care_event_change,
+    skip_task_change,
+    snooze_change,
+)
 from custom_components.smart_plants.models import PlantRecord
 from custom_components.smart_plants.services import (
+    ACTION_PROVENANCE,
     SERVICE_GET_REPORT,
     SERVICE_LOG_CARE,
     SERVICE_SKIP_CARE_TASK,
@@ -765,3 +772,67 @@ async def test_log_care_refuses_a_save_the_loader_would_refuse(
     await hass.async_block_till_done()
     assert entry.state is ConfigEntryState.LOADED
     assert _plant_record(entry, plant_ids[0]).care_events == before
+
+
+@pytest.mark.parametrize(
+    "service", [SERVICE_LOG_CARE, SERVICE_SKIP_CARE_TASK, SERVICE_SNOOZE]
+)
+async def test_failed_multi_target_action_changes_no_target(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch, service: str
+) -> None:
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    plant_ids = [await _plant(hass, entry, name) for name in ("Aloe", "Office Aloe")]
+    note = "n" * 500
+    targets: list[dict[str, Any]]
+    first_change: PlantChange
+    if service == SERVICE_SKIP_CARE_TASK:
+        tasks = [await _task(hass, entry, plant_id) for plant_id in plant_ids]
+        targets = [{"entity_id": entity_id} for _task_id, entity_id in tasks]
+        first_change = skip_task_change(tasks[0][0])
+    elif service == SERVICE_LOG_CARE:
+        targets = [
+            {"device_id": _device_id(hass, plant_id), "kind": "note", "note": note}
+            for plant_id in plant_ids
+        ]
+        first_change = care_event_change(
+            kind="note",
+            occurred_at=dt_util.now().replace(microsecond=0).isoformat(),
+            payload={"text": note},
+            provenance=ACTION_PROVENANCE,
+        )
+    else:
+        targets = [
+            {"device_id": _device_id(hass, plant_id), "duration": {"days": 7}}
+            for plant_id in plant_ids
+        ]
+        first_change = snooze_change(dt_util.utcnow() + timedelta(days=7))
+    # The limit fits the first target's change, but not both.
+    first = manager.snapshot.plants[plant_ids[0]]
+    one_fits = manager.snapshot.with_plant(first_change(first))
+    monkeypatch.setattr(
+        storage_module,
+        "_INVENTORY_MAX_BYTES",
+        len(
+            json.dumps(
+                one_fits.as_storage(), ensure_ascii=False, separators=(",", ":")
+            ).encode()
+        ),
+    )
+    before = manager.snapshot
+    both = {
+        key: [target[key] for target in targets]
+        if key in ("device_id", "entity_id")
+        else value
+        for key, value in targets[0].items()
+    }
+
+    with pytest.raises(HomeAssistantError) as info:
+        await _call(hass, service, both)
+    assert info.value.translation_key == "storage_full"
+    assert manager.snapshot is before
+
+    # The first target alone still fits.
+    await _call(hass, service, targets[0])
+    assert manager.snapshot.revision == before.revision + 1
+    assert manager.snapshot.plants[plant_ids[1]] == before.plants[plant_ids[1]]
