@@ -254,6 +254,17 @@ export function validResponse(msg: Record<string, unknown>, v: unknown): boolean
     const until = v.plant.snoozed_until;
     return msg.until === null ? until === null || until === undefined : typeof until === "string" && Math.floor(Date.parse(String(msg.until)) / 1000) === Math.floor(Date.parse(until) / 1000);
   }
+  // Both list only the plants that changed, each once; snooze_many names every
+  // changed plant's previous end.
+  if (command === "smart_plants/plants/snooze_many" || command === "smart_plants/plants/restore_snoozes") {
+    if (!Array.isArray(v.plants) || !v.plants.every(p => validPlant(p) && object(p))) return false;
+    const ids = (v.plants as Record<string, unknown>[]).map(p => p.id);
+    if (new Set(ids).size !== ids.length) return false;
+    if (command === "smart_plants/plants/restore_snoozes") return true;
+    const previous = v.previous;
+    return object(previous) && Object.keys(previous).length === ids.length && ids.every(id => typeof id === "string" && id in previous) &&
+      Object.values(previous).every(until => until === null || timestamp(until));
+  }
   // Entries are validated one by one when parsed; malformed entries are dropped.
   if (command === "smart_plants/plants/overview") return Array.isArray(v.plants) && v.plants.every(object) && new Set(v.plants.map(p => (p as Record<string, unknown>).plant_id)).size === v.plants.length;
   // A created plant reports every role it was created with. A replayed request

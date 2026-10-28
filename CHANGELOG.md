@@ -19,6 +19,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   entity as a target, so one action snoozes or resumes every active plant, for example from
   a vacation automation. Snoozing all plants keeps a later end a plant already has. See
   [Snooze every plant](docs/automations.md#snooze-every-plant).
+- **Snooze all plants…** in the overview menu mutes every active plant's alerts in one step,
+  for example before a vacation. The entry shows once you have at least two active plants.
+  Plants already snoozed longer keep their end, the notice offers **Undo**, and **Resume all**
+  ends every snooze. See [Going on vacation](docs/getting-started.md#going-on-vacation).
 
 ### Changed
 

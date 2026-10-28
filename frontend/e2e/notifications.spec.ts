@@ -52,8 +52,9 @@ test("adds only a menu item to the overview and opens the editor with a preset",
   await page.goto(`${url}?seed&notifications`);
   await expect(page.getByRole("heading", { name: "Smart Plants", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Menu", exact: true }).click();
-  await expect(page.getByRole("menuitem")).toHaveCount(4);
-  for (const item of ["Add plant", "Notifications…", "Integration options", "Documentation"]) await expect(menuItem(page, item)).toBeVisible();
+  // The seed has two active plants, so Snooze all plants… shows as well.
+  await expect(page.getByRole("menuitem")).toHaveCount(5);
+  for (const item of ["Add plant", "Notifications…", "Snooze all plants…", "Integration options", "Documentation"]) await expect(menuItem(page, item)).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator("smart-plants-panel smart-plants-notifications")).toHaveCount(0);
   expect((await harness(page)).messages.filter(m => m.type === "automation/config")).toEqual([]);

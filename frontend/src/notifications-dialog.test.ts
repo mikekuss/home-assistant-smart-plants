@@ -64,7 +64,8 @@ describe("notifications dialog", () => {
   it("adds one item to the overview menu and none to the plant page menu", async () => {
     const { el } = await mount();
     const items = [...root(el).querySelectorAll("ha-dropdown-item")].map(item => item.getAttribute("value"));
-    expect(items).toEqual(["add-plant", "notifications", "integration-options", "documentation"]);
+    // Snooze all plants… shows too: the fixture has two active plants.
+    expect(items).toEqual(["add-plant", "notifications", "snooze-all", "integration-options", "documentation"]);
     expect(root(el).querySelector('ha-dropdown-item[value="notifications"]')!.textContent?.trim()).toBe("Notifications…");
     expect(dialogElement(el)).toBeNull();
   });

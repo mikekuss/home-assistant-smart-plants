@@ -367,6 +367,28 @@ export const api = {
     return result.plant;
   },
 
+  // Snoozes every active plant until `until`, or resumes them all with null,
+  // in one save. A plant snoozed longer keeps its end. Returns the changed
+  // plants and their previous ends for `restoreSnoozes`.
+  async snoozeMany(
+    hass: HomeAssistantLike,
+    until: string | null,
+  ): Promise<{ plants: PlantRecord[]; previous: Record<string, string | null> }> {
+    return send(hass, { type: "smart_plants/plants/snooze_many", until });
+  },
+
+  // Puts back the snooze ends `snoozeMany` replaced.
+  async restoreSnoozes(
+    hass: HomeAssistantLike,
+    snoozes: Record<string, string | null>,
+  ): Promise<PlantRecord[]> {
+    const result = await send<{ plants: PlantRecord[] }>(hass, {
+      type: "smart_plants/plants/restore_snoozes",
+      snoozes,
+    });
+    return result.plants;
+  },
+
   async setArea(
     hass: HomeAssistantLike,
     plantId: string,
