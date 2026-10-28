@@ -12,6 +12,8 @@ check; care is stored with the ``action`` provenance.
 Home Assistant doesn't check permissions for integration actions, so the
 actions that change plants require a caller who may control at least one
 Smart Plants entity. Calls without a user, such as automations, are allowed.
+``snooze`` and ``unsnooze`` also accept the All plants entity as a target,
+meaning every active plant.
 ``get_report`` only returns what the plant entities already show and stays
 open to every user.
 """
@@ -51,7 +53,11 @@ from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
 
-from .automation_targets import DUE_UNIQUE_ID, plant_id_of_device
+from .automation_targets import (
+    DUE_UNIQUE_ID,
+    all_plants_entity_id,
+    plant_id_of_device,
+)
 from .care import CARE_EVENT_KINDS, kind_for_task_type, minimal_care_payload
 from .care_entities import translated_task_name
 from .const import DOMAIN
@@ -471,17 +477,41 @@ def _resolve_plant_entity(
     )
 
 
+def _targets_all_plants(hass: HomeAssistant, entity_refs: list[str]) -> bool:
+    """Return whether the entity targets name the All plants entity."""
+    all_plants = all_plants_entity_id(hass)
+    if all_plants is None:
+        return False
+    registry = er.async_get(hass)
+    return any(
+        er.async_resolve_entity_id(registry, ref) == all_plants for ref in entity_refs
+    )
+
+
 def _snooze_plants(
     call: ServiceCall,
     entry: ConfigEntry,
     manager: SmartPlantsManager,
     disabled_key: str | None,
-) -> list[PlantRecord]:
-    """Resolve the plants of a snooze action from plant devices and entities."""
+) -> tuple[list[PlantRecord], bool]:
+    """
+    Resolve the plants of a snooze action from plant devices and entities.
+
+    Also return whether the call targets all plants: the All plants entity
+    stands for every active plant, and mixed with other targets it wins, as
+    in the triggers and conditions.
+    """
     device_ids, entity_refs = _targets(call)
     if not device_ids and not entity_refs:
         raise _error("no_plant_target")
     hass = call.hass
+    if _targets_all_plants(hass, entity_refs):
+        active = [
+            plant
+            for plant in manager.snapshot.plants.values()
+            if plant.lifecycle_state == "active"
+        ]
+        return active, True
     return _unique_plants(
         [
             *(
@@ -493,7 +523,7 @@ def _snooze_plants(
                 for ref in entity_refs
             ),
         ]
-    )
+    ), False
 
 
 def _snooze_end(call: ServiceCall) -> datetime:
@@ -521,11 +551,15 @@ def _snooze_end(call: ServiceCall) -> datetime:
 @verify_domain_control(DOMAIN)
 async def _async_snooze(call: ServiceCall) -> None:
     entry, manager = _loaded_runtime(call.hass)
-    plants = _snooze_plants(call, entry, manager, "plant_disabled_snooze")
+    plants, all_plants = _snooze_plants(call, entry, manager, "plant_disabled_snooze")
     end = _snooze_end(call)
+    # Snoozing all plants keeps a longer snooze someone set for one plant.
     await _async_apply(
         manager,
-        [(plant.id, plant.name, snooze_change(end)) for plant in plants],
+        [
+            (plant.id, plant.name, snooze_change(end, keep_later=all_plants))
+            for plant in plants
+        ],
         "snooze_rejected",
     )
     for plant in plants:
@@ -536,7 +570,7 @@ async def _async_snooze(call: ServiceCall) -> None:
 async def _async_unsnooze(call: ServiceCall) -> None:
     entry, manager = _loaded_runtime(call.hass)
     # A disabled plant is never snoozed, so ending its snooze is a no-op.
-    plants = _snooze_plants(call, entry, manager, None)
+    plants, _all_plants = _snooze_plants(call, entry, manager, None)
     await _async_apply(
         manager,
         [(plant.id, plant.name, snooze_change(None)) for plant in plants],

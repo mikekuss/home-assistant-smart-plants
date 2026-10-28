@@ -452,8 +452,8 @@ are listed under **Smart Plants** in the action picker.
 | --- | --- | --- |
 | `smart_plants.log_care` | Plant devices or care task *due* entities | Adds an entry to the plant's care history. With a care task as the target, the entry marks that task as done. |
 | `smart_plants.skip_care_task` | Care task *due* entities | Skips the task's current occurrence. The task is due again on its next scheduled date. Tasks that follow a sensor reading cannot be skipped. |
-| `smart_plants.snooze` | Plant devices or any of their Smart Plants entities | Snoozes the plant's alerts for a while. See [Snooze alerts](#snooze-alerts). |
-| `smart_plants.unsnooze` | Plant devices or any of their Smart Plants entities | Ends the plant's snooze now. |
+| `smart_plants.snooze` | Plant devices, any of their Smart Plants entities, or *All plants* | Snoozes the plant's alerts for a while. See [Snooze alerts](#snooze-alerts). |
+| `smart_plants.unsnooze` | Plant devices, any of their Smart Plants entities, or *All plants* | Ends the plant's snooze now. |
 
 These four actions change plants, so a user who calls them needs permission to control
 Smart Plants entities. Administrators and ordinary users have it; members of Home Assistant's
@@ -584,6 +584,56 @@ target:
 data:
   duration:
     days: 14
+```
+
+### Snooze every plant
+
+Target the **All plants** entity (`binary_sensor.smart_plants_all_plants`) to snooze or resume
+every plant in one step, including plants you add later:
+
+- `smart_plants.snooze` with *All plants* snoozes every active plant. A plant that is already
+  snoozed until later keeps its end, so a long snooze you set for one plant survives a shorter
+  vacation snooze. Paused plants are left out.
+- `smart_plants.unsnooze` with *All plants* ends the snooze of every plant, also snoozes you
+  set for a single plant.
+- *All plants* counts only when you pick the entity itself. Next to other targets, it wins.
+  With plant devices or entities as targets, the actions work as described above and
+  `smart_plants.snooze` replaces each plant's end.
+
+This automation snoozes every plant while an `input_boolean` named *Vacation* is on, for at
+most three weeks, and resumes them when you switch it off:
+
+```yaml
+alias: "Vacation: snooze all plants"
+triggers:
+  - trigger: state
+    entity_id: input_boolean.vacation
+    to: "on"
+    id: "away"
+  - trigger: state
+    entity_id: input_boolean.vacation
+    to: "off"
+    id: "home"
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: "away"
+        sequence:
+          - action: smart_plants.snooze
+            target:
+              entity_id: binary_sensor.smart_plants_all_plants
+            data:
+              duration:
+                days: 21
+      - conditions:
+          - condition: trigger
+            id: "home"
+        sequence:
+          - action: smart_plants.unsnooze
+            target:
+              entity_id: binary_sensor.smart_plants_all_plants
+mode: single
 ```
 
 ### Stay quiet while a plant is snoozed

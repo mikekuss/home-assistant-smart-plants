@@ -588,7 +588,7 @@
     },
     "snooze": {
       "name": "Hinweise stummschalten",
-      "description": "Schaltet die Hinweise von Smart-Plants-Pflanzen stumm, zum Beispiel während eines Urlaubs. Die Entitäten behalten ihren echten Zustand; ihr Attribut Stummgeschaltet wird aktiv, damit Automationen still bleiben können. Erneutes Stummschalten ersetzt das Ende. Die Stummschaltung endet von selbst.",
+      "description": "Schaltet die Hinweise von Smart-Plants-Pflanzen stumm, zum Beispiel während eines Urlaubs. Die Entitäten behalten ihren echten Zustand; ihr Attribut Stummgeschaltet wird aktiv, damit Automationen still bleiben können. Erneutes Stummschalten ersetzt das Ende. Mit der Entität Alle Pflanzen als Ziel werden alle aktiven Pflanzen stummgeschaltet; eine Pflanze, die schon länger stummgeschaltet ist, behält ihr Ende. Die Stummschaltung endet von selbst.",
       "fields": {
         "duration": {
           "name": "Dauer",
@@ -602,7 +602,7 @@
     },
     "unsnooze": {
       "name": "Hinweise fortsetzen",
-      "description": "Beendet die Stummschaltung der Hinweise von Smart-Plants-Pflanzen sofort."
+      "description": "Beendet die Stummschaltung der Hinweise von Smart-Plants-Pflanzen sofort. Mit der Entität Alle Pflanzen als Ziel endet die Stummschaltung aller Pflanzen."
     },
     "get_report": {
       "name": "Pflanzenbericht abrufen",

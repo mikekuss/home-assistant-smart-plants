@@ -15,6 +15,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   pinned value offers **Log watering at this time**, which opens the care form with a
   watering at that time, for a watering you forgot to log. See
   [History](docs/getting-started.md#history).
+- The `smart_plants.snooze` and `smart_plants.unsnooze` actions accept the **All plants**
+  entity as a target, so one action snoozes or resumes every active plant, for example from
+  a vacation automation. Snoozing all plants keeps a later end a plant already has. See
+  [Snooze every plant](docs/automations.md#snooze-every-plant).
 
 ### Changed
 

@@ -588,7 +588,7 @@
     },
     "snooze": {
       "name": "Snooze alerts",
-      "description": "Snoozes the alerts of Smart Plants plants, for example during a vacation. Entities keep their real states; their Snoozed attribute turns on so automations can stay quiet. Snoozing again replaces the end. The snooze ends by itself.",
+      "description": "Snoozes the alerts of Smart Plants plants, for example during a vacation. Entities keep their real states; their Snoozed attribute turns on so automations can stay quiet. Snoozing again replaces the end. Target the All plants entity to snooze every active plant; a plant already snoozed longer keeps its end. The snooze ends by itself.",
       "fields": {
         "duration": {
           "name": "Duration",
@@ -602,7 +602,7 @@
     },
     "unsnooze": {
       "name": "Resume alerts",
-      "description": "Ends the alert snooze of Smart Plants plants now."
+      "description": "Ends the alert snooze of Smart Plants plants now. Target the All plants entity to end the snooze of every plant."
     },
     "get_report": {
       "name": "Get plant report",
