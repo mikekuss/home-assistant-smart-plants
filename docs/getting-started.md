@@ -343,7 +343,8 @@ waits until the forecast low rises above 5 °C again, so a week of frost gives o
 Under **More options**, **Look ahead** sets how far the forecast reaches: the next 24 hours
 (the default), 2 days or 3 days. Shorter forecasts are more reliable. **Only after** isn't
 offered for forecasts. Smart Plants refreshes the forecast every 30 minutes (see
-[Options](installation.md#options) to change this) and when the weather entity changes. It picks hourly, twice daily or daily forecasts by itself.
+[Options](installation.md#options) to change this) and when the weather entity changes. It
+picks hourly, twice daily or daily forecasts by itself.
 
 The task shows states such as *Not needed · forecast 6 °C*, *Due · forecast 1 °C* or *No
 forecast*. If the forecast ends before the end of the look-ahead, the task adds *Forecast only
