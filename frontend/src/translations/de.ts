@@ -642,6 +642,7 @@ export const de: Catalog = {
 
   "reason.below_min": "{role} {value} liegt unter dem Minimum von {limit}",
   "reason.above_max": "{role} {value} liegt über dem Maximum von {limit}",
+  "reason.turns_off_at": "{role} {value}, Warnung schaltet sich bei {limit} aus",
   "reason.low_light": "Licht {value}, braucht mindestens {limit}",
   "reason.battery_low": "Sensorbatterie bei {value}",
   "reason.stale": "{role}: letzte Messung {age}",

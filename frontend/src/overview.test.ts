@@ -16,8 +16,8 @@ const monstera = withMoisture(plant("monstera", "Monstera"));
 const lily = plant("lily", "Peace Lily");
 const plants = [basil, monstera, lily];
 const overview: Record<string, PlantOverview> = {
-  basil: { ...overviewFor(basil), status: "needs_water", problems: [{ role: "moisture", kind: "needs_water" }], roles: { moisture: { value: 34, unit: "%", state: "low", range: { min: 60, target: 70, max: 85 }, last_reported: "2026-09-28T11:58:00+00:00", sources: ["sensor.mock_basil_moisture"] }, temperature: { value: 23.1, unit: "°C", state: "ok", range: { min: 15, target: null, max: 30 }, last_reported: null, sources: ["sensor.mock_kitchen_temperature"] } }, last_watered_at: "2026-09-24T12:00:00+00:00" },
-  monstera: { ...overviewFor(monstera), status: "too_wet", problems: [{ role: "moisture", kind: "too_wet" }], roles: { moisture: { value: 74, unit: "%", state: "high", range: { min: 30, target: 45, max: 60 }, last_reported: null, sources: ["sensor.mock_monstera_moisture"] } } },
+  basil: { ...overviewFor(basil), status: "needs_water", problems: [{ role: "moisture", kind: "needs_water" }], roles: { moisture: { value: 34, unit: "%", state: "low", range: { min: 60, target: 70, max: 85 }, clear: { min: null, max: null }, last_reported: "2026-09-28T11:58:00+00:00", sources: ["sensor.mock_basil_moisture"] }, temperature: { value: 23.1, unit: "°C", state: "ok", range: { min: 15, target: null, max: 30 }, clear: { min: null, max: null }, last_reported: null, sources: ["sensor.mock_kitchen_temperature"] } }, last_watered_at: "2026-09-24T12:00:00+00:00" },
+  monstera: { ...overviewFor(monstera), status: "too_wet", problems: [{ role: "moisture", kind: "too_wet" }], roles: { moisture: { value: 74, unit: "%", state: "high", range: { min: 30, target: 45, max: 60 }, clear: { min: null, max: null }, last_reported: null, sources: ["sensor.mock_monstera_moisture"] } } },
   lily: overviewFor(lily),
 };
 

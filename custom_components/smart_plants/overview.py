@@ -22,6 +22,7 @@ from .care_schedule import TaskState, is_resting, task_state
 from .co2_evaluator import CO2_PARTS_PER_MILLION
 from .illuminance_evaluator import LIGHT_LUX
 from .models import ReadingSchedule
+from .moisture_evaluator import HYSTERESIS_OFFSET
 from .plant_status import evaluate_plant_status, role_state
 from .roles import role_definitions
 
@@ -35,12 +36,14 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class _RoleView:
-    """How to read one role's value, unit and target range."""
+    """How to read one role's value, unit, target range and clear values."""
 
     value_attribute: str
     unit: str
     # (min, target, max) threshold keys; ``None`` where the role has no bound.
     range_keys: tuple[str | None, str | None, str | None]
+    # (min, max) keys of the values that turn the alert at each bound off again.
+    clear_keys: tuple[str | None, str | None] = (None, None)
 
 
 _ROLE_VIEWS: Final[dict[str, _RoleView]] = {
@@ -49,13 +52,17 @@ _ROLE_VIEWS: Final[dict[str, _RoleView]] = {
         "computed_celsius",
         UnitOfTemperature.CELSIUS,
         ("cold_threshold_celsius", None, "hot_threshold_celsius"),
+        ("cold_clear_celsius", "hot_clear_celsius"),
     ),
     "humidity": _RoleView(
         "computed_percent",
         PERCENTAGE,
         ("dry_threshold_percent", None, "damp_threshold_percent"),
+        ("dry_clear_percent", "damp_clear_percent"),
     ),
-    "illuminance": _RoleView("computed_lux", LIGHT_LUX, ("target_lux", None, None)),
+    "illuminance": _RoleView(
+        "computed_lux", LIGHT_LUX, ("target_lux", None, None), ("clear_lux", None)
+    ),
     "conductivity": _RoleView(
         "computed_micro_siemens_per_cm",
         UnitOfConductivity.MICROSIEMENS_PER_CM,
@@ -64,21 +71,30 @@ _ROLE_VIEWS: Final[dict[str, _RoleView]] = {
             None,
             "high_threshold_micro_siemens_per_cm",
         ),
+        ("low_clear_micro_siemens_per_cm", "high_clear_micro_siemens_per_cm"),
     ),
     "soil_temperature": _RoleView(
         "computed_celsius",
         UnitOfTemperature.CELSIUS,
         ("cold_threshold_celsius", None, "hot_threshold_celsius"),
+        ("cold_clear_celsius", "hot_clear_celsius"),
     ),
     "co2": _RoleView(
-        "computed_ppm", CO2_PARTS_PER_MILLION, (None, None, "threshold_ppm")
+        "computed_ppm",
+        CO2_PARTS_PER_MILLION,
+        (None, None, "threshold_ppm"),
+        (None, "clear_ppm"),
     ),
     "battery": _RoleView(
-        "computed_percent", PERCENTAGE, ("threshold_percent", None, None)
+        "computed_percent",
+        PERCENTAGE,
+        ("threshold_percent", None, None),
+        ("clear_percent", None),
     ),
 }
 
 _RANGE_FIELDS: Final = ("min", "target", "max")
+_CLEAR_FIELDS: Final = ("min", "max")
 
 
 def role_reading(role: str, evaluation: Any) -> float | None:
@@ -113,6 +129,22 @@ def _role_range(role: str, config: Any) -> dict[str, float | None]:
     }
 
 
+def _role_clear(role: str, config: Any) -> dict[str, float | None]:
+    # An alert stays on until its reading gets back to the clear value, a
+    # little inside the bound that turned it on. Moisture uses a fixed offset.
+    if role == "moisture":
+        return {
+            "min": config.moisture_min + HYSTERESIS_OFFSET,
+            "max": config.moisture_max - HYSTERESIS_OFFSET,
+        }
+    view = _ROLE_VIEWS.get(role)
+    keys = view.clear_keys if view is not None else (None, None)
+    return {
+        field: _effective_threshold(role, config, key)
+        for field, key in zip(_CLEAR_FIELDS, keys, strict=True)
+    }
+
+
 def _role_view(
     role: str,
     config: Any,
@@ -134,6 +166,7 @@ def _role_view(
         "unit": view.unit if view is not None else None,
         "state": state,
         "range": _role_range(role, config),
+        "clear": _role_clear(role, config),
         "last_reported": (
             last_valid_at.isoformat() if last_valid_at is not None else None
         ),

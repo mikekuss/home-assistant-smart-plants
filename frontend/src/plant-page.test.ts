@@ -16,7 +16,7 @@ function plantWithSensors(): PlantRecord {
   return { ...structuredClone(sample), roles: { moisture: { ...role, sources: [{ entity_id: "sensor.mock_soil", registry_id: null }, { entity_id: "sensor.mock_backup", registry_id: null }], primary_entity_id: "sensor.mock_soil" } } };
 }
 function needsWater(plant: PlantRecord): PlantOverview {
-  return { ...overviewFor(plant), status: "needs_water", problems: [{ role: "moisture", kind: "needs_water" }], roles: { moisture: { value: 12, unit: "%", state: "low", range: { min: 20, target: 40, max: 60 }, last_reported: NOW, sources: ["sensor.mock_soil", "sensor.mock_backup"] } } };
+  return { ...overviewFor(plant), status: "needs_water", problems: [{ role: "moisture", kind: "needs_water" }], roles: { moisture: { value: 12, unit: "%", state: "low", range: { min: 20, target: 40, max: 60 }, clear: { min: null, max: null }, last_reported: NOW, sources: ["sensor.mock_soil", "sensor.mock_backup"] } } };
 }
 async function mount(plant: PlantRecord, overview?: (p: PlantRecord) => PlantOverview, extra?: (msg: Record<string, unknown>, set: (next: PlantRecord) => void) => unknown) {
   let current = plant;
@@ -55,11 +55,11 @@ describe("plant page helpers", () => {
   });
   it("lists every reason in the header and states when all is well", () => {
     const plant = plantWithSensors();
-    const overview: PlantOverview = { ...needsWater(plant), status: "needs_water", problems: [{ role: "moisture", kind: "needs_water" }, { role: "battery", kind: "battery_low" }], roles: { ...needsWater(plant).roles, battery: { value: 15, unit: "%", state: "low", range: { min: 20, max: null }, last_reported: NOW, sources: [] } } };
+    const overview: PlantOverview = { ...needsWater(plant), status: "needs_water", problems: [{ role: "moisture", kind: "needs_water" }, { role: "battery", kind: "battery_low" }], roles: { ...needsWater(plant).roles, battery: { value: 15, unit: "%", state: "low", range: { min: 20, max: null }, clear: { min: null, max: null }, last_reported: NOW, sources: [] } } };
     expect(headerReason(ENGLISH, overview)).toBe("Soil moisture 12% is below the minimum of 20% · Sensor battery at 15%");
     expect(headerReason(ENGLISH, overviewFor(plant))).toBe("All readings are within target.");
     expect(headerReason(ENGLISH, { ...overviewFor(plant), status: "paused" })).toBe("Monitoring is paused.");
-    expect(readingStateText(ENGLISH, { value: null, unit: "%", state: "stale", range: { min: 1, max: 2 }, last_reported: null, sources: [] })).toBe("Not updating");
+    expect(readingStateText(ENGLISH, { value: null, unit: "%", state: "stale", range: { min: 1, max: 2 }, clear: { min: null, max: null }, last_reported: null, sources: [] })).toBe("Not updating");
   });
 });
 
@@ -209,7 +209,7 @@ describe("plant history", () => {
     });
     return { [id]: rows };
   };
-  const wateredOverview = (p: PlantRecord): PlantOverview => ({ ...overviewFor(p), roles: { moisture: { value: 55, unit: "%", state: "ok", range: { min: 20, target: 40, max: 60 }, last_reported: NOW, sources: ["sensor.mock_soil"] } }, last_watered_at: new Date(Date.now() - 61 * HOUR).toISOString() });
+  const wateredOverview = (p: PlantRecord): PlantOverview => ({ ...overviewFor(p), roles: { moisture: { value: 55, unit: "%", state: "ok", range: { min: 20, target: 40, max: 60 }, clear: { min: null, max: null }, last_reported: NOW, sources: ["sensor.mock_soil"] } }, last_watered_at: new Date(Date.now() - 61 * HOUR).toISOString() });
   const history = (el: SmartPlantsPanel) => root(el).querySelector<HTMLElement>(".history-card");
   const requests = (h: { calls: Record<string, unknown>[] }) => h.calls.filter(c => c.type === "recorder/statistics_during_period");
 

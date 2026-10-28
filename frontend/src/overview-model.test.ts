@@ -9,7 +9,7 @@ const de = createLocalizer({ language: "de" });
 const now = Date.parse("2026-09-28T12:00:00Z");
 
 function reading(value: number | null, unit: string, range: RoleReading["range"], state: RoleReading["state"] = "ok", lastReported: string | null = "2026-09-28T11:58:00+00:00"): RoleReading {
-  return { value, unit, state, range, last_reported: lastReported, sources: ["sensor.mock_probe"] };
+  return { value, unit, state, range, clear: { min: null, max: null }, last_reported: lastReported, sources: ["sensor.mock_probe"] };
 }
 function entry(status: PlantStatus, problems: PlantOverview["problems"], roles: PlantOverview["roles"] = {}): PlantOverview {
   return { plant_id: "p1", revision: 3, lifecycle_state: "active", status, problems, roles, last_watered_at: "2026-09-26T12:00:00+00:00", image: null, care: [], rest_period: null, resting: false, snoozed_until: null };
@@ -31,6 +31,14 @@ describe("parseOverview", () => {
     expect(parsed.roles.moisture?.range).toEqual({ min: 60, target: 70, max: 85 });
     expect(Object.keys(parsed.roles)).toEqual(["moisture"]);
     expect(parsed.image).toEqual({ id: "img-1" });
+  });
+  it("reads the clear values and accepts older backends without them", () => {
+    expect(parseOverview(raw)!.roles.moisture?.clear).toEqual({ min: null, max: null });
+    const withClear = { ...raw, roles: { moisture: { ...raw.roles.moisture, clear: { min: 62, max: 83 } } } };
+    expect(parseOverview(withClear)!.roles.moisture?.clear).toEqual({ min: 62, max: 83 });
+    for (const clear of [{ min: "62", max: 83 }, { min: 62 }, [62, 83]]) {
+      expect(parseOverview({ ...raw, roles: { moisture: { ...raw.roles.moisture, clear } } })).toBeNull();
+    }
   });
   it("rejects malformed entries instead of guessing", () => {
     expect(parseOverview({ ...raw, status: "needs water" })).toBeNull();
@@ -100,6 +108,32 @@ describe("chip and reason text", () => {
     expect(cardReason(de, basil)).toBe("Bodenfeuchte 34 % liegt unter dem Minimum von 60 %");
     const monstera = entry("too_wet", [{ role: "moisture", kind: "too_wet" }], { moisture: reading(74, "%", { min: 30, target: 45, max: 60 }, "high") });
     expect(cardReason(en, monstera)).toBe("Soil moisture 74% is above the maximum of 60%");
+  });
+  it("names the clear value while an alert waits to turn off", () => {
+    // Needs water turns off at the minimum + 2, so 16% still needs water.
+    const range = { min: 15, target: 35, max: 55 };
+    const clear = { min: 17, max: 53 };
+    const aloe = entry("needs_water", [{ role: "moisture", kind: "needs_water" }], { moisture: { ...reading(16, "%", range, "low"), clear } });
+    expect(cardReason(en, aloe)).toBe("Soil moisture 16%, alert turns off at 17%");
+    expect(cardReason(de, aloe)).toBe("Bodenfeuchte 16 %, Warnung schaltet sich bei 17 % aus");
+    const wet = entry("too_wet", [{ role: "moisture", kind: "too_wet" }], { moisture: { ...reading(54, "%", range, "high"), clear } });
+    expect(cardReason(en, wet)).toBe("Soil moisture 54%, alert turns off at 53%");
+    // Other alerts also turn on at their limit, so a reading at it is not below it.
+    const feed = (value: number) => entry("problem", [{ role: "conductivity", kind: "low_conductivity" }], {
+      conductivity: { ...reading(value, "µS/cm", { min: 350, target: null, max: 2000 }, "low"), clear: { min: 500, max: 1800 } },
+    });
+    expect(cardReason(en, feed(338))).toBe("Fertilizer level 338 µS/cm is below the minimum of 350 µS/cm");
+    expect(cardReason(en, feed(350))).toBe("Fertilizer level 350 µS/cm, alert turns off at 500 µS/cm");
+    // A reading that only rounds to the limit reads as being at it.
+    expect(cardReason(en, feed(349.996))).toBe("Fertilizer level 350 µS/cm, alert turns off at 500 µS/cm");
+    const light = entry("problem", [{ role: "illuminance", kind: "low_light" }], {
+      illuminance: { ...reading(600, "lx", { min: 500, target: null, max: null }, "low"), clear: { min: 700, max: null } },
+    });
+    expect(cardReason(en, light)).toBe("Light 600 lx, alert turns off at 700 lx");
+  });
+  it("does not claim a reading is past a limit it is back inside of without a clear value", () => {
+    const aloe = entry("needs_water", [{ role: "moisture", kind: "needs_water" }], { moisture: reading(16, "%", { min: 15, target: 35, max: 55 }, "low") });
+    expect(cardReason(en, aloe)).toBe("Soil moisture is outside its target");
   });
   it("names the specific problem on the chip and counts the rest", () => {
     const snake = entry("problem", [{ role: "illuminance", kind: "low_light" }, { role: "battery", kind: "battery_low" }], {

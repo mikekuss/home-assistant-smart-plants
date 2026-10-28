@@ -6,16 +6,23 @@ import io
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from custom_components.smart_plants.co2_evaluator import CO2_PARTS_PER_MILLION
 from custom_components.smart_plants.const import DOMAIN
+from custom_components.smart_plants.illuminance_evaluator import LIGHT_LUX
 from custom_components.smart_plants.manager import SmartPlantsManager
 from custom_components.smart_plants.models import (
+    CO2_STRESS_BUILTIN_DEFAULTS,
+    CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS,
     DEFAULT_MOISTURE_MAX,
     DEFAULT_MOISTURE_MIN,
     DEFAULT_MOISTURE_TARGET,
+    HUMIDITY_STRESS_BUILTIN_DEFAULTS,
     LOW_BATTERY_BUILTIN_DEFAULTS,
+    LOW_LIGHT_BUILTIN_DEFAULTS,
+    SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS,
     TEMPERATURE_STRESS_BUILTIN_DEFAULTS,
 )
-from homeassistant.const import PERCENTAGE, UnitOfTemperature
+from homeassistant.const import PERCENTAGE, UnitOfConductivity, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from PIL import Image
@@ -171,6 +178,10 @@ async def test_overview_plant_with_several_roles_matches_entities(
         "target": DEFAULT_MOISTURE_TARGET,
         "max": DEFAULT_MOISTURE_MAX,
     }
+    assert moisture["clear"] == {
+        "min": DEFAULT_MOISTURE_MIN + 2,
+        "max": DEFAULT_MOISTURE_MAX - 2,
+    }
     assert moisture["sources"] == ["sensor.mock_soil"]
     soil_state = hass.states.get("sensor.mock_soil")
     assert soil_state is not None
@@ -185,6 +196,10 @@ async def test_overview_plant_with_several_roles_matches_entities(
         "target": None,
         "max": TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_threshold_celsius"],
     }
+    assert temperature["clear"] == {
+        "min": TEMPERATURE_STRESS_BUILTIN_DEFAULTS["cold_clear_celsius"],
+        "max": TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_clear_celsius"],
+    }
     assert temperature["sources"] == ["sensor.mock_air"]
 
     battery = overview["roles"]["battery"]
@@ -192,6 +207,10 @@ async def test_overview_plant_with_several_roles_matches_entities(
     assert battery["range"] == {
         "min": LOW_BATTERY_BUILTIN_DEFAULTS["threshold_percent"],
         "target": None,
+        "max": None,
+    }
+    assert battery["clear"] == {
+        "min": LOW_BATTERY_BUILTIN_DEFAULTS["clear_percent"],
         "max": None,
     }
 
@@ -224,6 +243,92 @@ async def test_overview_needs_water_and_stale_follow_entities(
     assert overview["roles"]["moisture"]["value"] is None
     assert overview["roles"]["moisture"]["state"] == "unavailable"
     assert _binary_state(hass, plant.id, "needs_water") == "unavailable"
+
+
+async def test_overview_clear_value_is_where_needs_water_turns_off(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator
+) -> None:
+    entry = await _setup(hass)
+    manager = entry.runtime_data.manager
+    hass.states.async_set("sensor.mock_soil", "10", _PERCENT)
+    plant = await manager.async_create_plant(name="Aloe")
+    await _assign(manager, plant.id, "moisture", "sensor.mock_soil", primary=True)
+    await hass.async_block_till_done()
+    overview = (await _plants(hass, hass_ws_client))[plant.id]
+    clear = overview["roles"]["moisture"]["clear"]["min"]
+    assert clear == DEFAULT_MOISTURE_MIN + 2
+
+    # Back above the minimum but short of the clear value: still needs water.
+    hass.states.async_set("sensor.mock_soil", str(clear - 1), _PERCENT)
+    await hass.async_block_till_done()
+    overview = (await _plants(hass, hass_ws_client))[plant.id]
+    assert overview["roles"]["moisture"]["value"] > DEFAULT_MOISTURE_MIN
+    assert overview["problems"] == [{"role": "moisture", "kind": "needs_water"}]
+    assert _binary_state(hass, plant.id, "needs_water") == "on"
+
+    hass.states.async_set("sensor.mock_soil", str(clear), _PERCENT)
+    await hass.async_block_till_done()
+    overview = (await _plants(hass, hass_ws_client))[plant.id]
+    assert overview["status"] == "healthy"
+    assert _binary_state(hass, plant.id, "needs_water") == "off"
+
+
+async def test_overview_sends_clear_values_for_every_role(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator
+) -> None:
+    entry = await _setup(hass)
+    manager = entry.runtime_data.manager
+    sensors = {
+        "moisture": ("sensor.mock_soil", "45", PERCENTAGE),
+        "temperature": ("sensor.mock_air", "20", UnitOfTemperature.CELSIUS),
+        "humidity": ("sensor.mock_humidity", "50", PERCENTAGE),
+        "illuminance": ("sensor.mock_light", "800", LIGHT_LUX),
+        "conductivity": (
+            "sensor.mock_fertility",
+            "800",
+            UnitOfConductivity.MICROSIEMENS_PER_CM,
+        ),
+        "soil_temperature": (
+            "sensor.mock_soil_temperature",
+            "18",
+            UnitOfTemperature.CELSIUS,
+        ),
+        "co2": ("sensor.mock_co2", "600", CO2_PARTS_PER_MILLION),
+        "battery": ("sensor.mock_battery", "80", PERCENTAGE),
+    }
+    plant = await manager.async_create_plant(name="Office Aloe")
+    for role, (entity_id, value, unit) in sensors.items():
+        hass.states.async_set(entity_id, value, {"unit_of_measurement": unit})
+        await _assign(manager, plant.id, role, entity_id, primary=role == "moisture")
+    await hass.async_block_till_done()
+
+    roles = (await _plants(hass, hass_ws_client))[plant.id]["roles"]
+    assert {role: view["clear"] for role, view in roles.items()} == {
+        "moisture": {"min": DEFAULT_MOISTURE_MIN + 2, "max": DEFAULT_MOISTURE_MAX - 2},
+        "temperature": {
+            "min": TEMPERATURE_STRESS_BUILTIN_DEFAULTS["cold_clear_celsius"],
+            "max": TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_clear_celsius"],
+        },
+        "humidity": {
+            "min": HUMIDITY_STRESS_BUILTIN_DEFAULTS["dry_clear_percent"],
+            "max": HUMIDITY_STRESS_BUILTIN_DEFAULTS["damp_clear_percent"],
+        },
+        "illuminance": {"min": LOW_LIGHT_BUILTIN_DEFAULTS["clear_lux"], "max": None},
+        "conductivity": {
+            "min": CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS[
+                "low_clear_micro_siemens_per_cm"
+            ],
+            "max": CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS[
+                "high_clear_micro_siemens_per_cm"
+            ],
+        },
+        "soil_temperature": {
+            "min": SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS["cold_clear_celsius"],
+            "max": SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_clear_celsius"],
+        },
+        "co2": {"min": None, "max": CO2_STRESS_BUILTIN_DEFAULTS["clear_ppm"]},
+        "battery": {"min": LOW_BATTERY_BUILTIN_DEFAULTS["clear_percent"], "max": None},
+    }
 
 
 async def test_overview_ranges_follow_species_values_and_overrides(
@@ -290,10 +395,15 @@ async def test_overview_ranges_follow_species_values_and_overrides(
         "target": 65,
         "max": 80,
     }
+    assert overview["roles"]["moisture"]["clear"] == {"min": 42, "max": 78}
     assert overview["roles"]["temperature"]["range"] == {
         "min": 5.0,
         "target": None,
         "max": TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_threshold_celsius"],
+    }
+    assert overview["roles"]["temperature"]["clear"] == {
+        "min": 7.0,
+        "max": TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_clear_celsius"],
     }
     assert overview["status"] == "healthy"
     assert overview["problems"] == []

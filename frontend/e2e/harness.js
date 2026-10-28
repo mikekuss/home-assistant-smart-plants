@@ -240,8 +240,8 @@ function overviewOf(p) {
     plant_id: p.id, revision: p.revision, lifecycle_state: p.lifecycle_state, status,
     problems: kind ? [{ role: "moisture", kind }] : [],
     roles: {
-      ...sources.length ? { moisture: { value: e.computed_available ? e.computed_percent : null, unit: "%", state: e.needs_water ? "low" : e.too_wet ? "high" : e.sensor_stale ? "stale" : e.computed_available ? "ok" : "unavailable", range: { min: bound("min"), target: bound("target"), max: bound("max") }, last_reported: e.computed_available ? now : null, sources: sources.map(s => s.entity_id) } } : {},
-      ...p.roles.temperature?.sources?.length ? { temperature: { value: sourceValue(p, { role: "temperature" }), unit: "°C", state: "ok", range: { min: 10, target: null, max: 30 }, last_reported: now, sources: p.roles.temperature.sources.map(s => s.entity_id) } } : {},
+      ...sources.length ? { moisture: { value: e.computed_available ? e.computed_percent : null, unit: "%", state: e.needs_water ? "low" : e.too_wet ? "high" : e.sensor_stale ? "stale" : e.computed_available ? "ok" : "unavailable", range: { min: bound("min"), target: bound("target"), max: bound("max") }, clear: { min: bound("min") + 2, max: bound("max") - 2 }, last_reported: e.computed_available ? now : null, sources: sources.map(s => s.entity_id) } } : {},
+      ...p.roles.temperature?.sources?.length ? { temperature: { value: sourceValue(p, { role: "temperature" }), unit: "°C", state: "ok", range: { min: 10, target: null, max: 30 }, clear: { min: 12, max: 28 }, last_reported: now, sources: p.roles.temperature.sources.map(s => s.entity_id) } } : {},
     },
     last_watered_at: watered?.occurred_at ?? null,
     image: p.image ? { id: p.image.id } : null,
