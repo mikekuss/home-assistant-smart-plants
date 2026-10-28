@@ -455,6 +455,12 @@ are listed under **Smart Plants** in the action picker.
 | `smart_plants.snooze` | Plant devices or any of their Smart Plants entities | Snoozes the plant's alerts for a while. See [Snooze alerts](#snooze-alerts). |
 | `smart_plants.unsnooze` | Plant devices or any of their Smart Plants entities | Ends the plant's snooze now. |
 
+These four actions change plants, so a user who calls them needs permission to control
+Smart Plants entities. Administrators and ordinary users have it; members of Home Assistant's
+read-only group don't, and their calls fail with an *Unauthorized* error. Automations and
+scripts run without a user and aren't affected. `smart_plants.get_report` only reads, so
+every user may call it.
+
 `smart_plants.log_care` accepts these fields:
 
 - `kind`: what was done, one of `watering`, `fertilizing`, `pruning`, `repotting`, `note`, or

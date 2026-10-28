@@ -8,6 +8,12 @@ error instead of writing to a stale manager.
 
 Actions cannot know a plant's revision, so every write skips the revision
 check; care is stored with the ``action`` provenance.
+
+Home Assistant doesn't check permissions for integration actions, so the
+actions that change plants require a caller who may control at least one
+Smart Plants entity. Calls without a user, such as automations, are allowed.
+``get_report`` only returns what the plant entities already show and stays
+open to every user.
 """
 
 from __future__ import annotations
@@ -41,6 +47,7 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.service import verify_domain_control
 from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
 
@@ -340,6 +347,7 @@ def _device_kind(kind: str | None, note: str | None) -> str:
     return kind
 
 
+@verify_domain_control(DOMAIN)
 async def _async_log_care(call: ServiceCall) -> None:
     hass = call.hass
     entry, manager = _loaded_runtime(hass)
@@ -410,6 +418,7 @@ async def _async_log_care(call: ServiceCall) -> None:
         )
 
 
+@verify_domain_control(DOMAIN)
 async def _async_skip_care_task(call: ServiceCall) -> None:
     hass = call.hass
     entry, manager = _loaded_runtime(hass)
@@ -509,6 +518,7 @@ def _snooze_end(call: ServiceCall) -> datetime:
     return end
 
 
+@verify_domain_control(DOMAIN)
 async def _async_snooze(call: ServiceCall) -> None:
     entry, manager = _loaded_runtime(call.hass)
     plants = _snooze_plants(call, entry, manager, "plant_disabled_snooze")
@@ -522,6 +532,7 @@ async def _async_snooze(call: ServiceCall) -> None:
         _LOGGER.debug("Snoozed plant %s from an action", plant.id)
 
 
+@verify_domain_control(DOMAIN)
 async def _async_unsnooze(call: ServiceCall) -> None:
     entry, manager = _loaded_runtime(call.hass)
     # A disabled plant is never snoozed, so ending its snooze is a no-op.
