@@ -268,7 +268,9 @@ unit.
   period that overlaps the window, with the period's low temperature for `low` when the
   weather entity provides one.
 - Smart Plants fetches the forecast when the task starts, every 30 minutes, and when the
-  weather entity changes, at most once every 5 minutes. Tasks that use the same weather entity
+  weather entity changes, at most once every 5 minutes. You can change the 30 minutes with
+  **Forecast refresh interval** in the [integration options](installation.md#options)
+  (15 to 180 minutes). Tasks that use the same weather entity
   share one fetch. While no task of an active plant uses a forecast, nothing is fetched.
 - *Only after* is not available: a forecast already looks ahead, so the task becomes due at
   the first fetch that is past the value.

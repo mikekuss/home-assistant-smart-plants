@@ -9,6 +9,13 @@ SINGLETON_UNIQUE_ID = "global"
 
 CONF_PRESERVE_INVENTORY_ON_REMOVAL = "preserve_inventory_on_removal"
 DEFAULT_PRESERVE_INVENTORY_ON_REMOVAL = False
+# Minutes between the periodic forecast fetches of a watched weather entity.
+# Weather providers rarely update forecasts more often than every 15 minutes,
+# and a forecast older than 3 hours may miss a cold night.
+CONF_FORECAST_REFRESH_MINUTES = "forecast_refresh_minutes"
+DEFAULT_FORECAST_REFRESH_MINUTES = 30
+MIN_FORECAST_REFRESH_MINUTES = 15
+MAX_FORECAST_REFRESH_MINUTES = 180
 CONF_OPENPLANTBOOK_ENABLED = "openplantbook_enabled"
 CONF_OPENPLANTBOOK_CLIENT_ID = "openplantbook_client_id"
 CONF_OPENPLANTBOOK_CLIENT_SECRET = "openplantbook_client_secret"  # noqa: S105

@@ -5,11 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from .const import (
+    CONF_FORECAST_REFRESH_MINUTES,
     CONF_OPENPLANTBOOK_CLIENT_ID,
     CONF_OPENPLANTBOOK_CLIENT_SECRET,
     CONF_OPENPLANTBOOK_ENABLED,
     CONF_PRESERVE_INVENTORY_ON_REMOVAL,
 )
+from .forecast_reader import refresh_minutes
 from .models import ReadingSchedule
 from .roles import role_definitions
 
@@ -48,7 +50,8 @@ async def async_get_config_entry_diagnostics(
             "options": {
                 CONF_PRESERVE_INVENTORY_ON_REMOVAL: bool(
                     entry.options.get(CONF_PRESERVE_INVENTORY_ON_REMOVAL, False)
-                )
+                ),
+                CONF_FORECAST_REFRESH_MINUTES: refresh_minutes(entry.options),
             },
         },
         "provider": provider,

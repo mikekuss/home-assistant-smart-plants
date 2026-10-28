@@ -75,6 +75,7 @@ Go to **Settings → Devices & services → Smart Plants → Configure**.
 | Option | Default | Meaning |
 | --- | --- | --- |
 | Preserve inventory when the integration is removed | Off | Keeps your plant data and photos on disk when you delete the integration, so a later reinstall picks them up again. |
+| Forecast refresh interval | 30 min | How often Smart Plants fetches the forecast of a weather entity that a forecast reading task watches, from 15 to 180 minutes. A change of the weather entity still fetches it again, at most once every 5 minutes. Without forecast reading tasks, nothing is fetched. |
 | Enable direct OpenPlantBook provider | Off | Turns OpenPlantBook species search on or off. |
 | OpenPlantBook client ID | none | Your client ID. |
 | OpenPlantBook client secret | none | The stored secret is never shown. Leave the field empty to keep the current secret. |

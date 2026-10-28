@@ -44,6 +44,7 @@ from .events import (
     PlantUpdatedEvent,
     Unsubscribe,
 )
+from .forecast_reader import REFRESH_INTERVAL
 from .images import (
     delete_image_file,
     ensure_images_dir,
@@ -161,8 +162,10 @@ class SmartPlantsManager:
         hass: HomeAssistant,
         *,
         reconciler: SmartPlantsDeviceReconciler | None = None,
+        forecast_refresh_interval: timedelta = REFRESH_INTERVAL,
     ) -> None:
         self._hass = hass
+        self._forecast_refresh_interval = forecast_refresh_interval
         self._store = SmartPlantsStore(hass)
         self._mutation_lock = asyncio.Lock()
         self._snapshot = InventorySnapshot.empty()
@@ -420,7 +423,11 @@ class SmartPlantsManager:
             self._start_registry_tracking()
             for plant in self._snapshot.plants.values():
                 self._create_controllers(plant, start=plant.lifecycle_state == "active")
-            tracker = ReadingTracker(self._hass, self)
+            tracker = ReadingTracker(
+                self._hass,
+                self,
+                forecast_refresh_interval=self._forecast_refresh_interval,
+            )
             self._reading_tracker = tracker
             await tracker.async_load()
             tracker.start()

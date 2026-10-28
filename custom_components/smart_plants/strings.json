@@ -43,9 +43,13 @@
         "title": "Smart Plants options",
         "data": {
           "preserve_inventory_on_removal": "Preserve inventory when the integration is removed",
+          "forecast_refresh_minutes": "Forecast refresh interval",
           "openplantbook_enabled": "Enable direct OpenPlantBook provider",
           "openplantbook_client_id": "OpenPlantBook client ID",
           "openplantbook_client_secret": "OpenPlantBook client secret"
+        },
+        "data_description": {
+          "forecast_refresh_minutes": "How often Smart Plants fetches the forecast of a weather entity that a forecast reading task watches, from 15 to 180 minutes. A change of the weather entity still fetches it again, at most once every 5 minutes."
         },
         "description": "OpenPlantBook API credentials are optional. Create an account and client credentials. [Get OpenPlantBook API credentials]({openplantbook_credentials_url}). Smart Plants connects directly; the separate Home Assistant OpenPlantBook integration is not required. Provider failures never disable local inventory."
       }

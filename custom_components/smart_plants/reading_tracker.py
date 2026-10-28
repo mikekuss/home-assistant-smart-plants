@@ -32,7 +32,7 @@ import logging
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final
 
 from homeassistant.components.sensor.const import UNIT_CONVERTERS
@@ -53,7 +53,7 @@ from homeassistant.util import dt as dt_util
 from .care import parse_utc_timestamp, utc_timestamp
 from .care_schedule import ReadingState, reading_task_state
 from .events import PlantDeletedEvent, PlantEvent
-from .forecast_reader import ForecastReader
+from .forecast_reader import REFRESH_INTERVAL, ForecastReader
 from .models import ReadingSchedule
 from .overview import role_reading
 from .storage import ReadingStateStore, ReadingTimestamps
@@ -135,7 +135,13 @@ def reading_tasks(plant: PlantRecord) -> list[tuple[CareTask, ReadingSchedule]]:
 class ReadingTracker:
     """Track every reading care task of a loaded manager."""
 
-    def __init__(self, hass: HomeAssistant, manager: SmartPlantsManager) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        manager: SmartPlantsManager,
+        *,
+        forecast_refresh_interval: timedelta = REFRESH_INTERVAL,
+    ) -> None:
         self._hass = hass
         self._manager = manager
         self._store = ReadingStateStore(hass)
@@ -149,7 +155,9 @@ class ReadingTracker:
         ] = {}
         self._entity_ids: frozenset[str] = frozenset()
         self._unsub_entities: Callable[[], None] | None = None
-        self._forecasts = ForecastReader(hass, self._handle_forecast)
+        self._forecasts = ForecastReader(
+            hass, self._handle_forecast, refresh_interval=forecast_refresh_interval
+        )
         self._listeners: list[ReadingListener] = []
         self._dirty = False
         self._closed = False

@@ -14,8 +14,9 @@ forecasts and reduces them to one value per weather entity and window:
   or malformed) is skipped and the next coarser type is tried;
 - hourly entries give ``temperature``; twice daily and daily entries cover
   12 or 24 hours and give ``templow`` for the low when present;
-- a fetch when an entity starts being watched, every 30 minutes, and when the
-  weather entity changes, at most once per 5 minutes;
+- a fetch when an entity starts being watched, every refresh interval (30
+  minutes unless the options set another), and when the weather entity
+  changes, at most once per 5 minutes;
 - nothing at all for a weather entity no active task uses.
 
 Any other problem (a missing or unavailable entity, no forecast type, every
@@ -46,12 +47,19 @@ from homeassistant.helpers.event import (
 from homeassistant.util import dt as dt_util
 from homeassistant.util.unit_conversion import TemperatureConverter
 
+from .const import (
+    CONF_FORECAST_REFRESH_MINUTES,
+    DEFAULT_FORECAST_REFRESH_MINUTES,
+    MAX_FORECAST_REFRESH_MINUTES,
+    MIN_FORECAST_REFRESH_MINUTES,
+)
+
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
-REFRESH_INTERVAL: Final = timedelta(minutes=30)
+REFRESH_INTERVAL: Final = timedelta(minutes=DEFAULT_FORECAST_REFRESH_MINUTES)
 STATE_CHANGE_COOLDOWN: Final = timedelta(minutes=5)
 
 _WEATHER_DOMAIN: Final = "weather"
@@ -105,6 +113,21 @@ class ForecastWindow:
             return None
         converted = TemperatureConverter.convert(value, self.unit, unit)
         return converted if math.isfinite(converted) else None
+
+
+def refresh_minutes(options: Mapping[str, Any]) -> int:
+    """
+    Return the forecast refresh interval in minutes from entry options.
+
+    A missing or out-of-range value gives the default, so options written by
+    hand or by an older version never stop the refresh.
+    """
+    value = options.get(CONF_FORECAST_REFRESH_MINUTES)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return DEFAULT_FORECAST_REFRESH_MINUTES
+    if not MIN_FORECAST_REFRESH_MINUTES <= value <= MAX_FORECAST_REFRESH_MINUTES:
+        return DEFAULT_FORECAST_REFRESH_MINUTES
+    return int(value)
 
 
 def _number(value: object) -> float | None:
@@ -228,9 +251,16 @@ class _WatchedEntity:
 class ForecastReader:
     """Fetch and reduce the forecasts of the weather entities tasks watch."""
 
-    def __init__(self, hass: HomeAssistant, listener: ForecastListener) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        listener: ForecastListener,
+        *,
+        refresh_interval: timedelta = REFRESH_INTERVAL,
+    ) -> None:
         self._hass = hass
         self._listener = listener
+        self._refresh_interval = refresh_interval
         self._watched: dict[str, _WatchedEntity] = {}
         self._closed = False
 
@@ -276,7 +306,7 @@ class ForecastReader:
                 watched.unsub_interval = async_track_time_interval(
                     self._hass,
                     functools.partial(self._handle_interval, entity_id),
-                    REFRESH_INTERVAL,
+                    self._refresh_interval,
                 )
                 watched.unsub_state = async_track_state_change_event(
                     self._hass, [entity_id], self._handle_state_change
