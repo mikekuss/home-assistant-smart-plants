@@ -411,6 +411,14 @@ export function presetDraft(type: CareTaskType, plant?: PlantRecord, states?: Re
   return reading;
 }
 
+// True when the winter protection preset finds neither a temperature sensor on
+// the plant nor a weather entity with a forecast, so the person has to pick a
+// sensor before the task can be saved.
+export function winterSourceMissing(plant: PlantRecord, states?: Record<string, HAState>, l?: Localizer): boolean {
+  const draft = presetDraft("winter_protection", plant, states, l);
+  return !draft.role && !draft.weatherEntityId;
+}
+
 // Winter protection with the species' minimum temperature as its value.
 export function winterDraft(plant: PlantRecord, states?: Record<string, HAState>, l?: Localizer): TaskDraft | null {
   const min = minTemperature(plant);

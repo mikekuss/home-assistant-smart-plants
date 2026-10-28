@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- The **Winter protection** tile in **Add care task** says when the plant has no temperature
+  sensor and Home Assistant has no weather forecast, so you know you will pick a sensor
+  yourself.
+- The optional photo in the add-plant wizard is a compact row with a small thumbnail and
+  **Change** and **Remove** buttons instead of a large drop area.
+
 ### Fixed
 
 - A forecast reading task whose weather entity fails to return one forecast type (for

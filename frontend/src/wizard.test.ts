@@ -281,8 +281,15 @@ describe("three-step creation wizard", () => {
     expect(root(el).querySelector("img")).toBeNull();
     await choosePhoto(el, pngFile());
     expect(root(el).querySelector("img")?.getAttribute("src")).toBe("blob:wizard-photo");
-    expect(text(el)).toContain("Uploaded when you create the plant");
+    expect(root(el).querySelector("#photo-hint")?.textContent).toBe("Uploaded when you create the plant");
+    // Change picks a replacement in place; the file input keeps the hint as its description.
+    const change = root(el).querySelector<HTMLInputElement>('input[type="file"]')!;
+    expect([change.getAttribute("aria-label"), change.getAttribute("aria-describedby")]).toEqual(["Choose another photo", "photo-hint"]);
+    await choosePhoto(el, new File([await pngFile().arrayBuffer()], "other.png", { type: "image/png" }));
+    expect(root(el).querySelector(".drop .grow")?.textContent).toBe("other.png");
     await press(el, "Remove photo"); expect(root(el).querySelector("img")).toBeNull();
+    expect(root(el).querySelector('input[type="file"]')?.getAttribute("aria-label")).toBe("Add a photo (optional)");
+    expect(root(el).querySelector("#photo-hint")?.textContent).toContain("Drop an image or choose a file");
     await choosePhoto(el, pngFile()); await click(el, "Next"); await click(el, "Skip for now");
     expect(text(el)).toContain("No area · with photo");
     await click(el, "Create plant");

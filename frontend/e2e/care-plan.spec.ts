@@ -57,6 +57,9 @@ test("care task editor is accessible in every step and validates inline", async 
   await button(page, "Add task").click();
   await expect(dialog(page)).toBeVisible();
   await expect(dialogButton(page, "Fertilize Already in the care plan")).toBeDisabled();
+  // The plant has no temperature sensor and Home Assistant no weather forecast:
+  // the winter protection tile says so but stays usable.
+  await expect(dialogButton(page, "Winter protection When it gets cold Needs a temperature sensor or a weather forecast")).toBeEnabled();
   await audit(page, info, "care-task-presets");
   await dialogButton(page, "Custom task Your own name and schedule").click();
   await dialog(page).getByRole("spinbutton", { name: "Every", exact: true }).fill("0");
@@ -168,6 +171,7 @@ test("winter protection is added from the OpenPlantBook minimum temperature", as
   await expect(box).toContainText("OpenPlantBook · minimum temperature");
   await expect(box).toContainText("Grows above 5 °C");
   await expect(dialogButton(page, "Winter protection When it gets cold")).toBeEnabled();
+  await expect(dialog(page).locator(".preset-hint")).toHaveCount(0);
   await audit(page, info, "reading-suggestion");
   await dialogButton(page, "Add winter protection").click();
   await expect(dialogButton(page, "Reading")).toHaveAttribute("aria-pressed", "true");
