@@ -119,6 +119,30 @@ describe("Snooze all plants", () => {
     expect(resumeHint(el)).toBe("Ends the snooze of 2 plants.");
   });
 
+  it("counts a plant already snoozed until the same end as keeping it", async () => {
+    // 1 day from Oct 24 in Berlin ends at 2026-10-25T23:59:59+01:00.
+    const same = { snoozed_until: "2026-10-25T22:59:59Z" };
+    const { el, h, toasts } = await mount([plant("p1", "Aloe", same), plant("p2", "Basil"), plant("p3", "Cactus")]);
+    await openMenu(el);
+    expect(summary(el)).toBe("Snoozes 2 plants. 1 plant already snoozed longer keeps its end.");
+    dialogButton(el, "Snooze")!.click(); await settle(el);
+    expect(bulkCalls(h)).toHaveLength(1);
+    expect(toasts.at(-1)!.message).toBe("2 plants snoozed until Sun, Oct 25");
+  });
+
+  it("offers nothing to snooze when every plant already ends on the chosen day", async () => {
+    const same = { snoozed_until: "2026-10-25T22:59:59Z" };
+    const { el, h } = await mount([plant("p1", "Aloe", same), plant("p2", "Basil", same)]);
+    await openMenu(el);
+    expect(summary(el)).toBe("Every plant is already snoozed longer and keeps its end.");
+    expect(dialogButton(el, "Snooze")!.disabled).toBe(true);
+    // A later day snoozes them again.
+    radio(el, "3").click(); await settle(el);
+    expect(summary(el)).toBe("Snoozes 2 plants.");
+    expect(dialogButton(el, "Snooze")!.disabled).toBe(false);
+    expect(bulkCalls(h)).toEqual([]);
+  });
+
   it("snoozes in one call and undoes it from the notice", async () => {
     const { el, h, toasts, current } = await mount([...three(), plant("p4", "Dill", { snoozed_until: "2026-12-01T22:59:59Z" })]);
     await openMenu(el);

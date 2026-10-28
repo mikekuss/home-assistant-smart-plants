@@ -1833,8 +1833,9 @@ export class SmartPlantsPanel extends LitElement {
     const paused = this._plants.length > active.length;
     const until = snoozeUntil(draft.choice, today, draft.date, this._timeZone());
     const end = until ? Date.parse(until) : Number.NaN;
-    // A plant snoozed past the chosen end keeps its end.
-    const kept = active.filter(p => { const current = activeSnooze(p.snoozed_until, now); return current !== null && Date.parse(current) > end; }).length;
+    // A plant already snoozed until the chosen end or later keeps its end; the
+    // backend leaves it unchanged.
+    const kept = active.filter(p => { const current = activeSnooze(p.snoozed_until, now); return current !== null && Date.parse(current) >= end; }).length;
     const snoozed = active.filter(p => activeSnooze(p.snoozed_until, now) !== null).length;
     const busy = this._formBusy || this._blocked;
     const summary = [kept === active.length ? l.t("snooze.all_none") : l.tn(active.length - kept, "snooze.all_summary_one", "snooze.all_summary_other"),

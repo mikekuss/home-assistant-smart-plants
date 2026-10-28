@@ -10703,7 +10703,7 @@ var $ = class e extends S {
 		if (!e) return x;
 		let t = this._l, n = this._today(), r = Date.now(), i = this._activePlants(), a = this._plants.length > i.length, o = Rs(e.choice, n, e.date, this._timeZone()), s = o ? Date.parse(o) : NaN, c = i.filter((e) => {
 			let t = Vs(e.snoozed_until, r);
-			return t !== null && Date.parse(t) > s;
+			return t !== null && Date.parse(t) >= s;
 		}).length, l = i.filter((e) => Vs(e.snoozed_until, r) !== null).length, u = this._formBusy || this._blocked, d = [
 			c === i.length ? t.t("snooze.all_none") : t.tn(i.length - c, "snooze.all_summary_one", "snooze.all_summary_other"),
 			a ? t.t("snooze.all_paused") : "",
