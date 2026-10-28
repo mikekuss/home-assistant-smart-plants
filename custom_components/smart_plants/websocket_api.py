@@ -38,6 +38,19 @@ Commands (all admin-only):
   ISO timestamp with an offset, in the future and at most 366 days ahead,
   or ``null`` to end the snooze. ``PlantView.snoozed_until`` holds the end
   as a UTC timestamp, or ``null``.
+* ``smart_plants/plants/snooze_many`` -> ``{"plants": [PlantView, ...],
+  "previous": {plant_id: snoozed_until | null}}``; snoozes the plants in
+  ``plant_ids`` (default: every active plant) until ``until``, or ends their
+  snooze with ``null``. With ``keep_later`` (default true) a plant snoozed
+  longer keeps its end. Paused plants are skipped. ``plants`` and
+  ``previous`` list only the plants that changed; pass ``previous`` to
+  ``smart_plants/plants/restore_snoozes`` as ``snoozes`` to undo.
+* ``smart_plants/plants/restore_snoozes`` -> ``{"plants": [PlantView, ...]}``;
+  sets each plant's snooze end from ``snoozes`` (``{plant_id: until | null}``).
+  An end that has passed counts as ``null``; paused plants are skipped.
+
+Both multi-plant snooze commands save once: if one plant fails validation or
+the save fails, no plant changes.
 
 The generic ``smart_plants/roles/*`` source commands take an additional
 ``role`` field and delegate to the same manager methods as the
@@ -133,11 +146,14 @@ from homeassistant.config_entries import ConfigEntryState
 from .care import CARE_TASK_TYPES, care_summary
 from .const import DOMAIN
 from .manager import (
+    PlantChange,
     SmartPlantsManager,
     SmartPlantsManagerUnavailableError,
     SmartPlantsPlantNotFoundError,
     SmartPlantsRevisionConflictError,
     SmartPlantsValidationError,
+    restore_snooze_change,
+    snooze_change,
 )
 from .models import (
     CARE_TASK_INSTRUCTIONS_MAX_LEN,
@@ -1022,6 +1038,98 @@ async def _handle_snooze(
             until=msg["until"],
         )
         return {"plant": _plant_view(plant)}
+
+    await _run_mutation(hass, connection, msg, mutate)
+
+
+_SNOOZE_UNTIL_SCHEMA = vol.Any(vol.All(str, vol.Length(min=1, max=64)), None)
+
+
+async def _async_change_snoozes(
+    manager: SmartPlantsManager, changes: dict[str, PlantChange]
+) -> tuple[list[PlantRecord], dict[str, str | None]]:
+    """
+    Apply snooze changes to several plants with one save.
+
+    Paused plants are skipped. Return the changed plants and each one's
+    snooze end before the change.
+    """
+    previous: dict[str, str | None] = {}
+
+    def tracked(plant_id: str, change: PlantChange) -> PlantChange:
+        def apply(current: PlantRecord) -> PlantRecord:
+            if current.lifecycle_state != "active":
+                return current
+            updated = change(current)
+            if updated is not current:
+                previous[plant_id] = current.snoozed_until
+            return updated
+
+        return apply
+
+    await manager.async_apply_plant_changes(
+        [(plant_id, tracked(plant_id, change)) for plant_id, change in changes.items()]
+    )
+    plants = manager.snapshot.plants
+    return [plants[plant_id] for plant_id in previous if plant_id in plants], previous
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/plants/snooze_many",
+        vol.Required("until"): _SNOOZE_UNTIL_SCHEMA,
+        vol.Optional("plant_ids"): [_plant_id],
+        vol.Optional("keep_later", default=True): bool,
+    }
+)
+@require_admin
+@async_response
+async def _handle_snooze_many(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> None:
+    async def mutate(manager: SmartPlantsManager) -> dict[str, Any]:
+        plant_ids = msg.get("plant_ids")
+        if plant_ids is None:
+            plant_ids = [
+                plant.id
+                for plant in manager.snapshot.plants.values()
+                if plant.lifecycle_state == "active"
+            ]
+        # Ending every snooze has no earlier end to keep.
+        change = snooze_change(
+            msg["until"], keep_later=msg["keep_later"] and msg["until"] is not None
+        )
+        plants, previous = await _async_change_snoozes(
+            manager, dict.fromkeys(plant_ids, change)
+        )
+        return {
+            "plants": [_plant_view(plant) for plant in plants],
+            "previous": previous,
+        }
+
+    await _run_mutation(hass, connection, msg, mutate)
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/plants/restore_snoozes",
+        vol.Required("snoozes"): {_plant_id: _SNOOZE_UNTIL_SCHEMA},
+    }
+)
+@require_admin
+@async_response
+async def _handle_restore_snoozes(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> None:
+    async def mutate(manager: SmartPlantsManager) -> dict[str, Any]:
+        plants, _previous = await _async_change_snoozes(
+            manager,
+            {
+                plant_id: restore_snooze_change(until)
+                for plant_id, until in msg["snoozes"].items()
+            },
+        )
+        return {"plants": [_plant_view(plant) for plant in plants]}
 
     await _run_mutation(hass, connection, msg, mutate)
 
@@ -2154,6 +2262,8 @@ def async_register(hass: HomeAssistant) -> None:
     async_register_command(hass, _handle_care_task_undo_skip)
     async_register_command(hass, _handle_set_rest_period)
     async_register_command(hass, _handle_snooze)
+    async_register_command(hass, _handle_snooze_many)
+    async_register_command(hass, _handle_restore_snoozes)
     async_register_command(hass, _handle_create)
     async_register_command(hass, _handle_update)
     async_register_command(hass, _handle_disable)

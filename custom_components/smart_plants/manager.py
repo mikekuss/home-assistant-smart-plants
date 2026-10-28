@@ -2829,9 +2829,42 @@ def skip_task_change(task_id: str) -> PlantChange:
     )
 
 
-def snooze_change(until: datetime | str | None) -> PlantChange:
-    """Return a change for ``async_apply_plant_changes`` that sets a snooze."""
-    return lambda current: _with_snooze(current, until)
+def snooze_change(
+    until: datetime | str | None, *, keep_later: bool = False
+) -> PlantChange:
+    """
+    Return a change for ``async_apply_plant_changes`` that sets a snooze.
+
+    With ``keep_later``, a plant already snoozed past ``until`` keeps its end.
+    """
+    return lambda current: _with_snooze(current, until, keep_later=keep_later)
+
+
+def restore_snooze_change(until: str | None) -> PlantChange:
+    """
+    Return a change that puts back an earlier snooze end.
+
+    An end that has passed since ends the snooze instead, so an undo never
+    fails because time moved on.
+    """
+
+    def change(current: PlantRecord) -> PlantRecord:
+        end: str | None = until
+        if end is not None and _timestamp_passed(end, dt_util.utcnow()):
+            end = None
+        return _with_snooze(current, end)
+
+    return change
+
+
+def _timestamp_passed(value: str, now: datetime) -> bool:
+    """Return whether an ISO timestamp with an offset lies at or before ``now``."""
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        # Not a timestamp; the snooze validation reports it.
+        return False
+    return parsed.utcoffset() is not None and parsed <= now
 
 
 def _clean_care_note(note: str | None) -> str | None:
@@ -2893,12 +2926,22 @@ def _skipped_task(task: CareTask, today: str) -> CareTask:
     return replace(task, last_skipped_on=today)
 
 
-def _with_snooze(current: PlantRecord, until: datetime | str | None) -> PlantRecord:
+def _with_snooze(
+    current: PlantRecord, until: datetime | str | None, *, keep_later: bool = False
+) -> PlantRecord:
     """Return the plant with a new snooze end, or unchanged if it is the same."""
     snoozed_until = _validate_snooze_until(until, dt_util.utcnow())
     if snoozed_until is not None and current.lifecycle_state != "active":
         raise SmartPlantsValidationError("a disabled plant cannot be snoozed")
     if snoozed_until == current.snoozed_until:
+        return current
+    if (
+        keep_later
+        and snoozed_until is not None
+        and current.snoozed_until is not None
+        and parse_utc_timestamp(current.snoozed_until, "snoozed_until")
+        > parse_utc_timestamp(snoozed_until, "snoozed_until")
+    ):
         return current
     return current.with_next_revision(snoozed_until=snoozed_until)
 
