@@ -110,6 +110,79 @@ test("a snooze can be changed, and the dialog and chip read in German", async ({
   await expect(header(page).locator("sp-snooze-chip")).toHaveText("Stummgeschaltet bis Sa., 7. Nov.");
 });
 
+// Snooze all plants from the overview menu. The seed has two active plants
+// and one paused plant.
+type Toast = { message: string; action?: { text: string; action: () => void } };
+const cardChips = (page: Page) => page.locator("smart-plants-overview article.card sp-snooze-chip");
+const bulk = (page: Page) => page.evaluate(() => (window as unknown as HarnessWindow).__smartPlantsHarness.messages.filter(m => m.type === "smart_plants/plants/snooze_many" || m.type === "smart_plants/plants/restore_snoozes"));
+const lastToast = (page: Page) => page.evaluate(() => { const t = (window as unknown as { __toasts: Toast[] }).__toasts.at(-1); return t ? { message: t.message, action: t.action?.text } : null; });
+async function openOverview(page: Page, query = "?seed&tz=UTC") {
+  await page.clock.setFixedTime(new Date("2026-10-24T12:00:00Z"));
+  await page.goto(`${url}${query}`);
+  await page.evaluate(() => {
+    const w = window as unknown as { __toasts: Toast[] }; w.__toasts = [];
+    document.addEventListener("hass-notification", e => w.__toasts.push((e as CustomEvent<Toast>).detail));
+  });
+  await expect(page.locator("smart-plants-overview article.card")).toHaveCount(3);
+}
+
+test("snoozes all plants from the overview menu and undoes it", async ({ page }, info) => {
+  await openOverview(page);
+  await menu(page, "Snooze all plants…");
+  await expect(dialog(page)).toBeVisible();
+  await expect(dialog(page).getByRole("heading", { name: "Snooze all plants" })).toBeFocused();
+  await expect(dialog(page).locator(".snooze-summary")).toHaveText("Snoozes 2 plants. Paused plants are left out.");
+  await expect(dialog(page).getByRole("button", { name: "Resume all" })).toHaveCount(0);
+  await audit(page, info, "snooze-all-dialog");
+  await dialog(page).getByRole("radio", { name: /^1 week/ }).check();
+  await dialog(page).getByRole("button", { name: "Snooze", exact: true }).click();
+  await expect(dialog(page)).toHaveCount(0);
+  await expect(cardChips(page)).toHaveText(["Snoozed until Sat, Oct 31", "Snoozed until Sat, Oct 31"]);
+  expect(await bulk(page)).toEqual([{ type: "smart_plants/plants/snooze_many", until: "2026-10-31T23:59:59+00:00" }]);
+  expect(await lastToast(page)).toEqual({ message: "2 plants snoozed until Sat, Oct 31", action: "Undo" });
+  await page.evaluate(() => (window as unknown as { __toasts: Toast[] }).__toasts.at(-1)!.action!.action());
+  await expect(cardChips(page)).toHaveCount(0);
+  expect((await bulk(page)).at(-1)!.type).toBe("smart_plants/plants/restore_snoozes");
+  expect(await lastToast(page)).toEqual({ message: "Previous snoozes restored" });
+});
+
+test("keeps a later end and resumes every snooze", async ({ page }, info) => {
+  await openOverview(page, "?seed&snoozed&tz=UTC");
+  await menu(page, "Snooze all plants…");
+  await expect(dialog(page).locator(".snooze-summary")).toHaveText("Snoozes 1 plant. Paused plants are left out. 1 plant already snoozed longer keeps its end.");
+  const resume = dialog(page).getByRole("button", { name: "Resume all" });
+  await expect(resume).toHaveAccessibleDescription("Ends the snooze of 1 plant.");
+  await audit(page, info, "snooze-all-dialog-snoozed");
+  await dialog(page).getByRole("button", { name: "Snooze", exact: true }).click();
+  await expect(cardChips(page)).toHaveText(["Snoozed until Sun, Oct 25", "Snoozed until Fri, Oct 30"]);
+  expect(await lastToast(page)).toEqual({ message: "1 plant snoozed until Sun, Oct 25", action: "Undo" });
+  await menu(page, "Snooze all plants…");
+  await expect(dialog(page).getByRole("button", { name: "Resume all" })).toHaveAccessibleDescription("Ends the snooze of 2 plants.");
+  await dialog(page).getByRole("button", { name: "Resume all" }).click();
+  await expect(cardChips(page)).toHaveCount(0);
+  expect((await bulk(page)).at(-1)).toEqual({ type: "smart_plants/plants/snooze_many", until: null });
+  expect(await lastToast(page)).toEqual({ message: "Alerts resumed for 2 plants", action: "Undo" });
+});
+
+test("a refused save shows the error and changes no plant", async ({ page }) => {
+  await openOverview(page);
+  await page.evaluate(() => { (window as unknown as { __smartPlantsHarness: { failures: Record<string, string> } }).__smartPlantsHarness.failures["smart_plants/plants/snooze_many"] = "unknown_error"; });
+  await menu(page, "Snooze all plants…");
+  await dialog(page).getByRole("button", { name: "Snooze", exact: true }).click();
+  await expect(page.locator("smart-plants-panel p.error[role=alert]")).toBeVisible();
+  await expect(page.locator("smart-plants-panel p.error[role=alert]")).not.toContainText("PRIVATE_SENTINEL");
+  await expect(cardChips(page)).toHaveCount(0);
+  expect(await lastToast(page)).toBeNull();
+});
+
+test("the Snooze all plants dialog reads in German", async ({ page }, info) => {
+  await openOverview(page, "?seed&tz=UTC&lang=de");
+  await menu(page, "Alle Pflanzen stummschalten…");
+  await expect(dialog(page).getByRole("heading", { name: "Alle Pflanzen stummschalten" })).toBeVisible();
+  await expect(dialog(page).locator(".snooze-summary")).toHaveText("Schaltet 2 Pflanzen stumm. Pausierte Pflanzen bleiben außen vor.");
+  await audit(page, info, "snooze-all-dialog-de");
+});
+
 test("a plant changed elsewhere reports the conflict instead of snoozing", async ({ page }) => {
   await openPlant(page);
   await menu(page, "Snooze alerts…");

@@ -481,6 +481,31 @@ async function respond(message) {
       if (message.until !== null && (!/(?:Z|[+-]\d\d:\d\d)$/.test(message.until) || !(Date.parse(message.until) > Date.now()) || p.lifecycle_state !== "active")) reject("invalid_format");
       return { plant: revise(p, { snoozed_until: message.until === null ? null : new Date(message.until).toISOString().replace(/\.\d{3}Z$/, "Z") }) };
     }
+    // Mirrors the backend: every active plant, a later end is kept, and only
+    // changed plants are listed with their previous ends.
+    case "smart_plants/plants/snooze_many": {
+      if (message.until !== null && (!/(?:Z|[+-]\d\d:\d\d)$/.test(message.until) || !(Date.parse(message.until) > Date.now()))) reject("invalid_format");
+      const until = message.until === null ? null : new Date(message.until).toISOString().replace(/\.\d{3}Z$/, "Z");
+      const active = end => end && Date.parse(end) > Date.now() ? end : null;
+      const plants = [], previous = {};
+      for (const plant of state.plants.filter(v => v.lifecycle_state === "active")) {
+        const current = active(plant.snoozed_until);
+        if (until === null ? current === null : current !== null && Date.parse(current) >= Date.parse(until)) continue;
+        previous[plant.id] = plant.snoozed_until ?? null;
+        plants.push(revise(plant, { snoozed_until: until }));
+      }
+      return { plants, previous };
+    }
+    case "smart_plants/plants/restore_snoozes": {
+      const plants = [];
+      for (const [id, end] of Object.entries(message.snoozes)) {
+        const plant = find(id);
+        if (!plant) reject("not_found");
+        if (plant.lifecycle_state !== "active") continue;
+        plants.push(revise(plant, { snoozed_until: end && Date.parse(end) > Date.now() ? end : null }));
+      }
+      return { plants };
+    }
     case "smart_plants/plants/reenable": return { plant: revise(p, { lifecycle_state: "active" }) };
     case "smart_plants/plants/delete": state.plants = state.plants.filter(v => v.id !== p.id); state.devices = state.devices.filter(d => d.identifiers[0][1] !== p.id); return {};
     default: state.unexpected.push(message.type); throw new Error(`Unexpected WS command: ${message.type}`);

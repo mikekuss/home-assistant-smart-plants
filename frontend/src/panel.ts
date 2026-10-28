@@ -225,8 +225,8 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _imageUrl: string | null = null;
   @state() private _imageLoading = false;
   @state() private _imageError: string | null = null;
-  @state() private _dialog: "delete" | "species" | "care_task" | "care_automate" | "care_rest" | "snooze" | null = null;
-  // Choice in the Snooze alerts dialog.
+  @state() private _dialog: "delete" | "species" | "care_task" | "care_automate" | "care_rest" | "snooze" | "snooze_all" | null = null;
+  // Choice in the Snooze alerts and Snooze all plants dialogs.
   @state() private _snoozeDraft: { choice: SnoozeChoice; date: string; error: string } | null = null;
   // Rest period editor draft.
   @state() private _restEditor: { draft: RestDraft; error: string } | null = null;
@@ -538,6 +538,7 @@ export class SmartPlantsPanel extends LitElement {
     if (event.detail.item.value === "add-plant") this._show({ kind: "create" });
     if (event.detail.item.value === "back-to-overview") this._show({ kind: "list" });
     if (event.detail.item.value === "notifications") this._notificationsOpen = true;
+    if (event.detail.item.value === "snooze-all") this._openSnoozeAll();
     if (event.detail.item.value === "integration-options") this._navigate("/config/integrations/integration/smart_plants");
     if (event.detail.item.value === "documentation") window.open(DOCUMENTATION_URL, "_blank", "noopener,noreferrer");
     const plant = this._view.kind === "detail" ? this._plantById(this._view.plantId) : undefined;
@@ -1011,7 +1012,7 @@ export class SmartPlantsPanel extends LitElement {
     target?.focus(); this._focusReturn = null;
   }
   private _renderDialog() {
-    if (!this._dialog || !this._base) return nothing;
+    if (!this._dialog || !this._base || this._dialog === "snooze_all") return nothing;
     if (this._dialog === "care_task" || this._dialog === "care_automate" || this._dialog === "care_rest") return this._renderCareDialog(this._base.id);
     if (this._dialog === "snooze") return this._renderSnoozeDialog(this._base.id);
     const base = this._base; const preview = this._preview; const l = this._l;
@@ -1733,15 +1734,24 @@ export class SmartPlantsPanel extends LitElement {
     const l = this._l; const today = this._today();
     const current = activeSnooze(plant.snoozed_until);
     const currentDate = current ? snoozeEndDate(current, this._timeZone()) : null;
-    const range = snoozeDateRange(today);
     const busy = this._formBusy || this._blocked || !!this._conflict;
-    const choose = (choice: SnoozeChoice) => { this._snoozeDraft = { ...draft, choice, error: "" }; };
     return html`<dialog class="care-dialog snooze-dialog" aria-labelledby="dialog-title" aria-describedby="snooze-intro" @cancel=${(e: Event) => { e.preventDefault(); this._closeDialog(); }} @keydown=${(e: KeyboardEvent) => this._trapFocus(e)}>
       <h2 id="dialog-title" tabindex="-1">${l.t(currentDate ? "snooze.title_change" : "snooze.title", { name: plant.name })}</h2>
       <div class="dialog-body">
         <p class="muted" id="snooze-intro">${l.t("snooze.intro")}</p>
         ${currentDate ? html`<p class="snooze-current">${l.t("snooze.current", { date: snoozeDateText(l, currentDate, today) })}</p>` : nothing}
-        <fieldset class="snooze-choices"><legend class="field-label">${l.t("snooze.choices")}</legend>
+        ${this._renderSnoozeChoices(draft, today)}
+        <div class="actions dialog-actions">
+          ${currentDate ? html`<button type="button" ?disabled=${busy} @click=${() => this._resumeSnooze(plant.id)}>${l.t("snooze.resume")}</button>` : nothing}<span class="spacer"></span>
+          <button type="button" @click=${() => this._closeDialog()}>${l.t("common.cancel")}</button>
+          <button type="button" class="primary" ?disabled=${busy} @click=${() => this._saveSnooze(plant.id)}>${l.t("snooze.confirm")}</button></div>
+      </div></dialog>`;
+  }
+  // The choices both snooze dialogs offer: presets and a picked day.
+  private _renderSnoozeChoices(draft: NonNullable<typeof this._snoozeDraft>, today: string) {
+    const l = this._l; const range = snoozeDateRange(today);
+    const choose = (choice: SnoozeChoice) => { this._snoozeDraft = { ...draft, choice, error: "" }; };
+    return html`<fieldset class="snooze-choices"><legend class="field-label">${l.t("snooze.choices")}</legend>
           ${SNOOZE_PRESETS.map(preset => html`<label class="check"><input type="radio" name="snooze-choice" value=${preset.choice} .checked=${draft.choice === preset.choice} @change=${() => choose(preset.choice)}>
             <span class="choice-text"><span>${l.t(preset.label)}</span><span class="small muted">${l.t("snooze.preset_until", { date: snoozeDateText(l, addDays(today, preset.days), today) })}</span></span></label>`)}
           <label class="check"><input type="radio" name="snooze-choice" value="date" .checked=${draft.choice === "date"} @change=${() => choose("date")}><span class="choice-text"><span>${l.t("snooze.preset_date")}</span></span></label>
@@ -1750,11 +1760,96 @@ export class SmartPlantsPanel extends LitElement {
           <input id="snooze-date" type="date" min=${range.min} max=${range.max} .value=${draft.date} aria-invalid=${draft.error ? "true" : "false"} aria-describedby=${draft.error ? "snooze-error snooze-date-hint" : "snooze-date-hint"}
             @input=${(e: Event) => { this._snoozeDraft = { ...draft, date: (e.target as HTMLInputElement).value, error: "" }; }}>
           <span class="small muted" id="snooze-date-hint">${l.t("snooze.date_hint")}</span>
-          ${draft.error ? html`<span class="error-text small" id="snooze-error" role="alert">${draft.error}</span>` : nothing}</div>` : nothing}
+          ${draft.error ? html`<span class="error-text small" id="snooze-error" role="alert">${draft.error}</span>` : nothing}</div>` : nothing}`;
+  }
+  // ---- Snooze all plants ----
+  private _activePlants(): PlantRecord[] { return this._plants.filter(p => p.lifecycle_state === "active"); }
+  private _openSnoozeAll(): void {
+    this._snoozeDraft = { choice: "1", date: snoozeDateRange(this._today()).min, error: "" };
+    this._openDialog("snooze_all", this.shadowRoot?.querySelector<HTMLElement>(".panel-appbar ha-dropdown [slot=trigger]") ?? null);
+  }
+  private _saveSnoozeAll(): void {
+    const draft = this._snoozeDraft;
+    if (!draft) return;
+    const until = snoozeUntil(draft.choice, this._today(), draft.date, this._timeZone());
+    if (!until) {
+      this._snoozeDraft = { ...draft, error: this._l.t("snooze.error_date") };
+      void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("#snooze-date")?.focus());
+      return;
+    }
+    this._closeDialog();
+    void this._snoozeMany(until);
+  }
+  // Snoozes every active plant, or resumes them all with null, in one save.
+  // The notice offers Undo, which puts back each plant's previous end.
+  private async _snoozeMany(until: string | null): Promise<void> {
+    if (!this.hass || this._formBusy || this._blocked) return;
+    const hass = this.hass; const l = this._l;
+    const result = await this._snoozeWrite(() => api.snoozeMany(hass, until));
+    if (!result) return;
+    const count = result.plants.length;
+    const date = until ? snoozeEndDate(until, this._timeZone()) : null;
+    const message = !count ? l.t("snooze.all_unchanged")
+      : date ? l.tn(count, "snooze.all_done_one", "snooze.all_done_other", { date: snoozeDateText(l, date, this._today()) })
+      : l.tn(count, "snooze.all_resumed_one", "snooze.all_resumed_other");
+    this._toast(message, count ? { text: l.t("snooze.undo"), action: () => void this._restoreSnoozes(result.previous) } : undefined);
+  }
+  private async _restoreSnoozes(previous: Record<string, string | null>): Promise<void> {
+    if (!this.hass || this._formBusy || this._blocked) return;
+    const hass = this.hass;
+    const result = await this._snoozeWrite(async () => ({ plants: await api.restoreSnoozes(hass, previous) }));
+    if (result) this._toast(this._l.t("snooze.all_undone"));
+  }
+  // Runs a write that changes several plants' snoozes in one save. A failed
+  // write changed no plant; the error shows above the overview and the panel
+  // reads the plants again.
+  private async _snoozeWrite<T extends { plants: PlantRecord[] }>(operation: () => Promise<T>): Promise<T | null> {
+    this._formBusy = true; this._error = "";
+    const context = this._context;
+    this._request++; // Reads admitted before this write must not overwrite its result.
+    try {
+      const result = await operation();
+      for (const plant of result.plants) {
+        this._adopt(plant);
+        const entry = this._overview[plant.id];
+        if (entry) this._overview = { ...this._overview, [plant.id]: { ...entry, snoozed_until: plant.snoozed_until ?? null } };
+      }
+      return result;
+    } catch (e) {
+      if (context !== this._context || !this.isConnected) return null;
+      this._error = this._friendly(e);
+      if (e instanceof ApiError && ["integration_not_loaded", "unauthorized"].includes(e.code)) { this._blocked = true; this._clearImage(); }
+      return null;
+    } finally {
+      if (context === this._context) this._formBusy = false;
+      void this._refresh(false);
+    }
+  }
+  private _renderSnoozeAllDialog() {
+    const draft = this._snoozeDraft;
+    if (!draft) return nothing;
+    const l = this._l; const today = this._today(); const now = Date.now();
+    const active = this._activePlants();
+    const paused = this._plants.length > active.length;
+    const until = snoozeUntil(draft.choice, today, draft.date, this._timeZone());
+    const end = until ? Date.parse(until) : Number.NaN;
+    // A plant snoozed past the chosen end keeps its end.
+    const kept = active.filter(p => { const current = activeSnooze(p.snoozed_until, now); return current !== null && Date.parse(current) > end; }).length;
+    const snoozed = active.filter(p => activeSnooze(p.snoozed_until, now) !== null).length;
+    const busy = this._formBusy || this._blocked;
+    const summary = [kept === active.length ? l.t("snooze.all_none") : l.tn(active.length - kept, "snooze.all_summary_one", "snooze.all_summary_other"),
+      paused ? l.t("snooze.all_paused") : "", kept && kept < active.length ? l.tn(kept, "snooze.all_kept_one", "snooze.all_kept_other") : ""].filter(Boolean).join(" ");
+    return html`<dialog class="care-dialog snooze-dialog" aria-labelledby="dialog-title" aria-describedby="snooze-intro" @cancel=${(e: Event) => { e.preventDefault(); this._closeDialog(); }} @keydown=${(e: KeyboardEvent) => this._trapFocus(e)}>
+      <h2 id="dialog-title" tabindex="-1">${l.t("snooze.title_all")}</h2>
+      <div class="dialog-body">
+        <p class="muted" id="snooze-intro">${l.t("snooze.intro")}</p>
+        ${this._renderSnoozeChoices(draft, today)}
+        <p class="snooze-summary" id="snooze-summary" aria-live="polite">${summary}</p>
+        ${snoozed ? html`<p class="small muted" id="snooze-resume-hint">${l.tn(snoozed, "snooze.resume_all_hint_one", "snooze.resume_all_hint_other")}</p>` : nothing}
         <div class="actions dialog-actions">
-          ${currentDate ? html`<button type="button" ?disabled=${busy} @click=${() => this._resumeSnooze(plant.id)}>${l.t("snooze.resume")}</button>` : nothing}<span class="spacer"></span>
+          ${snoozed ? html`<button type="button" ?disabled=${busy} aria-describedby="snooze-resume-hint" @click=${() => { this._closeDialog(); void this._snoozeMany(null); }}>${l.t("snooze.resume_all")}</button>` : nothing}<span class="spacer"></span>
           <button type="button" @click=${() => this._closeDialog()}>${l.t("common.cancel")}</button>
-          <button type="button" class="primary" ?disabled=${busy} @click=${() => this._saveSnooze(plant.id)}>${l.t("snooze.confirm")}</button></div>
+          <button type="button" class="primary" ?disabled=${busy || (until !== null && kept === active.length)} aria-describedby="snooze-summary" @click=${() => this._saveSnoozeAll()}>${l.t("snooze.confirm")}</button></div>
       </div></dialog>`;
   }
   private _toggleMonitoring(plant: PlantRecord): void {
@@ -2071,6 +2166,7 @@ export class SmartPlantsPanel extends LitElement {
          ${this._view.kind !== "list" ? html`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${l.t("panel.back_to_overview")}</ha-dropdown-item>` : nothing}
          <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${l.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${ADD_ICON_PATH}></ha-svg-icon></ha-dropdown-item>
          ${this._view.kind === "list" ? html`<ha-dropdown-item value="notifications">${l.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon></ha-dropdown-item>` : nothing}
+         ${this._view.kind === "list" && this._activePlants().length >= 2 ? html`<ha-dropdown-item value="snooze-all" ?disabled=${this._formBusy || this._blocked}>${l.t("snooze.menu_all")}<ha-icon slot="icon" icon="mdi:bell-sleep-outline"></ha-icon></ha-dropdown-item>` : nothing}
          <ha-dropdown-item value="integration-options">${l.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="documentation">${l.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>`}
        </ha-dropdown>
@@ -2083,6 +2179,7 @@ export class SmartPlantsPanel extends LitElement {
       ${this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : nothing}
       ${this._notificationsOpen && this._view.kind === "list" ? html`<smart-plants-notifications .hass=${this.hass} .l=${l} .plants=${this._plants} .devices=${this._devices} .entities=${this._entities} .states=${this._states}
         @notifications-close=${() => { this._notificationsOpen = false; this.shadowRoot?.querySelector<HTMLElement>(".panel-appbar ha-dropdown [slot=trigger]")?.focus(); }}></smart-plants-notifications>` : nothing}
+      ${this._dialog === "snooze_all" && this._view.kind === "list" ? this._renderSnoozeAllDialog() : nothing}
       ${this._wizardStarted && this._capabilities ? html`<div ?hidden=${this._view.kind !== "create"}><smart-plants-wizard .hass=${this.hass} .capabilities=${this._capabilities} .areas=${this._areas} .entities=${this._entities} .devices=${this._devices} .states=${this._states} .blocked=${this._blocked} .navigationContext=${this._context} .photoStatus=${this._creationPhoto} @plant-created=${(e: CustomEvent<{ plant: PlantRecord; photo: File | null; navigationContext: number }>) => void this._created(e)} @wizard-close=${() => this._closeWizard()} @wizard-open-plant=${(e: CustomEvent<{ plantId: string }>) => this._openCreated(e.detail.plantId)} @wizard-restart=${() => this._clearCreationNotice()} @backend-unavailable=${(e: CustomEvent<string>) => { this._blocked = true; this._error = e.detail; }}></smart-plants-wizard></div>` : nothing}
         <p role="status" aria-live="polite">${this._formBusy ? l.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
   }

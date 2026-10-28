@@ -434,20 +434,30 @@ you're back. The overview leaves a snoozed plant out of the counts on its tiles,
 **Needs water**, and doesn't sort it first as needing attention. Once the snooze ends, the
 plant counts again.
 
-To snooze several plants at once, use the `smart_plants.snooze` action, for example from
-**Developer tools → Actions** or a script you run before leaving:
+To snooze every plant before you leave, choose **⋮ → Snooze all plants…** on the overview.
+The menu shows this entry once you have at least two active plants. The dialog offers the same
+choices as for one plant and says what it will do, for example "Snoozes 12 plants. Paused
+plants are left out." A plant already snoozed past the day you pick keeps its later end, and
+the dialog counts those plants too. After **Snooze**, a notice such as "12 plants snoozed
+until Fri, Oct 30" offers **Undo**, which puts back each plant's previous snooze.
+
+While any active plant is snoozed, the dialog also has **Resume all**. It ends every snooze,
+including the ones you set on a single plant, and the dialog says how many plants that is.
+Its notice offers **Undo** as well.
+
+To snooze from a script or an automation instead, use the `smart_plants.snooze` action with
+the **All plants** entity or a list of plants as the target (see
+[Snooze every plant](automations.md#snooze-every-plant)):
 
 ```yaml
 action: smart_plants.snooze
 target:
-  device_id:
-    - 0123456789abcdef0123456789abcdef
-    - fedcba9876543210fedcba9876543210
+  entity_id: binary_sensor.smart_plants_all_plants
 data:
   until: "2026-11-15 18:00:00"
 ```
 
-The plants keep their real states and still count in the panel. The Smart Plants automation
+Snoozed plants keep their real states. The Smart Plants automation
 triggers and the plant report skip snoozed plants by themselves. If a plant still needs water
 when the snooze ends, the trigger reminds you once (see
 [Snooze alerts](automations.md#snooze-alerts)). Automations on the entities directly can check
