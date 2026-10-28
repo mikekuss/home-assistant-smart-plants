@@ -263,6 +263,7 @@ unit.
 - Smart Plants picks the forecast type: the finest one the weather entity offers (hourly, then
   twice daily, then daily) that reaches the end of the window. If none reaches it, it uses the
   finest one for the part it covers, and `forecast_until` tells how far that is.
+  If fetching one type fails, Smart Plants tries the next one.
 - Hourly forecasts use each hour's temperature. Twice-daily and daily forecasts use every
   period that overlaps the window, with the period's low temperature for `low` when the
   weather entity provides one.
@@ -272,8 +273,8 @@ unit.
 - *Only after* is not available: a forecast already looks ahead, so the task becomes due at
   the first fetch that is past the value.
 - Without a usable forecast (the weather entity is missing or unavailable, offers no
-  forecast, the forecast fails or is empty, or none of it lies in the window), `status` is
-  `no_reading`, as for a sensor without a reading.
+  forecast, every forecast type fails or is empty, or none of it lies in the window),
+  `status` is `no_reading`, as for a sensor without a reading.
 
 ## Snoozed plants
 
