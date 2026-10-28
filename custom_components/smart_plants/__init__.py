@@ -4,6 +4,7 @@ import contextlib
 import logging
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
@@ -17,6 +18,7 @@ from .const import (
     DOMAIN,
 )
 from .device import SmartPlantsDeviceReconciler
+from .forecast_reader import refresh_minutes
 from .http import async_register as async_register_http
 from .images import ensure_images_dir, remove_images_dir
 from .manager import SmartPlantsManager
@@ -137,7 +139,13 @@ async def async_setup_entry(  # noqa: PLR0915
     hass.data[DOMAIN] = entry.entry_id
 
     reconciler = SmartPlantsDeviceReconciler(hass, entry.entry_id)
-    manager = SmartPlantsManager(hass, reconciler=reconciler)
+    # The options flow reloads the entry on save, so a changed forecast
+    # refresh interval takes effect without a restart.
+    manager = SmartPlantsManager(
+        hass,
+        reconciler=reconciler,
+        forecast_refresh_interval=timedelta(minutes=refresh_minutes(entry.options)),
+    )
     provider_service: SpeciesProviderService | None = None
 
     manager_loaded = False

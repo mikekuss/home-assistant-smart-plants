@@ -8,13 +8,17 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_FORECAST_REFRESH_MINUTES,
     CONF_OPENPLANTBOOK_ENABLED,
     CONF_PRESERVE_INVENTORY_ON_REMOVAL,
     DEFAULT_PRESERVE_INVENTORY_ON_REMOVAL,
     DOMAIN,
+    MAX_FORECAST_REFRESH_MINUTES,
+    MIN_FORECAST_REFRESH_MINUTES,
     NAME,
     SINGLETON_UNIQUE_ID,
 )
+from .forecast_reader import refresh_minutes
 from .providers import provider_descriptors
 
 OPENPLANTBOOK_CREDENTIALS_URL = "https://open.plantbook.io/apikey/"
@@ -157,6 +161,11 @@ class SmartPlantsOptionsFlow(config_entries.OptionsFlowWithReload):
     ) -> config_entries.ConfigFlowResult:
         if user_input is not None:
             submitted = dict(user_input)
+            if CONF_FORECAST_REFRESH_MINUTES in submitted:
+                # The number selector gives a float; store whole minutes.
+                submitted[CONF_FORECAST_REFRESH_MINUTES] = int(
+                    submitted[CONF_FORECAST_REFRESH_MINUTES]
+                )
             provider_data = {}
             for key in _provider_keys():
                 if key in submitted:
@@ -198,6 +207,9 @@ class SmartPlantsOptionsFlow(config_entries.OptionsFlowWithReload):
                 {
                     **_safe_provider_defaults(dict(self._config_entry.data)),
                     CONF_PRESERVE_INVENTORY_ON_REMOVAL: preserve,
+                    CONF_FORECAST_REFRESH_MINUTES: refresh_minutes(
+                        self._config_entry.options
+                    ),
                 }
             ),
             description_placeholders=_provider_description_placeholders(),
@@ -214,6 +226,18 @@ class SmartPlantsOptionsFlow(config_entries.OptionsFlowWithReload):
                         DEFAULT_PRESERVE_INVENTORY_ON_REMOVAL,
                     ),
                 ): bool,
+                vol.Optional(
+                    CONF_FORECAST_REFRESH_MINUTES,
+                    default=refresh_minutes(defaults),
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=MIN_FORECAST_REFRESH_MINUTES,
+                        max=MAX_FORECAST_REFRESH_MINUTES,
+                        step=1,
+                        unit_of_measurement="min",
+                        mode=selector.NumberSelectorMode.BOX,
+                    )
+                ),
                 **_provider_schema(_safe_provider_defaults(defaults)).schema,
             }
         )

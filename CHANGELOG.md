@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- A **Forecast refresh interval** option (Settings → Devices & services → Smart Plants →
+  Configure) sets how often forecast reading tasks fetch their weather forecast, from 15 to
+  180 minutes. The default stays 30 minutes. See [Options](docs/installation.md#options).
+
 ### Changed
 
 - The **Winter protection** tile in **Add care task** says when the plant has no temperature

@@ -43,9 +43,13 @@
         "title": "Smart-Plants-Optionen",
         "data": {
           "preserve_inventory_on_removal": "Inventar beim Entfernen der Integration behalten",
+          "forecast_refresh_minutes": "Aktualisierungsintervall der Wettervorhersage",
           "openplantbook_enabled": "Direkten OpenPlantBook-Anbieter aktivieren",
           "openplantbook_client_id": "OpenPlantBook Client-ID",
           "openplantbook_client_secret": "OpenPlantBook Client-Secret"
+        },
+        "data_description": {
+          "forecast_refresh_minutes": "Wie oft Smart Plants die Vorhersage einer Wetter-Entität abruft, die eine Aufgabe mit Wettervorhersage beobachtet, zwischen 15 und 180 Minuten. Ändert sich die Wetter-Entität, wird die Vorhersage zusätzlich erneut abgerufen, höchstens alle 5 Minuten."
         },
         "description": "OpenPlantBook-API-Zugangsdaten sind optional. Erstelle ein Konto und Client-Zugangsdaten. [OpenPlantBook-API-Zugangsdaten abrufen]({openplantbook_credentials_url}). Smart Plants verbindet sich direkt; die separate Home-Assistant-OpenPlantBook-Integration ist nicht erforderlich. Anbieterfehler deaktivieren nie das lokale Inventar."
       }

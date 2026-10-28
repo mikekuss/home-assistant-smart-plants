@@ -9,7 +9,8 @@ The file is safe to share. It contains:
 
 - whether OpenPlantBook is enabled and whether credentials are configured (yes/no only; the
   file never includes the client ID or secret),
-- whether "Preserve inventory when the integration is removed" is on,
+- whether "Preserve inventory when the integration is removed" is on, and the forecast
+  refresh interval in minutes,
 - OpenPlantBook connection status, such as whether a token and cached results exist,
 - inventory counts: number of plants, active vs. paused (`disabled`) plants, species
   sources, assigned sensor sources (in total and per role, for example moisture,
@@ -158,7 +159,8 @@ Smart Plants couldn't get a usable forecast from the weather entity.
   Actions**, run `weather.get_forecasts` with the entity and `type: hourly` or `type: daily`.
   If both fail, the weather integration provides no forecast.
 - The weather entity must report a temperature unit (°C or °F).
-- Smart Plants refreshes the forecast every 30 minutes. Right after a restart or a change to
+- Smart Plants refreshes the forecast every 30 minutes, or at the **Forecast refresh
+  interval** set in the [options](installation.md#options). Right after a restart or a change to
   the task, the first value can take a few seconds.
 - If you removed or renamed the weather entity, edit the task and pick the weather entity
   again.
