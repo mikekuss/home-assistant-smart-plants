@@ -35,6 +35,7 @@ from .care import (
     task_matches_event,
     utc_timestamp,
 )
+from .const import DOMAIN
 from .events import (
     EventCallback,
     PlantAddedEvent,
@@ -1582,6 +1583,7 @@ class SmartPlantsManager:
                 if registered is not None
                 else source
             )
+        self._refuse_own_sources("moisture", sources, current.sources)
         return replace(
             candidate,
             sources=tuple(sources),
@@ -1722,7 +1724,37 @@ class SmartPlantsManager:
             seen_entity_ids.add(source.entity_id)
             seen_keys.add(key)
             parsed.append(source)
+        self._refuse_own_sources(role, parsed, config.sources)
         return tuple(parsed)
+
+    def _refuse_own_sources(
+        self,
+        role: str,
+        sources: Iterable[SensorSource],
+        assigned: Iterable[SensorSource],
+    ) -> None:
+        """
+        Refuse Smart Plants' own entities as new sources of ``role``.
+
+        A plant's sensors are computed from its sources, so one of them as a
+        source makes a plant read its own or another plant's output. A source
+        the role already stores is kept, so saving other changes still works
+        until the user replaces it.
+        """
+        from homeassistant.helpers import entity_registry as er  # noqa: PLC0415
+
+        registry = er.async_get(self._hass)
+        assigned = tuple(assigned)
+        for source in sources:
+            entry = registry.async_get(source.registry_id or source.entity_id)
+            if (
+                entry is not None
+                and entry.platform == DOMAIN
+                and not _already_assigned(source, assigned)
+            ):
+                raise SmartPlantsValidationError(
+                    f"{role} source must not be a Smart Plants entity"
+                )
 
     def _configure_wizard_roles(
         self, plant: PlantRecord, roles: Mapping[str, Any]
@@ -3125,6 +3157,16 @@ def _single_source_primary(
     if primary_entity_id is None and len(sources) == 1:
         return sources[0].entity_id
     return primary_entity_id
+
+
+def _already_assigned(source: SensorSource, assigned: Iterable[SensorSource]) -> bool:
+    """Whether ``assigned`` holds ``source``, by registry id when it has one."""
+    return any(
+        source.registry_id == stored.registry_id
+        if stored.registry_id is not None
+        else source.entity_id == stored.entity_id
+        for stored in assigned
+    )
 
 
 def _validate_role_aggregation(
