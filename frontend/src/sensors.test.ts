@@ -31,6 +31,19 @@ function tempState(): HAState {
 function moistureState(): HAState {
   return { entity_id: "sensor.soil_moist", state: "40", attributes: { device_class: "moisture", unit_of_measurement: "%", friendly_name: "Soil moist" }, last_updated: "2026-09-18T00:00:00Z" };
 }
+// Another plant's temperature and soil moisture sensors, calculated by Smart Plants.
+function ownEntities(): HAEntity[] {
+  return [
+    { id: "reg-own-temp", entity_id: "sensor.office_aloe_temperature", device_id: "plant-device", unique_id: "smart_plants:plant-2:temperature", platform: "smart_plants" },
+    { id: "reg-own-soil", entity_id: "sensor.office_aloe_soil_moisture", device_id: "plant-device", unique_id: "smart_plants:plant-2:moisture", platform: "smart_plants" },
+  ];
+}
+function ownStates(): HAState[] {
+  return [
+    { ...tempState(), entity_id: "sensor.office_aloe_temperature", attributes: { ...tempState().attributes, friendly_name: "Office Aloe Temperature" } },
+    { ...moistureState(), entity_id: "sensor.office_aloe_soil_moisture", attributes: { ...moistureState().attributes, friendly_name: "Office Aloe Soil moisture" } },
+  ];
+}
 const LAMPS = ["sensor.mock_lamp_a", "sensor.mock_lamp_b", "sensor.mock_lamp_c"];
 function lampEntities(): HAEntity[] {
   return LAMPS.map((entity_id, i) => ({ id: `reg-lamp-${i}`, entity_id, device_id: "device-x", unique_id: `lamp_${i}`, platform: "mqtt" }));
@@ -216,6 +229,46 @@ describe("Sensors section", () => {
     const { el } = await mountDetail(plant, [tempEntity()], [tempState()]);
     await click(el, "Change fertilizer level sensors");
     expect(sensorsSection(el).querySelector("#conductivity-sources-editor")!.textContent).toContain("Unexpected metadata");
+  });
+
+  it.each(["temperature", "moisture"])("leaves Smart Plants' own sensors out of the %s picker, also with all sensors shown", async role => {
+    const { el } = await mountDetail(withRoles(), [tempEntity(), ...ownEntities()], [tempState(), moistureState(), ...ownStates()]);
+    await addSensor(el, role);
+    const editor = () => sensorsSection(el).querySelector(`#${role}-sources-editor`)!;
+    const options = () => [...editor().querySelector("select")!.options].map(o => o.value);
+    expect(options()).toEqual(["", role === "temperature" ? "sensor.living_temp" : "sensor.soil_moist"]);
+    const showAll = editor().querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    showAll.checked = true; showAll.dispatchEvent(new Event("change", { bubbles: true })); await settle(el);
+    expect(options()).toEqual(["", "sensor.living_temp", "sensor.soil_moist"]);
+  });
+
+  it("refuses one of Smart Plants' own sensors typed as an entity ID and says why", async () => {
+    const { el } = await mountDetail(withRoles(), [tempEntity(), ...ownEntities()], [tempState(), ...ownStates()]);
+    await addSensor(el, "temperature");
+    const input = field(el.shadowRoot!, "Assign an unavailable or unregistered sensor") as HTMLInputElement;
+    const enter = async (id: string) => {
+      input.value = id; input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); await settle(el);
+    };
+    await enter("sensor.office_aloe_temperature");
+    expect(input.validationMessage).toBe("Smart Plants calculates this sensor from other sensors. Enter one of those instead.");
+    expect(input.value).toBe("sensor.office_aloe_temperature");
+    expect(sensorsSection(el).querySelectorAll("#temperature-sources-editor li")).toHaveLength(0);
+    // Typing again clears the message, and other entity IDs are added as before.
+    await enter("sensor.mock_future_temp");
+    expect(input.validationMessage).toBe("");
+    expect(sensorsSection(el).querySelector("#temperature-sources-editor li strong")!.textContent).toBe("sensor.mock_future_temp");
+  });
+
+  it.each(["temperature", "moisture"] as const)("marks a stored Smart Plants %s sensor as one to replace", async role => {
+    const own = ownEntities()[role === "temperature" ? 0 : 1]!;
+    const assigned = { sources: [{ entity_id: own.entity_id, registry_id: own.id }], primary_entity_id: own.entity_id };
+    const plant = withRoles(role === "temperature" ? { temperature: { ...emptyRole(), ...assigned } } : {});
+    if (role === "moisture") plant.roles = { ...plant.roles!, moisture: { ...plant.roles!.moisture, ...assigned } };
+    const { el } = await mountDetail(plant, ownEntities(), ownStates());
+    expect(sensorsSection(el).querySelector("ul.list")!.textContent).toContain("Smart Plants sensor, replace it");
+    await click(el, role === "temperature" ? "Change temperature sensors" : "Change soil moisture sensors");
+    expect(sensorsSection(el).querySelector(`#${role}-sources-editor`)!.textContent).toContain("Smart Plants calculates this sensor from other sensors. Replace it with one of those.");
   });
 
   it("saves via the granular role commands, only for changed fields", async () => {

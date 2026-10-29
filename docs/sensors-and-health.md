@@ -27,6 +27,11 @@ Notes:
 - The panel's sensor picker filters by device class and unit (for example `moisture` for
   soil moisture, `carbon_dioxide` for CO₂). Use **Show all sensors, including ones that don't look
   like a match** if your sensor lacks a device class; the unit must still match.
+- The picker leaves out Smart Plants' own sensors, even with **Show all sensors** turned on,
+  and Smart Plants refuses them as sources. Smart Plants calculates a plant's sensors from its
+  sources, so with one of them as a source a plant would read its own value or copy another
+  plant's. Assign the device's sensor instead. A plant that already uses one keeps it until
+  you replace it. The **Sensors** tab marks it *Smart Plants sensor, replace it*.
 - In the panel, roles are called readings and some have plainer names: *Temperature*,
   *Humidity*, *Light* (illuminance), and *Fertilizer level* (conductivity).
 
@@ -189,7 +194,8 @@ If an assigned sensor is removed from the entity registry, Smart Plants keeps th
 and creates a **Repairs** issue: "Smart Plants: assigned source missing".
 
 1. Go to **Settings → System → Repairs** and select the issue.
-2. Choose a replacement sensor, or leave the field empty to remove the assignment.
+2. Choose a replacement sensor, or leave the field empty to remove the assignment. The list
+   leaves out Smart Plants' own sensors.
 3. Submit.
 
 If the missing sensor was the main sensor, the replacement becomes the main sensor. If you
