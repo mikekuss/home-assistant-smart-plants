@@ -136,6 +136,9 @@ import "./wizard.js";
 import "./views/notifications.js";
 import { DOCUMENTATION_URL } from "./views/overview.js";
 import type { OpenPlantDetail } from "./views/overview.js";
+import { allPlantsEntityId } from "./notifications.js";
+import { RELATED_LIMIT, automationDetail, capRows, relatedAutomations } from "./related-automations.js";
+import type { AutomationRow, RelatedAutomations } from "./related-automations.js";
 import type { PlantOverview } from "./overview-model.js";
 import type { CareEvent, CareHistory, CareTask, Evaluation, HAArea, HADevice, HAEntity, HAState, HealthEvaluation, HomeAssistantLike, MoistureInput, PanelCapabilities, PanelInfo, PlantPlacement, PlantRecord, RoleSourceInput, SpeciesPreview, SpeciesSearchResult } from "./types.js";
 
@@ -162,6 +165,9 @@ const CARE_REFRESH_DELAY_MS = 400;
 // State updates arriving this soon after the panel's own write are its echo;
 // that write refreshes by itself when it finishes.
 const OWN_WRITE_ECHO_MS = 2000;
+// While automations are added or removed, the related automations are searched
+// for at most this often.
+const RELATED_REFRESH_MS = 1000;
 const careStateChanged = (before: HAState | undefined, after: HAState | undefined): boolean =>
   before !== after && (before?.state !== after?.state || JSON.stringify(before?.attributes) !== JSON.stringify(after?.attributes));
 // Every plant binary sensor carries the snooze end, so a snooze set by an
@@ -221,7 +227,12 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _provider = "manual";
   @state() private _query = "";
   @state() private _results: SpeciesSearchResult[] = [];
+  // Automations Home Assistant's search finds for the open plant, by its device
+  // and by the All plants entity. The card builds its rows from `_states`.
   @state() private _related: string[] = [];
+  @state() private _relatedAllPlants: string[] = [];
+  // Groups of the Automations card expanded with "Show all".
+  @state() private _relatedExpanded: ReadonlySet<keyof RelatedAutomations> = new Set();
   @state() private _imageUrl: string | null = null;
   @state() private _imageLoading = false;
   @state() private _imageError: string | null = null;
@@ -288,6 +299,12 @@ export class SmartPlantsPanel extends LitElement {
   private _timer: ReturnType<typeof setInterval> | undefined;
   private _careTimer: ReturnType<typeof setTimeout> | undefined;
   private _ownWriteAt = Number.NEGATIVE_INFINITY;
+  // What the related automations were last searched for: the plant, its device
+  // and the All plants entity, and the automation entity IDs at that time.
+  private _relatedFor: { target: string; automations: string } | null = null;
+  private _relatedRequest = 0;
+  private _relatedAt = Number.NEGATIVE_INFINITY;
+  private _relatedTimer: ReturnType<typeof setTimeout> | undefined;
   private get _l(): Localizer { return createLocalizer(this.hass); }
   private readonly _ready = () => { void this._refresh(); };
   private readonly _disconnected = () => { this._context++; this._formBusy = false; this._blocked = true; this._request++; this._providerRequest++; this._preview = null; this._clearImage(); this._error = this._l.t("error.disconnected"); };
@@ -305,6 +322,7 @@ export class SmartPlantsPanel extends LitElement {
       if (this.hass?.user?.is_admin === false) this._unbind();
       this._watchCare(changed.get("hass") as HomeAssistantLike | undefined);
     }
+    this._syncRelated();
     const dialog = this.shadowRoot?.querySelector("dialog");
     let active: Element | null | undefined = null;
     // Some DOM implementations throw when the focused element was just removed, for example by a tab switch.
@@ -346,6 +364,44 @@ export class SmartPlantsPanel extends LitElement {
     }, CARE_REFRESH_DELAY_MS);
   }
   private _clearCareTimer(): void { clearTimeout(this._careTimer); this._careTimer = undefined; }
+  // Searches for the open plant's automations when the plant opens, when its
+  // device or the All plants entity changes, and when an automation is added or
+  // removed, then at most once a second. Names, on/off and last runs come from
+  // the states and need no new search.
+  private _syncRelated(): void {
+    const plant = this._view.kind === "detail" ? this._plantById(this._view.plantId) : undefined;
+    if (!plant || !this.hass || this._blocked || !this.isConnected) return;
+    const target = [plant.id, plantDevice(plant, this._devices)?.id ?? "", allPlantsEntityId(this._entities) ?? ""].join(" ");
+    const automations = Object.keys(this._states).filter(id => id.startsWith("automation.")).sort().join(" ");
+    const previous = this._relatedFor;
+    if (previous?.target === target && previous.automations === automations) return;
+    this._relatedFor = { target, automations };
+    if (previous?.target === target) this._scheduleRelated(); else this._loadRelated();
+  }
+  private _scheduleRelated(): void {
+    if (this._relatedTimer !== undefined) return;
+    this._relatedTimer = setTimeout(() => { this._relatedTimer = undefined; this._loadRelated(); }, Math.max(0, this._relatedAt + RELATED_REFRESH_MS - Date.now()));
+  }
+  // Both searches run together. One that fails keeps its last result and shows
+  // the notice; the other one's result is still used.
+  private _loadRelated(): void {
+    clearTimeout(this._relatedTimer); this._relatedTimer = undefined;
+    const plant = this._view.kind === "detail" ? this._plantById(this._view.plantId) : undefined;
+    const hass = this.hass;
+    if (!plant || !hass) return;
+    const device = plantDevice(plant, this._devices); const allPlants = allPlantsEntityId(this._entities);
+    const request = ++this._relatedRequest; this._relatedAt = Date.now();
+    void Promise.allSettled([device ? api.related(hass, device.id) : [], allPlants ? api.relatedToEntity(hass, allPlants) : []]).then(([own, all]) => {
+      if (request !== this._relatedRequest) return;
+      if (own.status === "fulfilled") this._related = own.value;
+      if (all.status === "fulfilled") this._relatedAllPlants = all.value;
+      if (own.status === "rejected" || all.status === "rejected") this._notice = this._l.t("notice.related_failed");
+    });
+  }
+  // Drops a pending or running search, so the next update searches again.
+  private _forgetRelated(): void {
+    clearTimeout(this._relatedTimer); this._relatedTimer = undefined; this._relatedRequest++; this._relatedFor = null;
+  }
   private _bind(): void {
     if (!this.hass || this.hass.user?.is_admin === false || this._connection) return;
     const connection = this.hass.connection; this._connection = connection;
@@ -357,7 +413,7 @@ export class SmartPlantsPanel extends LitElement {
   }
   private _unbind(): void {
     this._context++; this._formBusy = false;
-    this._request++; this._providerRequest++; this._preview = null; this._blocked = true; this._clearImage(); this._clearThumbnails();
+    this._request++; this._providerRequest++; this._preview = null; this._blocked = true; this._clearImage(); this._clearThumbnails(); this._forgetRelated();
     this._subscriptionGeneration++;
     this._unsubscribe?.(); this._unsubscribe = undefined;
     this._connection?.removeEventListener?.("ready", this._ready); this._connection?.removeEventListener?.("disconnected", this._disconnected); this._connection = undefined;
@@ -506,15 +562,14 @@ export class SmartPlantsPanel extends LitElement {
   private _beginEdit(plant: PlantRecord): void {
     const m = moistureRole(plant); this._base = structuredClone(plant); this._baseArea = plantDevice(plant, this._devices)?.area_id ?? "";
     this._edits = { name: plant.name, acquired: plant.acquired_at ?? "", placement: structuredClone(plant.placement), category: plant.category ?? "", tagText: plant.tags.join(", "), area: this._baseArea, common: plant.species?.snapshot.common_name ?? "", latin: plant.species?.snapshot.latin_name ?? "", moisture: m ? moistureInput(m) : null };
-    this._conflict = null; this._areaReview = false; this._preview = null; this._results = []; this._provider = "manual"; this._related = []; this._thresholdRole = null; this._thresholdEdits = null; this._thresholdBaseline = null; this._thresholdError = ""; this._thresholdSaved = {}; this._pendingThresholdSwitch = null;
+    this._conflict = null; this._areaReview = false; this._preview = null; this._results = []; this._provider = "manual"; this._thresholdRole = null; this._thresholdEdits = null; this._thresholdBaseline = null; this._thresholdError = ""; this._thresholdSaved = {}; this._pendingThresholdSwitch = null;
     this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._sourceSaved = {}; this._pendingSourceSwitch = null; this._allSourceSensors = false; this._sourceUnavailable = null; this._moistureSourceError = "";
-    const device = plantDevice(plant, this._devices);
-    const context = this._context;
-    if (device && this.hass) void api.related(this.hass, device.id).then(ids => { if (context === this._context && this._base?.id === plant.id) this._related = ids; }).catch(() => { if (context === this._context && this._base?.id === plant.id) this._notice = this._l.t("notice.related_failed"); });
   }
   private _show(view: View): void {
     this._context++; this._closeDialog(); this._formBusy = false;
     this._providerRequest++; this._view = view; this._error = ""; this._notice = ""; this._healthError = ""; this._careHistory = null; this._careError = "";
+    // Every plant opens with a new search for its automations.
+    this._forgetRelated(); this._related = []; this._relatedAllPlants = []; this._relatedExpanded = new Set();
     if (view.kind === "create") this._wizardStarted = true;
     if (view.kind === "detail") {
       this._detailSection = "overview"; this._expanded = new Set(); this._settingsOpen = new Set(); this._moistureMode = null;
@@ -1677,10 +1732,6 @@ export class SmartPlantsPanel extends LitElement {
           ${evaluation.reasons.length ? html`<dt>${l.t("troubleshooting.reasons")}</dt><dd>${evaluation.reasons.join(" ")}</dd>` : nothing}</dl>` : html`<p>${l.t("troubleshooting.no_evaluation")}</p>`}</section>
       ${this._renderOverallHealth(plant)}
       ${this._renderDiagnostics(plant)}
-      <section aria-labelledby="related-heading"><h3 id="related-heading">${l.t("automations.related_heading")}</h3>
-        ${this._related.length ? html`<ul class="related">${this._related.map(id => html`<li><code>${id}</code></li>`)}</ul>` : html`<p>${l.t("automations.related_none")}</p>`}
-        <p class="small muted">${l.t("automations.description")}</p>
-        <a href="/config/automation/dashboard" @click=${(e: MouseEvent) => this._internalLink(e, "/config/automation/dashboard")}>${l.t("automations.open_editor")}</a></section>
       <section aria-labelledby="download-heading"><h3 id="download-heading">${l.t("troubleshooting.download_heading")}</h3>
         <p class="small muted">${l.t("troubleshooting.download_hint")}</p>
         <div class="row"><button type="button" class="btn outline sm" @click=${() => this._downloadDiagnostics(plant)}><ha-icon aria-hidden="true" icon="mdi:download"></ha-icon>${l.t("detail.menu_download")}</button></div></section>`;
@@ -1705,6 +1756,7 @@ export class SmartPlantsPanel extends LitElement {
       overall_health: this._health[plant.id] ?? null,
       problem_checks: problemBinaries(plant, this._entities, this._states, this._l).map(row => ({ role: row.role, status: row.status, reason: row.reason })),
       related_automations: this._related,
+      related_all_plants_automations: this._relatedAllPlants,
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
     const link = document.createElement("a"); link.href = url; link.download = `smart-plants-${plant.id}-diagnostics.json`;
@@ -1973,8 +2025,6 @@ export class SmartPlantsPanel extends LitElement {
     const snapshot = plant.species?.snapshot;
     const commonName = snapshot ? speciesCommonName(snapshot, l.language) : null;
     const cap = (text: string) => text.charAt(0).toLocaleUpperCase() + text.slice(1);
-    const createPath = device ? `/config/automation/edit/new?add_automation_element=trigger&target_device_id=${encodeURIComponent(device.id)}` : "";
-    const devicePath = device ? `/config/devices/device/${encodeURIComponent(device.id)}` : "";
     return html`<div class="cols">
       <div class="stack">
         <section class="sp-card" aria-labelledby="readings-heading"><div class="card-h"><h3 id="readings-heading">${l.t("readings.heading")}</h3>
@@ -2004,12 +2054,53 @@ export class SmartPlantsPanel extends LitElement {
             ${plant.tags.length ? html`<dt>${l.t("about.tags")}</dt><dd>${plant.tags.map(tag => html`<span class="tag">${tag}</span>`)}</dd>` : nothing}
           </dl>
           ${detailsMissing ? html`<button type="button" class="btn text sm" @click=${() => this._selectSection("settings")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("about.add_details")}</button>` : nothing}</div></section>
-        <section class="sp-card" aria-labelledby="automations-heading"><div class="card-h"><h3 id="automations-heading">${l.t("automations.heading")}</h3></div>
-          <div class="card-b"><p class="small muted">${l.t("automations.body")}</p>
-            ${device ? html`<div class="row"><a class="btn outline sm" href=${devicePath} @click=${(e: MouseEvent) => this._internalLink(e, devicePath)}><ha-icon aria-hidden="true" icon="mdi:devices"></ha-icon>${l.t("automations.open_device")}</a>
-              <a class="btn outline sm" href=${createPath} @click=${(e: MouseEvent) => this._internalLink(e, createPath)}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("automations.create")}</a></div>` : nothing}
-          </div></section>
+        ${this._renderAutomations(device)}
       </div></div>`;
+  }
+  // The Automations card: the automations that act on the plant, then the
+  // automations for all plants, a note on what the search can't find, and the
+  // links. A plant without any keeps the intro text instead of the list.
+  private _renderAutomations(device: HADevice | undefined) {
+    const l = this._l;
+    const related = relatedAutomations(this._related, this._relatedAllPlants, this._states, l.language);
+    const createPath = device ? `/config/automation/edit/new?add_automation_element=trigger&target_device_id=${encodeURIComponent(device.id)}` : "";
+    const devicePath = device ? `/config/devices/device/${encodeURIComponent(device.id)}` : "";
+    const links = device ? html`<div class="row"><a class="btn outline sm" href=${devicePath} @click=${(e: MouseEvent) => this._internalLink(e, devicePath)}><ha-icon aria-hidden="true" icon="mdi:devices"></ha-icon>${l.t("automations.open_device")}</a>
+      <a class="btn outline sm" href=${createPath} @click=${(e: MouseEvent) => this._internalLink(e, createPath)}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("automations.create")}</a></div>` : nothing;
+    const listed = related.plant.length > 0 || related.allPlants.length > 0;
+    return html`<section class="sp-card" aria-labelledby="automations-heading"><div class="card-h"><h3 id="automations-heading">${l.t("automations.heading")}</h3></div>
+      ${listed ? html`${this._renderAutomationGroup("plant", related.plant)}${this._renderAutomationGroup("allPlants", related.allPlants)}
+        <div class="card-b rel-foot"><p class="small muted">${l.t("automations.not_listed")}</p>${links}</div>`
+        : html`<div class="card-b"><p class="small muted">${l.t("automations.body")}</p>${links}</div>`}</section>`;
+  }
+  private _renderAutomationGroup(group: keyof RelatedAutomations, rows: readonly AutomationRow[]) {
+    if (!rows.length) return nothing;
+    const l = this._l; const { shown, more } = capRows(rows, this._relatedExpanded.has(group));
+    const id = group === "plant" ? "automations-plant" : "automations-all-plants";
+    return html`${group === "allPlants" ? html`<h4 class="rel-group" id="automations-all-plants-heading">${l.t("automations.all_plants")}</h4>` : nothing}
+      <ul class="list rel" id=${id} tabindex="-1" aria-labelledby=${group === "plant" ? "automations-heading" : "automations-all-plants-heading"}>${shown.map(row => this._renderAutomationRow(row))}</ul>
+      ${more ? html`<div class="rel-more"><button type="button" class="btn text sm" @click=${() => this._showAllAutomations(group, id)}>${l.t("automations.show_all", { count: rows.length })}</button></div>` : nothing}`;
+  }
+  // One automation: its name, when it last ran and whether it is off or
+  // unavailable. It opens in Home Assistant's editor unless it is defined in
+  // YAML without an id.
+  private _renderAutomationRow(row: AutomationRow) {
+    const l = this._l; const path = row.editPath;
+    const tone = row.status === "on" ? "tonal" : row.status === "unavailable" ? "tone-bad" : "";
+    const chip = row.status === "off" ? html`<span class="cchip tone-later">${l.t("automations.off")}</span>`
+      : row.status === "unavailable" ? html`<span class="cchip tone-overdue"><ha-icon aria-hidden="true" icon="mdi:alert-circle-outline"></ha-icon>${l.t("automations.unavailable")}</span>` : nothing;
+    const content = html`<span class="ic ${tone}" aria-hidden="true"><ha-icon icon="mdi:robot"></ha-icon></span>
+      <span class="li-main"><span class="li-title">${row.name}</span><span class="li-sub">${automationDetail(l, row)}</span></span>
+      <span class="rel-end">${chip}${path ? html`<ha-icon aria-hidden="true" icon="mdi:chevron-right"></ha-icon>` : nothing}</span>`;
+    return html`<li>${path ? html`<a class="li" href=${path} @click=${(e: MouseEvent) => this._internalLink(e, path)}>${content}</a>` : html`<div class="li">${content}</div>`}</li>`;
+  }
+  private _showAllAutomations(group: keyof RelatedAutomations, listId: string): void {
+    const next = new Set(this._relatedExpanded); next.add(group); this._relatedExpanded = next;
+    // The button goes away, so focus moves to the first row it revealed.
+    void this.updateComplete.then(() => {
+      const list = this.shadowRoot?.querySelector<HTMLElement>(`#${listId}`);
+      (list?.querySelector<HTMLElement>(`li:nth-child(n+${RELATED_LIMIT + 1}) a`) ?? list)?.focus();
+    });
   }
   private _openSetting(row: SettingRow): void {
     const next = new Set(this._settingsOpen); next.add(row); this._settingsOpen = next;

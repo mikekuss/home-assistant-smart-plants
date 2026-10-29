@@ -23,10 +23,12 @@ instructions, or photos. Still, have a look at the file before attaching it publ
 > [!NOTE]
 > Each plant also has its own diagnostics in the panel: open the plant, go to the **Sensors**
 > tab and expand **Troubleshooting**. It shows the sensor entity IDs, the soil moisture
-> evaluation, the overall health score, the state of every problem check, and the automations
-> that use the plant. **Download diagnostics** there (or in the plant's **⋮** menu) saves a
-> JSON file with the plant's configuration, sensor entity IDs and current evaluation. It
-> contains no plant name, notes, photo, or credentials.
+> evaluation, the overall health score and the state of every problem check. **Download
+> diagnostics** there (or in the plant's **⋮** menu) saves a JSON file with the plant's
+> configuration, sensor entity IDs, current evaluation and the entity IDs of the automations
+> that use the plant. It contains no plant name, notes, photo, or credentials. The
+> **Automations** card on the plant's **Overview** tab lists those automations, see
+> [See which automations use a plant](automations.md#see-which-automations-use-a-plant).
 
 ## Enable debug logging
 

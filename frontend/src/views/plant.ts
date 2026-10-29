@@ -317,6 +317,18 @@ export const plantStyles = css`
   .tag { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; margin: 0 4px 4px 0; border-radius: 12px; background: color-mix(in srgb, var(--sp-text) 7%, transparent); font-size: 12.5px; }
   .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
+  /* Automations card: rows link to Home Assistant's editor */
+  .rel > li + li { border-top: 1px solid var(--divider-color, #e0e0e0); }
+  .rel .li { min-height: 56px; padding-block: 8px; }
+  .rel a.li { color: inherit; text-decoration: none; }
+  /* Light enough that the secondary text keeps a 4.5:1 contrast. */
+  .rel a.li:hover { background: color-mix(in srgb, var(--sp-text) 3%, transparent); }
+  .rel a.li:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: -2px; }
+  .rel-end { display: flex; align-items: center; gap: 2px; color: var(--sp-text-secondary); }
+  .rel-more { padding: 2px 2px 6px; }
+  .pd .rel-group { margin: 0; padding: 14px 16px 4px; border-top: 1px solid var(--divider-color, #e0e0e0); font-size: 13px; font-weight: 500; line-height: 1.25; color: var(--sp-text-secondary); }
+  .rel-foot { border-top: 1px solid var(--divider-color, #e0e0e0); padding-top: 12px; }
+
   /* Expanders */
   .expander { display: block; border-radius: var(--ha-card-border-radius, 12px); background: var(--ha-card-background, var(--sp-card)); --expansion-panel-summary-padding: 4px 16px; --expansion-panel-content-padding: 0 16px 16px; }
   details.expander { border: 1px solid var(--divider-color, #e0e0e0); }
@@ -382,6 +394,7 @@ export const plantStyles = css`
     .setrow > .btn, .setrow > .row { justify-self: start; margin-inline-start: -12px; }
     .thr { grid-template-columns: minmax(0, 1fr); }
     .li { padding: 10px 12px; gap: 10px; }
+    .pd .rel-group { padding-inline: 12px; }
     .kv { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }
     .kv dd { margin-bottom: 8px; }
     dl.sensors, dl.other-targets { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }

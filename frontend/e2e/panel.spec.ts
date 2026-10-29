@@ -874,9 +874,6 @@ test("tile filters, search, authoritative detail and native links", async ({ pag
   await expect(page.locator("smart-plants-panel .keyreads")).toContainText("12%");
   await expect(page.getByRole("link", { name: "Open device" })).toHaveAttribute("href", `/config/devices/device/device-${id(1)}`);
   await expect(page.getByRole("link", { name: "Create automation" })).toHaveAttribute("href", `/config/automation/edit/new?add_automation_element=trigger&target_device_id=device-${id(1)}`);
-  await show(page, "Sensors");
-  await expand(page, "Troubleshooting");
-  await expect(page.getByText("automation.plant_reminder", { exact: true })).toBeVisible();
   await backToOverview(page);
   await expect(overview(page).getByLabel("Search plants", { exact: true })).toHaveValue("aloe vera");
   await tile(page, "Sensor issues").click();

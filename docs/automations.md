@@ -14,6 +14,39 @@ action.
 > Smart Plants detects what a plant needs. It **never** switches pumps, valves, or any
 > other device by itself. Any watering action happens only in automations you write.
 
+## See which automations use a plant
+
+The **Automations** card on a plant's **Overview** tab lists the automations that use the
+plant. Each row says when the automation last ran. Select a row to open the automation in
+Home Assistant's automation editor.
+
+- The first list has the automations that name the plant, or one of its Smart Plants
+  entities, in a trigger, condition or action. Automations you start with
+  **Create automation** on the card show up here once you save them.
+- **For all plants** lists the automations that use the *All plants* entity, such as the
+  [notifications](notifications.md) you set up for all plants. An automation that is in
+  both lists shows only in the first.
+- *Off* marks an automation you turned off. *Unavailable* marks one that got an error in its
+  configuration while the card was open. Home Assistant's search skips automations with
+  errors, so the next time you open the plant, the list leaves it out until you fix it.
+- The editor can't open an automation from a YAML file without an `id`. Its row says
+  *Defined in YAML* and has no link.
+- Each list shows five automations. **Show all** shows the rest.
+
+While the card is open, it updates when an automation runs or turns on or off, and when you
+add or delete an automation. If you change which plants an automation uses, open the plant
+again to see the change.
+
+The list comes from Home Assistant's search, which doesn't find automations that reach the
+plant only through:
+
+- its area, floor or label, as in [Any problem in an area](#any-problem-in-an-area),
+- a sensor assigned to the plant, such as your soil probe, because that sensor belongs to
+  another device,
+- a template.
+
+A plant without any listed automation keeps the card's short tip and its two buttons.
+
 ## Smart Plants triggers and conditions
 
 In the automation editor, **Add trigger** and **Add condition** list these under
