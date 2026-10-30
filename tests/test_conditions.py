@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-import voluptuous as vol
 from custom_components.smart_plants.const import DOMAIN
+from custom_components.smart_plants.schema_library import vol
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components.automation.config import async_validate_config_item
 from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE

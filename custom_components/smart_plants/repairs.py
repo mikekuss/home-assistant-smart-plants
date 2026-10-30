@@ -22,7 +22,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, cast
 
-import voluptuous as vol
 from homeassistant.components.repairs import RepairsFlow, RepairsFlowResult
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
@@ -37,6 +36,7 @@ from .events import (
     PlantUpdatedEvent,
 )
 from .roles import role_definitions
+from .schema_library import vol
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant

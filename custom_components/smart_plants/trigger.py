@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar, Final, override
 
-import voluptuous as vol
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     CONF_FOR,
@@ -61,6 +60,7 @@ from .automation_targets import (
     problem_role,
     targets_all_plants,
 )
+from .schema_library import vol
 
 if TYPE_CHECKING:
     from homeassistant.core import CALLBACK_TYPE, Context, HomeAssistant, State
