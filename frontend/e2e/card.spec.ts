@@ -98,3 +98,40 @@ test("without a card only the small loader is fetched", async ({ page }) => {
   expect((await record(page)).picker).toEqual([expect.objectContaining({ type: "smart-plants-plant-card", name: "Smart Plants plant card" })]);
   await expect(page.locator("smart-plants-plant-card")).toHaveCount(0);
 });
+
+test("a card at half a section's width keeps the foot and the area line tidy", async ({ page }, info) => {
+  await open(page, "?half&lang=de");
+  const layout = await page.evaluate(() => [...document.querySelectorAll("smart-plants-plant-card")].flatMap(host => {
+    const content = host.shadowRoot!.querySelector("smart-plants-plant-card-content");
+    const root = content?.shadowRoot;
+    if (!root?.querySelector(".foot")) return [];
+    const box = (selector: string) => root.querySelector(selector)?.getBoundingClientRect() ?? null;
+    const card = root.querySelector("ha-card")!;
+    const last = root.querySelector(".last");
+    const sub = root.querySelector<HTMLElement>(".sub");
+    return [{
+      width: host.getBoundingClientRect().width,
+      overflow: card.scrollWidth - card.clientWidth,
+      lastHeight: last ? last.getBoundingClientRect().height : null,
+      lineHeight: last ? parseFloat(getComputedStyle(last).lineHeight) || 20 : null,
+      lastBottom: box(".last")?.bottom ?? null,
+      buttonTop: box(".tonal")!.top,
+      buttonHeight: box(".tonal")!.height,
+      subHeight: sub?.getBoundingClientRect().height ?? null,
+      subTitle: sub?.title ?? null,
+    }];
+  }));
+  expect(layout.length).toBeGreaterThan(0);
+  const narrow = info.project.name !== "mobile";
+  for (const card of layout) {
+    if (narrow) expect(card.width).toBeLessThanOrEqual(260);
+    expect(card.overflow).toBeLessThanOrEqual(0);
+    expect(card.buttonHeight).toBeGreaterThanOrEqual(36);
+    if (card.lastHeight !== null) expect(card.lastHeight).toBeLessThan(card.lineHeight! * 1.6);
+    if (narrow && card.lastBottom !== null) expect(card.lastBottom).toBeLessThanOrEqual(card.buttonTop);
+    if (card.subHeight !== null) expect(card.subHeight).toBeLessThan(24);
+  }
+  expect(layout.map(c => c.subTitle)).toContain("Kitchen · Ocimum basilicum");
+  await expect(card(page, "Office Aloe")).toContainText("Zuletzt gegossen");
+  await audit(page, info, "card-half");
+});

@@ -1,8 +1,10 @@
 // Synthetic Home Assistant dashboard for the packaged card. The only
 // application code is the production card loader, which imports the card
 // content next to it. Query parameters: `admin`, `lang=de`, `empty` (no card
-// on the dashboard), `refuse` (log_care answers Unauthorized).
+// on the dashboard), `refuse` (log_care answers Unauthorized), `half` (cards
+// at half a section's width).
 const params = new URLSearchParams(location.search);
+if (params.has("half")) document.documentElement.classList.add("half");
 const admin = params.has("admin");
 const language = params.get("lang") ?? "en";
 document.documentElement.lang = language;

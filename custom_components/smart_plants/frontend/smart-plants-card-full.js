@@ -3859,7 +3859,7 @@ var Bt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		return k`<ha-card>
       <div class="head"><sp-plant-avatar .src=${this._photo} .name=${e.name} .l=${t} @photo-error=${() => this._clearPhoto()}></sp-plant-avatar>
         <div class="title"><h2>${u ? k`<button type="button" class="name" title=${d} @click=${() => this._open(e)}>${e.name}</button>` : e.name}</h2>
-          ${e.area || e.species ? k`<span class="sub">${e.area ? k`<ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${e.area}` : j}${e.area && e.species ? " · " : ""}${e.species ? k`<i>${e.species}</i>` : j}</span>` : j}</div></div>
+          ${e.area || e.species ? k`<span class="sub" title=${[e.area, e.species].filter(Boolean).join(" · ")}>${e.area ? k`<ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>` : j}<span class="subtext">${e.area ?? j}${e.area && e.species ? " · " : ""}${e.species ? k`<i>${e.species}</i>` : j}</span></span>` : j}</div></div>
       <div class="status"><div class="chiprow"><sp-status-chip .status=${r.status} .label=${a.label} .more=${a.more} .l=${t}></sp-status-chip>${l ? k`<sp-snooze-chip .label=${l}></sp-snooze-chip>` : j}</div>${o ? k`<span class="reason">${o}</span>` : j}</div>
       ${e.careDue ? k`<p class="care"><ha-icon aria-hidden="true" icon="mdi:calendar-check-outline"></ha-icon><span>${t.t("plant_card.care_due")}</span></p>` : j}
       ${n.show_readings === !1 ? j : this._renderReadings(e, t)}
@@ -3876,7 +3876,7 @@ var Bt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 	}
 };
 It = $, It.styles = [W, o`
-    :host { display: block; }
+    :host { display: block; container-type: inline-size; }
     ha-card { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; color: var(--sp-text);
       background: var(--ha-card-background, var(--sp-card)); border-radius: var(--ha-card-border-radius, 12px);
       border: var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--divider-color, #e0e0e0)); box-shadow: var(--ha-card-box-shadow, none); }
@@ -3914,6 +3914,14 @@ It = $, It.styles = [W, o`
     .warning ha-icon { color: color-mix(in srgb, var(--sp-warning) 70%, var(--sp-text)); }
     .warning p { margin: 2px 0 0; font-size: 13px; }
     .warning strong { font-weight: 500; }
+    /* A narrow card, such as half a section: area and species stay on one line,
+       and the last watering gets its own row above the button. */
+    @container (max-width: 300px) {
+      .sub { flex-wrap: nowrap; min-width: 0; }
+      .subtext { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      .foot { flex-wrap: wrap; row-gap: 4px; padding: 6px 8px 8px 14px; }
+      .last { flex: 1 1 100%; }
+    }
   `], G([R({ attribute: !1 })], $.prototype, "hass", void 0), G([je()], $.prototype, "_config", void 0), G([je()], $.prototype, "_busy", void 0), G([je()], $.prototype, "_photo", void 0), customElements.get("smart-plants-plant-card-content") || customElements.define(Lt, $);
 function Ht() {
 	let e = Vt(), t = {

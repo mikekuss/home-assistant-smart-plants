@@ -60,7 +60,7 @@ const documentLocalizer = (): Localizer => createLocalizer({ language: document.
 
 export class SmartPlantsPlantCardContent extends LitElement {
   static styles = [themeFallbacks, css`
-    :host { display: block; }
+    :host { display: block; container-type: inline-size; }
     ha-card { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; color: var(--sp-text);
       background: var(--ha-card-background, var(--sp-card)); border-radius: var(--ha-card-border-radius, 12px);
       border: var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--divider-color, #e0e0e0)); box-shadow: var(--ha-card-box-shadow, none); }
@@ -98,6 +98,14 @@ export class SmartPlantsPlantCardContent extends LitElement {
     .warning ha-icon { color: color-mix(in srgb, var(--sp-warning) 70%, var(--sp-text)); }
     .warning p { margin: 2px 0 0; font-size: 13px; }
     .warning strong { font-weight: 500; }
+    /* A narrow card, such as half a section: area and species stay on one line,
+       and the last watering gets its own row above the button. */
+    @container (max-width: 300px) {
+      .sub { flex-wrap: nowrap; min-width: 0; }
+      .subtext { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      .foot { flex-wrap: wrap; row-gap: 4px; padding: 6px 8px 8px 14px; }
+      .last { flex: 1 1 100%; }
+    }
   `];
 
   @property({ attribute: false }) public hass?: CardHass;
@@ -253,7 +261,7 @@ export class SmartPlantsPlantCardContent extends LitElement {
     return html`<ha-card>
       <div class="head"><sp-plant-avatar .src=${this._photo} .name=${plant.name} .l=${l} @photo-error=${() => this._clearPhoto()}></sp-plant-avatar>
         <div class="title"><h2>${canOpen ? html`<button type="button" class="name" title=${label} @click=${() => this._open(plant)}>${plant.name}</button>` : plant.name}</h2>
-          ${plant.area || plant.species ? html`<span class="sub">${plant.area ? html`<ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${plant.area}` : nothing}${plant.area && plant.species ? " · " : ""}${plant.species ? html`<i>${plant.species}</i>` : nothing}</span>` : nothing}</div></div>
+          ${plant.area || plant.species ? html`<span class="sub" title=${[plant.area, plant.species].filter(Boolean).join(" · ")}>${plant.area ? html`<ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>` : nothing}<span class="subtext">${plant.area ?? nothing}${plant.area && plant.species ? " · " : ""}${plant.species ? html`<i>${plant.species}</i>` : nothing}</span></span>` : nothing}</div></div>
       <div class="status"><div class="chiprow"><sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip>${snoozed ? html`<sp-snooze-chip .label=${snoozed}></sp-snooze-chip>` : nothing}</div>${reason ? html`<span class="reason">${reason}</span>` : nothing}</div>
       ${plant.careDue ? html`<p class="care"><ha-icon aria-hidden="true" icon="mdi:calendar-check-outline"></ha-icon><span>${l.t("plant_card.care_due")}</span></p>` : nothing}
       ${config.show_readings !== false ? this._renderReadings(plant, l) : nothing}

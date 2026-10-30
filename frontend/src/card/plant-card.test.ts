@@ -92,7 +92,7 @@ describe("loader", () => {
     expect(card.getCardSize()).toBe(6);
     card.setConfig({ type: CARD_TYPE, device_id: DEVICE, show_readings: false, show_watering: false });
     expect(card.getCardSize()).toBe(3);
-    expect(card.getGridOptions()).toEqual({ columns: 6, min_columns: 4, rows: "auto" });
+    expect(card.getGridOptions()).toEqual({ columns: 12, min_columns: 6, rows: "auto" });
     expect(() => card.setConfig(null as unknown as { type: string })).toThrow();
   });
   it("offers the editor form and a stub config", async () => {

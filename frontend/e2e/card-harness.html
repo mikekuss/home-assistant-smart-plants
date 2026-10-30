@@ -8,8 +8,10 @@
       body { margin: 0; font-family: system-ui, sans-serif; background: #fafafa; color: #212121; }
       main { max-width: 1000px; margin: 0 auto; padding: 16px; }
       .section { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; }
-      .section > * { grid-column: span 6; }
-      @media (max-width: 600px) { .section > * { grid-column: span 12; } }
+      .section > * { grid-column: span 12; }
+      /* ?half: a section about 500 pixels wide with cards at 6 columns. */
+      .half main { max-width: 500px; }
+      @media (min-width: 601px) { .half .section > * { grid-column: span 6; } }
       #toasts { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; }
       .toast { display: flex; gap: 16px; align-items: center; padding: 10px 16px; border-radius: 8px; background: #323232; color: #fff; }
       .toast button { background: none; border: 0; color: #8ed1fc; font: inherit; cursor: pointer; }

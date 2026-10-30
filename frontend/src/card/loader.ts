@@ -73,9 +73,9 @@ export class SmartPlantsPlantCard extends HTMLElement {
     return 3 + (config?.show_readings !== false ? 2 : 0) + (config?.show_watering !== false ? 1 : 0);
   }
 
-  // Sections view: half a section wide; the height follows the content.
+  // Sections view: the full section width, at least half; the height follows the content.
   getGridOptions(): Record<string, unknown> {
-    return { columns: 6, min_columns: 4, rows: "auto" };
+    return { columns: 12, min_columns: 6, rows: "auto" };
   }
 
   connectedCallback(): void {

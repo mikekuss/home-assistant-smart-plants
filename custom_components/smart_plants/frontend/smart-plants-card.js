@@ -55,8 +55,8 @@ var s = class e extends HTMLElement {
 	}
 	getGridOptions() {
 		return {
-			columns: 6,
-			min_columns: 4,
+			columns: 12,
+			min_columns: 6,
 			rows: "auto"
 		};
 	}

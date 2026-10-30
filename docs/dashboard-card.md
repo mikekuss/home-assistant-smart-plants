@@ -17,8 +17,9 @@ until you add the card yourself.
 
 The editor starts with the first plant that needs water, or with your first plant.
 
-In a sections view the card takes half the width of a section, and its height follows its
-content. On a phone the cards stack.
+In a sections view the card takes the full width of a section, and its height follows its
+content. You can make it as narrow as half a section. A narrow card puts the last watering on
+its own row above the **Watered** button and shortens a long area and species line.
 
 ## Options
 
