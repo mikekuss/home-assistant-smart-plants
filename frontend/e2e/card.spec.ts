@@ -59,7 +59,8 @@ test("admin sees the plants, opens one in the panel and undoes a watering", asyn
   await expect(page.locator(".toast", { hasText: "Watering removed for Kitchen Basil" })).toBeVisible();
   const after = await record(page);
   expect(after.calls).toEqual([expect.objectContaining({ service: "log_care", data: expect.objectContaining({ kind: "watering" }), target: { device_id: "device-kitchen-basil" } })]);
-  expect(after.ws.map(m => m.type)).toEqual(["smart_plants/care/list", "smart_plants/care/delete"]);
+  // One history read before logging, one for Undo, then the delete.
+  expect(after.ws.map(m => m.type)).toEqual(["smart_plants/care/list", "smart_plants/care/list", "smart_plants/care/delete"]);
 
   await aloe.getByRole("button", { name: "Office Aloe", exact: true }).click();
   expect((await record(page)).navigations).toEqual(["/smart-plants/plant/00000000000040008000000000000001"]);
