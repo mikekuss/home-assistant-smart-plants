@@ -57,7 +57,7 @@ its device and all of its entities.
 
 | Entity name | Created | Unit | Device class | Category | Attributes |
 | --- | --- | --- | --- | --- | --- |
-| Soil moisture | Always | % | moisture | none | none |
+| Soil moisture | Always | % | moisture | none | `min`, `target`, `max` |
 | Health score | Always | % | none | none | `confidence`, `confidence_label`, `contributors`, `configured` |
 | Temperature | First temperature source | °C | temperature | none | none |
 | Humidity | First humidity source | % | humidity | none | none |
@@ -71,6 +71,10 @@ All sensors have the *measurement* state class, so Home Assistant records long-t
 statistics for them. A sensor is unavailable when its role has no valid value (see
 [Sensors and health](sensors-and-health.md)).
 
+The `min`, `target` and `max` attributes of *Soil moisture* are the moisture thresholds in
+effect, in percent (built-in, from the species, or your override). Dashboards and templates
+can read them without enabling the [number entities](#number-entities).
+
 ## Binary sensors
 
 All binary sensors on this table use the *problem* device class: **on** means there is a
@@ -78,7 +82,7 @@ problem. The care task binary sensors are described under [Care tasks](#care-tas
 
 | Entity name | Created | Category | Attributes |
 | --- | --- | --- | --- |
-| Needs water | Always | none | none |
+| Needs water | Always | none | `last_watered` |
 | Too wet | Always | none | none |
 | Sensor stale | Always | none | none |
 | Temperature stress | First temperature source | none | `confidence`, `reason`, `cold_threshold_celsius`, `cold_clear_celsius`, `hot_threshold_celsius`, `hot_clear_celsius` |
@@ -95,6 +99,10 @@ Every binary sensor of a plant, including the care task ones, also has the attri
 The threshold attributes show the thresholds currently in effect (built-in or your override).
 The `reason` attribute explains the current state, for example `cold_stress`, `hot_stress`,
 `temperature_ok`, `low_light`, `enough_light`, `nighttime`, or `battery_ok`.
+
+`last_watered` on *Needs water* is when the plant was last watered, as an ISO timestamp, or
+`null` before the first watering. It changes with every watering you log, also from the
+**Watered** button or the `smart_plants.log_care` action.
 
 *Needs water* and *Too wet* are unavailable while there is no valid moisture reading.
 *Sensor stale* stays available: it's off when no moisture sensor is assigned and on while any

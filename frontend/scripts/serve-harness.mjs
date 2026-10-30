@@ -12,6 +12,10 @@ const files = new Set([
   "/frontend/e2e/harness.html",
   "/frontend/e2e/harness.js",
   "/custom_components/smart_plants/frontend/smart-plants-panel.js",
+  "/frontend/e2e/card-harness.html",
+  "/frontend/e2e/card-harness.js",
+  "/custom_components/smart_plants/frontend/smart-plants-card.js",
+  "/custom_components/smart_plants/frontend/smart-plants-card-full.js",
 ]);
 const types = {
   ".html": "text/html; charset=utf-8",

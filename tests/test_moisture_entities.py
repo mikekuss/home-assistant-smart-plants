@@ -195,6 +195,77 @@ async def test_moisture_sensor_reads_source_state(hass: HomeAssistant) -> None:
     assert float(state.state) == pytest.approx(42.125)
 
 
+async def test_moisture_sensor_reports_effective_thresholds(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    manager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    hass.states.async_set("sensor.source_a", "42", {"unit_of_measurement": "%"})
+    await manager.async_set_moisture_sources(
+        plant.id, expected_revision=1, sources=[{"entity_id": "sensor.source_a"}]
+    )
+    await hass.async_block_till_done()
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "sensor", DOMAIN, f"{DOMAIN}:{plant.id}:moisture"
+    )
+    assert entity_id is not None
+    config = manager.get_plant(plant.id).moisture
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.attributes["min"] == config.moisture_min
+    assert state.attributes["target"] == config.moisture_target
+    assert state.attributes["max"] == config.moisture_max
+
+    await manager.async_set_moisture_thresholds(
+        plant.id,
+        expected_revision=manager.get_plant(plant.id).revision,
+        moisture_min=25,
+        moisture_target=45,
+        moisture_max=65,
+    )
+    await hass.async_block_till_done()
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert (state.attributes["min"], state.attributes["target"]) == (25, 45)
+    assert state.attributes["max"] == 65
+
+
+async def test_needs_water_reports_last_watering(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    manager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    hass.states.async_set("sensor.source_a", "42", {"unit_of_measurement": "%"})
+    await manager.async_set_moisture_sources(
+        plant.id, expected_revision=1, sources=[{"entity_id": "sensor.source_a"}]
+    )
+    await hass.async_block_till_done()
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:needs_water"
+    )
+    assert entity_id is not None
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.attributes["last_watered"] is None
+
+    await manager.async_add_watering(
+        plant.id,
+        expected_revision=manager.get_plant(plant.id).revision,
+        occurred_at="2026-09-12T08:30:00+02:00",
+        note=None,
+    )
+    await manager.async_add_watering(
+        plant.id,
+        expected_revision=manager.get_plant(plant.id).revision,
+        occurred_at="2026-09-10T08:30:00+02:00",
+        note=None,
+    )
+    await hass.async_block_till_done()
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.attributes["last_watered"] == "2026-09-12T08:30:00+02:00"
+
+
 async def test_silent_source_becomes_stale_at_deadline_without_source_event(
     hass: HomeAssistant,
 ) -> None:

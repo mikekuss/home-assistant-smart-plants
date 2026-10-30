@@ -3,19 +3,21 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from custom_components.smart_plants import panel as panel_module
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.panel import (
+    CARD_MODULE_URL,
     PANEL_URL_PATH,
     SmartPlantsPanelRegistrationError,
     async_register_panel,
     async_register_static,
     async_unregister_panel,
 )
-from homeassistant.components.frontend import Panel
+from homeassistant.components import frontend
+from homeassistant.components.frontend import DATA_EXTRA_MODULE_URL, Panel
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -88,7 +90,10 @@ async def test_static_route_uses_production_cache_headers(
     assert await async_setup_component(hass, "http", {})
     assert hass.http is not None
     register = AsyncMock()
-    with patch.object(hass.http, "async_register_static_paths", register):
+    with (
+        patch.object(hass.http, "async_register_static_paths", register),
+        patch.object(frontend, "add_extra_js_url"),
+    ):
         await async_register_static(hass)
 
     assert register.await_args is not None
@@ -108,3 +113,36 @@ async def test_unrelated_panel_path_fails_and_is_never_removed(
 
     async_unregister_panel(hass)
     assert _panels(hass)[PANEL_URL_PATH] is unrelated
+
+
+async def test_card_script_is_registered_once_per_process(
+    hass: HomeAssistant,
+) -> None:
+    add = MagicMock(wraps=frontend.add_extra_js_url)
+    with patch.object(frontend, "add_extra_js_url", add):
+        entry = await _setup_entry(hass)
+        await async_register_static(hass)
+        assert await hass.config_entries.async_unload(entry.entry_id)
+        await hass.async_block_till_done()
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    add.assert_called_once_with(hass, CARD_MODULE_URL)
+    # The card stays available while the entry is unloaded; its content says
+    # so when the plant's device is gone.
+    assert CARD_MODULE_URL in hass.data[DATA_EXTRA_MODULE_URL].urls
+
+
+def test_card_url_versions_both_card_files() -> None:
+    frontend_dir = Path(panel_module.__file__).parent / "frontend"
+    manifest = json.loads(
+        (frontend_dir.parent / "manifest.json").read_text(encoding="utf-8")
+    )
+    digest = hashlib.sha256(
+        (frontend_dir / "smart-plants-card.js").read_bytes()
+        + (frontend_dir / "smart-plants-card-full.js").read_bytes()
+    ).hexdigest()[:16]
+    expected = (
+        f"/smart_plants_static/smart-plants-card.js?v={manifest['version']}-{digest}"
+    )
+    assert expected == CARD_MODULE_URL

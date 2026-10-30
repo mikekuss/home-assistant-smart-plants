@@ -159,6 +159,20 @@ class _MoistureSensor(_MoistureControlledSensor):
             return None
         return float(result.computed_percent)
 
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        # The effective thresholds, so dashboards and templates can show the
+        # target band without enabling the threshold number entities.
+        plant = self._manager.snapshot.plants.get(self._plant_id)
+        if plant is None:
+            return {}
+        config = plant.moisture
+        return {
+            "min": config.moisture_min,
+            "target": config.moisture_target,
+            "max": config.moisture_max,
+        }
+
 
 # Roles that feed the composite health score. Battery is excluded (device
 # health, not plant health).

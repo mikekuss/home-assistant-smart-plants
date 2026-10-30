@@ -1,5 +1,5 @@
 """
-Admin-only Lovelace panel for Smart Plants.
+Admin-only Lovelace panel and dashboard card script for Smart Plants.
 
 The static bundle is served from ``custom_components/smart_plants/frontend/``
 via a single process-lifetime static route (registered from
@@ -56,6 +56,24 @@ _MODULE_URL = (
     f"{quote(PANEL_BUNDLE_VERSION, safe='')}"
 )
 
+# The dashboard card is a small loader that every frontend session loads, plus
+# the card content the loader imports only once a card is on screen. The loader
+# URL carries a version over both files, and the loader passes its own query on
+# to the content, so browsers fetch both again after an update instead of
+# running cached copies.
+CARD_BUNDLE = "smart-plants-card.js"
+CARD_CONTENT_BUNDLE = "smart-plants-card-full.js"
+_CARD_HASH = hashlib.sha256(
+    b"".join(
+        (_FRONTEND_DIR / name).read_bytes()
+        for name in (CARD_BUNDLE, CARD_CONTENT_BUNDLE)
+    )
+).hexdigest()[:16]
+CARD_BUNDLE_VERSION = f"{_MANIFEST_VERSION}-{_CARD_HASH}"
+CARD_MODULE_URL = (
+    f"{_STATIC_URL_PREFIX}/{CARD_BUNDLE}?v={quote(CARD_BUNDLE_VERSION, safe='')}"
+)
+
 _STATIC_REGISTRATION_FLAG = f"{DOMAIN}_static_registered"
 _PANEL_OWNER_KEY = f"{DOMAIN}_panel_owner"
 
@@ -66,10 +84,12 @@ class SmartPlantsPanelRegistrationError(HomeAssistantError):
 
 async def async_register_static(hass: HomeAssistant) -> None:
     """
-    Register the panel bundle static route exactly once per process.
+    Register the bundles' static route and the card script once per process.
 
     Called from ``async_setup``. HA rejects duplicate paths, so guard on a
-    flag stored in ``hass.data``.
+    flag stored in ``hass.data``. The card script loads in every frontend
+    session, so the card is available on any dashboard and in the card
+    picker; it defines the card and changes nothing else.
     """
     if hass.data.get(_STATIC_REGISTRATION_FLAG):
         return
@@ -89,6 +109,7 @@ async def async_register_static(hass: HomeAssistant) -> None:
             )
         ]
     )
+    frontend.add_extra_js_url(hass, CARD_MODULE_URL)
     hass.data[_STATIC_REGISTRATION_FLAG] = True
 
 

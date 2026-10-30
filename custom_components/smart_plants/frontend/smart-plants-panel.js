@@ -3010,7 +3010,24 @@ var Bn = {
 	"notifications.description_water": "Erstellt in Smart Plants → Benachrichtigungen. Schickt eine Nachricht, wenn eine Pflanze seit {delay} Wasser braucht. Stummgeschaltete Pflanzen melden sich, wenn die Stummschaltung endet.",
 	"notifications.description_water_now": "Erstellt in Smart Plants → Benachrichtigungen. Schickt eine Nachricht, wenn eine Pflanze Wasser braucht. Stummgeschaltete Pflanzen melden sich, wenn die Stummschaltung endet.",
 	"notifications.msg_water_title": "{plant} braucht Wasser",
-	"notifications.msg_water_body": "Gieß sie, wenn du dazu kommst."
+	"notifications.msg_water_body": "Gieß sie, wenn du dazu kommst.",
+	"plant_card.name": "Smart Plants Pflanzenkarte",
+	"plant_card.description": "Eine Pflanze mit Status, Bodenfeuchte, Messwerten und einer Schaltfläche „Gegossen“.",
+	"plant_card.missing_title": "Pflanze nicht gefunden",
+	"plant_card.missing_body": "Die Pflanze dieser Karte wurde entfernt. Bearbeite die Karte und wähle eine andere Pflanze.",
+	"plant_card.no_plant": "Wähle im Karteneditor eine Pflanze.",
+	"plant_card.care_due": "Pflege fällig",
+	"plant_card.paused": "Die Überwachung ist pausiert",
+	"plant_card.open_label": "{name} in Smart Plants öffnen",
+	"plant_card.details_label": "Details zu {name} anzeigen",
+	"plant_card.unauthorized": "Du darfst keine Pflege eintragen",
+	"plant_card.log_failed": "Gießen für {name} konnte nicht eingetragen werden",
+	"plant_card.undo_failed": "Gießen für {name} konnte nicht entfernt werden",
+	"plant_card.editor_plant": "Pflanze",
+	"plant_card.editor_show_readings": "Messwerte anzeigen",
+	"plant_card.editor_show_readings_help": "Feuchtebalken und Messwert-Chips",
+	"plant_card.editor_show_watering": "Schaltfläche „Gegossen“ anzeigen",
+	"plant_card.editor_show_watering_help": "Trägt Gießen für diese Pflanze ein"
 }, Vn = {
 	"format.percent": "{value}%",
 	"format.recorded_date_time": "{datetime} (UTC{offset})",
@@ -4119,7 +4136,24 @@ var Bn = {
 	"notifications.description_water": "Created in Smart Plants → Notifications. Sends a message when a plant has needed water for {delay}. Snoozed plants send theirs when the snooze ends.",
 	"notifications.description_water_now": "Created in Smart Plants → Notifications. Sends a message when a plant needs water. Snoozed plants send theirs when the snooze ends.",
 	"notifications.msg_water_title": "{plant} needs water",
-	"notifications.msg_water_body": "Water it when you get a chance."
+	"notifications.msg_water_body": "Water it when you get a chance.",
+	"plant_card.name": "Smart Plants plant card",
+	"plant_card.description": "One plant with its status, soil moisture, readings and a Watered button.",
+	"plant_card.missing_title": "Plant not found",
+	"plant_card.missing_body": "The plant this card shows was removed. Edit the card to pick another plant.",
+	"plant_card.no_plant": "Pick a plant in the card editor.",
+	"plant_card.care_due": "Care due",
+	"plant_card.paused": "Monitoring is paused",
+	"plant_card.open_label": "Open {name} in Smart Plants",
+	"plant_card.details_label": "Show details for {name}",
+	"plant_card.unauthorized": "You don't have permission to log care",
+	"plant_card.log_failed": "Watering could not be logged for {name}",
+	"plant_card.undo_failed": "Watering could not be removed for {name}",
+	"plant_card.editor_plant": "Plant",
+	"plant_card.editor_show_readings": "Show readings",
+	"plant_card.editor_show_readings_help": "Moisture bar and reading chips",
+	"plant_card.editor_show_watering": "Show Watered button",
+	"plant_card.editor_show_watering_help": "Logs a watering for this plant"
 }, Hn = ["en", "de"], Un = {
 	en: Vn,
 	de: Bn
@@ -8984,31 +9018,31 @@ var Ac, jc = Object.fromEntries([
 		validate: (e, t) => di(e, t),
 		seed: (e) => fi(e)
 	}
-].map((e) => [e.problemRole, e])), Mc = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", Nc = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Pc = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
-function Fc(e) {
+].map((e) => [e.problemRole, e])), Mc = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", Nc = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Pc = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z", Fc = /^\/plant\/([^/]+)(?:\/(sensors))?\/?$/;
+function Ic(e) {
 	let t = -e.getTimezoneOffset();
 	return `${new Date(e.getTime() + t * 6e4).toISOString().slice(0, 19)}${t < 0 ? "-" : "+"}${String(Math.floor(Math.abs(t) / 60)).padStart(2, "0")}:${String(Math.abs(t) % 60).padStart(2, "0")}`;
 }
-var Ic = "smart_plants.history_role", Lc = "smart_plants.history_range", Rc = 3e5, zc = 400, Bc = 2e3, Vc = 1e3, Hc = (e, t) => e !== t && (e?.state !== t?.state || JSON.stringify(e?.attributes) !== JSON.stringify(t?.attributes)), Uc = (e, t) => !!e && !!t && e !== t && (e.attributes.snoozed_until ?? null) !== (t.attributes.snoozed_until ?? null);
-function Wc(e) {
+var Lc = "smart_plants.history_role", Rc = "smart_plants.history_range", zc = 3e5, Bc = 400, Vc = 2e3, Hc = 1e3, Uc = (e, t) => e !== t && (e?.state !== t?.state || JSON.stringify(e?.attributes) !== JSON.stringify(t?.attributes)), Wc = (e, t) => !!e && !!t && e !== t && (e.attributes.snoozed_until ?? null) !== (t.attributes.snoozed_until ?? null);
+function Gc(e) {
 	try {
 		return localStorage.getItem(e);
 	} catch {
 		return null;
 	}
 }
-function Gc(e, t) {
+function Kc(e, t) {
 	try {
 		localStorage.setItem(e, t);
 	} catch {}
 }
 var $ = class e extends S {
 	constructor(...e) {
-		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => Ft(e) ? e : "moisture")(Wc(Ic)), this._historyRange = ((e) => yn(e) ? e : "7d")(Wc(Lc)), this._history = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._snoozeDraft = null, this._restEditor = null, this._taskEditor = null, this._automateTaskId = null, this._carePending = /* @__PURE__ */ new Set(), this._careTaskId = null, this._wizardStarted = !1, this._notificationsOpen = !1, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._moistureSourceError = "", this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ownWriteAt = -Infinity, this._relatedFor = null, this._relatedRequest = 0, this._relatedAt = -Infinity, this._ready = () => {
+		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => Ft(e) ? e : "moisture")(Gc(Lc)), this._historyRange = ((e) => yn(e) ? e : "7d")(Gc(Rc)), this._history = null, this._careError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._snoozeDraft = null, this._restEditor = null, this._taskEditor = null, this._automateTaskId = null, this._carePending = /* @__PURE__ */ new Set(), this._careTaskId = null, this._wizardStarted = !1, this._notificationsOpen = !1, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._moistureSourceError = "", this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ownWriteAt = -Infinity, this._relatedFor = null, this._relatedRequest = 0, this._relatedAt = -Infinity, this._ready = () => {
 			this._refresh();
 		}, this._disconnected = () => {
 			this._context++, this._formBusy = !1, this._blocked = !0, this._request++, this._providerRequest++, this._preview = null, this._clearImage(), this._error = this._l.t("error.disconnected");
-		};
+		}, this._routeApplied = null;
 	}
 	get _l() {
 		return Xn(this.hass);
@@ -9017,7 +9051,7 @@ var $ = class e extends S {
 		e.has("hass") && (this.hass?.states && (this._states = Object.fromEntries(Object.entries(this.hass.states).filter(([e, t]) => wt(t) && t.entity_id === e))), this._syncImage()), this._syncHistory();
 	}
 	updated(e) {
-		e.has("hass") && (this.hass?.connection !== this._connection && (this._unbind(), this._bind(), this._refresh()), this.hass?.user?.is_admin === !1 && this._unbind(), this._watchCare(e.get("hass"))), this._syncRelated();
+		this._applyRoute(), e.has("hass") && (this.hass?.connection !== this._connection && (this._unbind(), this._bind(), this._refresh()), this.hass?.user?.is_admin === !1 && this._unbind(), this._watchCare(e.get("hass"))), this._syncRelated();
 		let t = this.shadowRoot?.querySelector("dialog"), n = null;
 		try {
 			n = this.shadowRoot?.activeElement;
@@ -9045,7 +9079,7 @@ var $ = class e extends S {
 		let t = e?.states, n = this.hass?.states;
 		if (!t || !n || t === n) return;
 		let r = this._view.kind === "detail" ? `smart_plants:${this._view.plantId}:care` : null;
-		this._entities.some((e) => e.platform === "smart_plants" && (r !== null && e.unique_id.startsWith(r) && Hc(t[e.entity_id], n[e.entity_id]) || e.entity_id.startsWith("binary_sensor.") && Uc(t[e.entity_id], n[e.entity_id]))) && (this._carePending.size || this._watering.size || Date.now() - this._ownWriteAt < Bc || this._scheduleCareRefresh());
+		this._entities.some((e) => e.platform === "smart_plants" && (r !== null && e.unique_id.startsWith(r) && Uc(t[e.entity_id], n[e.entity_id]) || e.entity_id.startsWith("binary_sensor.") && Wc(t[e.entity_id], n[e.entity_id]))) && (this._carePending.size || this._watering.size || Date.now() - this._ownWriteAt < Vc || this._scheduleCareRefresh());
 	}
 	_scheduleCareRefresh() {
 		this._careTimer === void 0 && (this._careTimer = setTimeout(() => {
@@ -9056,7 +9090,7 @@ var $ = class e extends S {
 				}
 				this._refresh(!1);
 			}
-		}, zc));
+		}, Bc));
 	}
 	_clearCareTimer() {
 		clearTimeout(this._careTimer), this._careTimer = void 0;
@@ -9077,7 +9111,7 @@ var $ = class e extends S {
 	_scheduleRelated() {
 		this._relatedTimer === void 0 && (this._relatedTimer = setTimeout(() => {
 			this._relatedTimer = void 0, this._loadRelated();
-		}, Math.max(0, this._relatedAt + Vc - Date.now())));
+		}, Math.max(0, this._relatedAt + Hc - Date.now())));
 	}
 	_loadRelated() {
 		clearTimeout(this._relatedTimer), this._relatedTimer = void 0;
@@ -9239,6 +9273,28 @@ var $ = class e extends S {
 	_plantById(e) {
 		return this._plants.find((t) => t.id === e);
 	}
+	_applyRoute() {
+		let e = this.route?.path ?? "", t = Fc.exec(e);
+		if (!t) {
+			this._routeApplied = null;
+			return;
+		}
+		if (e === this._routeApplied || this._loading || this._blocked) return;
+		this._routeApplied = e;
+		let n;
+		try {
+			n = decodeURIComponent(t[1]);
+		} catch {
+			return;
+		}
+		this._plantById(n) ? this._openFromOverview({
+			plantId: n,
+			...t[2] ? { section: "sensors" } : {}
+		}) : this._clearRoute();
+	}
+	_clearRoute() {
+		Fc.test(this.route?.path ?? "") && (history.replaceState(null, "", this.route?.prefix || "/smart-plants"), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !0 } })));
+	}
 	_plantAreaNames() {
 		return Object.fromEntries(this._plants.map((e) => {
 			let t = z(e, this._devices)?.area_id;
@@ -9282,7 +9338,8 @@ var $ = class e extends S {
 		}, this._conflict = null, this._areaReview = !1, this._preview = null, this._results = [], this._provider = "manual", this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceSaved = {}, this._pendingSourceSwitch = null, this._allSourceSensors = !1, this._sourceUnavailable = null, this._moistureSourceError = "";
 	}
 	_show(e) {
-		if (this._context++, this._closeDialog(), this._formBusy = !1, this._providerRequest++, this._view = e, this._error = "", this._notice = "", this._healthError = "", this._careHistory = null, this._careError = "", this._forgetRelated(), this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), e.kind === "create" && (this._wizardStarted = !0), e.kind === "detail") {
+		let t = Fc.exec(this.route?.path ?? "");
+		if (t && (e.kind !== "detail" || encodeURIComponent(e.plantId) !== t[1]) && this._clearRoute(), this._context++, this._closeDialog(), this._formBusy = !1, this._providerRequest++, this._view = e, this._error = "", this._notice = "", this._healthError = "", this._careHistory = null, this._careError = "", this._forgetRelated(), this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), e.kind === "create" && (this._wizardStarted = !0), e.kind === "detail") {
 			this._detailSection = "overview", this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._moistureMode = null, this._careFilter = "all", this._careFormOpen = !1, this._careEditingId = null, this._careTaskId = null, this._careKind = "watering", this._careFields = {};
 			let t = /* @__PURE__ */ new Date();
 			this._careDate = (/* @__PURE__ */ new Date(t.getTime() - t.getTimezoneOffset() * 6e4)).toISOString().slice(0, 16), this._careNote = "";
@@ -9390,7 +9447,7 @@ var $ = class e extends S {
 		let n = this.hass, r = this._l;
 		this._setWatering(e, !0), this._error = "", this._request++;
 		try {
-			let i = await this._withRevision(e, (t) => P.addWatering(n, e, t, Fc(/* @__PURE__ */ new Date()), null));
+			let i = await this._withRevision(e, (t) => P.addWatering(n, e, t, Ic(/* @__PURE__ */ new Date()), null));
 			this._adopt(i.plant), this._followQuickWrite(i.plant);
 			let a = this._overview[e];
 			a && (this._overview = {
@@ -9462,7 +9519,7 @@ var $ = class e extends S {
 		let n = this._historyTarget(t);
 		if (!n) return;
 		let { key: r, entityId: i, role: a } = n, o = this._history?.key === r;
-		if (o && !e && Date.now() - this._historyLoadedAt < Rc) return;
+		if (o && !e && Date.now() - this._historyLoadedAt < zc) return;
 		let s = ++this._historyRequest;
 		this._historyLoadedAt = Date.now(), (!o || this._history?.status !== "ready") && (this._history = {
 			key: r,
@@ -9501,10 +9558,10 @@ var $ = class e extends S {
 			now: Date.now(),
 			onLogWatering: this._blocked ? null : (e) => this._logCareAt("watering", e),
 			onRole: (e) => {
-				this._historyRole = e, Gc(Ic, e);
+				this._historyRole = e, Kc(Lc, e);
 			},
 			onRange: (e) => {
-				this._historyRange = e, Gc(Lc, e);
+				this._historyRange = e, Kc(Rc, e);
 			},
 			onOpen: () => {
 				this.dispatchEvent(new CustomEvent("hass-more-info", {
@@ -11231,6 +11288,6 @@ Ac = $, Ac.styles = [
 ], Ac.bundleVersion = Fs(import.meta.url), U([C({ attribute: !1 })], $.prototype, "hass", void 0), U([C({ attribute: !1 })], $.prototype, "panel", void 0), U([C({
 	type: Boolean,
 	reflect: !0
-})], $.prototype, "narrow", void 0), U([w()], $.prototype, "_plants", void 0), U([w()], $.prototype, "_loading", void 0), U([w()], $.prototype, "_error", void 0), U([w()], $.prototype, "_notice", void 0), U([w()], $.prototype, "_view", void 0), U([w()], $.prototype, "_detailSection", void 0), U([w()], $.prototype, "_formBusy", void 0), U([w()], $.prototype, "_capabilities", void 0), U([w()], $.prototype, "_updateAvailable", void 0), U([w()], $.prototype, "_blocked", void 0), U([w()], $.prototype, "_areas", void 0), U([w()], $.prototype, "_entities", void 0), U([w()], $.prototype, "_devices", void 0), U([w()], $.prototype, "_states", void 0), U([w()], $.prototype, "_evaluations", void 0), U([w()], $.prototype, "_health", void 0), U([w()], $.prototype, "_healthError", void 0), U([w()], $.prototype, "_careHistory", void 0), U([w()], $.prototype, "_historyRole", void 0), U([w()], $.prototype, "_historyRange", void 0), U([w()], $.prototype, "_history", void 0), U([w()], $.prototype, "_careError", void 0), U([w()], $.prototype, "_careDate", void 0), U([w()], $.prototype, "_careNote", void 0), U([w()], $.prototype, "_careKind", void 0), U([w()], $.prototype, "_careFields", void 0), U([w()], $.prototype, "_careEditingId", void 0), U([w()], $.prototype, "_registryError", void 0), U([w()], $.prototype, "_areaReview", void 0), U([w()], $.prototype, "_overview", void 0), U([w()], $.prototype, "_overviewError", void 0), U([w()], $.prototype, "_thumbnails", void 0), U([w()], $.prototype, "_watering", void 0), U([w()], $.prototype, "_edits", void 0), U([w()], $.prototype, "_conflict", void 0), U([w()], $.prototype, "_allSensors", void 0), U([w()], $.prototype, "_preview", void 0), U([w()], $.prototype, "_provider", void 0), U([w()], $.prototype, "_query", void 0), U([w()], $.prototype, "_results", void 0), U([w()], $.prototype, "_related", void 0), U([w()], $.prototype, "_relatedAllPlants", void 0), U([w()], $.prototype, "_relatedExpanded", void 0), U([w()], $.prototype, "_imageUrl", void 0), U([w()], $.prototype, "_imageLoading", void 0), U([w()], $.prototype, "_imageError", void 0), U([w()], $.prototype, "_dialog", void 0), U([w()], $.prototype, "_snoozeDraft", void 0), U([w()], $.prototype, "_restEditor", void 0), U([w()], $.prototype, "_taskEditor", void 0), U([w()], $.prototype, "_automateTaskId", void 0), U([w()], $.prototype, "_carePending", void 0), U([w()], $.prototype, "_careTaskId", void 0), U([w()], $.prototype, "_wizardStarted", void 0), U([w()], $.prototype, "_notificationsOpen", void 0), U([w()], $.prototype, "_creationNotice", void 0), U([w()], $.prototype, "_creationPhoto", void 0), U([w()], $.prototype, "_createdPlantId", void 0), U([w()], $.prototype, "_thresholdRole", void 0), U([w()], $.prototype, "_thresholdEdits", void 0), U([w()], $.prototype, "_thresholdBaseline", void 0), U([w()], $.prototype, "_thresholdError", void 0), U([w()], $.prototype, "_thresholdSaved", void 0), U([w()], $.prototype, "_pendingThresholdSwitch", void 0), U([w()], $.prototype, "_sourceRole", void 0), U([w()], $.prototype, "_sourceEdits", void 0), U([w()], $.prototype, "_sourceBaseline", void 0), U([w()], $.prototype, "_sourceError", void 0), U([w()], $.prototype, "_sourceUnavailable", void 0), U([w()], $.prototype, "_sourceSaved", void 0), U([w()], $.prototype, "_pendingSourceSwitch", void 0), U([w()], $.prototype, "_sourceMode", void 0), U([w()], $.prototype, "_moistureMode", void 0), U([w()], $.prototype, "_moistureSourceError", void 0), U([w()], $.prototype, "_expanded", void 0), U([w()], $.prototype, "_settingsOpen", void 0), U([w()], $.prototype, "_careFilter", void 0), U([w()], $.prototype, "_careFormOpen", void 0), U([w()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);
+})], $.prototype, "narrow", void 0), U([C({ attribute: !1 })], $.prototype, "route", void 0), U([w()], $.prototype, "_plants", void 0), U([w()], $.prototype, "_loading", void 0), U([w()], $.prototype, "_error", void 0), U([w()], $.prototype, "_notice", void 0), U([w()], $.prototype, "_view", void 0), U([w()], $.prototype, "_detailSection", void 0), U([w()], $.prototype, "_formBusy", void 0), U([w()], $.prototype, "_capabilities", void 0), U([w()], $.prototype, "_updateAvailable", void 0), U([w()], $.prototype, "_blocked", void 0), U([w()], $.prototype, "_areas", void 0), U([w()], $.prototype, "_entities", void 0), U([w()], $.prototype, "_devices", void 0), U([w()], $.prototype, "_states", void 0), U([w()], $.prototype, "_evaluations", void 0), U([w()], $.prototype, "_health", void 0), U([w()], $.prototype, "_healthError", void 0), U([w()], $.prototype, "_careHistory", void 0), U([w()], $.prototype, "_historyRole", void 0), U([w()], $.prototype, "_historyRange", void 0), U([w()], $.prototype, "_history", void 0), U([w()], $.prototype, "_careError", void 0), U([w()], $.prototype, "_careDate", void 0), U([w()], $.prototype, "_careNote", void 0), U([w()], $.prototype, "_careKind", void 0), U([w()], $.prototype, "_careFields", void 0), U([w()], $.prototype, "_careEditingId", void 0), U([w()], $.prototype, "_registryError", void 0), U([w()], $.prototype, "_areaReview", void 0), U([w()], $.prototype, "_overview", void 0), U([w()], $.prototype, "_overviewError", void 0), U([w()], $.prototype, "_thumbnails", void 0), U([w()], $.prototype, "_watering", void 0), U([w()], $.prototype, "_edits", void 0), U([w()], $.prototype, "_conflict", void 0), U([w()], $.prototype, "_allSensors", void 0), U([w()], $.prototype, "_preview", void 0), U([w()], $.prototype, "_provider", void 0), U([w()], $.prototype, "_query", void 0), U([w()], $.prototype, "_results", void 0), U([w()], $.prototype, "_related", void 0), U([w()], $.prototype, "_relatedAllPlants", void 0), U([w()], $.prototype, "_relatedExpanded", void 0), U([w()], $.prototype, "_imageUrl", void 0), U([w()], $.prototype, "_imageLoading", void 0), U([w()], $.prototype, "_imageError", void 0), U([w()], $.prototype, "_dialog", void 0), U([w()], $.prototype, "_snoozeDraft", void 0), U([w()], $.prototype, "_restEditor", void 0), U([w()], $.prototype, "_taskEditor", void 0), U([w()], $.prototype, "_automateTaskId", void 0), U([w()], $.prototype, "_carePending", void 0), U([w()], $.prototype, "_careTaskId", void 0), U([w()], $.prototype, "_wizardStarted", void 0), U([w()], $.prototype, "_notificationsOpen", void 0), U([w()], $.prototype, "_creationNotice", void 0), U([w()], $.prototype, "_creationPhoto", void 0), U([w()], $.prototype, "_createdPlantId", void 0), U([w()], $.prototype, "_thresholdRole", void 0), U([w()], $.prototype, "_thresholdEdits", void 0), U([w()], $.prototype, "_thresholdBaseline", void 0), U([w()], $.prototype, "_thresholdError", void 0), U([w()], $.prototype, "_thresholdSaved", void 0), U([w()], $.prototype, "_pendingThresholdSwitch", void 0), U([w()], $.prototype, "_sourceRole", void 0), U([w()], $.prototype, "_sourceEdits", void 0), U([w()], $.prototype, "_sourceBaseline", void 0), U([w()], $.prototype, "_sourceError", void 0), U([w()], $.prototype, "_sourceUnavailable", void 0), U([w()], $.prototype, "_sourceSaved", void 0), U([w()], $.prototype, "_pendingSourceSwitch", void 0), U([w()], $.prototype, "_sourceMode", void 0), U([w()], $.prototype, "_moistureMode", void 0), U([w()], $.prototype, "_moistureSourceError", void 0), U([w()], $.prototype, "_expanded", void 0), U([w()], $.prototype, "_settingsOpen", void 0), U([w()], $.prototype, "_careFilter", void 0), U([w()], $.prototype, "_careFormOpen", void 0), U([w()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);
 //#endregion
 export { $ as SmartPlantsPanel };

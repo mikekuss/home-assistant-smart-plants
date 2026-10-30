@@ -19,6 +19,8 @@ sensors, problem indicators, and a health score for your dashboards and automati
   thresholds, the health score, and what happens when a sensor disappears.
 - [Entities](entities.md): every entity a plant provides, when it's created, and its
   attributes.
+- [Dashboard card](dashboard-card.md): the plant card for any dashboard, its options, the
+  **Watered** button, and what users who aren't administrators see.
 - [OpenPlantBook](openplantbook.md): the optional species provider, with credentials, search,
   reviewed apply, and what is stored.
 

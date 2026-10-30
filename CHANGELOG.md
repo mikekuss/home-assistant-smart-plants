@@ -14,6 +14,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   notifications you set up for all plants, have their own group. The list replaces the
   automation IDs in **Troubleshooting**. See
   [See which automations use a plant](docs/automations.md#see-which-automations-use-a-plant).
+- A **Smart Plants plant card** for dashboards shows one plant with its status, soil moisture
+  bar, readings, last watering and a **Watered** button. Users who aren't administrators can
+  use it too. Pick it in the card picker; it loads only when a card is on screen. See
+  [Dashboard card](docs/dashboard-card.md).
+- The *Soil moisture* sensor has the attributes `min`, `target` and `max` with the moisture
+  thresholds in effect, and *Needs water* has `last_watered` with the time of the last
+  watering. See [Entities](docs/entities.md#sensors).
+- The panel opens a plant from a link such as `/smart-plants/plant/<plant_id>`. The dashboard
+  card's plant name links there for administrators.
 
 ### Changed
 
