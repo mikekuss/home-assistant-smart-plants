@@ -15,6 +15,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   automation IDs in **Troubleshooting**. See
   [See which automations use a plant](docs/automations.md#see-which-automations-use-a-plant).
 
+### Fixed
+
+- The sensor pickers under **Sensors → Add sensor** and **Change** no longer offer Smart
+  Plants' own sensors, even with **Show all sensors** turned on. Picking one, for example a
+  plant's own *Light* sensor or another plant's *Soil moisture*, made a plant read its own or
+  another plant's calculated value. Smart Plants now refuses them as new sources, also when
+  you type the entity ID or choose a replacement in Repairs. A plant that already uses one
+  keeps it until you replace it, and the **Sensors** tab marks it *Smart Plants sensor,
+  replace it*. See [Supported roles](docs/sensors-and-health.md#supported-roles).
+
 ## [0.14.0] - 2026-10-29
 
 ### Added

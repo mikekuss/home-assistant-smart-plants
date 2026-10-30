@@ -517,6 +517,12 @@ export function plantDevice(plant: PlantRecord, devices: HADevice[]): HADevice |
 export function resolveSource(source: SensorSource, entities: HAEntity[]): HAEntity | undefined {
   return source.registry_id ? entities.find(e => e.id === source.registry_id) : entities.find(e => e.entity_id === source.entity_id);
 }
+// Smart Plants calculates its own sensors from a plant's sources, so one of
+// them as a source would make a plant read its own or another plant's output.
+// The pickers leave them out and the backend refuses them as new sources.
+export function ownEntityIds(entities: HAEntity[]): Set<string> {
+  return new Set(entities.filter(e => e.platform === "smart_plants").map(e => e.entity_id));
+}
 export function canonicalMoisture(m: MoistureInput, entities: HAEntity[]): MoistureInput {
   const primary = m.sources.find(s => s.entity_id === m.primary_entity_id);
   return { ...structuredClone(m), sources: m.sources.map(s => {
@@ -527,6 +533,7 @@ export function canonicalMoisture(m: MoistureInput, entities: HAEntity[]): Moist
 export function sourceWarning(source: SensorSource, entities: HAEntity[], states: Record<string, HAState>, l: Localizer = ENGLISH): string {
   const registered = resolveSource(source, entities);
   if (source.registry_id && !registered) return l.t("source_warning.missing_registered");
+  if (registered?.platform === "smart_plants") return l.t("source_warning.own_sensor");
   const state = states[registered?.entity_id ?? source.entity_id];
   const warnings = [];
   if (!registered) warnings.push(l.t("source_warning.unregistered"));
@@ -602,6 +609,7 @@ export function canonicalRoleSources(c: RoleSourceInput, entities: HAEntity[]): 
 export function roleSourceWarning(source: SensorSource, entities: HAEntity[], states: Record<string, HAState>, spec: RoleSourceSpec, l: Localizer = ENGLISH): string {
   const registered = resolveSource(source, entities);
   if (source.registry_id && !registered) return l.t("source_warning.missing_registered");
+  if (registered?.platform === "smart_plants") return l.t("source_warning.own_sensor");
   const state = states[registered?.entity_id ?? source.entity_id];
   const warnings = [];
   if (!registered) warnings.push(l.t("source_warning.unregistered"));

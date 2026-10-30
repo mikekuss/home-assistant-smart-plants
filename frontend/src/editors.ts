@@ -1,5 +1,5 @@
 import { html, nothing } from "lit";
-import { builtin, keys, placements, resolveSource, rolePhrase, roleSourceWarning, singleSourcePrimary, sourceWarning, speciesCommonName } from "./model.js";
+import { builtin, keys, ownEntityIds, placements, resolveSource, rolePhrase, roleSourceWarning, singleSourcePrimary, sourceWarning, speciesCommonName } from "./model.js";
 import type { RoleSourceSpec } from "./model.js";
 import { isMessageKey } from "./localize.js";
 import type { Localizer } from "./localize.js";
@@ -40,6 +40,12 @@ function sourceOptionLabel(id: string, states: Record<string, HAState>): string 
   const name = states[id]?.attributes.friendly_name;
   return typeof name === "string" && name.trim() ? `${name} · ${id}` : id;
 }
+// Sensors from the registry and the state machine that `fits` accepts, except
+// Smart Plants' own sensors, which are never offered as a source.
+function sourceCandidates(entities: HAEntity[], states: Record<string, HAState>, fits: (id: string) => boolean): string[] {
+  const own = ownEntityIds(entities);
+  return [...new Set([...entities.map(e => e.entity_id), ...Object.keys(states)])].filter(id => id.startsWith("sensor.") && !own.has(id) && fits(id)).sort();
+}
 // Which part of a sensor editor to show: everything, only the assigned sensor
 // list with its pickers, or only how several sensors combine (main sensor,
 // combination and the not-updating window).
@@ -63,8 +69,12 @@ function sourcesControls<T extends MoistureInput | RoleSourceInput>(l: Localizer
     ${selectField(l, addLabel, "", [{ value: "", label: l.t("sources.choose") }, ...candidates.map(id => ({ value: id, label: candidateLabel(l, id, states) }))], id => {
       if (id && !c.sources.some(s => s.entity_id === id)) add(id);
     })}
-    <label>${l.t("sources.assign_unavailable")}<input placeholder=${placeholder} @keydown=${(e: KeyboardEvent) => {
-      if (e.key === "Enter") { e.preventDefault(); const input = e.target as HTMLInputElement; const id = input.value.trim(); if (/^sensor\.[a-z0-9_]+$/.test(id) && !c.sources.some(s => s.entity_id === id)) { add(id); input.value = ""; } }
+    <label>${l.t("sources.assign_unavailable")}<input placeholder=${placeholder} @input=${(e: Event) => (e.target as HTMLInputElement).setCustomValidity("")} @keydown=${(e: KeyboardEvent) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault(); const input = e.target as HTMLInputElement; const id = input.value.trim();
+      // Say why one of Smart Plants' own sensors is not added instead of ignoring it.
+      if (ownEntityIds(entities).has(id)) { input.setCustomValidity(l.t("sources.own_sensor_refused")); input.reportValidity(); return; }
+      if (/^sensor\.[a-z0-9_]+$/.test(id) && !c.sources.some(s => s.entity_id === id)) { add(id); input.value = ""; }
     }}></label><small>${l.t("sources.press_enter")}</small>
     <ul>${c.sources.map(s => {
       const entry = resolveSource(s, entities); const current = s.registry_id && !entry ? undefined : states[entry?.entity_id ?? s.entity_id];
@@ -75,7 +85,7 @@ function sourcesControls<T extends MoistureInput | RoleSourceInput>(l: Localizer
 }
 export function moistureEditor(l: Localizer, m: MoistureInput, defaults: typeof builtin, entities: HAEntity[], states: Record<string, HAState>, all: boolean, setAll: (v: boolean) => void, change: (m: MoistureInput) => void, section: "sources" | "thresholds" | "all" | "pick" | "combine" = "all") {
   const patch = (part: Partial<MoistureInput>) => change({ ...m, ...part });
-  const candidates = [...new Set([...entities.map(e => e.entity_id), ...Object.keys(states)])].filter(id => id.startsWith("sensor.") && (all || states[id]?.attributes.device_class === "moisture")).sort();
+  const candidates = sourceCandidates(entities, states, id => all || states[id]?.attributes.device_class === "moisture");
   const sourcesPart: SourcesPart = section === "pick" || section === "combine" ? section : "all";
   return html`${section !== "thresholds" ? sourcesControls(l, m, entities, states, all, setAll, patch, l.t("moisture.sources_intro"), l.t("moisture.add_sensor"), "sensor.soil_moisture", candidates, s => sourceWarning(s, entities, states, l), sourcesPart) : nothing}
     ${section === "thresholds" || section === "all" ? html`<p>${l.t("moisture.overrides_intro")}</p><div class="grid">${keys.map(k => html`<div>${textField(l.t("moisture.override_label", { key: thresholdKeyLabel(l, k) }), m.threshold_overrides[k] === null ? "" : String(m.threshold_overrides[k]), v => patch({ threshold_overrides: { ...m.threshold_overrides, [k]: v.trim() === "" ? null : Number(v) } }), "number")}<small>${l.t("moisture.default_effective", { default: l.percent(defaults[k]), effective: l.percent(m.threshold_overrides[k] ?? defaults[k]) })}</small><button type="button" @click=${() => patch({ threshold_overrides: { ...m.threshold_overrides, [k]: null } })}>${l.t("moisture.inherit_key", { key: thresholdKeyLabel(l, k) })}</button></div>`)}</div>` : nothing}`;
@@ -85,7 +95,7 @@ export function moistureEditor(l: Localizer, m: MoistureInput, defaults: typeof 
 // own device_class / accepted units (spec). Threshold editing is separate.
 export function roleSourcesEditor(l: Localizer, spec: RoleSourceSpec, c: RoleSourceInput, entities: HAEntity[], states: Record<string, HAState>, all: boolean, setAll: (v: boolean) => void, change: (c: RoleSourceInput) => void, part: SourcesPart = "all") {
   const patch = (part: Partial<RoleSourceInput>) => change({ ...c, ...part });
-  const candidates = [...new Set([...entities.map(e => e.entity_id), ...Object.keys(states)])].filter(id => id.startsWith("sensor.") && (all || (states[id]?.attributes.device_class === spec.deviceClass && typeof states[id]?.attributes.unit_of_measurement === "string" && spec.acceptedUnits.includes(states[id]?.attributes.unit_of_measurement as string)))).sort();
+  const candidates = sourceCandidates(entities, states, id => all || (states[id]?.attributes.device_class === spec.deviceClass && typeof states[id]?.attributes.unit_of_measurement === "string" && spec.acceptedUnits.includes(states[id]?.attributes.unit_of_measurement as string)));
   const role = rolePhrase(spec.role, l);
   return sourcesControls(l, c, entities, states, all, setAll, patch, l.t("sources.role_intro", { role }), l.t("sources.add_role_sensor", { role }), `sensor.${spec.role}`, candidates, s => roleSourceWarning(s, entities, states, spec, l), part);
 }

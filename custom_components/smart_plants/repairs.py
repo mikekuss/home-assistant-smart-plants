@@ -56,6 +56,27 @@ def _issue_id(plant_id: str, entity_id: str, role: str = "moisture") -> str:
     return f"{_ISSUE_ID_PREFIX}::{role}::{plant_id}::{entity_id}"
 
 
+def _replacement_schema(hass: HomeAssistant, domain: str) -> vol.Schema:
+    """
+    Pick a replacement source from ``domain``.
+
+    Smart Plants' own entities are left out: the manager refuses them as new
+    sources, because a plant would read its own or another plant's output.
+    """
+    own = sorted(
+        entry.entity_id
+        for entry in er.async_get(hass).entities.values()
+        if entry.platform == DOMAIN and entry.domain == domain
+    )
+    return vol.Schema(
+        {
+            vol.Optional("replacement_entity_id"): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=domain, exclude_entities=own)
+            )
+        }
+    )
+
+
 class MissingSourceRepairMonitor:
     """Reconciles moisture-source missing-registry issues on every event."""
 
@@ -229,15 +250,7 @@ class MissingSourceRepairFlow(RepairsFlow):
         if user_input is None:
             return self.async_show_form(
                 step_id="source",
-                data_schema=vol.Schema(
-                    {
-                        vol.Optional("replacement_entity_id"): selector.EntitySelector(
-                            selector.EntitySelectorConfig(
-                                domain=definition.source_domain
-                            )
-                        )
-                    }
-                ),
+                data_schema=_replacement_schema(self.hass, definition.source_domain),
                 description_placeholders={
                     "entity_id": entity_id,
                     "plant_name": plant.name,
@@ -269,15 +282,7 @@ class MissingSourceRepairFlow(RepairsFlow):
         except ValueError, RuntimeError, LookupError:
             return self.async_show_form(
                 step_id="source",
-                data_schema=vol.Schema(
-                    {
-                        vol.Optional("replacement_entity_id"): selector.EntitySelector(
-                            selector.EntitySelectorConfig(
-                                domain=definition.source_domain
-                            )
-                        )
-                    }
-                ),
+                data_schema=_replacement_schema(self.hass, definition.source_domain),
                 errors={"base": "invalid_source"},
             )
         return self.async_create_entry(data={})

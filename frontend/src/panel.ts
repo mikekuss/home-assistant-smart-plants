@@ -1572,14 +1572,18 @@ export class SmartPlantsPanel extends LitElement {
     await this._save("moisture");
     if (!this._error) this._moistureMode = null;
   }
-  // Assigned sensors across all roles, in reading order.
-  private _assignedSensors(plant: PlantRecord): { role: SensorRole; entityId: string; main: boolean; several: boolean }[] {
+  // Assigned sensors across all roles, in reading order. `own` marks one of
+  // Smart Plants' own sensors, stored before the backend refused them.
+  private _assignedSensors(plant: PlantRecord): { role: SensorRole; entityId: string; main: boolean; several: boolean; own: boolean }[] {
     const roles: SensorRole[] = ["moisture", ...ROLE_SOURCE_SPECS.map(spec => spec.role)];
     const order = Object.keys(ROLE_META);
     return roles.sort((a, b) => order.indexOf(a) - order.indexOf(b)).flatMap(role => {
       const c = role === "moisture" ? moistureRole(plant) : roleSourceConfig(plant, role);
       if (!c) return [];
-      return c.sources.map(source => ({ role, entityId: resolveSource(source, this._entities)?.entity_id ?? source.entity_id, main: c.primary_entity_id === source.entity_id, several: c.sources.length > 1 }));
+      return c.sources.map(source => {
+        const entry = resolveSource(source, this._entities);
+        return { role, entityId: entry?.entity_id ?? source.entity_id, main: c.primary_entity_id === source.entity_id, several: c.sources.length > 1, own: entry?.platform === "smart_plants" };
+      });
     });
   }
   private _sensorValue(entityId: string): string {
@@ -1646,7 +1650,7 @@ export class SmartPlantsPanel extends LitElement {
           const name = friendlyName(l, this._states, item.entityId); const state = this._states[item.entityId];
           const updated = state ? l.t("assigned.updated", { age: relativeTime(l, reportedAt(state)) }) : l.t("assigned.not_found");
           return html`<li class="li"><span class="ic" aria-hidden="true"><ha-icon .icon=${ROLE_META[item.role].icon}></ha-icon></span>
-            <span class="li-main"><span class="li-title">${name}</span><span class="li-sub">${readingLabel(l, item.role)} · ${updated}${item.main && item.several ? ` · ${l.t("assigned.main")}` : ""}</span></span>
+            <span class="li-main"><span class="li-title">${name}</span><span class="li-sub">${readingLabel(l, item.role)} · ${updated}${item.main && item.several ? ` · ${l.t("assigned.main")}` : ""}${item.own ? ` · ${l.t("assigned.own_sensor")}` : ""}</span></span>
             <span class="li-actions"><span class="li-value">${this._sensorValue(item.entityId)}</span>
               <ha-dropdown @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => void this._sensorAction(plant, item.role, item.entityId, e.detail.item.value)}>
                 <button slot="trigger" type="button" class="icon-btn" ?disabled=${disabled} aria-label=${l.t("assigned.menu", { name })}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
