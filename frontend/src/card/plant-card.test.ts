@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { getConfigForm, getStubConfig } from "./plant-card.js";
 import type { SmartPlantsPlantCardContent } from "./plant-card.js";
-import { CARD_TYPE, SmartPlantsPlantCard } from "./loader.js";
+import { CARD_TYPE, SmartPlantsPlantCard, defineCard } from "./loader.js";
 import { PICKER_TEXT, pickerText } from "./picker.js";
 import { en } from "../translations/en.js";
 import { de } from "../translations/de.js";
@@ -36,6 +36,24 @@ const deepText = (root: Element): string => {
 };
 const $ = <T extends Element = HTMLElement>(content: Element, selector: string) => content.shadowRoot!.querySelector(selector) as T | null;
 const unavailable = (id: string): CardState => ({ entity_id: id, state: "unavailable", attributes: {} });
+
+describe("registry swap", () => {
+  it("defines the card again in a registry that replaced the native one", () => {
+    const native = window.customElements;
+    const defined = new Map<string, CustomElementConstructor>();
+    const swapped = { get: (name: string) => defined.get(name), define: (name: string, cls: CustomElementConstructor) => { if (defined.has(name)) throw new Error("used"); defined.set(name, cls); } };
+    Object.defineProperty(window, "customElements", { value: swapped, configurable: true, writable: true });
+    try {
+      defineCard();
+      defineCard();
+      expect(defined.get(CARD_TYPE)).toBe(SmartPlantsPlantCard);
+      expect(defined.size).toBe(1);
+    } finally {
+      Object.defineProperty(window, "customElements", { value: native, configurable: true, writable: true });
+    }
+    expect(window.customElements.get(CARD_TYPE)).toBe(SmartPlantsPlantCard);
+  });
+});
 
 describe("loader retry", () => {
   const statics = SmartPlantsPlantCard as unknown as { _module: Promise<unknown> | null; retryDelayMs: number };

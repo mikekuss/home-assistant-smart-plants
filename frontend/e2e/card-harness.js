@@ -2,7 +2,9 @@
 // application code is the production card loader, which imports the card
 // content next to it. Query parameters: `admin`, `lang=de`, `empty` (no card
 // on the dashboard), `refuse` (log_care answers Unauthorized), `half` (cards
-// at half a section's width).
+// at half a section's width), `swap` (replace window.customElements after the
+// loader ran, as older Home Assistant frontends did with the scoped registry
+// polyfill).
 const params = new URLSearchParams(location.search);
 if (params.has("half")) document.documentElement.classList.add("half");
 const admin = params.has("admin");
@@ -100,7 +102,10 @@ window.addEventListener("hass-more-info", event => { record.moreInfo.push(event.
 window.addEventListener("location-changed", () => { record.navigations.push(location.pathname); });
 
 await import("/custom_components/smart_plants/frontend/smart-plants-card.js?v=0.0.0-test");
-await customElements.whenDefined("smart-plants-plant-card");
+if (params.has("swap")) installSwappedRegistry();
+// Like Home Assistant's card host: look the card up in the current registry.
+await window.customElements.whenDefined("smart-plants-plant-card");
+record.registry = window.customElements.get("smart-plants-plant-card") ? "found" : "missing";
 record.picker = window.customCards;
 if (!params.has("empty")) {
   for (const plant of plants) {
@@ -117,3 +122,32 @@ if (!params.has("empty")) {
   document.getElementById("section").append(removed);
 }
 record.ready = true;
+
+// A registry like the scoped custom element registry polyfill: it replaces
+// window.customElements, knows only what is defined through it, and reuses a
+// native definition that already exists.
+function installSwappedRegistry() {
+  const native = window.customElements;
+  const nativeGet = native.get.bind(native);
+  const nativeDefine = native.define.bind(native);
+  const defined = new Map();
+  const waiting = new Map();
+  const registry = {
+    define(name, cls) {
+      if (defined.has(name)) throw new DOMException(`"${name}" has already been used with this registry`, "NotSupportedError");
+      defined.set(name, cls);
+      if (!nativeGet(name)) nativeDefine(name, cls);
+      waiting.get(name)?.(cls);
+      waiting.delete(name);
+    },
+    get: name => defined.get(name),
+    getName: cls => [...defined].find(([, c]) => c === cls)?.[0] ?? null,
+    upgrade: root => native.upgrade(root),
+    whenDefined(name) {
+      if (defined.has(name)) return Promise.resolve(defined.get(name));
+      return new Promise(resolve => waiting.set(name, resolve));
+    },
+  };
+  Object.defineProperty(window, "customElements", { value: registry, configurable: true, writable: true });
+  record.swapped = true;
+}

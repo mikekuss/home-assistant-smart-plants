@@ -127,7 +127,39 @@ export class SmartPlantsPlantCard extends HTMLElement {
   }
 }
 
-if (!customElements.get(CARD_TYPE)) customElements.define(CARD_TYPE, SmartPlantsPlantCard);
+// Defines the card in the registry that window.customElements is right now.
+// After a registry swap the native registry already holds the class, and the
+// scoped registry polyfill reuses that native definition, so this is safe.
+export function defineCard(): void {
+  if (window.customElements.get(CARD_TYPE)) return;
+  try {
+    window.customElements.define(CARD_TYPE, SmartPlantsPlantCard);
+  } catch {
+    // Another copy of this module defined it first.
+  }
+}
+
+// How often and how long to look for a registry swap after this module ran.
+export const REGISTRY_WATCH = { intervalMs: 100, timeoutMs: 120_000 };
+
+// Home Assistant starts this module next to its app. Older frontends, 2026.8
+// among them, could run it before the app installed the scoped custom element
+// registry polyfill, which replaces window.customElements. The new registry
+// doesn't know elements defined before it, so dashboards reported the card as
+// missing. Frontends with the fix set __haScopedRegistryReady before they
+// start extra modules, and a polyfill already in place has nothing left to
+// swap. Otherwise the card is defined again once the registry changes.
+function watchRegistry(): void {
+  const first = window.customElements;
+  const started = Date.now();
+  const timer = setInterval(() => {
+    if (window.customElements !== first) defineCard();
+    if (window.customElements !== first || Date.now() - started > REGISTRY_WATCH.timeoutMs) clearInterval(timer);
+  }, REGISTRY_WATCH.intervalMs);
+}
+
+defineCard();
+if (!(window as unknown as { __haScopedRegistryReady?: boolean }).__haScopedRegistryReady && !("CustomElementRegistryPolyfill" in window)) watchRegistry();
 
 interface CustomCardEntry { type: string; name: string; description: string; preview?: boolean; documentationURL?: string }
 const registry = window as unknown as { customCards?: CustomCardEntry[] };

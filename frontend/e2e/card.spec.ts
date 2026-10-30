@@ -135,3 +135,18 @@ test("a card at half a section's width keeps the foot and the area line tidy", a
   await expect(card(page, "Office Aloe")).toContainText("Zuletzt gegossen");
   await audit(page, info, "card-half");
 });
+
+test("the card survives a registry swap after the loader ran", async ({ page }, info) => {
+  await open(page, "?swap&admin");
+  const after = await record(page) as HarnessRecord & { swapped?: boolean; registry?: string };
+  expect(after.swapped).toBe(true);
+  expect(after.registry).toBe("found");
+  const aloe = card(page, "Office Aloe");
+  await expect(aloe).toContainText("Healthy");
+  await expect(aloe).toContainText("36%");
+  await expect(aloe.locator("sp-moisture-bar")).toBeVisible();
+  await aloe.getByRole("button", { name: "Log watering for Office Aloe" }).click();
+  await expect(page.locator(".toast", { hasText: "Watering logged for Office Aloe" })).toBeVisible();
+  expect(await page.evaluate(() => ["sp-status-chip", "sp-moisture-bar", "sp-reading-chip", "smart-plants-plant-card-content"].filter(name => !window.customElements.get(name)))).toEqual([]);
+  await audit(page, info, "card-swap");
+});

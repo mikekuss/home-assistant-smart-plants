@@ -91,13 +91,28 @@ var s = class e extends HTMLElement {
 n = s, n.load = (e) => import(
 	/* @vite-ignore */
 	o(e)
-), n.retryDelayMs = 1e4, n._module = null, n._attempt = 0, customElements.get("smart-plants-plant-card") || customElements.define(r, s);
-var c = window;
-c.customCards = c.customCards ?? [], c.customCards.some((e) => e.type === "smart-plants-plant-card") || c.customCards.push({
+), n.retryDelayMs = 1e4, n._module = null, n._attempt = 0;
+function c() {
+	if (!window.customElements.get("smart-plants-plant-card")) try {
+		window.customElements.define(r, s);
+	} catch {}
+}
+var l = {
+	intervalMs: 100,
+	timeoutMs: 12e4
+};
+function u() {
+	let e = window.customElements, t = Date.now(), n = setInterval(() => {
+		window.customElements !== e && c(), (window.customElements !== e || Date.now() - t > l.timeoutMs) && clearInterval(n);
+	}, l.intervalMs);
+}
+c(), !window.__haScopedRegistryReady && !("CustomElementRegistryPolyfill" in window) && u();
+var d = window;
+d.customCards = d.customCards ?? [], d.customCards.some((e) => e.type === "smart-plants-plant-card") || d.customCards.push({
 	type: r,
 	...t(document.documentElement.lang),
 	preview: !0,
 	documentationURL: "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/dashboard-card.md"
 });
 //#endregion
-export { r as CARD_TYPE, s as SmartPlantsPlantCard };
+export { r as CARD_TYPE, l as REGISTRY_WATCH, s as SmartPlantsPlantCard, c as defineCard };
