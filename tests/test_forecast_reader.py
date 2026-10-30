@@ -310,6 +310,16 @@ async def _reader(
     return reader, recorder
 
 
+def _own_log(caplog: pytest.LogCaptureFixture) -> str:
+    # Only Smart Plants' messages: with the clock frozen, asyncio's slow
+    # callback warnings report huge durations that can contain any digits.
+    return "\n".join(
+        record.getMessage()
+        for record in caplog.records
+        if record.name.startswith("custom_components.smart_plants")
+    )
+
+
 async def test_fetches_the_finest_type_that_reaches_the_window(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:
@@ -444,7 +454,7 @@ async def test_errors_give_no_value(  # noqa: PLR0913, PLR0917
     assert reader.last_fetch_had_value(WEATHER) is False
     assert recorder.updates == [WEATHER]
     assert WEATHER in caplog.text
-    assert "1.5" not in caplog.text
+    assert "1.5" not in _own_log(caplog)
     reader.close()
 
 
@@ -504,7 +514,7 @@ async def test_a_failing_type_falls_back_to_the_next(
     assert reader.last_fetch_had_value(WEATHER) is True
     assert recorder.updates == [WEATHER]
     assert "hourly" in caplog.text
-    assert "1.5" not in caplog.text
+    assert "1.5" not in _own_log(caplog)
     reader.close()
 
 
@@ -575,7 +585,7 @@ async def test_logs_never_carry_forecast_values(
 
     assert reader.window(WEATHER, 24) is None
     assert "no entry in the window" in caplog.text
-    assert "17.25" not in caplog.text
+    assert "17.25" not in _own_log(caplog)
     reader.close()
 
 
