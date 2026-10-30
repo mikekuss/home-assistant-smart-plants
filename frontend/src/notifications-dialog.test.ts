@@ -254,6 +254,6 @@ describe("notifications dialog", () => {
     expect(inside(el, "h2")!.textContent).toBe("Benachrichtigungen");
     expect(dialog(el)!.textContent).toContain("Täglicher Pflanzenbericht");
     expect(dialog(el)!.textContent).toContain("Deine Benachrichtigungen");
-    expect(buttonNamed(el, "Im Automationseditor öffnen")).toBeDefined();
+    expect(buttonNamed(el, "Im Automatisierungseditor öffnen")).toBeDefined();
   });
 });

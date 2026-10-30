@@ -15,6 +15,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   automation IDs in **Troubleshooting**. See
   [See which automations use a plant](docs/automations.md#see-which-automations-use-a-plant).
 
+### Changed
+
+- The German panel texts call Home Assistant's automation editor *Automatisierungseditor*
+  everywhere, also in the care plan and the Notifications dialog.
+
 ### Fixed
 
 - The sensor pickers under **Sensors → Add sensor** and **Change** no longer offer Smart

@@ -169,7 +169,7 @@ test("German dialog", async ({ page }, info) => {
   await expect(dialog(page).getByRole("heading", { name: "Benachrichtigungen", exact: true })).toBeFocused();
   await expect(dialog(page).getByRole("region", { name: "Deine Benachrichtigungen" })).toContainText("Zuletzt gesendet");
   await expect(dialog(page).getByRole("radio", { name: /^Täglicher Pflanzenbericht/ })).toBeChecked();
-  await expect(dialog(page).getByRole("button", { name: "Im Automationseditor öffnen" })).toBeVisible();
+  await expect(dialog(page).getByRole("button", { name: "Im Automatisierungseditor öffnen" })).toBeVisible();
   await audit(page, info, "notifications-german");
   await tabTo(page, /^Täglicher Pflanzenbericht/);
   await page.keyboard.press("ArrowDown");
