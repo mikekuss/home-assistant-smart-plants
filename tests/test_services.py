@@ -10,7 +10,6 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-import voluptuous as vol
 from custom_components.smart_plants import storage as storage_module
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.manager import (
@@ -21,6 +20,7 @@ from custom_components.smart_plants.manager import (
     snooze_change,
 )
 from custom_components.smart_plants.models import PlantRecord
+from custom_components.smart_plants.schema_library import vol
 from custom_components.smart_plants.services import (
     ACTION_PROVENANCE,
     SERVICE_GET_REPORT,

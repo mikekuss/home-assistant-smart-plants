@@ -22,7 +22,6 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, Final
 
-import voluptuous as vol
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     CONF_OPTIONS,
@@ -42,6 +41,7 @@ from homeassistant.helpers.target import (
 )
 
 from .const import DOMAIN
+from .schema_library import vol
 
 BINARY_SENSOR: Final = "binary_sensor"
 

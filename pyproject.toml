@@ -80,6 +80,12 @@ ignore = [
   "ASYNC240",
 ]
 "scripts/**/*.py" = ["INP001", "T201"]
+# The one module that picks the schema library for the installed Home Assistant.
+"custom_components/smart_plants/schema_library.py" = ["TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"probatio".msg = "Import vol from custom_components.smart_plants.schema_library, which picks the library Home Assistant validates with."
+"voluptuous".msg = "Import vol from custom_components.smart_plants.schema_library, which picks the library Home Assistant validates with."
 
 [tool.mypy]
 python_version = "3.14"
