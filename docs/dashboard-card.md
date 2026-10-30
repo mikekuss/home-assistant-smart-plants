@@ -91,6 +91,9 @@ A plant without sensors shows "No sensors assigned yet". For administrators it a
 - **No main sensor.** When several soil moisture sensors wait for you to choose the main
   sensor, the panel says **No main sensor**. The card shows **No recent data** with "sensor is
   not reporting", because the entities don't say why there is no value.
+- **Missing alert sensors.** The card shows **No recent data** instead of a healthy status
+  when *Needs water* or *Too wet* is disabled or has no state, because it can't tell whether
+  the soil is in range.
 - **Removed plant.** When you delete a plant, its card shows "Plant not found". Edit the card
   to pick another plant, or remove it.
 
@@ -98,5 +101,6 @@ A plant without sensors shows "No sensors assigned yet". For administrators it a
 
 Smart Plants loads a small script in every Home Assistant browser session. It adds the card to
 the card picker and is about 3 KB. The card itself, with its translations, loads only when a
-card is on screen or the card editor opens. The card follows your Home Assistant language. It
-is available in English and German.
+card is on screen or the card editor opens. If that fails, for example while Home Assistant
+restarts, the card says it could not be loaded and tries again every 10 seconds. The card
+follows your Home Assistant language. It is available in English and German.

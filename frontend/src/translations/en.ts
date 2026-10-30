@@ -1158,6 +1158,7 @@ export const en = {
   "plant_card.open_label": "Open {name} in Smart Plants",
   "plant_card.details_label": "Show details for {name}",
   "plant_card.unauthorized": "You don't have permission to log care",
+  "plant_card.load_error": "The plant card could not be loaded. Trying again shortly.",
   "plant_card.log_failed": "Watering could not be logged for {name}",
   "plant_card.undo_failed": "Watering could not be removed for {name}",
   "plant_card.editor_plant": "Plant",

@@ -37,12 +37,52 @@ const deepText = (root: Element): string => {
 const $ = <T extends Element = HTMLElement>(content: Element, selector: string) => content.shadowRoot!.querySelector(selector) as T | null;
 const unavailable = (id: string): CardState => ({ entity_id: id, state: "unavailable", attributes: {} });
 
+describe("loader retry", () => {
+  const statics = SmartPlantsPlantCard as unknown as { _module: Promise<unknown> | null; retryDelayMs: number };
+  const realLoad = SmartPlantsPlantCard.load;
+  afterEach(() => { SmartPlantsPlantCard.load = realLoad; statics.retryDelayMs = 10_000; });
+  const failOnce = () => {
+    statics._module = null;
+    statics.retryDelayMs = 300;
+    const attempts: number[] = [];
+    SmartPlantsPlantCard.load = attempt => { attempts.push(attempt); return attempts.length === 1 ? Promise.reject(new Error("offline")) : import("./plant-card.js"); };
+    return attempts;
+  };
+  const place = (count: number, language = "en") => Array.from({ length: count }, () => {
+    const card = document.createElement(CARD_TYPE) as SmartPlantsPlantCard;
+    card.setConfig({ type: `custom:${CARD_TYPE}`, device_id: DEVICE });
+    card.hass = cardHass({}, { language });
+    document.body.append(card);
+    return card;
+  });
+  const content = (card: SmartPlantsPlantCard) => card.shadowRoot!.querySelector("smart-plants-plant-card-content");
+  const error = (card: SmartPlantsPlantCard) => card.shadowRoot!.querySelector(".error")?.textContent ?? null;
+  it("shows an error and loads the card on the next attempt", async () => {
+    const attempts = failOnce();
+    const [card] = place(1, "de");
+    await vi.waitFor(() => expect(error(card!)).toBe("Die Pflanzenkarte konnte nicht geladen werden. Gleich folgt ein neuer Versuch."));
+    expect(card!.shadowRoot!.querySelector(".error")!.getAttribute("role")).toBe("alert");
+    await vi.waitFor(() => expect(content(card!)).not.toBeNull());
+    expect(error(card!)).toBeNull();
+    expect(attempts.length).toBe(2);
+    expect(attempts[1]).toBeGreaterThan(attempts[0]!);
+  });
+  it("retries once for several cards", async () => {
+    const attempts = failOnce();
+    const cards = place(3);
+    await vi.waitFor(() => expect(cards.map(error)).toEqual(Array(3).fill("The plant card could not be loaded. Trying again shortly.")));
+    await vi.waitFor(() => expect(cards.every(card => content(card) !== null)).toBe(true));
+    expect(cards.map(error)).toEqual([null, null, null]);
+    expect(attempts).toHaveLength(2);
+  });
+});
+
 describe("loader", () => {
   it("lists the card in the picker once, with the catalog's name", async () => {
     const cards = (window as unknown as { customCards: { type: string; name: string; preview?: boolean }[] }).customCards;
     expect(cards.filter(card => card.type === CARD_TYPE)).toEqual([expect.objectContaining({ name: "Smart Plants plant card", preview: true })]);
-    expect(PICKER_TEXT.en).toEqual({ name: en["plant_card.name"], description: en["plant_card.description"] });
-    expect(PICKER_TEXT.de).toEqual({ name: de["plant_card.name"], description: de["plant_card.description"] });
+    expect(PICKER_TEXT.en).toEqual({ name: en["plant_card.name"], description: en["plant_card.description"], load_error: en["plant_card.load_error"] });
+    expect(PICKER_TEXT.de).toEqual({ name: de["plant_card.name"], description: de["plant_card.description"], load_error: de["plant_card.load_error"] });
     expect(pickerText("de-AT").name).toBe("Smart Plants Pflanzenkarte");
     expect(pickerText("fr").name).toBe("Smart Plants plant card");
   });
@@ -210,6 +250,7 @@ describe("Watered button", () => {
     await vi.waitFor(() => expect(seen).toHaveLength(2));
     expect(hass.ws).toEqual([
       { type: "smart_plants/care/list", plant_id: PLANT_ID },
+      { type: "smart_plants/care/list", plant_id: PLANT_ID },
       { type: "smart_plants/care/delete", plant_id: PLANT_ID, expected_revision: 7, event_id: "event-1" },
     ]);
     expect(seen[1]!.message).toBe("Watering removed for Office Aloe");
@@ -221,6 +262,59 @@ describe("Watered button", () => {
     $(content, ".tonal")!.click();
     await vi.waitFor(() => expect(seen).toHaveLength(1));
     expect(seen[0]).toEqual({ message: "Watering logged for Office Aloe", duration: 4000 });
+  })
+  // A care history whose log_care action records the watering through `record`.
+  const history = (hass: ReturnType<typeof cardHass>, events: { id: string; kind: string; occurred_at: string }[], record: (submitted: string) => void) => {
+    hass.callService = async (...args: unknown[]) => { hass.calls.push(args); record((args[2] as { occurred_at: string }).occurred_at); };
+    hass.callWS = async <T>(msg: Record<string, unknown>): Promise<T> => { hass.ws.push(msg); return (msg.type === "smart_plants/care/list" ? { revision: 3, events: events.map(e => ({ ...e })) } : {}) as T; };
+  };
+  const undo = async (hass: ReturnType<typeof cardHass>) => {
+    const content = await mount(hass);
+    const seen = toasts(content);
+    $(content, ".tonal")!.click();
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+    seen[0]!.action!.action();
+    await vi.waitFor(() => expect(seen).toHaveLength(2));
+    return { seen, deleted: hass.ws.filter(m => m.type === "smart_plants/care/delete").map(m => m.event_id) };
+  };
+  it("undoes its own watering after the backend moved its time", async () => {
+    const hass = cardHass({}, { admin: true });
+    const events = [{ id: "earlier", kind: "watering", occurred_at: "2026-09-11T12:00:00+00:00" }];
+    // Another watering already has the submitted second; the backend records ours a little earlier.
+    history(hass, events, submitted => {
+      events[0]!.occurred_at = submitted;
+      events.push({ id: "mine", kind: "watering", occurred_at: new Date(Date.parse(submitted) - 3000).toISOString() });
+    });
+    const { seen, deleted } = await undo(hass);
+    expect(deleted).toEqual(["mine"]);
+    expect(seen[1]!.message).toBe("Watering removed for Office Aloe");
+  });
+  it("picks the watering closest to its time when another one was logged meanwhile", async () => {
+    const hass = cardHass({}, { admin: true });
+    const events: { id: string; kind: string; occurred_at: string }[] = [{ id: "fertilizer", kind: "fertilizing", occurred_at: "2026-09-11T12:00:00+00:00" }];
+    history(hass, events, submitted => {
+      events.push({ id: "someone-else", kind: "watering", occurred_at: new Date(Date.parse(submitted) - 3_600_000).toISOString() });
+      events.push({ id: "mine", kind: "watering", occurred_at: submitted });
+    });
+    const { deleted } = await undo(hass);
+    expect(deleted).toEqual(["mine"]);
+  });
+  it("offers no Undo when the care history cannot be read", async () => {
+    const hass = cardHass({}, { admin: true });
+    hass.callWS = async () => { throw { code: "unknown_error", message: "x" }; };
+    const content = await mount(hass);
+    const seen = toasts(content);
+    $(content, ".tonal")!.click();
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0]).toEqual({ message: "Watering logged for Office Aloe", duration: 4000 });
+    expect(hass.calls).toHaveLength(1);
+  });
+  it("keeps the action call unchanged for other users", async () => {
+    const hass = cardHass();
+    const content = await mount(hass);
+    $(content, ".tonal")!.click();
+    await vi.waitFor(() => expect(hass.calls).toHaveLength(1));
+    expect(hass.ws).toEqual([]);
   });
   it("explains a refused watering", async () => {
     const hass = cardHass({}, { language: "de" });

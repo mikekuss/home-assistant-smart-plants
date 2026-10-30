@@ -1159,6 +1159,7 @@ export const de: Catalog = {
   "plant_card.open_label": "{name} in Smart Plants öffnen",
   "plant_card.details_label": "Details zu {name} anzeigen",
   "plant_card.unauthorized": "Du darfst keine Pflege eintragen",
+  "plant_card.load_error": "Die Pflanzenkarte konnte nicht geladen werden. Gleich folgt ein neuer Versuch.",
   "plant_card.log_failed": "Gießen für {name} konnte nicht eingetragen werden",
   "plant_card.undo_failed": "Gießen für {name} konnte nicht entfernt werden",
   "plant_card.editor_plant": "Pflanze",

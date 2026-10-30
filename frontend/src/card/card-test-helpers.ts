@@ -58,7 +58,8 @@ export function cardHass(overrides: Record<string, CardState | null> = {}, optio
     callService: async (...args: unknown[]) => { calls.push(args); return undefined; },
     callWS: async <T>(msg: Record<string, unknown>): Promise<T> => {
       ws.push(msg);
-      if (msg.type === "smart_plants/care/list") return { revision: 7, events: [{ id: "event-1", kind: "watering", occurred_at: String((calls.at(-1)?.[2] as { occurred_at?: string } | undefined)?.occurred_at ?? "") }] } as T;
+      // Each logged watering becomes event-1, event-2, ... in the care history.
+      if (msg.type === "smart_plants/care/list") return { revision: 7, events: calls.map((call, i) => ({ id: `event-${i + 1}`, kind: "watering", occurred_at: String((call[2] as { occurred_at?: string }).occurred_at) })) } as T;
       return {} as T;
     },
     fetchWithAuth: async () => new Response(null, { status: 404 }),

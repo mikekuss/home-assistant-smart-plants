@@ -2,11 +2,13 @@
 var e = {
 	en: {
 		name: "Smart Plants plant card",
-		description: "One plant with its status, soil moisture, readings and a Watered button."
+		description: "One plant with its status, soil moisture, readings and a Watered button.",
+		load_error: "The plant card could not be loaded. Trying again shortly."
 	},
 	de: {
 		name: "Smart Plants Pflanzenkarte",
-		description: "Eine Pflanze mit Status, Bodenfeuchte, Messwerten und einer Schaltfläche „Gegossen“."
+		description: "Eine Pflanze mit Status, Bodenfeuchte, Messwerten und einer Schaltfläche „Gegossen“.",
+		load_error: "Die Pflanzenkarte konnte nicht geladen werden. Gleich folgt ein neuer Versuch."
 	}
 };
 function t(t) {
@@ -15,16 +17,16 @@ function t(t) {
 //#endregion
 //#region src/card/loader.ts
 var n, r = "smart-plants-plant-card", i = "smart-plants-plant-card-content", a = "smart-plants-card-full.js";
-function o() {
-	let e = import.meta.url, t = new URL(a, e);
-	return t.search = new URL(e).search, t.href;
+function o(e) {
+	let t = import.meta.url, n = new URL(a, t);
+	return n.search = new URL(t).search, e > 0 && n.searchParams.set("retry", String(e)), n.href;
 }
 var s = class e extends HTMLElement {
 	constructor(...e) {
-		super(...e), this._config = null, this._content = null;
+		super(...e), this._config = null, this._content = null, this._retry = null;
 	}
 	static module() {
-		return this._module || (this._module = this.load().catch((e) => {
+		return this._module || (this._module = this.load(this._attempt++).catch((e) => {
 			throw this._module = null, e;
 		})), this._module;
 	}
@@ -61,19 +63,35 @@ var s = class e extends HTMLElement {
 	connectedCallback() {
 		if (!this.shadowRoot) {
 			let e = this.attachShadow({ mode: "open" }), t = document.createElement("style");
-			t.textContent = `:host { display: block; height: 100%; } ${i} { display: block; height: 100%; }`, e.append(t);
+			t.textContent = `:host { display: block; height: 100%; } ${i} { display: block; height: 100%; } .error { display: block; padding: 16px; color: var(--error-color, #db4437); }`, e.append(t);
 		}
-		this._content || e.module().then(() => {
+		this._loadContent();
+	}
+	disconnectedCallback() {
+		this._retry && clearTimeout(this._retry), this._retry = null;
+	}
+	_loadContent() {
+		this._content || this._retry || e.module().then(() => {
 			if (this._content || !this.isConnected || !this.shadowRoot) return;
 			let e = document.createElement(i);
-			this._config && e.setConfig(this._config), e.hass = this._hass, this._content = e, this.shadowRoot.append(e);
-		}).catch(() => void 0);
+			this._config && e.setConfig(this._config), e.hass = this._hass, this._content = e, this.shadowRoot.querySelector(".error")?.remove(), this.shadowRoot.append(e);
+		}).catch(() => {
+			!this._content && this.isConnected && this.shadowRoot && !this._retry && (this._showError(), this._retry = setTimeout(() => {
+				this._retry = null, this.isConnected && this._loadContent();
+			}, e.retryDelayMs));
+		});
+	}
+	_showError() {
+		let e = this.shadowRoot, n = e.querySelector(".error");
+		n || (n = document.createElement("ha-card"), n.className = "error", n.setAttribute("role", "alert"), e.append(n));
+		let r = this._hass?.language ?? document.documentElement.lang;
+		n.textContent = t(r).load_error;
 	}
 };
-n = s, n.load = () => import(
+n = s, n.load = (e) => import(
 	/* @vite-ignore */
-	o()
-), n._module = null, customElements.get("smart-plants-plant-card") || customElements.define(r, s);
+	o(e)
+), n.retryDelayMs = 1e4, n._module = null, n._attempt = 0, customElements.get("smart-plants-plant-card") || customElements.define(r, s);
 var c = window;
 c.customCards = c.customCards ?? [], c.customCards.some((e) => e.type === "smart-plants-plant-card") || c.customCards.push({
 	type: r,

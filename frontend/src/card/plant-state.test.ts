@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import fixture from "../../../tests/fixtures/plant_status_cases.json";
-import { deriveStatus, plantDevices, plantEntities, plantView } from "./plant-state.js";
+import { deriveStatus, plantDevices, plantEntities, plantView, statusInput } from "./plant-state.js";
+import { cardReason } from "../overview-model.js";
+import { createLocalizer } from "../localize.js";
 import type { PlantView, StatusInput } from "./plant-state.js";
 import { DEVICE, PLANT_ID, cardHass } from "./card-test-helpers.js";
 
@@ -90,5 +92,55 @@ describe("plant view", () => {
     const hass = cardHass();
     hass.devices![DEVICE] = { ...hass.devices![DEVICE]!, model: "Plant", name_by_user: "Desk Aloe", area_id: null };
     expect(view(hass)).toMatchObject({ species: null, name: "Desk Aloe", area: null });
+  });
+});
+
+describe("open moisture verdict", () => {
+  const dry = { entity_id: "sensor.office_aloe_soil_moisture", state: "12.0", attributes: { unit_of_measurement: "%", min: 20, target: 40, max: 60 } };
+  it.each([
+    ["missing", null],
+    ["unknown", { entity_id: "binary_sensor.office_aloe_needs_water", state: "unknown", attributes: {} }],
+    ["unavailable", { entity_id: "binary_sensor.office_aloe_needs_water", state: "unavailable", attributes: {} }],
+  ] as const)("is not healthy while Needs water is %s", (_name, needsWater) => {
+    const hass = cardHass({ "sensor.office_aloe_soil_moisture": dry, "binary_sensor.office_aloe_needs_water": needsWater });
+    if (needsWater === null) delete hass.entities!["binary_sensor.office_aloe_needs_water"];
+    const input = statusInput(hass, plantEntities(hass, DEVICE));
+    expect(input.needs_water).toBe(needsWater?.state ?? null);
+    const plant = view(hass);
+    expect(plant.overview.status).toBe("stale");
+    expect(plant.overview.problems).toEqual([{ role: "moisture", kind: "unavailable" }]);
+  });
+  it("is not healthy while Too wet is missing", () => {
+    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": { entity_id: "binary_sensor.office_aloe_needs_water", state: "off", attributes: {} }, "binary_sensor.office_aloe_too_wet": null });
+    expect(view(hass).overview.status).toBe("stale");
+  });
+  it("still reports needs water when Too wet is missing", () => {
+    const hass = cardHass({ "binary_sensor.office_aloe_too_wet": null });
+    expect(view(hass).overview).toMatchObject({ status: "needs_water", problems: [{ role: "moisture", kind: "needs_water" }] });
+  });
+});
+
+describe("temperature in Fahrenheit", () => {
+  const l = createLocalizer({ language: "en" });
+  const fahrenheit = (role: "temperature" | "soil_temperature", alert: string) => {
+    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": { entity_id: "binary_sensor.office_aloe_needs_water", state: "off", attributes: {} } });
+    const reading = `sensor.office_aloe_${role}`; const stress = `binary_sensor.office_aloe_${alert}`;
+    hass.entities![reading] = { entity_id: reading, device_id: DEVICE, platform: "smart_plants", translation_key: role };
+    hass.entities![stress] = { entity_id: stress, device_id: DEVICE, platform: "smart_plants", translation_key: alert };
+    if (role === "soil_temperature") { delete hass.states["sensor.office_aloe_temperature"]; delete hass.states["binary_sensor.office_aloe_temperature_stress"]; }
+    hass.states[reading] = { entity_id: reading, state: "86", attributes: { unit_of_measurement: "°F" } };
+    hass.states[stress] = { entity_id: stress, state: "on", attributes: { reason: "hot_stress", cold_threshold_celsius: 10, hot_threshold_celsius: 28, cold_clear_celsius: 11, hot_clear_celsius: 27 } };
+    return view(hass);
+  };
+  it.each([["temperature", "temperature_stress", "Temperature"], ["soil_temperature", "soil_temperature_stress", "Soil temperature"]] as const)("shows %s bounds in the reading's unit", (role, alert, label) => {
+    const plant = fahrenheit(role, alert);
+    expect(plant.overview.roles[role]).toMatchObject({ value: 86, unit: "°F", state: "high", range: { min: 50, max: 82.4 }, clear: { min: 51.8, max: 80.6 } });
+    const reason = cardReason(l, plant.overview);
+    expect(reason).toContain(label);
+    expect(reason).toContain("82.4 °F");
+    expect(reason).not.toContain("28 °F");
+  });
+  it("keeps Celsius bounds for a Celsius reading", () => {
+    expect(view().overview.roles.temperature).toMatchObject({ unit: "°C", range: { min: 10, max: 28 } });
   });
 });

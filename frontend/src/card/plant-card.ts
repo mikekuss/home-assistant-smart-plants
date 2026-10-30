@@ -184,9 +184,12 @@ export class SmartPlantsPlantCardContent extends LitElement {
     const occurredAt = localTimestamp(new Date());
     this._busy = true;
     try {
+      // The action returns no event. For Undo, admins note the waterings that
+      // exist before logging, so the new one can be told apart afterwards.
+      const before = this._admin ? await this._wateringIds(hass, plant) : null;
       await hass.callService(DOMAIN, "log_care", { kind: "watering", occurred_at: occurredAt }, { device_id: plant.deviceId }, false);
       const message = l.t("watering.logged", { name: plant.name });
-      if (this._admin && hass.callWS) this._toast(message, { text: l.t("watering.undo"), action: () => void this._undo(plant, occurredAt) });
+      if (before) this._toast(message, { text: l.t("watering.undo"), action: () => void this._undo(plant, before, occurredAt) });
       else this._toast(message);
     } catch (e) {
       this._toast(errorCode(e) === "unauthorized" ? l.t("plant_card.unauthorized") : l.t("plant_card.log_failed", { name: plant.name }));
@@ -195,14 +198,27 @@ export class SmartPlantsPlantCardContent extends LitElement {
     }
   }
 
-  // The action returns no event, so Undo looks up the watering it logged by its time.
-  private async _undo(plant: PlantView, occurredAt: string): Promise<void> {
+  private async _wateringIds(hass: CardHass, plant: PlantView): Promise<Set<string> | null> {
+    if (!hass.callWS) return null;
+    try {
+      const history = await hass.callWS<CareListReply>({ type: `${DOMAIN}/care/list`, plant_id: plant.plantId });
+      return new Set(history.events.filter(e => e.kind === "watering").map(e => e.id));
+    } catch {
+      return null;
+    }
+  }
+
+  // Undo removes the watering that appeared since logging. The backend may move
+  // a slightly future time to its own clock, so the time only breaks a tie when
+  // someone else logged a watering at the same moment.
+  private async _undo(plant: PlantView, before: Set<string>, occurredAt: string): Promise<void> {
     const hass = this.hass; const l = this._l;
     if (!hass?.callWS) return;
     try {
       const history = await hass.callWS<CareListReply>({ type: `${DOMAIN}/care/list`, plant_id: plant.plantId });
       const at = Date.parse(occurredAt);
-      const event = history.events.find(e => e.kind === "watering" && Date.parse(e.occurred_at) === at);
+      const added = history.events.filter(e => e.kind === "watering" && !before.has(e.id));
+      const event = added.sort((a, b) => Math.abs(Date.parse(a.occurred_at) - at) - Math.abs(Date.parse(b.occurred_at) - at))[0];
       if (!event) throw new Error("not found");
       await hass.callWS({ type: `${DOMAIN}/care/delete`, plant_id: plant.plantId, expected_revision: history.revision, event_id: event.id });
       this._toast(l.t("watering.removed", { name: plant.name }));

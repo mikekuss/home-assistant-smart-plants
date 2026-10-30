@@ -54,6 +54,7 @@ const RANGE_ATTRIBUTES: Readonly<Partial<Record<ReadingRole, { range: [string | 
 export const MOISTURE_HYSTERESIS = 2;
 
 const UNAVAILABLE = new Set(["unavailable", "unknown"]);
+const ALERT_STATES = new Set(["on", "off"]);
 const num = (v: unknown): number | null => typeof v === "number" && Number.isFinite(v) ? v : null;
 const numState = (s: CardState | undefined): number | null => {
   if (!s || UNAVAILABLE.has(s.state)) return null;
@@ -119,7 +120,10 @@ export function deriveStatus(input: StatusInput): StatusResult {
   const stale = input.sensor_stale === "on";
   // Without the count (an older backend) a reading or a stale sensor still shows there are sources.
   const hasSources = input.sources !== null ? input.sources > 0 : moistureAvailable || stale;
-  const readingProblem = !hasSources ? null : stale ? "stale" : moistureAvailable ? null : "unavailable";
+  // A reading only counts as healthy when Needs water and Too wet both say
+  // "off". A missing, disabled or unknown alert sensor leaves the verdict open.
+  const verdictKnown = valueProblem !== null || (ALERT_STATES.has(input.needs_water ?? "") && ALERT_STATES.has(input.too_wet ?? ""));
+  const readingProblem = !hasSources ? null : stale ? "stale" : moistureAvailable && verdictKnown ? null : "unavailable";
   if (readingProblem) problems.push({ role: "moisture", kind: readingProblem });
   if (!hasSources) problems.push({ role: "moisture", kind: "no_sensors" });
 
@@ -151,9 +155,21 @@ export function statusInput(hass: CardHassData, entities: Map<string, string>): 
   };
 }
 
-function rangeOf(role: ReadingRole, alert: CardState | undefined): { range: TargetRange; clear: { min: number | null; max: number | null } } {
+// Temperature thresholds are stored in °C, but Home Assistant shows
+// temperature readings in the unit system's unit, so bounds follow the reading.
+const CELSIUS_ROLES = new Set<ReadingRole>(["temperature", "soil_temperature"]);
+const fromCelsius = (value: number, unit: string): number => {
+  if (unit === "°F") return Math.round((value * 9 / 5 + 32) * 10) / 10;
+  if (unit === "K") return Math.round((value + 273.15) * 100) / 100;
+  return value;
+};
+
+function rangeOf(role: ReadingRole, alert: CardState | undefined, unit: string): { range: TargetRange; clear: { min: number | null; max: number | null } } {
   const spec = RANGE_ATTRIBUTES[role];
-  const attr = (key: string | null) => key && alert && !UNAVAILABLE.has(alert.state) ? num(alert.attributes[key]) : null;
+  const attr = (key: string | null) => {
+    const value = key && alert && !UNAVAILABLE.has(alert.state) ? num(alert.attributes[key]) : null;
+    return value !== null && CELSIUS_ROLES.has(role) ? fromCelsius(value, unit) : value;
+  };
   return {
     range: { min: attr(spec?.range[0] ?? null), target: null, max: attr(spec?.range[1] ?? null) },
     clear: { min: attr(spec?.clear[0] ?? null), max: attr(spec?.clear[1] ?? null) },
@@ -218,8 +234,8 @@ export function plantView(hass: CardHassData, deviceId: string): CardPlant {
     const value = numState(reading);
     if (value === null) continue;
     const signal = STRESS_SIGNALS.find(s => s.role === role);
-    const { range, clear } = rangeOf(role, signal ? state(`binary_sensor.${signal.sensor}`) : undefined);
     const unit = typeof reading?.attributes.unit_of_measurement === "string" ? reading.attributes.unit_of_measurement : "";
+    const { range, clear } = rangeOf(role, signal ? state(`binary_sensor.${signal.sensor}`) : undefined, unit);
     roles[role] = { value, unit, state: readingState(value, problems.find(p => p.role === role), false), range, clear, last_reported: null, sources: [] };
   }
 
