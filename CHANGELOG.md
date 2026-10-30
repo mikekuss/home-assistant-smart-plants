@@ -8,12 +8,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
-- The **Automations** card on a plant's **Overview** tab lists the automations that use the
-  plant, with when each one last ran and whether it is off or unavailable. Select one to open
-  it in Home Assistant's automation editor. Automations for all plants, such as the
-  notifications you set up for all plants, have their own group. The list replaces the
-  automation IDs in **Troubleshooting**. See
-  [See which automations use a plant](docs/automations.md#see-which-automations-use-a-plant).
 - A **Smart Plants plant card** for dashboards shows one plant with its status, soil moisture
   bar, readings, last watering and a **Watered** button. Users who aren't administrators can
   use it too. Pick it in the card picker; it loads only when a card is on screen. See
@@ -24,6 +18,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The panel opens a plant from a link such as `/smart-plants/plant/<plant_id>`. The dashboard
   card's plant name links there for administrators.
 
+## [0.15.0] - 2026-10-30
+
+### Added
+
+- The **Automations** card on a plant's **Overview** tab lists the automations that use the
+  plant, with when each one last ran and whether it is off or unavailable. Select one to open
+  it in Home Assistant's automation editor. Automations for all plants, such as the
+  notifications you set up for all plants, have their own group. The list replaces the
+  automation IDs in **Troubleshooting**. See
+  [See which automations use a plant](docs/automations.md#see-which-automations-use-a-plant).
+
 ### Changed
 
 - The German panel texts call Home Assistant's automation editor *Automatisierungseditor*
@@ -31,6 +36,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Plant reports for all plants, the *Plants need attention* condition and the *All plants*
+  entity no longer fail when another integration, such as HomeKit Bridge, registers devices
+  with longer identifiers. Reports failed with "too many values to unpack", and the *All
+  plants* entity stayed unavailable. Area, floor and label targets that contain such a device
+  work again too, and logging care for such a device reports that it is not a plant.
 - The sensor pickers under **Sensors → Add sensor** and **Change** no longer offer Smart
   Plants' own sensors, even with **Show all sensors** turned on. Picking one, for example a
   plant's own *Light* sensor or another plant's *Soil moisture*, made a plant read its own or
@@ -484,7 +494,8 @@ First public release.
 - English and German translations for the integration's entities, setup, and repairs. The
   sidebar panel is English-only.
 
-[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.14.0...HEAD
+[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.15.0...HEAD
+[0.15.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.14.0...0.15.0
 [0.14.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.13.0...0.14.0
 [0.13.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.12.0...0.13.0
 [0.12.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.11.0...0.12.0
