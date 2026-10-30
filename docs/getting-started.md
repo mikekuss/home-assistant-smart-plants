@@ -105,8 +105,9 @@ The page has four tabs:
   too low, too high or not updating, and its target), *History* (a chart of one reading over
   time, see [History](#history)), *Recent care* (the last three entries),
   *About this plant* (species, area, and the details you set, with **Add details** for the
-  rest) and
-  *Automations* (links to the device page and to a new automation for this device).
+  rest) and *Automations* (the automations that use the plant, see
+  [See which automations use a plant](automations.md#see-which-automations-use-a-plant), and
+  links to the device page and to a new automation for this device).
 - **Sensors**: the sensors in use, the settings for readings with several sensors, and
   *Troubleshooting*.
 - **Care**: the care plan with your care reminders, and the care log.

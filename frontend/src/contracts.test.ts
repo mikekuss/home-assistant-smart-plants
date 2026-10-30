@@ -26,6 +26,20 @@ describe("v1 transport and public Home Assistant wrappers", () => {
     expect(h.calls.map(c => c.type)).toEqual(["config/area_registry/list", "config/device_registry/list", "config/entity_registry/list", "get_states", "search/related"]);
     expect(h.calls.at(-1)).toEqual({ type: "search/related", item_type: "device", item_id: "device-1" });
   });
+  it("searches related automations by device and by entity with exact payloads", async () => {
+    const h = harness();
+    expect(await api.related(h.hass, "device-1")).toEqual(["automation.plant_reminder"]);
+    expect(await api.relatedToEntity(h.hass, "binary_sensor.smart_plants_all_plants")).toEqual(["automation.plant_reminder"]);
+    expect(h.calls).toEqual([
+      { type: "search/related", item_type: "device", item_id: "device-1" },
+      { type: "search/related", item_type: "entity", item_id: "binary_sensor.smart_plants_all_plants" },
+    ]);
+  });
+  it.each([[null, []], [{}, []], [{ automation: "automation.single" }, []], [{ automation: [7, "automation.kept", null], script: ["script.ignored"] }, ["automation.kept"]]])("keeps only automation IDs of a related search result %#", async (result, ids) => {
+    const h = harness([], msg => msg.type === "search/related" ? result : undefined);
+    expect(await api.related(h.hass, "device-1")).toEqual(ids);
+    expect(await api.relatedToEntity(h.hass, "binary_sensor.smart_plants_all_plants")).toEqual(ids);
+  });
   it.each(["areas", "devices", "entities", "states"] as const)("rejects non-list public %s results", async method => {
     const h = harness([], () => ({ id: "not-a-list" })); await expect(api[method](h.hass)).rejects.toMatchObject({ code: "invalid_response" });
   });

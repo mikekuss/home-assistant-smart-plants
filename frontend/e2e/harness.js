@@ -287,6 +287,30 @@ if (params.has("notifications")) {
   // The integration's All plants entity, which notifications target for all plants.
   state.entities.push({ id: uuid(7990), entity_id: "binary_sensor.smart_plants_all_plants", device_id: null, unique_id: "smart_plants:all_plants", platform: "smart_plants" });
 }
+// Automation entity IDs Home Assistant's search finds, by item type and ID.
+state.related = { device: {}, entity: {} };
+// Opt-in automations for the first plant, as the Automations card lists them:
+// seven found by its device (one off, one with a configuration error and one
+// from YAML without an id) and two for all plants, one of which its device
+// search finds too.
+if (params.has("automations")) {
+  const p = state.plants[0], hour = 3600000;
+  const ran = hours => new Date(Date.now() - hours * hour).toISOString();
+  const automation = (id, value, name, attributes) => ({ entity_id: `automation.mock_${id}`, state: value, attributes: { friendly_name: name, last_triggered: null, ...attributes }, last_updated: now });
+  state.states.push(
+    automation("water_reminder", "on", "Water reminder for Office Aloe", { id: "1761000000101", last_triggered: ran(2) }),
+    automation("grow_light", "on", "Grow light on dark days", { id: "1761000000102", last_triggered: ran(26) }),
+    automation("holiday_check", "off", "Holiday watering check", { id: "1761000000103", last_triggered: ran(12 * 24) }),
+    automation("morning_summary", "on", "Morning plant summary", { id: "1761000000104", last_triggered: ran(1 / 3) }),
+    automation("low_battery", "on", "Low battery in plant sensors", { id: "1761000000105" }),
+    automation("mist", "unavailable", "Mist on dry air", { id: "1761000000106" }),
+    automation("watering_helper", "on", "Old watering helper", { last_triggered: ran(3 * 24) }),
+    automation("needs_water", "on", "Smart Plants: plant needs water", { id: "1761000000107", last_triggered: ran(25) }),
+  );
+  state.related.device[`device-${p.id}`] = ["water_reminder", "grow_light", "holiday_check", "morning_summary", "low_battery", "mist", "watering_helper"].map(id => `automation.mock_${id}`);
+  state.related.entity["binary_sensor.smart_plants_all_plants"] = ["automation.mock_needs_water", "automation.mock_water_reminder"];
+  if (!state.entities.some(e => e.unique_id === "smart_plants:all_plants")) state.entities.push({ id: uuid(7991), entity_id: "binary_sensor.smart_plants_all_plants", device_id: null, unique_id: "smart_plants:all_plants", platform: "smart_plants" });
+}
 // Home Assistant's root element opens its automation editor for this event.
 window.addEventListener("hass-automation-editor", event => {
   state.editorRequests.push(copy(event.detail));
@@ -327,7 +351,7 @@ async function respond(message) {
     case "config/entity_registry/list": return copy(state.entities);
     case "config/device_registry/list": return copy(state.devices);
     case "get_states": return copy(state.states);
-    case "search/related": return { automation: ["automation.plant_reminder"] };
+    case "search/related": return { automation: copy(state.related[message.item_type]?.[message.item_id] ?? []) };
     case "automation/config": if (!state.automationConfigs[message.entity_id]) reject("not_found"); return { config: copy(state.automationConfigs[message.entity_id]) };
     case "call_service": {
       const target = state.states.find(s => s.entity_id === message.target?.entity_id);

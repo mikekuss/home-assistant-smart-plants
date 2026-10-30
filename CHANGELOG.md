@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- The **Automations** card on a plant's **Overview** tab lists the automations that use the
+  plant, with when each one last ran and whether it is off or unavailable. Select one to open
+  it in Home Assistant's automation editor. Automations for all plants, such as the
+  notifications you set up for all plants, have their own group. The list replaces the
+  automation IDs in **Troubleshooting**. See
+  [See which automations use a plant](docs/automations.md#see-which-automations-use-a-plant).
+
+### Changed
+
+- The German panel texts call Home Assistant's automation editor *Automatisierungseditor*
+  everywhere, also in the care plan and the Notifications dialog.
+
 ### Fixed
 
 - The sensor pickers under **Sensors → Add sensor** and **Change** no longer offer Smart

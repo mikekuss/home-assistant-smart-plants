@@ -163,9 +163,14 @@ export const api = {
   async states(hass: HomeAssistantLike): Promise<HAState[]> {
     return registryList(await send<unknown>(hass, { type: "get_states" }), validState);
   },
+  // Automations Home Assistant's search finds for a device, including those on
+  // the device's own entities.
   async related(hass: HomeAssistantLike, deviceId: string): Promise<string[]> {
-    const result = await send<{ automation?: unknown }>(hass, { type: "search/related", item_type: "device", item_id: deviceId });
-    return Array.isArray(result.automation) ? result.automation.filter((v): v is string => typeof v === "string") : [];
+    return automationIds(await send<unknown>(hass, { type: "search/related", item_type: "device", item_id: deviceId }));
+  },
+  // Automations that use the entity itself, such as the All plants entity.
+  async relatedToEntity(hass: HomeAssistantLike, entityId: string): Promise<string[]> {
+    return automationIds(await send<unknown>(hass, { type: "search/related", item_type: "entity", item_id: entityId }));
   },
   // Mean, lowest and highest value per period from Home Assistant's recorder.
   // `units` pins a unit class (for example temperature to °C) so the values
@@ -489,6 +494,12 @@ function registryList<T>(value: unknown, valid: (entry: Record<string, unknown>)
     throw new ApiError("invalid_response", "Home Assistant registry/state response is incompatible. Reload and retry.");
   }
   return value.filter(v => typeof v === "object" && v !== null && !Array.isArray(v) && valid(v as Record<string, unknown>)) as T[];
+}
+
+// The automation entity IDs of a `search/related` result; other item types are ignored.
+function automationIds(result: unknown): string[] {
+  const automations = typeof result === "object" && result !== null ? (result as { automation?: unknown }).automation : undefined;
+  return Array.isArray(automations) ? automations.filter((v): v is string => typeof v === "string") : [];
 }
 
 interface HttpArgs {
