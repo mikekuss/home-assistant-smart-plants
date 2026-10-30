@@ -8,10 +8,10 @@ from datetime import timedelta
 from typing import Any
 
 import pytest
-import voluptuous as vol
 from custom_components.smart_plants.automation_targets import PROBLEM_ROLES
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.manager import SmartPlantsManager
+from custom_components.smart_plants.schema_library import vol
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.const import (
     ATTR_ENTITY_ID,

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import voluptuous as vol
 from custom_components.smart_plants.const import (
     CONF_OPENPLANTBOOK_CLIENT_ID,
     CONF_OPENPLANTBOOK_CLIENT_SECRET,
@@ -12,6 +11,7 @@ from custom_components.smart_plants.const import (
     DOMAIN,
     SINGLETON_UNIQUE_ID,
 )
+from custom_components.smart_plants.schema_library import vol
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry

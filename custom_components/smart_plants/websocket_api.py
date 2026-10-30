@@ -133,7 +133,6 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
-import voluptuous as vol
 from homeassistant.components.websocket_api import async_register_command
 from homeassistant.components.websocket_api.connection import ActiveConnection
 from homeassistant.components.websocket_api.decorators import (
@@ -177,6 +176,7 @@ from .provider import (
     validate_operation,
 )
 from .roles import role_definitions
+from .schema_library import vol
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -231,7 +231,7 @@ def _plant_id(value: Any) -> str:
     return value
 
 
-# --- Voluptuous fragments -------------------------------------------------
+# --- Schema fragments -----------------------------------------------------
 
 
 _SPECIES_SCHEMA = vol.Schema(

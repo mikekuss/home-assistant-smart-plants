@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- Smart Plants keeps working on future Home Assistant releases that no longer include
+  voluptuous. On Home Assistant 2026.9 and later it now validates its settings, actions,
+  automation options and panel requests with probatio, which Home Assistant itself has used
+  since 2026.9.
+
 ## [0.15.0] - 2026-10-30
 
 ### Added

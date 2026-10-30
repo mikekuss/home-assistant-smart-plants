@@ -17,7 +17,6 @@ from collections.abc import Callable, Iterable
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Unpack, override
 
-import voluptuous as vol
 from homeassistant.const import CONF_FOR, STATE_ON
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.condition import (
@@ -44,6 +43,7 @@ from .automation_targets import (
     resolve_entities,
 )
 from .report import INCLUDE_OPTIONS, collect_plants, select_plants
+from .schema_library import vol
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant, State

@@ -27,7 +27,6 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final
 
-import voluptuous as vol
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import (
     ATTR_AREA_ID,
@@ -84,6 +83,7 @@ from .report import (
     collect_plants,
     report_language,
 )
+from .schema_library import vol
 from .storage import SmartPlantsStorageFullError
 
 if TYPE_CHECKING:

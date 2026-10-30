@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers import selector
@@ -20,6 +19,7 @@ from .const import (
 )
 from .forecast_reader import refresh_minutes
 from .providers import provider_descriptors
+from .schema_library import vol
 
 OPENPLANTBOOK_CREDENTIALS_URL = "https://open.plantbook.io/apikey/"
 
