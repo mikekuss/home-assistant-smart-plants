@@ -84,7 +84,7 @@ problem. The care task binary sensors are described under [Care tasks](#care-tas
 | --- | --- | --- | --- |
 | Needs water | Always | none | `last_watered` |
 | Too wet | Always | none | none |
-| Sensor stale | Always | none | none |
+| Sensor stale | Always | none | `sources` |
 | Temperature stress | First temperature source | none | `confidence`, `reason`, `cold_threshold_celsius`, `cold_clear_celsius`, `hot_threshold_celsius`, `hot_clear_celsius` |
 | Humidity stress | First humidity source | none | `confidence`, `reason`, `dry_threshold_percent`, `dry_clear_percent`, `damp_threshold_percent`, `damp_clear_percent` |
 | Low light | First illuminance source | none | `confidence`, `reason`, `sample_count`, `target_lux`, `clear_lux` |
@@ -103,6 +103,10 @@ The `reason` attribute explains the current state, for example `cold_stress`, `h
 `last_watered` on *Needs water* is when the plant was last watered, as an ISO timestamp, or
 `null` before the first watering. It changes with every watering you log, also from the
 **Watered** button or the `smart_plants.log_care` action.
+
+`sources` on *Sensor stale* is how many soil moisture sensors the plant has assigned. *Sensor
+stale* stays available while the plant is active, so `sources` tells a plant without soil
+moisture sensors from one whose sensor stopped reporting.
 
 *Needs water* and *Too wet* are unavailable while there is no valid moisture reading.
 *Sensor stale* stays available: it's off when no moisture sensor is assigned and on while any

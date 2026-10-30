@@ -233,6 +233,15 @@ class _SensorStaleBinary(_MoistureBinaryBase):
             return False
         return bool(controller.current_evaluation.sensor_stale)
 
+    def _alert_attributes(self) -> dict[str, Any]:
+        # How many moisture sensors are assigned. This sensor stays available
+        # while the plant is active, so a dashboard card can tell a plant
+        # without moisture sensors from one whose sensor stopped reporting.
+        plant = self._manager.snapshot.plants.get(self._plant_id)
+        if plant is None:
+            return {}
+        return {"sources": len(plant.moisture.sources)}
+
 
 class _LowLightBinary(SmartPlantsBinarySensorEntity):
     _attr_translation_key = ROLE_LOW_LIGHT

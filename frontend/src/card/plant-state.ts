@@ -94,16 +94,18 @@ export interface StatusInput {
   needs_water: string | null;
   too_wet: string | null;
   sensor_stale: string | null;
+  // The `sources` attribute of the stale sensor: how many moisture sensors
+  // are assigned. null while the stale sensor is unavailable or doesn't say.
+  sources: number | null;
   stress: Partial<Record<ReadingRole, { state: string; reason: string | null }>>;
 }
 
 export interface StatusResult { status: PlantStatus; problems: PlantProblem[] }
 
 // The plant status and its issues, most urgent first, as plant_status.py
-// derives them. The card cannot tell a moisture sensor that just stopped
-// reporting (not yet stale) from a plant without moisture sensors: in both the
-// moisture sensor reads unavailable and the stale sensor is off. It shows "No
-// sensors" then.
+// derives them. The entities don't say why assigned moisture sensors give no
+// value; the card reports them as not reporting, also when several sensors
+// wait for a main sensor to be chosen (the panel names that case).
 export function deriveStatus(input: StatusInput): StatusResult {
   if (input.allUnavailable) return { status: "paused", problems: [] };
   const problems: PlantProblem[] = [];
@@ -115,14 +117,16 @@ export function deriveStatus(input: StatusInput): StatusResult {
   }
   const moistureAvailable = input.moisture !== null && !UNAVAILABLE.has(input.moisture);
   const stale = input.sensor_stale === "on";
-  const hasSources = moistureAvailable || stale;
-  if (stale) problems.push({ role: "moisture", kind: "stale" });
+  // Without the count (an older backend) a reading or a stale sensor still shows there are sources.
+  const hasSources = input.sources !== null ? input.sources > 0 : moistureAvailable || stale;
+  const readingProblem = !hasSources ? null : stale ? "stale" : moistureAvailable ? null : "unavailable";
+  if (readingProblem) problems.push({ role: "moisture", kind: readingProblem });
   if (!hasSources) problems.push({ role: "moisture", kind: "no_sensors" });
 
   let status: PlantStatus;
   if (valueProblem) status = valueProblem;
   else if (problems.some(p => p.role !== "moisture")) status = "problem";
-  else if (stale) status = "stale";
+  else if (readingProblem) status = "stale";
   else if (!hasSources) status = "no_sensors";
   else status = "healthy";
   return { status, problems };
@@ -142,6 +146,7 @@ export function statusInput(hass: CardHassData, entities: Map<string, string>): 
     needs_water: state("binary_sensor.needs_water")?.state ?? null,
     too_wet: state("binary_sensor.too_wet")?.state ?? null,
     sensor_stale: state("binary_sensor.sensor_stale")?.state ?? null,
+    sources: num(state("binary_sensor.sensor_stale")?.attributes.sources),
     stress,
   };
 }
@@ -196,7 +201,8 @@ export function plantView(hass: CardHassData, deviceId: string): CardPlant {
   const moistureState = state("sensor.moisture");
   const moistureValue = numState(moistureState);
   const stale = input.sensor_stale === "on";
-  if (!paused && (moistureValue !== null || stale)) {
+  const hasMoistureSources = problems.every(p => p.kind !== "no_sensors");
+  if (!paused && (moistureValue !== null || hasMoistureSources)) {
     const attrs = moistureState?.attributes ?? {};
     const min = num(attrs.min); const max = num(attrs.max);
     roles.moisture = {

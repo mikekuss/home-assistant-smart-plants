@@ -54,8 +54,9 @@ Use the card editor to pick the plant. It fills in the device ID for you.
 
 The card reads the plant's entities, so it updates as soon as they change. The target band
 comes from the `min`, `target` and `max` attributes of the soil moisture sensor. The last
-watering comes from the `last_watered` attribute of *Needs water*. Both are described in
-[Entities](entities.md#sensors).
+watering comes from the `last_watered` attribute of *Needs water*. The `sources` attribute of
+*Sensor stale* tells the card whether the plant has soil moisture sensors. They are described
+in [Entities](entities.md#sensors).
 
 Home Assistant drops these attributes while an entity is unavailable. So the card shows no
 target band and no last watering while the plant has no current moisture reading, and none
@@ -87,10 +88,9 @@ A plant without sensors shows "No sensors assigned yet". For administrators it a
 - **Paused or not reporting.** A paused plant's entities all read unavailable. The card shows
   **Paused** whenever all of a plant's entities are unavailable, also when there is another
   reason.
-- **No sensors.** A soil moisture sensor that has stopped reporting but isn't stale yet looks
-  like no soil moisture sensor at all. The card then shows **No sensors**, while the panel
-  already shows **No recent data**. Once the sensor counts as stale, both show **No recent
-  data**.
+- **No main sensor.** When several soil moisture sensors wait for you to choose the main
+  sensor, the panel says **No main sensor**. The card shows **No recent data** with "sensor is
+  not reporting", because the entities don't say why there is no value.
 - **Removed plant.** When you delete a plant, its card shows "Plant not found". Edit the card
   to pick another plant, or remove it.
 

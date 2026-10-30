@@ -1,14 +1,37 @@
 {
-  "description": "Plant status cases shared by tests/test_plant_status_cases.py and frontend/src/card/plant-state.test.ts. Each case gives the role evaluations, the entity states Home Assistant shows for them, and the status. Python checks the status and the entity states; the dashboard card derives the status from the entity states. 'card' records where the card cannot tell the cases apart from entity states alone.",
+  "description": "Plant status cases shared by tests/test_plant_status_cases.py and frontend/src/card/plant-state.test.ts. Each case gives the role evaluations, the entity states Home Assistant shows for them, and the status. Python checks the status and the entity states; the dashboard card derives the status from the entity states. 'card' records where the entity states don't carry enough to match: they don't say that several moisture sensors wait for a main sensor, so the card reports them as not reporting.",
   "cases": [
     {
       "name": "healthy",
       "disabled": false,
-      "moisture": { "percent": 41.0, "stale": false, "needs_water": false, "too_wet": false, "reasons": [] },
-      "stress": { "temperature": { "available": true, "on": false, "reason": "ok" } },
+      "moisture": {
+        "percent": 41.0,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
+      },
+      "stress": {
+        "temperature": {
+          "available": true,
+          "on": false,
+          "reason": "ok"
+        }
+      },
       "entities": {
-        "allUnavailable": false, "moisture": "41.0", "needs_water": "off", "too_wet": "off", "sensor_stale": "off",
-        "stress": { "temperature": { "state": "off", "reason": "ok" } }
+        "allUnavailable": false,
+        "moisture": "41.0",
+        "needs_water": "off",
+        "too_wet": "off",
+        "sensor_stale": "off",
+        "stress": {
+          "temperature": {
+            "state": "off",
+            "reason": "ok"
+          }
+        },
+        "sources": 1
       },
       "status": "healthy",
       "problems": []
@@ -16,91 +39,288 @@
     {
       "name": "needs water and too hot",
       "disabled": false,
-      "moisture": { "percent": 12.0, "stale": false, "needs_water": true, "too_wet": false, "reasons": [] },
-      "stress": { "temperature": { "available": true, "on": true, "reason": "hot_stress" } },
+      "moisture": {
+        "percent": 12.0,
+        "stale": false,
+        "needs_water": true,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
+      },
+      "stress": {
+        "temperature": {
+          "available": true,
+          "on": true,
+          "reason": "hot_stress"
+        }
+      },
       "entities": {
-        "allUnavailable": false, "moisture": "12.0", "needs_water": "on", "too_wet": "off", "sensor_stale": "off",
-        "stress": { "temperature": { "state": "on", "reason": "hot_stress" } }
+        "allUnavailable": false,
+        "moisture": "12.0",
+        "needs_water": "on",
+        "too_wet": "off",
+        "sensor_stale": "off",
+        "stress": {
+          "temperature": {
+            "state": "on",
+            "reason": "hot_stress"
+          }
+        },
+        "sources": 1
       },
       "status": "needs_water",
-      "problems": [{ "role": "moisture", "kind": "needs_water" }, { "role": "temperature", "kind": "too_hot" }]
+      "problems": [
+        {
+          "role": "moisture",
+          "kind": "needs_water"
+        },
+        {
+          "role": "temperature",
+          "kind": "too_hot"
+        }
+      ]
     },
     {
       "name": "too wet",
       "disabled": false,
-      "moisture": { "percent": 88.0, "stale": false, "needs_water": false, "too_wet": true, "reasons": [] },
+      "moisture": {
+        "percent": 88.0,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": true,
+        "reasons": [],
+        "sources": 1
+      },
       "stress": {},
       "entities": {
-        "allUnavailable": false, "moisture": "88.0", "needs_water": "off", "too_wet": "on", "sensor_stale": "off", "stress": {}
+        "allUnavailable": false,
+        "moisture": "88.0",
+        "needs_water": "off",
+        "too_wet": "on",
+        "sensor_stale": "off",
+        "stress": {},
+        "sources": 1
       },
       "status": "too_wet",
-      "problems": [{ "role": "moisture", "kind": "too_wet" }]
+      "problems": [
+        {
+          "role": "moisture",
+          "kind": "too_wet"
+        }
+      ]
     },
     {
       "name": "two problems in role order",
       "disabled": false,
-      "moisture": { "percent": 48.0, "stale": false, "needs_water": false, "too_wet": false, "reasons": [] },
-      "stress": {
-        "humidity": { "available": true, "on": true, "reason": "dry_stress" },
-        "temperature": { "available": true, "on": true, "reason": "hot_stress" },
-        "illuminance": { "available": true, "on": false, "reason": "ok" }
+      "moisture": {
+        "percent": 48.0,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
       },
-      "entities": {
-        "allUnavailable": false, "moisture": "48.0", "needs_water": "off", "too_wet": "off", "sensor_stale": "off",
-        "stress": {
-          "humidity": { "state": "on", "reason": "dry_stress" },
-          "temperature": { "state": "on", "reason": "hot_stress" },
-          "illuminance": { "state": "off", "reason": "ok" }
+      "stress": {
+        "humidity": {
+          "available": true,
+          "on": true,
+          "reason": "dry_stress"
+        },
+        "temperature": {
+          "available": true,
+          "on": true,
+          "reason": "hot_stress"
+        },
+        "illuminance": {
+          "available": true,
+          "on": false,
+          "reason": "ok"
         }
       },
+      "entities": {
+        "allUnavailable": false,
+        "moisture": "48.0",
+        "needs_water": "off",
+        "too_wet": "off",
+        "sensor_stale": "off",
+        "stress": {
+          "humidity": {
+            "state": "on",
+            "reason": "dry_stress"
+          },
+          "temperature": {
+            "state": "on",
+            "reason": "hot_stress"
+          },
+          "illuminance": {
+            "state": "off",
+            "reason": "ok"
+          }
+        },
+        "sources": 1
+      },
       "status": "problem",
-      "problems": [{ "role": "temperature", "kind": "too_hot" }, { "role": "humidity", "kind": "too_dry" }]
+      "problems": [
+        {
+          "role": "temperature",
+          "kind": "too_hot"
+        },
+        {
+          "role": "humidity",
+          "kind": "too_dry"
+        }
+      ]
     },
     {
       "name": "soil temperature, CO2, conductivity and battery",
       "disabled": false,
-      "moisture": { "percent": 30.0, "stale": false, "needs_water": false, "too_wet": false, "reasons": [] },
+      "moisture": {
+        "percent": 30.0,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
+      },
       "stress": {
-        "battery": { "available": true, "on": true, "reason": "low_battery" },
-        "co2": { "available": true, "on": true, "reason": "co2_stress" },
-        "soil_temperature": { "available": true, "on": true, "reason": "cold_stress" },
-        "conductivity": { "available": true, "on": true, "reason": "high_conductivity_stress" }
+        "battery": {
+          "available": true,
+          "on": true,
+          "reason": "low_battery"
+        },
+        "co2": {
+          "available": true,
+          "on": true,
+          "reason": "co2_stress"
+        },
+        "soil_temperature": {
+          "available": true,
+          "on": true,
+          "reason": "cold_stress"
+        },
+        "conductivity": {
+          "available": true,
+          "on": true,
+          "reason": "high_conductivity_stress"
+        }
       },
       "entities": {
-        "allUnavailable": false, "moisture": "30.0", "needs_water": "off", "too_wet": "off", "sensor_stale": "off",
+        "allUnavailable": false,
+        "moisture": "30.0",
+        "needs_water": "off",
+        "too_wet": "off",
+        "sensor_stale": "off",
         "stress": {
-          "battery": { "state": "on", "reason": "low_battery" },
-          "co2": { "state": "on", "reason": "co2_stress" },
-          "soil_temperature": { "state": "on", "reason": "cold_stress" },
-          "conductivity": { "state": "on", "reason": "high_conductivity_stress" }
-        }
+          "battery": {
+            "state": "on",
+            "reason": "low_battery"
+          },
+          "co2": {
+            "state": "on",
+            "reason": "co2_stress"
+          },
+          "soil_temperature": {
+            "state": "on",
+            "reason": "cold_stress"
+          },
+          "conductivity": {
+            "state": "on",
+            "reason": "high_conductivity_stress"
+          }
+        },
+        "sources": 1
       },
       "status": "problem",
       "problems": [
-        { "role": "conductivity", "kind": "high_conductivity" }, { "role": "soil_temperature", "kind": "too_cold" },
-        { "role": "co2", "kind": "high_co2" }, { "role": "battery", "kind": "battery_low" }
+        {
+          "role": "conductivity",
+          "kind": "high_conductivity"
+        },
+        {
+          "role": "soil_temperature",
+          "kind": "too_cold"
+        },
+        {
+          "role": "co2",
+          "kind": "high_co2"
+        },
+        {
+          "role": "battery",
+          "kind": "battery_low"
+        }
       ]
     },
     {
       "name": "stress without a direction",
       "disabled": false,
-      "moisture": { "percent": 30.0, "stale": false, "needs_water": false, "too_wet": false, "reasons": [] },
-      "stress": { "temperature": { "available": true, "on": true, "reason": "future_reason" } },
+      "moisture": {
+        "percent": 30.0,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
+      },
+      "stress": {
+        "temperature": {
+          "available": true,
+          "on": true,
+          "reason": "future_reason"
+        }
+      },
       "entities": {
-        "allUnavailable": false, "moisture": "30.0", "needs_water": "off", "too_wet": "off", "sensor_stale": "off",
-        "stress": { "temperature": { "state": "on", "reason": "future_reason" } }
+        "allUnavailable": false,
+        "moisture": "30.0",
+        "needs_water": "off",
+        "too_wet": "off",
+        "sensor_stale": "off",
+        "stress": {
+          "temperature": {
+            "state": "on",
+            "reason": "future_reason"
+          }
+        },
+        "sources": 1
       },
       "status": "problem",
-      "problems": [{ "role": "temperature", "kind": "stress" }]
+      "problems": [
+        {
+          "role": "temperature",
+          "kind": "stress"
+        }
+      ]
     },
     {
       "name": "unavailable stress sensor is no problem",
       "disabled": false,
-      "moisture": { "percent": 30.0, "stale": false, "needs_water": false, "too_wet": false, "reasons": [] },
-      "stress": { "illuminance": { "available": false, "on": false, "reason": "unavailable" } },
+      "moisture": {
+        "percent": 30.0,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
+      },
+      "stress": {
+        "illuminance": {
+          "available": false,
+          "on": false,
+          "reason": "unavailable"
+        }
+      },
       "entities": {
-        "allUnavailable": false, "moisture": "30.0", "needs_water": "off", "too_wet": "off", "sensor_stale": "off",
-        "stress": { "illuminance": { "state": "unavailable", "reason": null } }
+        "allUnavailable": false,
+        "moisture": "30.0",
+        "needs_water": "off",
+        "too_wet": "off",
+        "sensor_stale": "off",
+        "stress": {
+          "illuminance": {
+            "state": "unavailable",
+            "reason": null
+          }
+        },
+        "sources": 1
       },
       "status": "healthy",
       "problems": []
@@ -108,103 +328,326 @@
     {
       "name": "stale moisture source",
       "disabled": false,
-      "moisture": { "percent": null, "stale": true, "needs_water": false, "too_wet": false, "reasons": ["stale:sensor.mock_soil"] },
+      "moisture": {
+        "percent": null,
+        "stale": true,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [
+          "stale:sensor.mock_soil"
+        ],
+        "sources": 1
+      },
       "stress": {},
       "entities": {
-        "allUnavailable": false, "moisture": "unavailable", "needs_water": "unavailable", "too_wet": "unavailable", "sensor_stale": "on", "stress": {}
+        "allUnavailable": false,
+        "moisture": "unavailable",
+        "needs_water": "unavailable",
+        "too_wet": "unavailable",
+        "sensor_stale": "on",
+        "stress": {},
+        "sources": 1
       },
       "status": "stale",
-      "problems": [{ "role": "moisture", "kind": "stale" }]
+      "problems": [
+        {
+          "role": "moisture",
+          "kind": "stale"
+        }
+      ]
     },
     {
       "name": "one of two moisture sources stale",
       "disabled": false,
-      "moisture": { "percent": 40.0, "stale": true, "needs_water": false, "too_wet": false, "reasons": ["stale:sensor.mock_soil_b"] },
+      "moisture": {
+        "percent": 40.0,
+        "stale": true,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [
+          "stale:sensor.mock_soil_b"
+        ],
+        "sources": 2
+      },
       "stress": {},
       "entities": {
-        "allUnavailable": false, "moisture": "40.0", "needs_water": "off", "too_wet": "off", "sensor_stale": "on", "stress": {}
+        "allUnavailable": false,
+        "moisture": "40.0",
+        "needs_water": "off",
+        "too_wet": "off",
+        "sensor_stale": "on",
+        "stress": {},
+        "sources": 2
       },
       "status": "stale",
-      "problems": [{ "role": "moisture", "kind": "stale" }]
+      "problems": [
+        {
+          "role": "moisture",
+          "kind": "stale"
+        }
+      ]
     },
     {
       "name": "needs water while another source is stale",
       "disabled": false,
-      "moisture": { "percent": 10.0, "stale": true, "needs_water": true, "too_wet": false, "reasons": ["stale:sensor.mock_soil_b"] },
+      "moisture": {
+        "percent": 10.0,
+        "stale": true,
+        "needs_water": true,
+        "too_wet": false,
+        "reasons": [
+          "stale:sensor.mock_soil_b"
+        ],
+        "sources": 2
+      },
       "stress": {},
       "entities": {
-        "allUnavailable": false, "moisture": "10.0", "needs_water": "on", "too_wet": "off", "sensor_stale": "on", "stress": {}
+        "allUnavailable": false,
+        "moisture": "10.0",
+        "needs_water": "on",
+        "too_wet": "off",
+        "sensor_stale": "on",
+        "stress": {},
+        "sources": 2
       },
       "status": "needs_water",
-      "problems": [{ "role": "moisture", "kind": "needs_water" }, { "role": "moisture", "kind": "stale" }]
+      "problems": [
+        {
+          "role": "moisture",
+          "kind": "needs_water"
+        },
+        {
+          "role": "moisture",
+          "kind": "stale"
+        }
+      ]
     },
     {
       "name": "stale moisture with a problem",
       "disabled": false,
-      "moisture": { "percent": null, "stale": true, "needs_water": false, "too_wet": false, "reasons": ["stale:sensor.mock_soil"] },
-      "stress": { "temperature": { "available": true, "on": true, "reason": "cold_stress" } },
+      "moisture": {
+        "percent": null,
+        "stale": true,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [
+          "stale:sensor.mock_soil"
+        ],
+        "sources": 1
+      },
+      "stress": {
+        "temperature": {
+          "available": true,
+          "on": true,
+          "reason": "cold_stress"
+        }
+      },
       "entities": {
-        "allUnavailable": false, "moisture": "unavailable", "needs_water": "unavailable", "too_wet": "unavailable", "sensor_stale": "on",
-        "stress": { "temperature": { "state": "on", "reason": "cold_stress" } }
+        "allUnavailable": false,
+        "moisture": "unavailable",
+        "needs_water": "unavailable",
+        "too_wet": "unavailable",
+        "sensor_stale": "on",
+        "stress": {
+          "temperature": {
+            "state": "on",
+            "reason": "cold_stress"
+          }
+        },
+        "sources": 1
       },
       "status": "problem",
-      "problems": [{ "role": "temperature", "kind": "too_cold" }, { "role": "moisture", "kind": "stale" }]
+      "problems": [
+        {
+          "role": "temperature",
+          "kind": "too_cold"
+        },
+        {
+          "role": "moisture",
+          "kind": "stale"
+        }
+      ]
     },
     {
       "name": "no moisture sensors",
       "disabled": false,
-      "moisture": { "percent": null, "stale": false, "needs_water": false, "too_wet": false, "reasons": ["no_sources"] },
+      "moisture": {
+        "percent": null,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [
+          "no_sources"
+        ],
+        "sources": 0
+      },
       "stress": {},
       "entities": {
-        "allUnavailable": false, "moisture": "unavailable", "needs_water": "unavailable", "too_wet": "unavailable", "sensor_stale": "off", "stress": {}
+        "allUnavailable": false,
+        "moisture": "unavailable",
+        "needs_water": "unavailable",
+        "too_wet": "unavailable",
+        "sensor_stale": "off",
+        "stress": {},
+        "sources": 0
       },
       "status": "no_sensors",
-      "problems": [{ "role": "moisture", "kind": "no_sensors" }]
+      "problems": [
+        {
+          "role": "moisture",
+          "kind": "no_sensors"
+        }
+      ]
     },
     {
       "name": "no moisture sensors with a problem",
       "disabled": false,
-      "moisture": { "percent": null, "stale": false, "needs_water": false, "too_wet": false, "reasons": ["no_sources"] },
-      "stress": { "illuminance": { "available": true, "on": true, "reason": "low_light" } },
+      "moisture": {
+        "percent": null,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [
+          "no_sources"
+        ],
+        "sources": 0
+      },
+      "stress": {
+        "illuminance": {
+          "available": true,
+          "on": true,
+          "reason": "low_light"
+        }
+      },
       "entities": {
-        "allUnavailable": false, "moisture": "unavailable", "needs_water": "unavailable", "too_wet": "unavailable", "sensor_stale": "off",
-        "stress": { "illuminance": { "state": "on", "reason": "low_light" } }
+        "allUnavailable": false,
+        "moisture": "unavailable",
+        "needs_water": "unavailable",
+        "too_wet": "unavailable",
+        "sensor_stale": "off",
+        "stress": {
+          "illuminance": {
+            "state": "on",
+            "reason": "low_light"
+          }
+        },
+        "sources": 0
       },
       "status": "problem",
-      "problems": [{ "role": "illuminance", "kind": "low_light" }, { "role": "moisture", "kind": "no_sensors" }]
+      "problems": [
+        {
+          "role": "illuminance",
+          "kind": "low_light"
+        },
+        {
+          "role": "moisture",
+          "kind": "no_sensors"
+        }
+      ]
     },
     {
       "name": "moisture source not reporting yet",
       "disabled": false,
-      "moisture": { "percent": null, "stale": false, "needs_water": false, "too_wet": false, "reasons": ["invalid:sensor.mock_soil", "primary_invalid:sensor.mock_soil"] },
+      "moisture": {
+        "percent": null,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [
+          "invalid:sensor.mock_soil",
+          "primary_invalid:sensor.mock_soil"
+        ],
+        "sources": 1
+      },
       "stress": {},
       "entities": {
-        "allUnavailable": false, "moisture": "unavailable", "needs_water": "unavailable", "too_wet": "unavailable", "sensor_stale": "off", "stress": {}
+        "allUnavailable": false,
+        "moisture": "unavailable",
+        "needs_water": "unavailable",
+        "too_wet": "unavailable",
+        "sensor_stale": "off",
+        "stress": {},
+        "sources": 1
       },
       "status": "stale",
-      "problems": [{ "role": "moisture", "kind": "unavailable" }],
-      "card": { "status": "no_sensors", "problems": [{ "role": "moisture", "kind": "no_sensors" }] }
+      "problems": [
+        {
+          "role": "moisture",
+          "kind": "unavailable"
+        }
+      ]
     },
     {
       "name": "no main moisture sensor chosen",
       "disabled": false,
-      "moisture": { "percent": null, "stale": false, "needs_water": false, "too_wet": false, "reasons": ["no_primary"] },
+      "moisture": {
+        "percent": null,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [
+          "no_primary"
+        ],
+        "sources": 2
+      },
       "stress": {},
       "entities": {
-        "allUnavailable": false, "moisture": "unavailable", "needs_water": "unavailable", "too_wet": "unavailable", "sensor_stale": "off", "stress": {}
+        "allUnavailable": false,
+        "moisture": "unavailable",
+        "needs_water": "unavailable",
+        "too_wet": "unavailable",
+        "sensor_stale": "off",
+        "stress": {},
+        "sources": 2
       },
       "status": "stale",
-      "problems": [{ "role": "moisture", "kind": "no_main_sensor" }],
-      "card": { "status": "no_sensors", "problems": [{ "role": "moisture", "kind": "no_sensors" }] }
+      "problems": [
+        {
+          "role": "moisture",
+          "kind": "no_main_sensor"
+        }
+      ],
+      "card": {
+        "status": "stale",
+        "problems": [
+          {
+            "role": "moisture",
+            "kind": "unavailable"
+          }
+        ]
+      }
     },
     {
       "name": "paused",
       "disabled": true,
-      "moisture": { "percent": 12.0, "stale": false, "needs_water": true, "too_wet": false, "reasons": [] },
-      "stress": { "temperature": { "available": true, "on": true, "reason": "hot_stress" } },
+      "moisture": {
+        "percent": 12.0,
+        "stale": false,
+        "needs_water": true,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
+      },
+      "stress": {
+        "temperature": {
+          "available": true,
+          "on": true,
+          "reason": "hot_stress"
+        }
+      },
       "entities": {
-        "allUnavailable": true, "moisture": "unavailable", "needs_water": "unavailable", "too_wet": "unavailable", "sensor_stale": "unavailable",
-        "stress": { "temperature": { "state": "unavailable", "reason": null } }
+        "allUnavailable": true,
+        "moisture": "unavailable",
+        "needs_water": "unavailable",
+        "too_wet": "unavailable",
+        "sensor_stale": "unavailable",
+        "stress": {
+          "temperature": {
+            "state": "unavailable",
+            "reason": null
+          }
+        },
+        "sources": null
       },
       "status": "paused",
       "problems": []

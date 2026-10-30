@@ -22,7 +22,7 @@ export function cardHass(overrides: Record<string, CardState | null> = {}, optio
     "sensor.office_aloe_soil_moisture": state("sensor.office_aloe_soil_moisture", "12.0", { unit_of_measurement: "%", min: 20, target: 40, max: 60 }),
     "binary_sensor.office_aloe_needs_water": state("binary_sensor.office_aloe_needs_water", "on", { last_watered: "2026-09-11T12:00:00+00:00", snoozed: false, snoozed_until: null }),
     "binary_sensor.office_aloe_too_wet": state("binary_sensor.office_aloe_too_wet", "off"),
-    "binary_sensor.office_aloe_sensor_stale": state("binary_sensor.office_aloe_sensor_stale", "off", { snoozed: false, snoozed_until: null }),
+    "binary_sensor.office_aloe_sensor_stale": state("binary_sensor.office_aloe_sensor_stale", "off", { sources: 1, snoozed: false, snoozed_until: null }),
     "sensor.office_aloe_temperature": state("sensor.office_aloe_temperature", "21.5", { unit_of_measurement: "°C" }),
     "binary_sensor.office_aloe_temperature_stress": state("binary_sensor.office_aloe_temperature_stress", "off", { reason: "ok", cold_threshold_celsius: 10, hot_threshold_celsius: 28, cold_clear_celsius: 11, hot_clear_celsius: 27 }),
     "sensor.office_aloe_illuminance": state("sensor.office_aloe_illuminance", "1120", { unit_of_measurement: "lx" }),

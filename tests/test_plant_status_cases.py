@@ -103,7 +103,12 @@ def _evaluations(case: dict[str, Any]) -> dict[str, Any]:
 def _manager(case: dict[str, Any], evaluations: dict[str, Any]) -> SimpleNamespace:
     plant = SimpleNamespace(
         lifecycle_state="disabled" if case["disabled"] else "active",
-        moisture=SimpleNamespace(moisture_min=20, moisture_target=40, moisture_max=60),
+        moisture=SimpleNamespace(
+            moisture_min=20,
+            moisture_target=40,
+            moisture_max=60,
+            sources=tuple(range(case["moisture"]["sources"])),
+        ),
         care_events=(),
         snoozed_until=None,
     )
@@ -156,6 +161,10 @@ def _entity_states(manager: Any, case: dict[str, Any]) -> dict[str, Any]:
             for role, entity in stress.items()
         },
     }
+    stale = binaries["sensor_stale"]
+    states["sources"] = (
+        stale.extra_state_attributes.get("sources") if stale.available else None
+    )
     every = [states["moisture"], *(states[key] for key in binaries)]
     every += [item["state"] for item in states["stress"].values()]
     states["allUnavailable"] = all(state == "unavailable" for state in every)
@@ -177,12 +186,11 @@ def test_entities_show_fixture_states(case: dict[str, Any]) -> None:
     assert _entity_states(_manager(case, evaluations), case) == case["entities"]
 
 
-def test_card_differences_are_only_the_ambiguous_moisture_cases() -> None:
-    # From entity states, a moisture sensor that is assigned but has no value
-    # and is not stale looks like no moisture sensor at all.
-    for case in _CASES:
-        if "card" not in case:
-            continue
-        assert case["entities"]["moisture"] == "unavailable"
-        assert case["entities"]["sensor_stale"] == "off"
-        assert case["card"]["status"] == "no_sensors"
+def test_card_differs_only_where_no_main_sensor_is_chosen() -> None:
+    # The entities don't say that several moisture sensors wait for a main
+    # sensor; the card reports them as not reporting, with the same status.
+    differences = [case for case in _CASES if "card" in case]
+    assert [case["problems"] for case in differences] == [
+        [{"role": "moisture", "kind": "no_main_sensor"}]
+    ]
+    assert differences[0]["card"]["status"] == differences[0]["status"]

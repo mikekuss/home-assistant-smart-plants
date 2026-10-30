@@ -266,6 +266,36 @@ async def test_needs_water_reports_last_watering(hass: HomeAssistant) -> None:
     assert state.attributes["last_watered"] == "2026-09-12T08:30:00+02:00"
 
 
+async def test_sensor_stale_reports_assigned_source_count(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    manager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    await hass.async_block_till_done()
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:sensor_stale"
+    )
+    assert entity_id is not None
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert (state.state, state.attributes["sources"]) == ("off", 0)
+
+    # A source with no value yet keeps the moisture sensor unavailable, but
+    # the count tells it apart from a plant without moisture sensors.
+    hass.states.async_set("sensor.source_a", "unavailable")
+    hass.states.async_set("sensor.source_b", "40", {"unit_of_measurement": "%"})
+    await manager.async_set_moisture_sources(
+        plant.id,
+        expected_revision=manager.get_plant(plant.id).revision,
+        sources=[{"entity_id": "sensor.source_a"}, {"entity_id": "sensor.source_b"}],
+    )
+    await hass.async_block_till_done()
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.attributes["sources"] == 2
+
+
 async def test_silent_source_becomes_stale_at_deadline_without_source_event(
     hass: HomeAssistant,
 ) -> None:

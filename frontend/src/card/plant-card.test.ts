@@ -115,6 +115,7 @@ describe("card", () => {
   });
   it("shows no sensors with an Assign link for admins only", async () => {
     const empty = { "sensor.office_aloe_soil_moisture": unavailable("sensor.office_aloe_soil_moisture"), "binary_sensor.office_aloe_needs_water": unavailable("binary_sensor.office_aloe_needs_water"),
+      "binary_sensor.office_aloe_sensor_stale": { entity_id: "binary_sensor.office_aloe_sensor_stale", state: "off", attributes: { sources: 0 } },
       "sensor.office_aloe_temperature": null, "sensor.office_aloe_illuminance": null, "sensor.office_aloe_battery": null };
     const user = await mount(cardHass(empty));
     expect(deepText(user)).toContain("No sensors assigned yet");
@@ -128,6 +129,21 @@ describe("card", () => {
     expect(location.pathname).toBe(`/smart-plants/plant/${PLANT_ID}/sensors`);
     expect(navigate).toHaveBeenCalledOnce();
     window.removeEventListener("location-changed", navigate);
+  });
+  it("tells a moisture sensor that stopped reporting from no sensors", async () => {
+    const content = await mount(cardHass({
+      "sensor.office_aloe_soil_moisture": unavailable("sensor.office_aloe_soil_moisture"),
+      "binary_sensor.office_aloe_needs_water": unavailable("binary_sensor.office_aloe_needs_water"),
+      "binary_sensor.office_aloe_too_wet": unavailable("binary_sensor.office_aloe_too_wet"),
+    }, { admin: true }));
+    const all = deepText(content);
+    expect(all).toContain("No recent data");
+    expect(all).toContain("Soil moisture: sensor is not reporting");
+    expect(all).not.toContain("No sensors assigned yet");
+    // The band and the last watering are not reported while the sensors are unavailable.
+    expect(all).not.toContain("Target");
+    expect($(content, ".last")).toBeNull();
+    expect($<HTMLButtonElement>(content, ".tonal")!.disabled).toBe(false);
   });
   it("disables the button of a paused plant", async () => {
     const hass = cardHass();

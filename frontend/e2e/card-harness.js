@@ -30,7 +30,7 @@ const set = (entity_id, value, attributes) => { states[entity_id] = state(entity
 set("sensor.office_aloe_moisture", "36.0", { unit_of_measurement: "%", min: 15, target: 35, max: 60 });
 set("binary_sensor.office_aloe_needs_water", "off", { last_watered: iso(now - 2 * day), snoozed: false, snoozed_until: null });
 set("binary_sensor.office_aloe_too_wet", "off", {});
-set("binary_sensor.office_aloe_sensor_stale", "off", { snoozed: false, snoozed_until: null });
+set("binary_sensor.office_aloe_sensor_stale", "off", { sources: 1, snoozed: false, snoozed_until: null });
 set("sensor.office_aloe_temperature", "21.5", { unit_of_measurement: "°C" });
 set("binary_sensor.office_aloe_temperature_stress", "off", { reason: "ok", cold_threshold_celsius: 10, hot_threshold_celsius: 28 });
 set("sensor.office_aloe_illuminance", "1120", { unit_of_measurement: "lx" });
@@ -42,7 +42,7 @@ const snoozed = iso(now + 2 * day);
 set("sensor.kitchen_basil_moisture", "12.0", { unit_of_measurement: "%", min: 30, target: 50, max: 70 });
 set("binary_sensor.kitchen_basil_needs_water", "on", { last_watered: iso(now - 9 * day), snoozed: true, snoozed_until: snoozed });
 set("binary_sensor.kitchen_basil_too_wet", "off", { snoozed: true, snoozed_until: snoozed });
-set("binary_sensor.kitchen_basil_sensor_stale", "off", { snoozed: true, snoozed_until: snoozed });
+set("binary_sensor.kitchen_basil_sensor_stale", "off", { sources: 1, snoozed: true, snoozed_until: snoozed });
 set("sensor.kitchen_basil_temperature", "23", { unit_of_measurement: "°C" });
 set("binary_sensor.kitchen_basil_temperature_stress", "off", { reason: "ok", snoozed: true, snoozed_until: snoozed });
 set("binary_sensor.kitchen_basil_care_due", "on", { due_tasks: ["Fertilize"], snoozed: true, snoozed_until: snoozed });
