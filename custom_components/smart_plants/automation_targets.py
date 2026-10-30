@@ -223,8 +223,15 @@ def resolve_entities(
 
 
 def plant_id_of_device(device: dr.DeviceEntry) -> str | None:
+    # Other integrations may register identifiers with more than two parts
+    # (HomeKit Bridge uses domain, entry ID and accessory ID), so read them by
+    # index instead of unpacking pairs.
     return next(
-        (identifier for domain, identifier in device.identifiers if domain == DOMAIN),
+        (
+            identifier[1]
+            for identifier in device.identifiers
+            if len(identifier) > 1 and identifier[0] == DOMAIN
+        ),
         None,
     )
 
