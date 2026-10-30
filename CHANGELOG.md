@@ -22,6 +22,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Plant reports for all plants, the *Plants need attention* condition and the *All plants*
+  entity no longer fail when another integration, such as HomeKit Bridge, registers devices
+  with longer identifiers. Reports failed with "too many values to unpack", and the *All
+  plants* entity stayed unavailable. Area, floor and label targets that contain such a device
+  work again too, and logging care for such a device reports that it is not a plant.
 - The sensor pickers under **Sensors → Add sensor** and **Change** no longer offer Smart
   Plants' own sensors, even with **Show all sensors** turned on. Picking one, for example a
   plant's own *Light* sensor or another plant's *Soil moisture*, made a plant read its own or
