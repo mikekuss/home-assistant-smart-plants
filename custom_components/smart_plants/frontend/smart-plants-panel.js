@@ -5380,16 +5380,16 @@ var ra, ia = (e) => Math.min(100, Math.max(0, e)), aa = class extends S {
         ${l === null ? x : b`<div class="tick" style="left:${ia(l)}%"></div>`}
         ${n === null ? x : b`<div class="dot ${this.state}" style="left:${Math.min(98, Math.max(2, n))}%"></div>`}
       </div>
-      <div class="scale" aria-hidden="true"><span>${e.t("moisture_bar.dry")}</span>${r ? b`<span>${e.t("moisture_bar.target", { range: r })}</span>` : x}<span>${e.t("moisture_bar.wet")}</span></div>
+      <div class="scale" aria-hidden="true"><span class="end">${e.t("moisture_bar.dry")}</span>${r ? b`<span>${e.t("moisture_bar.target", { range: r })}</span>` : x}<span class="end">${e.t("moisture_bar.wet")}</span></div>
       ${u ? b`<div class="age"><ha-icon aria-hidden="true" icon="mdi:clock-outline"></ha-icon>${e.t("moisture_bar.last_update", { age: Rt(e, this.lastReported, this.now) })}</div>` : x}`;
 	}
 };
 ra = aa, ra.styles = [H, o`
     :host { display: block; font-size: 13px; color: var(--sp-text); }
-    .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; column-gap: 8px; }
     .name { display: inline-flex; align-items: center; gap: 4px; color: var(--sp-text-secondary); }
     .name ha-icon { --mdc-icon-size: 16px; }
-    .value { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .value { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .value.low { color: color-mix(in srgb, var(--sp-warning) 50%, var(--sp-text)); }
     .value.high { color: color-mix(in srgb, var(--sp-info) 50%, var(--sp-text)); }
     .value.stale, .value.unavailable { color: var(--sp-text-secondary); }
@@ -5402,6 +5402,13 @@ ra = aa, ra.styles = [H, o`
     .dot.stale, .dot.unavailable { background: var(--sp-disabled); }
     :host([dimmed]) .band, :host([dimmed]) .tick { opacity: .5; }
     .scale { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; font-size: 11px; color: var(--sp-text-secondary); font-variant-numeric: tabular-nums; }
+    /* In a narrow dashboard card only the target fits under the bar. The bar's
+       label names the whole range for screen readers. */
+    @container (max-width: 200px) {
+      .scale { justify-content: center; }
+      .scale .end { display: none; }
+      .scale span { white-space: nowrap; }
+    }
     .age { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
     .age ha-icon { --mdc-icon-size: 15px; }
   `], U([C({ type: Number })], aa.prototype, "value", void 0), U([C({ attribute: !1 })], aa.prototype, "range", void 0), U([C({ reflect: !0 })], aa.prototype, "state", void 0), U([C({ attribute: !1 })], aa.prototype, "lastReported", void 0), U([C({ attribute: !1 })], aa.prototype, "now", void 0), U([C({ attribute: !1 })], aa.prototype, "l", void 0), customElements.get("sp-moisture-bar") || customElements.define("sp-moisture-bar", aa);

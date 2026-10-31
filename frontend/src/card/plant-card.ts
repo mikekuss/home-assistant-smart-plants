@@ -106,6 +106,17 @@ export class SmartPlantsPlantCardContent extends LitElement {
       .foot { flex-wrap: wrap; row-gap: 4px; padding: 6px 8px 8px 14px; }
       .last { flex: 1 1 100%; }
     }
+    /* Half of the narrowest section: a smaller photo leaves room for the name. */
+    @container (max-width: 200px) {
+      .head { gap: 10px; padding: 12px 12px 8px; }
+      sp-plant-avatar { --sp-avatar-size: 40px; --sp-avatar-radius: 10px; }
+      .status { padding: 0 12px 10px; }
+      .care { margin: 0 12px 10px; }
+      .readings { padding: 4px 12px 12px; }
+      .empty-box { margin: 0 12px 12px; }
+      .foot { padding: 6px 6px 8px 12px; }
+      .warning { padding: 12px; }
+    }
   `];
 
   @property({ attribute: false }) public hass?: CardHass;

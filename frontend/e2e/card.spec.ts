@@ -99,41 +99,82 @@ test("without a card only the small loader is fetched", async ({ page }) => {
   await expect(page.locator("smart-plants-plant-card")).toHaveCount(0);
 });
 
-test("a card at half a section's width keeps the foot and the area line tidy", async ({ page }, info) => {
-  await open(page, "?half&lang=de");
-  const layout = await page.evaluate(() => [...document.querySelectorAll("smart-plants-plant-card")].flatMap(host => {
-    const content = host.shadowRoot!.querySelector("smart-plants-plant-card-content");
-    const root = content?.shadowRoot;
-    if (!root?.querySelector(".foot")) return [];
-    const box = (selector: string) => root.querySelector(selector)?.getBoundingClientRect() ?? null;
-    const card = root.querySelector("ha-card")!;
-    const last = root.querySelector(".last");
-    const sub = root.querySelector<HTMLElement>(".sub");
-    return [{
-      width: host.getBoundingClientRect().width,
-      overflow: card.scrollWidth - card.clientWidth,
-      lastHeight: last ? last.getBoundingClientRect().height : null,
-      lineHeight: last ? parseFloat(getComputedStyle(last).lineHeight) || 20 : null,
-      lastBottom: box(".last")?.bottom ?? null,
-      buttonTop: box(".tonal")!.top,
-      buttonHeight: box(".tonal")!.height,
-      subHeight: sub?.getBoundingClientRect().height ?? null,
-      subTitle: sub?.title ?? null,
-    }];
+// Sections are 320 to 500 pixels wide and the card takes half of one: about
+// 246 pixels in a wide section, 156 in a narrow one and about 175 on a phone.
+for (const [section, widest] of [[500, 250], [320, 160]] as const) {
+  test(`a half-width card in a ${section} pixel section fits its content`, async ({ page }, info) => {
+    await open(page, `?section=${section}&lang=de`);
+    const layout = await page.evaluate(() => [...document.querySelectorAll("smart-plants-plant-card")].flatMap(host => {
+      const content = host.shadowRoot!.querySelector("smart-plants-plant-card-content");
+      const root = content?.shadowRoot;
+      if (!root?.querySelector(".foot")) return [];
+      const box = (selector: string) => root.querySelector(selector)?.getBoundingClientRect() ?? null;
+      const card = root.querySelector("ha-card")!;
+      const edge = card.getBoundingClientRect();
+      // Anything past the card's edge, except the clipped text of a shortened line.
+      const outside: string[] = [];
+      const walk = (scope: ShadowRoot) => {
+        for (const element of scope.querySelectorAll("*")) {
+          const rect = element.getBoundingClientRect();
+          if (rect.width && !element.closest(".subtext") && (rect.right > edge.right + 0.5 || rect.left < edge.left - 0.5)) outside.push(element.tagName.toLowerCase());
+          if (element.shadowRoot) walk(element.shadowRoot);
+        }
+      };
+      walk(root);
+      const last = root.querySelector(".last");
+      const sub = root.querySelector<HTMLElement>(".sub");
+      const value = root.querySelector("sp-moisture-bar")?.shadowRoot?.querySelector(".value") ?? null;
+      return [{
+        width: host.getBoundingClientRect().width,
+        overflow: card.scrollWidth - card.clientWidth,
+        outside,
+        lastHeight: last ? last.getBoundingClientRect().height : null,
+        lineHeight: last ? parseFloat(getComputedStyle(last).lineHeight) || 20 : null,
+        lastBottom: box(".last")?.bottom ?? null,
+        buttonTop: box(".tonal")!.top,
+        buttonHeight: box(".tonal")!.height,
+        subHeight: sub?.getBoundingClientRect().height ?? null,
+        subTitle: sub?.title ?? null,
+        valueHeight: value ? value.getBoundingClientRect().height : null,
+      }];
+    }));
+    expect(layout.length).toBeGreaterThan(0);
+    const desktop = info.project.name !== "mobile";
+    for (const card of layout) {
+      if (desktop) expect(card.width).toBeLessThanOrEqual(widest);
+      else expect(card.width).toBeLessThanOrEqual(180);
+      expect(card.overflow).toBeLessThanOrEqual(0);
+      expect(card.outside).toEqual([]);
+      expect(card.buttonHeight).toBeGreaterThanOrEqual(36);
+      if (card.lastHeight !== null) expect(card.lastHeight).toBeLessThan(card.lineHeight! * (card.width < 200 ? 2.6 : 1.6));
+      if (card.lastBottom !== null) expect(card.lastBottom).toBeLessThanOrEqual(card.buttonTop);
+      if (card.subHeight !== null) expect(card.subHeight).toBeLessThan(24);
+      if (card.valueHeight !== null) expect(card.valueHeight).toBeLessThan(30);
+    }
+    expect(layout.map(c => c.subTitle)).toContain("Kitchen · Ocimum basilicum");
+    await expect(card(page, "Office Aloe")).toContainText("Zuletzt gegossen");
+    await expect(card(page, "Office Aloe")).toContainText("Ziel 15–60 %");
+    await audit(page, info, `card-section-${section}`);
+  });
+}
+
+test("the masonry card size follows the card's height", async ({ page }) => {
+  test.skip(test.info().project.name === "mobile", "Masonry columns are measured at desktop width.");
+  // A masonry column is about 400 pixels wide; one unit is 50 pixels.
+  await open(page, "?section=816");
+  const sizes = await page.evaluate(() => [...document.querySelectorAll("smart-plants-plant-card")].flatMap(host => {
+    const card = host.shadowRoot!.querySelector("smart-plants-plant-card-content")?.shadowRoot?.querySelector("ha-card");
+    // Cards with every part shown; a paused plant has no readings to show.
+    if (!card?.querySelector(".readings") || !card.querySelector(".foot")) return [];
+    // The content's own height: the footer's top margin only fills a taller grid row.
+    const height = [...card.children].reduce((sum, child) => {
+      const style = getComputedStyle(child);
+      return sum + child.getBoundingClientRect().height + (child.classList.contains("foot") ? 0 : parseFloat(style.marginTop)) + parseFloat(style.marginBottom);
+    }, 2);
+    return [{ units: height / 50, size: (host as unknown as { getCardSize(): number }).getCardSize() }];
   }));
-  expect(layout.length).toBeGreaterThan(0);
-  const narrow = info.project.name !== "mobile";
-  for (const card of layout) {
-    if (narrow) expect(card.width).toBeLessThanOrEqual(260);
-    expect(card.overflow).toBeLessThanOrEqual(0);
-    expect(card.buttonHeight).toBeGreaterThanOrEqual(36);
-    if (card.lastHeight !== null) expect(card.lastHeight).toBeLessThan(card.lineHeight! * 1.6);
-    if (narrow && card.lastBottom !== null) expect(card.lastBottom).toBeLessThanOrEqual(card.buttonTop);
-    if (card.subHeight !== null) expect(card.subHeight).toBeLessThan(24);
-  }
-  expect(layout.map(c => c.subTitle)).toContain("Kitchen · Ocimum basilicum");
-  await expect(card(page, "Office Aloe")).toContainText("Zuletzt gegossen");
-  await audit(page, info, "card-half");
+  expect(sizes.length).toBe(2);
+  for (const { units, size } of sizes) expect(Math.abs(units - size)).toBeLessThanOrEqual(1);
 });
 
 test("the card survives a registry swap after the loader ran", async ({ page }, info) => {

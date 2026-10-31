@@ -3149,16 +3149,16 @@ var Ze, Qe = (e) => Math.min(100, Math.max(0, e)), K = class extends L {
         ${l === null ? j : k`<div class="tick" style="left:${Qe(l)}%"></div>`}
         ${n === null ? j : k`<div class="dot ${this.state}" style="left:${Math.min(98, Math.max(2, n))}%"></div>`}
       </div>
-      <div class="scale" aria-hidden="true"><span>${e.t("moisture_bar.dry")}</span>${r ? k`<span>${e.t("moisture_bar.target", { range: r })}</span>` : j}<span>${e.t("moisture_bar.wet")}</span></div>
+      <div class="scale" aria-hidden="true"><span class="end">${e.t("moisture_bar.dry")}</span>${r ? k`<span>${e.t("moisture_bar.target", { range: r })}</span>` : j}<span class="end">${e.t("moisture_bar.wet")}</span></div>
       ${u ? k`<div class="age"><ha-icon aria-hidden="true" icon="mdi:clock-outline"></ha-icon>${e.t("moisture_bar.last_update", { age: Je(e, this.lastReported, this.now) })}</div>` : j}`;
 	}
 };
 Ze = K, Ze.styles = [W, o`
     :host { display: block; font-size: 13px; color: var(--sp-text); }
-    .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; column-gap: 8px; }
     .name { display: inline-flex; align-items: center; gap: 4px; color: var(--sp-text-secondary); }
     .name ha-icon { --mdc-icon-size: 16px; }
-    .value { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .value { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .value.low { color: color-mix(in srgb, var(--sp-warning) 50%, var(--sp-text)); }
     .value.high { color: color-mix(in srgb, var(--sp-info) 50%, var(--sp-text)); }
     .value.stale, .value.unavailable { color: var(--sp-text-secondary); }
@@ -3171,6 +3171,13 @@ Ze = K, Ze.styles = [W, o`
     .dot.stale, .dot.unavailable { background: var(--sp-disabled); }
     :host([dimmed]) .band, :host([dimmed]) .tick { opacity: .5; }
     .scale { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; font-size: 11px; color: var(--sp-text-secondary); font-variant-numeric: tabular-nums; }
+    /* In a narrow dashboard card only the target fits under the bar. The bar's
+       label names the whole range for screen readers. */
+    @container (max-width: 200px) {
+      .scale { justify-content: center; }
+      .scale .end { display: none; }
+      .scale span { white-space: nowrap; }
+    }
     .age { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
     .age ha-icon { --mdc-icon-size: 15px; }
   `], G([R({ type: Number })], K.prototype, "value", void 0), G([R({ attribute: !1 })], K.prototype, "range", void 0), G([R({ reflect: !0 })], K.prototype, "state", void 0), G([R({ attribute: !1 })], K.prototype, "lastReported", void 0), G([R({ attribute: !1 })], K.prototype, "now", void 0), G([R({ attribute: !1 })], K.prototype, "l", void 0), customElements.get("sp-moisture-bar") || customElements.define("sp-moisture-bar", K);
@@ -3921,6 +3928,17 @@ It = $, It.styles = [W, o`
       .subtext { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
       .foot { flex-wrap: wrap; row-gap: 4px; padding: 6px 8px 8px 14px; }
       .last { flex: 1 1 100%; }
+    }
+    /* Half of the narrowest section: a smaller photo leaves room for the name. */
+    @container (max-width: 200px) {
+      .head { gap: 10px; padding: 12px 12px 8px; }
+      sp-plant-avatar { --sp-avatar-size: 40px; --sp-avatar-radius: 10px; }
+      .status { padding: 0 12px 10px; }
+      .care { margin: 0 12px 10px; }
+      .readings { padding: 4px 12px 12px; }
+      .empty-box { margin: 0 12px 12px; }
+      .foot { padding: 6px 6px 8px 12px; }
+      .warning { padding: 12px; }
     }
   `], G([R({ attribute: !1 })], $.prototype, "hass", void 0), G([je()], $.prototype, "_config", void 0), G([je()], $.prototype, "_busy", void 0), G([je()], $.prototype, "_photo", void 0), customElements.get("smart-plants-plant-card-content") || customElements.define(Lt, $);
 function Ht() {

@@ -17,9 +17,23 @@ until you add the card yourself.
 
 The editor starts with the first plant that needs water, or with your first plant.
 
-In a sections view the card takes the full width of a section, and its height follows its
-content. You can make it as narrow as half a section. A narrow card puts the last watering on
-its own row above the **Watered** button and shortens a long area and species line.
+## Card size
+
+In a sections view the card takes half a section, so two plants share a row, and its height
+follows its content. A narrow card puts the last watering on its own row above the **Watered**
+button and shortens a long area and species line.
+
+For more plants per row, open the section's settings and set its width to double or triple.
+The section then holds four or six plants per row. To make one card wider, change its size on the
+card's **Layout** tab, or set `grid_options` in YAML. The **Layout** tab doesn't go below half
+a section. This card takes the full width:
+
+```yaml
+type: custom:smart-plants-plant-card
+device_id: 0123456789abcdef0123456789abcdef
+grid_options:
+  columns: 12
+```
 
 ## Options
 

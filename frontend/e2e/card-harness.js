@@ -1,12 +1,12 @@
 // Synthetic Home Assistant dashboard for the packaged card. The only
 // application code is the production card loader, which imports the card
 // content next to it. Query parameters: `admin`, `lang=de`, `empty` (no card
-// on the dashboard), `refuse` (log_care answers Unauthorized), `half` (cards
-// at half a section's width), `swap` (replace window.customElements after the
-// loader ran, as older Home Assistant frontends did with the scoped registry
-// polyfill).
+// on the dashboard), `refuse` (log_care answers Unauthorized), `section=N`
+// (a section N pixels wide; Home Assistant's are 320 to 500), `swap` (replace
+// window.customElements after the loader ran, as older Home Assistant
+// frontends did with the scoped registry polyfill).
 const params = new URLSearchParams(location.search);
-if (params.has("half")) document.documentElement.classList.add("half");
+if (params.has("section")) document.querySelector("main").style.maxWidth = `${Number(params.get("section"))}px`;
 const admin = params.has("admin");
 const language = params.get("lang") ?? "en";
 document.documentElement.lang = language;
@@ -112,12 +112,14 @@ if (!params.has("empty")) {
     const card = document.createElement("smart-plants-plant-card");
     card.setConfig({ type: "custom:smart-plants-plant-card", device_id: plant.device });
     card.hass = hass;
+    card.style.setProperty("--columns", String(card.getGridOptions().columns));
     cards.push(card);
     document.getElementById("section").append(card);
   }
   const removed = document.createElement("smart-plants-plant-card");
   removed.setConfig({ type: "custom:smart-plants-plant-card", device_id: "device-removed" });
   removed.hass = hass;
+  removed.style.setProperty("--columns", String(removed.getGridOptions().columns));
   cards.push(removed);
   document.getElementById("section").append(removed);
 }

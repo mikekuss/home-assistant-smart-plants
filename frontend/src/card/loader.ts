@@ -67,15 +67,18 @@ export class SmartPlantsPlantCard extends HTMLElement {
     this._content?.setConfig(this._config);
   }
 
-  // Masonry view: rows of about 50 pixels for the parts the card shows.
+  // Masonry view: one unit is 50 pixels. In a column about 400 pixels wide the
+  // name and status take about 130 pixels, the readings about 100 and the
+  // Watered row about 50, so a full card counts 6.
   getCardSize(): number {
     const config = this._config;
     return 3 + (config?.show_readings !== false ? 2 : 0) + (config?.show_watering !== false ? 1 : 0);
   }
 
-  // Sections view: the full section width, at least half; the height follows the content.
+  // Sections view: half a section, like Home Assistant's tile card, so two
+  // plants share a row; the height follows the content.
   getGridOptions(): Record<string, unknown> {
-    return { columns: 12, min_columns: 6, rows: "auto" };
+    return { columns: 6, min_columns: 6, rows: "auto" };
   }
 
   connectedCallback(): void {
