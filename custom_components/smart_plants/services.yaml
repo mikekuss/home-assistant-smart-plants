@@ -16,6 +16,7 @@ log_care:
             - fertilizing
             - pruning
             - repotting
+            - pest_control
             - note
             - task
     occurred_at:

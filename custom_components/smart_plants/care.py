@@ -18,6 +18,7 @@ CARE_EVENT_KINDS: Final = (
     "fertilizing",
     "pruning",
     "repotting",
+    "pest_control",
     "note",
     "task",
 )
@@ -132,6 +133,8 @@ def minimal_care_payload(kind: str, note: str | None) -> dict[str, Any]:
         return {"part": None, "note": note}
     if kind == "repotting":
         return {"container": None, "medium": None, "note": note}
+    if kind == "pest_control":
+        return {"pest": None, "product": None, "note": note}
     return {"note": note}
 
 
@@ -253,6 +256,7 @@ def validate_payload(kind: object, payload: object) -> None:
         "fertilizing": {"product", "amount", "unit", "note"},
         "pruning": {"part", "note"},
         "repotting": {"container", "medium", "note"},
+        "pest_control": {"pest", "product", "note"},
         "note": {"text"},
         "task": {"note"},
     }
@@ -283,6 +287,10 @@ def validate_payload(kind: object, payload: object) -> None:
     elif kind == "repotting":
         _text(payload["container"], "container", 120)
         _text(payload["medium"], "medium", 120)
+        clean_note(payload["note"])
+    elif kind == "pest_control":
+        _text(payload["pest"], "pest", 120)
+        _text(payload["product"], "product", 120)
         clean_note(payload["note"])
     else:
         _text(payload["text"], "text", 1000, required=True)

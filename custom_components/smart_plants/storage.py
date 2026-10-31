@@ -62,6 +62,7 @@ _MINOR_SPECIES_CARE_RANGES: Final = 13
 _MINOR_READING_CARE_TASKS: Final = 14
 _MINOR_ALERT_SNOOZE: Final = 15
 _MINOR_FORECAST_READINGS: Final = 16
+_MINOR_PEST_CONTROL: Final = 17
 _SPECIES_CARE_RANGE_KEYS: Final = (
     "min_temperature",
     "max_temperature",
@@ -509,6 +510,18 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                     if isinstance(source, dict) and "forecast" in source:
                         raise SmartPlantsInvalidStorageError(
                             "older storage cannot contain forecast reading tasks"
+                        )
+
+        if old_major_version == 1 and old_minor_version < _MINOR_PEST_CONTROL:
+            # Minor 17 adds the pest control care event kind. Existing events
+            # are unchanged. An event of that kind cannot come from an older
+            # minor, so the load fails closed instead of guessing.
+            for plant in data["plants"]:
+                events = plant.get("care_events") if isinstance(plant, dict) else None
+                for event in events if isinstance(events, list) else ():
+                    if isinstance(event, dict) and event.get("kind") == "pest_control":
+                        raise SmartPlantsInvalidStorageError(
+                            "older storage cannot contain pest control care events"
                         )
 
         return data

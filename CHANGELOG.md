@@ -18,6 +18,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   [Entities](docs/entities.md#sensors).
 - The panel opens a plant from a link such as `/smart-plants/plant/<plant_id>`. The dashboard
   card's plant name links there for administrators.
+- A **Pest control** care type records a pest treatment, with the pest and the product used,
+  for example aphids treated with soapy water. It is also a `kind` of the
+  `smart_plants.log_care` action. See [Log care](docs/getting-started.md#log-care).
+- A pinned value on any **History** chart offers **Log care at this time**, which opens the
+  care form at that time for any care type. On the soil moisture chart it is **Log other
+  care**, next to **Log watering at this time**. See [History](docs/getting-started.md#history).
+
+### Changed
+
+- The **History** chart marks every kind of logged care, each in its own color, and the
+  legend lists the kinds shown. Before, it marked only waterings on the soil moisture chart
+  and fertilizing on the fertilizer level chart. Waterings still appear only on those two
+  charts.
 
 ### Fixed
 

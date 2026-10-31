@@ -196,7 +196,7 @@ export interface CareTaskCompletion {
 export interface CareEvent {
   schema_version: 2;
   id: string;
-  kind: "watering" | "fertilizing" | "pruning" | "repotting" | "note" | "task";
+  kind: "watering" | "fertilizing" | "pruning" | "repotting" | "pest_control" | "note" | "task";
   provenance: "manual" | "action" | "automation";
   task_id: string | null;
   occurred_at: string;

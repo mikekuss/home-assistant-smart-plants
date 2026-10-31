@@ -259,6 +259,7 @@ async def test_logged_watering_pauses_needs_water(
         ),
         ("pruning", {"part": None, "note": "Half dose"}),
         ("repotting", {"container": None, "medium": None, "note": "Half dose"}),
+        ("pest_control", {"pest": None, "product": None, "note": "Half dose"}),
         ("task", {"note": "Half dose"}),
         ("note", {"text": "Half dose"}),
     ],

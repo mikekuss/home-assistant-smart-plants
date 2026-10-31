@@ -281,21 +281,34 @@ describe("plant history", () => {
     const { el } = await mount(plant, wateredOverview, msg => msg.type === "config/entity_registry/list" ? registry(plant) : msg.type === "recorder/statistics_during_period" ? statistics(moistureId) : undefined);
     await settle(el);
     const chart = history(el)!.querySelector("sp-history-chart")!;
-    expect(chart.actionLabel).toBe("Log watering at this time");
+    expect(chart.actions.map(action => action.label)).toEqual(["Log watering at this time", "Log other care"]);
     const t = Date.now() - 30 * HOUR;
-    chart.dispatchEvent(new CustomEvent("point-action", { detail: { t }, bubbles: true, composed: true })); await settle(el);
+    chart.dispatchEvent(new CustomEvent("point-action", { detail: { t, key: "watering" }, bubbles: true, composed: true })); await settle(el);
     const form = root(el).querySelector("#care-form")!;
     expect(form.querySelector<HTMLSelectElement>("select")!.value).toBe("watering");
     const local = new Date(t - new Date(t).getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     expect(form.querySelector<HTMLInputElement>('input[type="datetime-local"]')!.value).toBe(local);
   });
-  it("offers no logging on charts of other readings", async () => {
+  it("logs other care at a point picked on the moisture chart", async () => {
+    const plant = plantWithSensors();
+    const { el } = await mount(plant, wateredOverview, msg => msg.type === "config/entity_registry/list" ? registry(plant) : msg.type === "recorder/statistics_during_period" ? statistics(moistureId) : undefined);
+    await settle(el);
+    const t = Date.now() - 30 * HOUR;
+    history(el)!.querySelector("sp-history-chart")!.dispatchEvent(new CustomEvent("point-action", { detail: { t, key: "care" }, bubbles: true, composed: true })); await settle(el);
+    const form = root(el).querySelector("#care-form")!;
+    const select = form.querySelector<HTMLSelectElement>("select")!;
+    expect(select.value).toBe("fertilizing");
+    expect([...select.options].map(option => option.value)).toContain("pest_control");
+    const local = new Date(t - new Date(t).getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    expect(form.querySelector<HTMLInputElement>('input[type="datetime-local"]')!.value).toBe(local);
+  });
+  it("offers only general care logging on charts of other readings", async () => {
     const base = plantWithSensors();
     const plant: PlantRecord = { ...base, roles: { ...base.roles!, temperature: { sources: [{ entity_id: "sensor.mock_temp", registry_id: null }], primary_entity_id: null, aggregation: "average", stale_after_seconds: 21600 } } };
     const { el } = await mount(plant, wateredOverview, msg => msg.type === "config/entity_registry/list" ? registry(plant, ["moisture", "temperature"]) : msg.type === "recorder/statistics_during_period" ? statistics((msg.statistic_ids as string[])[0]!) : undefined);
     await settle(el);
     await click(el, "Temperature"); await settle(el);
-    expect(history(el)!.querySelector("sp-history-chart")!.actionLabel).toBe("");
+    expect(history(el)!.querySelector("sp-history-chart")!.actions.map(action => action.label)).toEqual(["Log care at this time"]);
   });
   it("ignores a slow reply for a range that is no longer shown", async () => {
     const plant = plantWithSensors();

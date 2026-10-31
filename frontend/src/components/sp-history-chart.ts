@@ -11,14 +11,20 @@ const HEIGHT = 200;
 const PAD = { top: 10, right: 12, bottom: 24, left: 46 };
 
 export interface ChartBand { min: number | null; max: number | null; target: number | null }
+// A kind of event marked on the chart, with its legend text and colour.
+export interface ChartMarkerGroup { key: string; label: string; color: string }
+export interface ChartMarker { t: number; group: string }
+// A button offered for a pinned point; "point-action" carries its key.
+export interface ChartAction { key: string; label: string }
 
 // One reading over time: the mean as a line, the spread of each period as a
-// faint area, the target range as a band and care events as vertical markers.
+// faint area, the target range as a band and care events as vertical markers,
+// one colour per group.
 // Pointing at the chart, or moving the hidden slider with the keyboard, reads
 // out one point below it. Clicking the chart, or pressing Enter on the slider,
 // pins that point until Escape, a click outside or a click on the same point;
-// with an action label set, a pinned point offers a button that fires
-// "point-action" with the point's time.
+// with actions set, a pinned point offers a button for each that fires
+// "point-action" with the point's time and the action's key.
 export class SpHistoryChart extends LitElement {
   static styles = [themeFallbacks, srOnly, css`
     :host { display: block; color: var(--sp-text); }
@@ -32,8 +38,7 @@ export class SpHistoryChart extends LitElement {
     .target { stroke-dasharray: 4 4; }
     .spread { fill: color-mix(in srgb, var(--sp-primary) 16%, transparent); }
     .line { fill: none; stroke: var(--sp-primary); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-    .marker { stroke: var(--sp-info); stroke-width: 1.5; stroke-dasharray: 2 3; }
-    .marker-dot { fill: var(--sp-info); }
+    .marker { stroke-width: 1.5; stroke-dasharray: 2 3; }
     .cursor { stroke: color-mix(in srgb, var(--sp-text) 45%, transparent); stroke-width: 1; }
     .cursor-dot { fill: var(--sp-card); stroke: var(--sp-primary); stroke-width: 2; }
     .readout-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-height: 28px; margin-top: 2px; }
@@ -46,7 +51,7 @@ export class SpHistoryChart extends LitElement {
     .key { display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
     .key.band { background: color-mix(in srgb, var(--sp-success) 30%, transparent); }
     .key.spread { background: color-mix(in srgb, var(--sp-primary) 30%, transparent); }
-    .key.marker { width: 8px; border-radius: 50%; background: var(--sp-info); }
+    .key.marker { width: 8px; border-radius: 50%; }
   `];
 
   @property({ attribute: false }) public points: HistoryPoint[] = [];
@@ -56,13 +61,14 @@ export class SpHistoryChart extends LitElement {
   @property({ attribute: false }) public periodMs = 3_600_000;
   @property() public unit = "";
   @property({ attribute: false }) public band: ChartBand | null = null;
-  @property({ attribute: false }) public markers: number[] = [];
+  @property({ attribute: false }) public markers: readonly ChartMarker[] = [];
+  // Groups in legend order; markers of a group not listed are not drawn.
+  @property({ attribute: false }) public markerGroups: readonly ChartMarkerGroup[] = [];
   // Sentence describing the whole chart for screen readers.
   @property() public summary = "";
   @property() public bandLabel = "";
-  @property() public markerLabel = "";
-  // Text of the button offered for a pinned point; empty shows none.
-  @property() public actionLabel = "";
+  // Buttons offered for a pinned point; none when empty.
+  @property({ attribute: false }) public actions: readonly ChartAction[] = [];
   @property({ attribute: false }) public l: Localizer = ENGLISH;
   @state() private _width = 600;
   @state() private _active: number | null = null;
@@ -120,9 +126,9 @@ export class SpHistoryChart extends LitElement {
     return best;
   }
 
-  private _fire(t: number): void {
+  private _fire(t: number, key: string): void {
     this._unpin();
-    this.dispatchEvent(new CustomEvent<{ t: number }>("point-action", { detail: { t }, bubbles: true, composed: true }));
+    this.dispatchEvent(new CustomEvent<{ t: number; key: string }>("point-action", { detail: { t, key }, bubbles: true, composed: true }));
   }
 
   protected render() {
@@ -143,7 +149,9 @@ export class SpHistoryChart extends LitElement {
     const allTicks = timeTicks(this.start, this.end, l.language);
     const every = Math.max(1, Math.ceil((allTicks.length * 52) / inner));
     const ticks = allTicks.filter((_, index) => (allTicks.length - 1 - index) % every === 0);
-    const markers = this.markers.filter(t => t >= this.start && t <= this.end);
+    const groups = new Map(this.markerGroups.map(group => [group.key, group]));
+    const markers = this.markers.filter(m => m.t >= this.start && m.t <= this.end && groups.has(m.group));
+    const shown = this.markerGroups.filter(group => markers.some(m => m.group === group.key));
     const active = this._active !== null ? points[this._active] : undefined;
     const showSpread = points.some(p => p.max - p.min >= 0.1);
     const move = (e: PointerEvent) => { if (!this._pinned) this._active = this._nearest(e.clientX); };
@@ -156,7 +164,7 @@ export class SpHistoryChart extends LitElement {
       if (e.key === "Enter" && points.length) { e.preventDefault(); this._pin(this._active ?? points.length - 1); }
       else if (e.key === "Escape" && this._pinned) { e.stopPropagation(); this._unpin(); }
     };
-    const action = this.actionLabel && this._pinned && active;
+    const actions = this._pinned && active ? this.actions : [];
     return html`
       <div class="plot" @keydown=${key}>
         <svg viewBox="0 0 ${width} ${HEIGHT}" role="img" aria-label=${this.summary}
@@ -171,7 +179,7 @@ export class SpHistoryChart extends LitElement {
           ${runs.map(run => run.length > 1
             ? svg`<path class="line" d=${`M${run.map(p => at(p.t, p.mean)).join("L")}`}></path>`
             : svg`<circle class="marker-dot" style="fill: var(--sp-primary)" cx=${x(run[0]!.t)} cy=${y(run[0]!.mean)} r="2"></circle>`)}
-          ${markers.map(t => svg`<line class="marker" x1=${x(t)} x2=${x(t)} y1=${PAD.top + 6} y2=${bottom}></line><circle class="marker-dot" cx=${x(t)} cy=${PAD.top + 3} r="3.5"></circle>`)}
+          ${markers.map(m => { const group = groups.get(m.group)!; return svg`<g><title>${group.label}: ${l.dateTime(new Date(m.t).toISOString())}</title><line class="marker" style=${`stroke: ${group.color}`} x1=${x(m.t)} x2=${x(m.t)} y1=${PAD.top + 6} y2=${bottom}></line><circle class="marker-dot" style=${`fill: ${group.color}`} cx=${x(m.t)} cy=${PAD.top + 3} r="3.5"></circle></g>`; })}
           ${active ? svg`<line class="cursor" x1=${x(active.t)} x2=${x(active.t)} y1=${PAD.top} y2=${bottom}></line><circle class="cursor-dot" cx=${x(active.t)} cy=${y(active.mean)} r="4"></circle>` : nothing}
         </svg>
         ${points.length ? html`<input class="sr-only" type="range" min="0" max=${points.length - 1} step="1" .value=${String(this._active ?? points.length - 1)}
@@ -180,12 +188,12 @@ export class SpHistoryChart extends LitElement {
       </div>
       <div class="readout-row" @keydown=${(e: KeyboardEvent) => { if (e.key === "Escape" && this._pinned) { e.stopPropagation(); this._unpin(); } }}>
         <span class="readout" aria-hidden="true">${active ? this._pointText(active) : nothing}</span>
-        ${action ? html`<button type="button" class="action" @click=${() => this._fire(active.t)}>${this.actionLabel}</button>` : nothing}
+        ${actions.map(action => html`<button type="button" class="action" @click=${() => this._fire(active!.t, action.key)}>${action.label}</button>`)}
       </div>
       <div class="legend">
         ${this.bandLabel ? html`<span><i class="key band"></i>${this.bandLabel}</span>` : nothing}
         ${showSpread ? html`<span><i class="key spread"></i>${l.t("history.legend_spread")}</span>` : nothing}
-        ${markers.length && this.markerLabel ? html`<span><i class="key marker"></i>${this.markerLabel}</span>` : nothing}
+        ${shown.map(group => html`<span><i class="key marker" style=${`background: ${group.color}`}></i>${group.label}</span>`)}
       </div>`;
   }
 }

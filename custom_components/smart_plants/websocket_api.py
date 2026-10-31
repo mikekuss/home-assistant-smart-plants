@@ -645,7 +645,14 @@ async def _handle_care_add_watering(
         vol.Required("plant_id"): _plant_id,
         vol.Required("expected_revision"): _positive_int,
         vol.Required("kind"): vol.In(
-            ("watering", "fertilizing", "pruning", "repotting", "note")
+            (
+                "watering",
+                "fertilizing",
+                "pruning",
+                "repotting",
+                "pest_control",
+                "note",
+            )
         ),
         vol.Required("occurred_at"): vol.All(str, vol.Length(min=20, max=64)),
         vol.Required("payload"): dict,
@@ -697,7 +704,15 @@ async def _handle_care_add(
         vol.Required("expected_revision"): _positive_int,
         vol.Required("event_id"): vol.All(str, vol.Length(min=36, max=36)),
         vol.Required("kind"): vol.In(
-            ("watering", "fertilizing", "pruning", "repotting", "note", "task")
+            (
+                "watering",
+                "fertilizing",
+                "pruning",
+                "repotting",
+                "pest_control",
+                "note",
+                "task",
+            )
         ),
         vol.Required("occurred_at"): vol.All(str, vol.Length(min=20, max=64)),
         vol.Required("payload"): dict,
