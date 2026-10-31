@@ -121,7 +121,8 @@ for (const [section, widest] of [[500, 250], [320, 160]] as const) {
         }
       };
       walk(root);
-      const last = root.querySelector(".last");
+      const last = root.querySelector<HTMLElement>(".last");
+      const reason = root.querySelector<HTMLElement>(".reason");
       const sub = root.querySelector<HTMLElement>(".sub");
       const value = root.querySelector("sp-moisture-bar")?.shadowRoot?.querySelector(".value") ?? null;
       return [{
@@ -131,7 +132,13 @@ for (const [section, widest] of [[500, 250], [320, 160]] as const) {
         lastHeight: last ? last.getBoundingClientRect().height : null,
         lineHeight: last ? parseFloat(getComputedStyle(last).lineHeight) || 20 : null,
         lastBottom: box(".last")?.bottom ?? null,
+        lastRight: box(".last")?.right ?? null,
+        lastVisible: last ? [...last.querySelectorAll("span")].filter(span => span.getBoundingClientRect().width > 1).map(span => span.textContent).join("") : null,
+        lastTitle: last?.title ?? null,
+        reasonLines: reason ? reason.getBoundingClientRect().height / (parseFloat(getComputedStyle(reason).lineHeight) || 18) : null,
+        reasonTitle: reason?.title ?? null,
         buttonTop: box(".tonal")!.top,
+        buttonLeft: box(".tonal")!.left,
         buttonHeight: box(".tonal")!.height,
         subHeight: sub?.getBoundingClientRect().height ?? null,
         subTitle: sub?.title ?? null,
@@ -146,13 +153,17 @@ for (const [section, widest] of [[500, 250], [320, 160]] as const) {
       expect(card.overflow).toBeLessThanOrEqual(0);
       expect(card.outside).toEqual([]);
       expect(card.buttonHeight).toBeGreaterThanOrEqual(36);
-      if (card.lastHeight !== null) expect(card.lastHeight).toBeLessThan(card.lineHeight! * (card.width < 200 ? 2.6 : 1.6));
-      if (card.lastBottom !== null) expect(card.lastBottom).toBeLessThanOrEqual(card.buttonTop);
+      // The last watering is one short line beside or above the button.
+      if (card.lastHeight !== null) expect(card.lastHeight).toBeLessThan(card.lineHeight! * 1.6);
+      if (card.lastBottom !== null) expect(card.lastBottom <= card.buttonTop || card.lastRight! <= card.buttonLeft).toBe(true);
+      if (card.reasonLines !== null) expect(card.reasonLines).toBeLessThan(2.5);
       if (card.subHeight !== null) expect(card.subHeight).toBeLessThan(24);
       if (card.valueHeight !== null) expect(card.valueHeight).toBeLessThan(30);
     }
     expect(layout.map(c => c.subTitle)).toContain("Kitchen · Ocimum basilicum");
-    await expect(card(page, "Office Aloe")).toContainText("Zuletzt gegossen");
+    // Only the time is visible; the tooltip and screen readers get the sentence.
+    expect(layout.map(c => [c.lastVisible, c.lastTitle])).toContainEqual(["Vorgestern", "Zuletzt gegossen: vorgestern"]);
+    expect(layout.map(c => c.reasonTitle)).toContain("Bodenfeuchte 12 % liegt unter dem Minimum von 30 %");
     await expect(card(page, "Office Aloe")).toContainText("Ziel 15–60 %");
     await audit(page, info, `card-section-${section}`);
   });

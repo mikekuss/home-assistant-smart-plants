@@ -16,6 +16,7 @@ import { themeFallbacks } from "../components/shared-styles.js";
 import { createLocalizer } from "../localize.js";
 import type { HALocale, Localizer, MessageKey } from "../localize.js";
 import { cardReason, chipText, secondaryReadings, wateredText } from "../overview-model.js";
+import { relativeTime } from "../status.js";
 import { localDate } from "../care-plan.js";
 import { snoozeChipText } from "../snooze.js";
 import { DOMAIN, plantDevices, plantView } from "./plant-state.js";
@@ -90,6 +91,7 @@ export class SmartPlantsPlantCardContent extends LitElement {
       border-top: 1px solid var(--divider-color, #e0e0e0); }
     .last { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--sp-text-secondary); min-width: 0; }
     .last ha-icon { --mdc-icon-size: 17px; }
+    .last .short { display: none; }
     .tonal { display: inline-flex; align-items: center; gap: 6px; height: 36px; margin-left: auto; padding: 0 14px; border: 0; border-radius: 18px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap;
       background: color-mix(in srgb, var(--sp-primary) 14%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); }
     .tonal ha-icon { --mdc-icon-size: 17px; }
@@ -99,12 +101,16 @@ export class SmartPlantsPlantCardContent extends LitElement {
     .warning p { margin: 2px 0 0; font-size: 13px; }
     .warning strong { font-weight: 500; }
     /* A narrow card, such as half a section: area and species stay on one line,
-       and the last watering gets its own row above the button. */
+       the reason takes at most two lines, and the last watering shows only the
+       time. The button moves to its own row when the time doesn't fit beside it. */
     @container (max-width: 300px) {
       .sub { flex-wrap: nowrap; min-width: 0; }
       .subtext { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      .reason { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
       .foot { flex-wrap: wrap; row-gap: 4px; padding: 6px 8px 8px 14px; }
-      .last { flex: 1 1 100%; }
+      .last { white-space: nowrap; }
+      .last .long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+      .last .short { display: inline; overflow: hidden; text-overflow: ellipsis; }
     }
     /* Half of the narrowest section: a smaller photo leaves room for the name. */
     @container (max-width: 200px) {
@@ -273,12 +279,23 @@ export class SmartPlantsPlantCardContent extends LitElement {
       <div class="head"><sp-plant-avatar .src=${this._photo} .name=${plant.name} .l=${l} @photo-error=${() => this._clearPhoto()}></sp-plant-avatar>
         <div class="title"><h2>${canOpen ? html`<button type="button" class="name" title=${label} @click=${() => this._open(plant)}>${plant.name}</button>` : plant.name}</h2>
           ${plant.area || plant.species ? html`<span class="sub" title=${[plant.area, plant.species].filter(Boolean).join(" · ")}>${plant.area ? html`<ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>` : nothing}<span class="subtext">${plant.area ?? nothing}${plant.area && plant.species ? " · " : ""}${plant.species ? html`<i>${plant.species}</i>` : nothing}</span></span>` : nothing}</div></div>
-      <div class="status"><div class="chiprow"><sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip>${snoozed ? html`<sp-snooze-chip .label=${snoozed}></sp-snooze-chip>` : nothing}</div>${reason ? html`<span class="reason">${reason}</span>` : nothing}</div>
+      <div class="status"><div class="chiprow"><sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip>${snoozed ? html`<sp-snooze-chip .label=${snoozed}></sp-snooze-chip>` : nothing}</div>${reason ? html`<span class="reason" title=${reason}>${reason}</span>` : nothing}</div>
       ${plant.careDue ? html`<p class="care"><ha-icon aria-hidden="true" icon="mdi:calendar-check-outline"></ha-icon><span>${l.t("plant_card.care_due")}</span></p>` : nothing}
       ${config.show_readings !== false ? this._renderReadings(plant, l) : nothing}
-      ${config.show_watering !== false ? html`<div class="foot">${plant.lastWatered !== undefined ? html`<span class="last"><ha-icon aria-hidden="true" icon="mdi:history"></ha-icon>${wateredText(l, plant.lastWatered, now)}</span>` : nothing}
+      ${config.show_watering !== false ? html`<div class="foot">${plant.lastWatered !== undefined ? this._renderWatered(l, plant.lastWatered, now) : nothing}
         <button type="button" class="tonal" ?disabled=${paused || this._busy} aria-label=${l.t("card.log_watering_label", { name: plant.name })} @click=${() => void this._logWatering(plant)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${l.t("card.log_watering")}</button></div>` : nothing}
     </ha-card>`;
+  }
+
+  // The last watering. A narrow card shows only the time, such as "3 days ago",
+  // next to the history icon; screen readers and the tooltip get the sentence.
+  private _renderWatered(l: Localizer, lastWatered: string | null, now: number) {
+    const full = wateredText(l, lastWatered, now);
+    const at = lastWatered ? Date.parse(lastWatered) : NaN;
+    if (!Number.isFinite(at)) return html`<span class="last"><ha-icon aria-hidden="true" icon="mdi:history"></ha-icon><span>${full}</span></span>`;
+    const age = Math.abs(now - at) < 60_000 ? l.t("card.watered_short_just_now") : relativeTime(l, lastWatered!, now);
+    const short = age.charAt(0).toLocaleUpperCase(l.language) + age.slice(1);
+    return html`<span class="last" title=${full}><ha-icon aria-hidden="true" icon="mdi:history"></ha-icon><span class="long">${full}</span><span class="short" aria-hidden="true">${short}</span></span>`;
   }
 
   private _renderReadings(plant: PlantView, l: Localizer) {

@@ -150,6 +150,23 @@ describe("card", () => {
     expect($(content, "sp-reading-chip[role='battery']") ?? content.shadowRoot!.querySelectorAll("sp-reading-chip").length).toBeTruthy();
     expect($(content, ".tonal")!.getAttribute("aria-label")).toBe("Log watering for Office Aloe");
   });
+  it("keeps a short watering time next to the sentence for narrow cards", async () => {
+    const at = new Date(Date.now() - 3 * 86_400_000).toISOString();
+    const content = await mount(cardHass({ "binary_sensor.office_aloe_needs_water": { entity_id: "binary_sensor.office_aloe_needs_water", state: "off", attributes: { last_watered: at } } }, { language: "de" }));
+    const last = $<HTMLElement>(content, ".last")!;
+    expect(last.title).toBe("Zuletzt gegossen: vor 3 Tagen");
+    expect($(content, ".last .long")!.textContent).toBe("Zuletzt gegossen: vor 3 Tagen");
+    expect($(content, ".last .short")!.textContent).toBe("Vor 3 Tagen");
+    expect($(content, ".last .short")!.getAttribute("aria-hidden")).toBe("true");
+    document.body.replaceChildren();
+    const now = await mount(cardHass({ "binary_sensor.office_aloe_needs_water": { entity_id: "binary_sensor.office_aloe_needs_water", state: "off", attributes: { last_watered: new Date().toISOString() } } }));
+    expect($(now, ".last .short")!.textContent).toBe("Just now");
+    expect($<HTMLElement>(now, ".last")!.title).toBe("Watered just now");
+    document.body.replaceChildren();
+    const never = await mount(cardHass({ "binary_sensor.office_aloe_needs_water": { entity_id: "binary_sensor.office_aloe_needs_water", state: "off", attributes: { last_watered: null } } }));
+    expect($(never, ".last .short")).toBeNull();
+    expect(deepText(never)).toContain("Not watered yet");
+  });
   it("hides the readings and the watering when turned off", async () => {
     const content = await mount(cardHass(), { show_readings: false, show_watering: false });
     expect($(content, "sp-moisture-bar")).toBeNull();

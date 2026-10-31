@@ -1175,6 +1175,7 @@ var Me = {
 	"card.watered": "Zuletzt gegossen: {age}",
 	"card.watered_just_now": "Gerade gegossen",
 	"card.never_watered": "Noch nicht gegossen",
+	"card.watered_short_just_now": "Gerade eben",
 	"card.log_watering": "Gegossen",
 	"card.log_watering_label": "Gießen für {name} eintragen",
 	"watering.logged": "Gießen für {name} eingetragen",
@@ -2302,6 +2303,7 @@ var Me = {
 	"card.watered": "Watered {age}",
 	"card.watered_just_now": "Watered just now",
 	"card.never_watered": "Not watered yet",
+	"card.watered_short_just_now": "Just now",
 	"card.log_watering": "Watered",
 	"card.log_watering_label": "Log watering for {name}",
 	"watering.logged": "Watering logged for {name}",
@@ -3006,10 +3008,10 @@ var z = He(), B = {
 		label: "plant_status.paused"
 	}
 };
-function V(e, t) {
+function Ue(e, t) {
 	return e.t(B[t].label);
 }
-var Ue = [
+var We = [
 	"moisture",
 	"temperature",
 	"humidity",
@@ -3018,7 +3020,7 @@ var Ue = [
 	"soil_temperature",
 	"co2",
 	"battery"
-], H = {
+], V = {
 	moisture: {
 		icon: "mdi:water",
 		label: "reading.moisture"
@@ -3052,24 +3054,24 @@ var Ue = [
 		label: "reading.battery"
 	}
 };
-function We(e) {
-	return typeof e == "string" && Ue.includes(e);
+function Ge(e) {
+	return typeof e == "string" && We.includes(e);
 }
-function Ge(e, t) {
-	return e.t(H[t].label);
+function Ke(e, t) {
+	return e.t(V[t].label);
 }
-function U(e, t, n) {
+function H(e, t, n) {
 	return n === "%" ? e.percent(t) : n ? `${e.number(t)} ${n}` : e.number(t);
 }
-function Ke(e, t, n, r) {
+function qe(e, t, n, r) {
 	if (!n) return "";
 	let { min: i, max: a } = n;
-	return t === "battery" && i !== null ? e.t("range.low_below", { value: U(e, i, r) }) : i !== null && a !== null ? e.t("range.between", {
+	return t === "battery" && i !== null ? e.t("range.low_below", { value: H(e, i, r) }) : i !== null && a !== null ? e.t("range.between", {
 		min: e.number(i),
-		max: U(e, a, r)
-	}) : i === null ? a === null ? "" : e.t("range.at_most", { value: U(e, a, r) }) : e.t("range.at_least", { value: U(e, i, r) });
+		max: H(e, a, r)
+	}) : i === null ? a === null ? "" : e.t("range.at_most", { value: H(e, a, r) }) : e.t("range.at_least", { value: H(e, i, r) });
 }
-var qe = [
+var Je = [
 	["second", 60],
 	["minute", 60],
 	["hour", 24],
@@ -3078,11 +3080,11 @@ var qe = [
 	["month", 12],
 	["year", Infinity]
 ];
-function Je(e, t, n = Date.now()) {
+function U(e, t, n = Date.now()) {
 	let r = Date.parse(t);
 	if (!Number.isFinite(r)) return t;
 	let i = new Intl.RelativeTimeFormat(e.language, { numeric: "auto" }), a = (r - n) / 1e3;
-	for (let [e, t] of qe) {
+	for (let [e, t] of Je) {
 		if (Math.abs(a) < t) return i.format(Math.round(a), e);
 		a /= t;
 	}
@@ -3137,12 +3139,12 @@ var Ze, Qe = (e) => Math.min(100, Math.max(0, e)), K = class extends L {
 		return this.range?.min !== null && this.range?.min !== void 0 && this.range.max !== null && this.range.max !== void 0;
 	}
 	render() {
-		let e = this.l, t = this.range, n = this.value, r = Ke(e, "moisture", t, "%"), i = n === null ? "—" : U(e, n, "%"), a = n === null ? e.t("moisture_bar.label_no_value") : r ? e.t("moisture_bar.label", {
+		let e = this.l, t = this.range, n = this.value, r = qe(e, "moisture", t, "%"), i = n === null ? "—" : H(e, n, "%"), a = n === null ? e.t("moisture_bar.label_no_value") : r ? e.t("moisture_bar.label", {
 			value: i,
 			range: r
 		}) : e.t("moisture_bar.label_no_range", { value: i }), o = this._hasRange(), s = o ? Qe(t.min) : 0, c = o ? Qe(t.max) : 0, l = t?.target ?? null, u = this.state === "stale" && this.lastReported;
 		return k`
-      <div class="top"><span class="name"><ha-icon aria-hidden="true" .icon=${H.moisture.icon}></ha-icon>${Ge(e, "moisture")}</span>
+      <div class="top"><span class="name"><ha-icon aria-hidden="true" .icon=${V.moisture.icon}></ha-icon>${Ke(e, "moisture")}</span>
         <span class="value ${this.state}" aria-hidden="true">${i}</span></div>
       <div class="track" role="img" aria-label=${a}>
         ${o ? k`<div class="band" style="left:${s}%;width:${Math.max(0, c - s)}%"></div>` : j}
@@ -3150,7 +3152,7 @@ var Ze, Qe = (e) => Math.min(100, Math.max(0, e)), K = class extends L {
         ${n === null ? j : k`<div class="dot ${this.state}" style="left:${Math.min(98, Math.max(2, n))}%"></div>`}
       </div>
       <div class="scale" aria-hidden="true"><span class="end">${e.t("moisture_bar.dry")}</span>${r ? k`<span>${e.t("moisture_bar.target", { range: r })}</span>` : j}<span class="end">${e.t("moisture_bar.wet")}</span></div>
-      ${u ? k`<div class="age"><ha-icon aria-hidden="true" icon="mdi:clock-outline"></ha-icon>${e.t("moisture_bar.last_update", { age: Je(e, this.lastReported, this.now) })}</div>` : j}`;
+      ${u ? k`<div class="age"><ha-icon aria-hidden="true" icon="mdi:clock-outline"></ha-icon>${e.t("moisture_bar.last_update", { age: U(e, this.lastReported, this.now) })}</div>` : j}`;
 	}
 };
 Ze = K, Ze.styles = [W, o`
@@ -3210,10 +3212,10 @@ var et, J = class extends L {
 		super(...e), this.role = "temperature", this.value = null, this.unit = "", this.state = "ok", this.range = null, this.l = z;
 	}
 	render() {
-		let e = this.l, t = H[this.role] ?? H.temperature, n = Ge(e, this.role in H ? this.role : "temperature"), r = Ke(e, this.role, this.range, this.unit), i = (this.state === "low" || this.state === "high") && r;
+		let e = this.l, t = V[this.role] ?? V.temperature, n = Ke(e, this.role in V ? this.role : "temperature"), r = qe(e, this.role, this.range, this.unit), i = (this.state === "low" || this.state === "high") && r;
 		return k`<span class="chip" part="chip" title=${r ? `${n}: ${r}` : n}>
       <ha-icon aria-hidden="true" .icon=${t.icon}></ha-icon><span class="sr-only">${n}</span>
-      ${this.value === null ? e.t("reading.no_value") : U(e, this.value, this.unit)}
+      ${this.value === null ? e.t("reading.no_value") : H(e, this.value, this.unit)}
       ${i ? k`<span class="sr-only">, ${e.t("reading.outside_target", { range: r })}</span>` : j}
       ${this.state === "stale" ? k`<span class="sr-only">, ${e.t("reading.not_updating")}</span>` : j}
     </span>`;
@@ -3270,7 +3272,7 @@ var rt, Y = class extends L {
 		this.toggleAttribute("muted", e === "--disabled-text-color"), this.style.setProperty("--sp-status", Xe(e));
 	}
 	render() {
-		let e = B[this.status] ?? B.healthy, t = this.label || V(this.l, this.status in B ? this.status : "healthy");
+		let e = B[this.status] ?? B.healthy, t = this.label || Ue(this.l, this.status in B ? this.status : "healthy");
 		return k`<span class="chip" part="chip"><ha-icon aria-hidden="true" .icon=${e.icon}></ha-icon><span class="label">${t}</span>${this.more > 0 ? k`<span aria-hidden="true">${this.l.t("plant_status.more", { count: this.more })}</span><span class="sr-only">${this.l.t("plant_status.more_label", { count: this.more })}</span>` : j}</span>`;
 	}
 };
@@ -3311,7 +3313,7 @@ function ot(e, t) {
 	if (t.status === "problem" && n) {
 		let t = (n.role === "soil_temperature" ? at[n.kind] : void 0) ?? it[n.kind];
 		return {
-			label: t ? e.t(t) : V(e, "problem"),
+			label: t ? e.t(t) : Ue(e, "problem"),
 			more: r
 		};
 	}
@@ -3322,15 +3324,15 @@ function ot(e, t) {
 		label: e.t("plant_status.no_main_sensor"),
 		more: r
 	} : {
-		label: V(e, t.status),
+		label: Ue(e, t.status),
 		more: r
 	};
 }
 function st(e, t) {
-	return t && t.value !== null ? U(e, t.value, t.unit) : null;
+	return t && t.value !== null ? H(e, t.value, t.unit) : null;
 }
 function ct(e, t, n, r) {
-	let i = We(n.role) ? n.role : null, a = i ? t.roles[i] : void 0, o = i ? Ge(e, i) : n.role, s = st(e, a), c = (t) => t == null || !a ? null : U(e, t, a.unit), l = (t) => {
+	let i = Ge(n.role) ? n.role : null, a = i ? t.roles[i] : void 0, o = i ? Ke(e, i) : n.role, s = st(e, a), c = (t) => t == null || !a ? null : H(e, t, a.unit), l = (t) => {
 		let n = a?.range[t];
 		if (!a || a.value === null || !s || n == null || (t === "min" ? a.value < n : a.value > n) && s !== c(n)) return null;
 		let r = c(a.clear[t]);
@@ -3343,7 +3345,7 @@ function ct(e, t, n, r) {
 	switch (n.kind) {
 		case "stale": return a?.last_reported ? e.t("reason.stale", {
 			role: o,
-			age: Je(e, a.last_reported, r)
+			age: U(e, a.last_reported, r)
 		}) : e.t("reason.not_reporting", { role: o });
 		case "unavailable": return e.t("reason.not_reporting", { role: o });
 		case "no_main_sensor": return e.t("reason.no_main_sensor", { role: o });
@@ -3393,10 +3395,10 @@ function lt(e, t, n) {
 function ut(e, t, n = Date.now()) {
 	if (!t) return e.t("card.never_watered");
 	let r = Date.parse(t);
-	return Number.isFinite(r) && Math.abs(n - r) < 6e4 ? e.t("card.watered_just_now") : e.t("card.watered", { age: Je(e, t, n) });
+	return Number.isFinite(r) && Math.abs(n - r) < 6e4 ? e.t("card.watered_just_now") : e.t("card.watered", { age: U(e, t, n) });
 }
 function dt(e) {
-	return Object.keys(H).filter((t) => t !== "moisture" && e.roles[t]).map((t) => [t, e.roles[t]]);
+	return Object.keys(V).filter((t) => t !== "moisture" && e.roles[t]).map((t) => [t, e.roles[t]]);
 }
 function ft(e, t) {
 	let n = Date.parse(e);
@@ -3680,7 +3682,7 @@ function Ft(e, t) {
 			sources: []
 		};
 	}
-	for (let e of Ue) {
+	for (let e of We) {
 		if (e === "moisture" || l) continue;
 		let t = a(`sensor.${e}`), n = wt(t);
 		if (n === null) continue;
@@ -3699,7 +3701,7 @@ function Ft(e, t) {
 		a("binary_sensor.sensor_stale"),
 		m,
 		...Z.map((e) => a(`binary_sensor.${e.sensor}`))
-	].find((e) => e && typeof e.attributes.snoozed_until == "string"), _ = Ue.filter((e) => e !== "moisture").map((e) => i.get(`sensor.${e}`)).find((t) => t !== void 0 && wt(e.states[t]) !== null), te = i.get("sensor.moisture") ?? null, v = n.model?.trim(), y = {
+	].find((e) => e && typeof e.attributes.snoozed_until == "string"), _ = We.filter((e) => e !== "moisture").map((e) => i.get(`sensor.${e}`)).find((t) => t !== void 0 && wt(e.states[t]) !== null), te = i.get("sensor.moisture") ?? null, v = n.model?.trim(), y = {
 		plant_id: r,
 		revision: 0,
 		lifecycle_state: l ? "disabled" : "active",
@@ -3867,12 +3869,18 @@ var Bt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
       <div class="head"><sp-plant-avatar .src=${this._photo} .name=${e.name} .l=${t} @photo-error=${() => this._clearPhoto()}></sp-plant-avatar>
         <div class="title"><h2>${u ? k`<button type="button" class="name" title=${d} @click=${() => this._open(e)}>${e.name}</button>` : e.name}</h2>
           ${e.area || e.species ? k`<span class="sub" title=${[e.area, e.species].filter(Boolean).join(" · ")}>${e.area ? k`<ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>` : j}<span class="subtext">${e.area ?? j}${e.area && e.species ? " · " : ""}${e.species ? k`<i>${e.species}</i>` : j}</span></span>` : j}</div></div>
-      <div class="status"><div class="chiprow"><sp-status-chip .status=${r.status} .label=${a.label} .more=${a.more} .l=${t}></sp-status-chip>${l ? k`<sp-snooze-chip .label=${l}></sp-snooze-chip>` : j}</div>${o ? k`<span class="reason">${o}</span>` : j}</div>
+      <div class="status"><div class="chiprow"><sp-status-chip .status=${r.status} .label=${a.label} .more=${a.more} .l=${t}></sp-status-chip>${l ? k`<sp-snooze-chip .label=${l}></sp-snooze-chip>` : j}</div>${o ? k`<span class="reason" title=${o}>${o}</span>` : j}</div>
       ${e.careDue ? k`<p class="care"><ha-icon aria-hidden="true" icon="mdi:calendar-check-outline"></ha-icon><span>${t.t("plant_card.care_due")}</span></p>` : j}
       ${n.show_readings === !1 ? j : this._renderReadings(e, t)}
-      ${n.show_watering === !1 ? j : k`<div class="foot">${e.lastWatered === void 0 ? j : k`<span class="last"><ha-icon aria-hidden="true" icon="mdi:history"></ha-icon>${ut(t, e.lastWatered, s)}</span>`}
+      ${n.show_watering === !1 ? j : k`<div class="foot">${e.lastWatered === void 0 ? j : this._renderWatered(t, e.lastWatered, s)}
         <button type="button" class="tonal" ?disabled=${i || this._busy} aria-label=${t.t("card.log_watering_label", { name: e.name })} @click=${() => void this._logWatering(e)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${t.t("card.log_watering")}</button></div>`}
     </ha-card>`;
+	}
+	_renderWatered(e, t, n) {
+		let r = ut(e, t, n), i = t ? Date.parse(t) : NaN;
+		if (!Number.isFinite(i)) return k`<span class="last"><ha-icon aria-hidden="true" icon="mdi:history"></ha-icon><span>${r}</span></span>`;
+		let a = Math.abs(n - i) < 6e4 ? e.t("card.watered_short_just_now") : U(e, t, n);
+		return k`<span class="last" title=${r}><ha-icon aria-hidden="true" icon="mdi:history"></ha-icon><span class="long">${r}</span><span class="short" aria-hidden="true">${a.charAt(0).toLocaleUpperCase(e.language) + a.slice(1)}</span></span>`;
 	}
 	_renderReadings(e, t) {
 		let n = e.overview, r = n.roles.moisture, i = dt(n);
@@ -3913,6 +3921,7 @@ It = $, It.styles = [W, o`
       border-top: 1px solid var(--divider-color, #e0e0e0); }
     .last { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--sp-text-secondary); min-width: 0; }
     .last ha-icon { --mdc-icon-size: 17px; }
+    .last .short { display: none; }
     .tonal { display: inline-flex; align-items: center; gap: 6px; height: 36px; margin-left: auto; padding: 0 14px; border: 0; border-radius: 18px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap;
       background: color-mix(in srgb, var(--sp-primary) 14%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); }
     .tonal ha-icon { --mdc-icon-size: 17px; }
@@ -3922,12 +3931,16 @@ It = $, It.styles = [W, o`
     .warning p { margin: 2px 0 0; font-size: 13px; }
     .warning strong { font-weight: 500; }
     /* A narrow card, such as half a section: area and species stay on one line,
-       and the last watering gets its own row above the button. */
+       the reason takes at most two lines, and the last watering shows only the
+       time. The button moves to its own row when the time doesn't fit beside it. */
     @container (max-width: 300px) {
       .sub { flex-wrap: nowrap; min-width: 0; }
       .subtext { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      .reason { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
       .foot { flex-wrap: wrap; row-gap: 4px; padding: 6px 8px 8px 14px; }
-      .last { flex: 1 1 100%; }
+      .last { white-space: nowrap; }
+      .last .long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+      .last .short { display: inline; overflow: hidden; text-overflow: ellipsis; }
     }
     /* Half of the narrowest section: a smaller photo leaves room for the name. */
     @container (max-width: 200px) {

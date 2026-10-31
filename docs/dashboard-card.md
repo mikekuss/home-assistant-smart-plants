@@ -20,8 +20,10 @@ The editor starts with the first plant that needs water, or with your first plan
 ## Card size
 
 In a sections view the card takes half a section, so two plants share a row, and its height
-follows its content. A narrow card puts the last watering on its own row above the **Watered**
-button and shortens a long area and species line.
+follows its content. A narrow card keeps its text short. It shows only when the plant was last
+watered, for example "3 days ago", and the full sentence as a tooltip. It shortens a long area
+and species line and a reason longer than two lines, and it shows only the target under the
+soil moisture bar.
 
 For more plants per row, open the section's settings and set its width to double or triple.
 The section then holds four or six plants per row. To make one card wider, change its size on the
