@@ -49,6 +49,10 @@ describe("serve-harness", () => {
     expect(await get(harness)).toBe(200);
     expect(await get("/frontend/e2e/harness.js")).toBe(200);
     expect(await get("/custom_components/smart_plants/frontend/smart-plants-panel.js?cache-reload=1")).toBe(200);
+    expect(await get("/frontend/e2e/card-harness.html")).toBe(200);
+    expect(await get("/frontend/e2e/card-harness.js")).toBe(200);
+    expect(await get("/custom_components/smart_plants/frontend/smart-plants-card.js?v=1")).toBe(200);
+    expect(await get("/custom_components/smart_plants/frontend/smart-plants-card-full.js?v=1")).toBe(200);
   });
 
   it("returns 404 for any other repository file", async () => {

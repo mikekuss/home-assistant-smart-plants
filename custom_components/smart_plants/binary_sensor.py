@@ -43,6 +43,7 @@ from .automation_targets import (
     ALL_PLANTS_UNIQUE_ID,
     plant_binary_sensor_filter,
 )
+from .care import care_summary
 from .care_entities import (
     ROLE_CARE_DUE,
     TASK_SUFFIX_DUE,
@@ -190,6 +191,14 @@ class _NeedsWaterBinary(_MoistureBinaryBase):
             return None
         return bool(result.needs_water)
 
+    def _alert_attributes(self) -> dict[str, Any]:
+        # When the plant was last watered (an ISO timestamp, or None), so an
+        # automation or a dashboard card can tell how long ago that was.
+        plant = self._manager.snapshot.plants.get(self._plant_id)
+        if plant is None:
+            return {}
+        return {"last_watered": care_summary(plant.care_events)["last_watered_at"]}
+
 
 class _TooWetBinary(_MoistureBinaryBase):
     _attr_translation_key = ROLE_TOO_WET
@@ -223,6 +232,15 @@ class _SensorStaleBinary(_MoistureBinaryBase):
         if controller is None:
             return False
         return bool(controller.current_evaluation.sensor_stale)
+
+    def _alert_attributes(self) -> dict[str, Any]:
+        # How many moisture sensors are assigned. This sensor stays available
+        # while the plant is active, so a dashboard card can tell a plant
+        # without moisture sensors from one whose sensor stopped reporting.
+        plant = self._manager.snapshot.plants.get(self._plant_id)
+        if plant is None:
+            return {}
+        return {"sources": len(plant.moisture.sources)}
 
 
 class _LowLightBinary(SmartPlantsBinarySensorEntity):

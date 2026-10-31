@@ -5,6 +5,6 @@
 ## Checklist
 
 - [ ] Backend checks pass (`ruff check .`, `ruff format --check .`, `mypy`, `pytest`)
-- [ ] If `frontend/` changed: `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build`, with the rebuilt `smart-plants-panel.js` committed
+- [ ] If `frontend/` changed: `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build`, with the rebuilt bundles (`smart-plants-panel.js`, `smart-plants-card.js`, `smart-plants-card-full.js`) committed
 - [ ] User-facing behavior changes are reflected in `docs/` and translations (`strings.json`, `translations/`)
 - [ ] No real Home Assistant data, tokens, or credentials are included

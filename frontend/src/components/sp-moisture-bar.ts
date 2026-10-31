@@ -13,10 +13,10 @@ const clamp = (value: number) => Math.min(100, Math.max(0, value));
 export class SpMoistureBar extends LitElement {
   static styles = [themeFallbacks, css`
     :host { display: block; font-size: 13px; color: var(--sp-text); }
-    .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; column-gap: 8px; }
     .name { display: inline-flex; align-items: center; gap: 4px; color: var(--sp-text-secondary); }
     .name ha-icon { --mdc-icon-size: 16px; }
-    .value { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .value { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .value.low { color: color-mix(in srgb, var(--sp-warning) 50%, var(--sp-text)); }
     .value.high { color: color-mix(in srgb, var(--sp-info) 50%, var(--sp-text)); }
     .value.stale, .value.unavailable { color: var(--sp-text-secondary); }
@@ -29,6 +29,13 @@ export class SpMoistureBar extends LitElement {
     .dot.stale, .dot.unavailable { background: var(--sp-disabled); }
     :host([dimmed]) .band, :host([dimmed]) .tick { opacity: .5; }
     .scale { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; font-size: 11px; color: var(--sp-text-secondary); font-variant-numeric: tabular-nums; }
+    /* In a narrow dashboard card only the target fits under the bar. The bar's
+       label names the whole range for screen readers. */
+    @container (max-width: 200px) {
+      .scale { justify-content: center; }
+      .scale .end { display: none; }
+      .scale span { white-space: nowrap; }
+    }
     .age { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
     .age ha-icon { --mdc-icon-size: 15px; }
   `];
@@ -68,7 +75,7 @@ export class SpMoistureBar extends LitElement {
         ${target !== null ? html`<div class="tick" style="left:${clamp(target)}%"></div>` : nothing}
         ${value !== null ? html`<div class="dot ${this.state}" style="left:${Math.min(98, Math.max(2, value))}%"></div>` : nothing}
       </div>
-      <div class="scale" aria-hidden="true"><span>${l.t("moisture_bar.dry")}</span>${rangeText ? html`<span>${l.t("moisture_bar.target", { range: rangeText })}</span>` : nothing}<span>${l.t("moisture_bar.wet")}</span></div>
+      <div class="scale" aria-hidden="true"><span class="end">${l.t("moisture_bar.dry")}</span>${rangeText ? html`<span>${l.t("moisture_bar.target", { range: rangeText })}</span>` : nothing}<span class="end">${l.t("moisture_bar.wet")}</span></div>
       ${showAge ? html`<div class="age"><ha-icon aria-hidden="true" icon="mdi:clock-outline"></ha-icon>${l.t("moisture_bar.last_update", { age: relativeTime(l, this.lastReported!, this.now) })}</div>` : nothing}`;
   }
 }

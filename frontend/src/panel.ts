@@ -143,6 +143,8 @@ import type { PlantOverview } from "./overview-model.js";
 import type { CareEvent, CareHistory, CareTask, Evaluation, HAArea, HADevice, HAEntity, HAState, HealthEvaluation, HomeAssistantLike, MoistureInput, PanelCapabilities, PanelInfo, PlantPlacement, PlantRecord, RoleSourceInput, SpeciesPreview, SpeciesSearchResult } from "./types.js";
 
 type View = { kind: "list" } | { kind: "create" } | { kind: "detail"; plantId: string };
+interface PanelRoute { prefix?: string; path?: string }
+const PLANT_ROUTE = /^\/plant\/([^/]+)(?:\/(sensors))?\/?$/;
 interface Edits { name: string; acquired: string; placement: PlantPlacement | null; category: string; tagText: string; area: string; common: string; latin: string; moisture: MoistureInput | null }
 type SaveKind = "identity" | "taxonomy" | "area" | "moisture" | "species";
 interface Conflict { before: PlantRecord; after: PlantRecord; changes: string[] }
@@ -184,6 +186,9 @@ export class SmartPlantsPanel extends LitElement {
   @property({ attribute: false }) public hass?: HomeAssistantLike;
   @property({ attribute: false }) public panel?: PanelInfo;
   @property({ type: Boolean, reflect: true }) public narrow = false;
+  // Home Assistant's route below the panel URL. "/plant/<plant_id>" (optionally
+  // followed by "/sensors") opens that plant; the dashboard card links there.
+  @property({ attribute: false }) public route?: PanelRoute;
   @state() private _plants: PlantRecord[] = [];
   @state() private _loading = true;
   @state() private _error = "";
@@ -317,6 +322,7 @@ export class SmartPlantsPanel extends LitElement {
     this._syncHistory();
   }
   protected updated(changed: PropertyValues): void {
+    this._applyRoute();
     if (changed.has("hass")) {
       if (this.hass?.connection !== this._connection) { this._unbind(); this._bind(); void this._refresh(); }
       if (this.hass?.user?.is_admin === false) this._unbind();
@@ -550,6 +556,25 @@ export class SmartPlantsPanel extends LitElement {
     return this._l.t(isMessageKey(key) ? key : "api_error.unknown");
   }
   private _plantById(id: string): PlantRecord | undefined { return this._plants.find(p => p.id === id); }
+  // Opens the plant a deep link names, once the plants are loaded. Each link is
+  // followed once; leaving that plant clears the link from the address bar.
+  private _routeApplied: string | null = null;
+  private _applyRoute(): void {
+    const path = this.route?.path ?? "";
+    const match = PLANT_ROUTE.exec(path);
+    if (!match) { this._routeApplied = null; return; }
+    if (path === this._routeApplied || this._loading || this._blocked) return;
+    this._routeApplied = path;
+    let plantId: string;
+    try { plantId = decodeURIComponent(match[1]!); } catch { return; }
+    if (this._plantById(plantId)) this._openFromOverview({ plantId, ...(match[2] ? { section: "sensors" as const } : {}) });
+    else this._clearRoute();
+  }
+  private _clearRoute(): void {
+    if (!PLANT_ROUTE.test(this.route?.path ?? "")) return;
+    history.replaceState(null, "", this.route?.prefix || "/smart-plants");
+    window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: true } }));
+  }
   private _plantAreaNames(): Record<string, string | null> {
     return Object.fromEntries(this._plants.map(p => { const area = plantDevice(p, this._devices)?.area_id; return [p.id, area ? this._areaName(area) : null]; }));
   }
@@ -566,6 +591,8 @@ export class SmartPlantsPanel extends LitElement {
     this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._sourceSaved = {}; this._pendingSourceSwitch = null; this._allSourceSensors = false; this._sourceUnavailable = null; this._moistureSourceError = "";
   }
   private _show(view: View): void {
+    const routed = PLANT_ROUTE.exec(this.route?.path ?? "");
+    if (routed && !(view.kind === "detail" && encodeURIComponent(view.plantId) === routed[1])) this._clearRoute();
     this._context++; this._closeDialog(); this._formBusy = false;
     this._providerRequest++; this._view = view; this._error = ""; this._notice = ""; this._healthError = ""; this._careHistory = null; this._careError = "";
     // Every plant opens with a new search for its automations.

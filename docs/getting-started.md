@@ -36,6 +36,10 @@ Paused plants show *Paused*.
 Select **Watered** on a card to log a watering right now. A message confirms it and offers
 **Undo** for a few seconds.
 
+To see a plant on a dashboard, add the [Smart Plants plant card](dashboard-card.md). It shows
+the same status and readings and has its own **Watered** button. Users who can't open the
+panel can use it too.
+
 Use **Add plant** at the bottom right (or **⋮ → Add plant** in the top bar) to start the
 creation wizard. Select a plant's name to open its page. The **⋮** menu also opens
 [Notifications](notifications.md) and links to the integration options and this documentation.

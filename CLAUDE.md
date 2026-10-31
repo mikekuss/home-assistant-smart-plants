@@ -86,7 +86,7 @@ Frontend (Node.js 22):
 ```bash
 cd frontend
 npm ci && npm run lint && npm run typecheck && npm test
-npm run build          # rewrites custom_components/smart_plants/frontend/smart-plants-panel.js
+npm run build          # rewrites the bundles in custom_components/smart_plants/frontend/
 npx playwright install --with-deps chromium && npm run test:browser
 ```
 
@@ -95,7 +95,8 @@ CI runs the same checks plus hassfest and the HACS action.
 ## Rules that keep the release healthy
 
 - Any change under `frontend/src/` requires `npm run build`, and the rebuilt
-  `smart-plants-panel.js` must be committed in the same commit. CI fails on a stale bundle.
+  bundles (`smart-plants-panel.js`, `smart-plants-card.js`, `smart-plants-card-full.js`) must
+  be committed in the same commit. CI fails on a stale bundle.
 - Adding or upgrading a bundled runtime dependency requires updating `THIRD_PARTY_LICENSES.txt`
   with its full license text. Ask before adding a new runtime dependency.
 - `manifest.json` must not list packages Home Assistant core already ships (such as Pillow);
