@@ -135,7 +135,9 @@ describe("sp-history-chart", () => {
   const end = Date.parse("2026-09-28T12:00:00Z");
   const at = (hoursAgo: number, mean: number, spread = 1) => ({ t: end - hoursAgo * HOUR, mean, min: mean - spread, max: mean + spread });
   const points = [at(30, 50), at(29, 49), at(28, 48), at(10, 66), at(9, 65), at(8, 64)];
-  const props = { points, start: end - 48 * HOUR, end, periodMs: HOUR, unit: "%", band: { min: 30, max: 70, target: 45 }, markers: [end - 11 * HOUR, end - 100 * HOUR], summary: "Soil moisture, last 7 days", bandLabel: "Target: 30–70%", markerLabel: "Watering logged" };
+  const props = { points, start: end - 48 * HOUR, end, periodMs: HOUR, unit: "%", band: { min: 30, max: 70, target: 45 }, markers: [{ t: end - 11 * HOUR, group: "watering" }, { t: end - 100 * HOUR, group: "watering" }, { t: end - 20 * HOUR, group: "pest_control" }, { t: end - 5 * HOUR, group: "unknown" }],
+    markerGroups: [{ key: "watering", label: "Watering logged", color: "blue" }, { key: "pest_control", label: "Pest control logged", color: "red" }, { key: "pruning", label: "Pruning logged", color: "teal" }],
+    summary: "Soil moisture, last 7 days", bandLabel: "Target: 30–70%" };
 
   it("draws the line with gaps, the target band and markers inside the time range", async () => {
     const chart = await mount("sp-history-chart", props);
@@ -146,9 +148,14 @@ describe("sp-history-chart", () => {
     expect(root.querySelectorAll("path.spread")).toHaveLength(2);
     expect(root.querySelectorAll("rect.band")).toHaveLength(1);
     expect(root.querySelectorAll("line.limit")).toHaveLength(3);
-    expect(root.querySelectorAll("line.marker")).toHaveLength(1);
+    // Only markers inside the range and of a listed group, each in its group's colour.
+    const markers = [...root.querySelectorAll<SVGLineElement>("line.marker")];
+    expect(markers.map(marker => marker.style.stroke)).toEqual(["blue", "red"]);
+    expect([...root.querySelectorAll("svg g title")].map(title => title.textContent)).toEqual([expect.stringMatching(/^Watering logged: /), expect.stringMatching(/^Pest control logged: /)]);
     expect(text(chart)).toContain("Target: 30–70%");
     expect(text(chart)).toContain("Watering logged");
+    expect(text(chart)).toContain("Pest control logged");
+    expect(text(chart)).not.toContain("Pruning logged");
     expect(text(chart)).toContain("Lowest to highest value");
   });
   it("reads out a point from the keyboard slider and clears it on blur", async () => {
@@ -178,8 +185,8 @@ describe("sp-history-chart", () => {
     chart.points = points.slice(2); await chart.updateComplete;
     expect(chart.shadowRoot!.querySelector(".readout")!.textContent).toBe("");
   });
-  it("pins a clicked point and offers the action for it", async () => {
-    const chart = await mount("sp-history-chart", { ...props, actionLabel: "Log watering at this time" });
+  it("pins a clicked point and offers the actions for it", async () => {
+    const chart = await mount("sp-history-chart", { ...props, actions: [{ key: "watering", label: "Log watering at this time" }, { key: "care", label: "Log other care" }] });
     const root = chart.shadowRoot!;
     const svg = root.querySelector("svg")!;
     svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 600, height: 200, right: 600, bottom: 200, x: 0, y: 0, toJSON: () => ({}) });
@@ -187,15 +194,20 @@ describe("sp-history-chart", () => {
     const pointer = (type: string, clientX: number) => svg.dispatchEvent(new PointerEvent(type, { clientX, bubbles: true, composed: true }));
     const readout = () => root.querySelector(".readout")!.textContent!;
     const action = () => root.querySelector<HTMLButtonElement>("button.action");
+    const labels = () => [...root.querySelectorAll("button.action")].map(button => button.textContent);
     pointer("pointermove", 475); await chart.updateComplete;
     expect(readout()).toMatch(/: 66% \(65–67%\)$/);
     expect(action()).toBeNull();
     pointer("pointerdown", 475); pointer("pointermove", 100); pointer("pointerleave", 0); await chart.updateComplete;
     expect(readout()).toMatch(/: 66% \(65–67%\)$/);
-    expect(action()!.textContent).toBe("Log watering at this time");
+    expect(labels()).toEqual(["Log watering at this time", "Log other care"]);
     const fired: unknown[] = []; chart.addEventListener("point-action", e => fired.push((e as CustomEvent).detail));
     action()!.click(); await chart.updateComplete;
-    expect(fired).toEqual([{ t: end - 10 * HOUR }]);
+    expect(fired).toEqual([{ t: end - 10 * HOUR, key: "watering" }]);
+    expect(action()).toBeNull();
+    pointer("pointerdown", 475); await chart.updateComplete;
+    root.querySelectorAll<HTMLButtonElement>("button.action")[1]!.click(); await chart.updateComplete;
+    expect(fired[1]).toEqual({ t: end - 10 * HOUR, key: "care" });
     expect(action()).toBeNull();
     // A click on the pinned point, Escape or a click outside unpins it.
     pointer("pointerdown", 475); await chart.updateComplete;
@@ -209,7 +221,7 @@ describe("sp-history-chart", () => {
     expect(action()).toBeNull();
   });
   it("pins the slider's point with Enter and keeps it while focus moves to the action", async () => {
-    const chart = await mount("sp-history-chart", { ...props, actionLabel: "Log watering at this time" });
+    const chart = await mount("sp-history-chart", { ...props, actions: [{ key: "watering", label: "Log watering at this time" }] });
     const slider = chart.shadowRoot!.querySelector<HTMLInputElement>("input[type=range]")!;
     slider.value = "0"; slider.dispatchEvent(new Event("input"));
     slider.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); await chart.updateComplete;

@@ -161,6 +161,14 @@ describe("care tasks and linked care events", () => {
     for (const provenance of ["manual", "action", "automation"]) expect(validCareEvent({ ...event, provenance })).toBe(true);
     expect(validCareEvent({ ...event, kind: "watering", task_id: null, payload: { note: null } })).toBe(true);
   });
+  it("checks pest control payloads", () => {
+    const pest = { ...event, kind: "pest_control", task_id: null };
+    expect(validCareEvent({ ...pest, payload: { pest: "Aphids", product: "Soap solution", note: null } })).toBe(true);
+    expect(validCareEvent({ ...pest, payload: { pest: null, product: null, note: "Sprayed" } })).toBe(true);
+    expect(validCareEvent({ ...pest, payload: { pest: " Aphids", product: null, note: null } })).toBe(false);
+    expect(validCareEvent({ ...pest, payload: { pest: null, note: null } })).toBe(false);
+    expect(validCareEvent({ ...pest, payload: { pest: null, product: "x".repeat(121), note: null } })).toBe(false);
+  });
   it.each([{ schema_version: 1 }, { provenance: "provider" }, { task_id: "not-a-task" }, { task_id: undefined }, { payload: {} }, { payload: { text: "x" } }, { payload: { note: " x" } }])("rejects malformed care event %#", change => {
     expect(validCareEvent({ ...event, ...change })).toBe(false);
   });

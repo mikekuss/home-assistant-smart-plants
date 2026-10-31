@@ -104,7 +104,7 @@ export function validPlantList(plants: unknown[]): unknown[] {
   });
 }
 export function validCareEvent(v: unknown): boolean {
-  if (!object(v) || v.schema_version !== 2 || !text(v.id, 36) || !["watering", "fertilizing", "pruning", "repotting", "note", "task"].includes(String(v.kind)) ||
+  if (!object(v) || v.schema_version !== 2 || !text(v.id, 36) || !["watering", "fertilizing", "pruning", "repotting", "pest_control", "note", "task"].includes(String(v.kind)) ||
     !["manual", "action", "automation"].includes(String(v.provenance)) || !(v.task_id === null || (typeof v.task_id === "string" && TASK_ID.test(v.task_id))) ||
     !timestamp(v.occurred_at) || !/(?:Z|[+-]\d\d:\d\d)$/.test(String(v.occurred_at)) ||
     typeof v.local_date !== "string" || !/^\d{4}-\d\d-\d\d$/.test(v.local_date) || v.local_date !== String(v.occurred_at).slice(0, 10) ||
@@ -119,6 +119,9 @@ export function validCareEvent(v: unknown): boolean {
   if (v.kind === "repotting") return Object.keys(p).length === 3 &&
     (p.container === null || (text(p.container, 120) && p.container === p.container.trim())) &&
     (p.medium === null || (text(p.medium, 120) && p.medium === p.medium.trim())) && note(p.note);
+  if (v.kind === "pest_control") return Object.keys(p).length === 3 &&
+    (p.pest === null || (text(p.pest, 120) && p.pest === p.pest.trim())) &&
+    (p.product === null || (text(p.product, 120) && p.product === p.product.trim())) && note(p.note);
   return Object.keys(p).length === 1 && text(p.text, 1000) && p.text === p.text.trim();
 }
 function compareCareEvents(a: Record<string, unknown>, b: Record<string, unknown>): number {

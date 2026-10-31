@@ -496,8 +496,8 @@ every user may call it.
 
 `smart_plants.log_care` accepts these fields:
 
-- `kind`: what was done, one of `watering`, `fertilizing`, `pruning`, `repotting`, `note`, or
-  `task` (another task). Required when you target a plant device. When you target a care
+- `kind`: what was done, one of `watering`, `fertilizing`, `pruning`, `repotting`,
+  `pest_control`, `note`, or `task` (another task). Required when you target a plant device. When you target a care
   task, you can leave it out; if you set it, it must match the task (for example
   `fertilizing` for a fertilizing task).
 - `occurred_at`: when it happened. Defaults to now and can't be in the future; a time up to
