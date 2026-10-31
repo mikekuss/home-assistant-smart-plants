@@ -34,6 +34,9 @@ the way until you use it.
   for its readings, sensors, care and settings.
 - **Care log.** Log watering, fertilizing, pruning, repotting and notes. The **Watered** button
   on each plant logs a watering with one tap.
+- **Dashboard card.** Put a plant on any dashboard with its status, soil moisture, readings and
+  a **Watered** button. Users who aren't administrators can use it too. See
+  [Dashboard card](docs/dashboard-card.md).
 
 Optional, when you want them:
 
@@ -77,6 +80,7 @@ Manual installation, updating, and removal are covered in [docs/installation.md]
 - [Getting started](docs/getting-started.md)
 - [Sensors and plant health](docs/sensors-and-health.md)
 - [Entities](docs/entities.md)
+- [Dashboard card](docs/dashboard-card.md)
 - [OpenPlantBook](docs/openplantbook.md)
 - [Automation examples](docs/automations.md)
 - [Notifications](docs/notifications.md)

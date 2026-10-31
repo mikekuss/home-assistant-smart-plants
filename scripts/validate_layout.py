@@ -38,6 +38,10 @@ REQUIRED_FILES = [
     "panel.py",
     "websocket_api.py",
     "frontend/smart-plants-panel.js",
+    # The dashboard card: the loader every dashboard loads and the card
+    # content it imports on demand.
+    "frontend/smart-plants-card.js",
+    "frontend/smart-plants-card-full.js",
     # The bundle includes BSD-3-Clause Lit, whose license text must ship with it.
     "frontend/THIRD_PARTY_LICENSES.txt",
     # Entity lifecycle: shared base + three forwarded platforms. Setup
@@ -164,18 +168,32 @@ def _check_brand_icons(errors: list[str]) -> None:
             )
 
 
+# Each bundle, the custom element it must register and how many dynamic
+# ``import(`` calls it may contain (only the card loader imports its content).
+FRONTEND_BUNDLES = (
+    ("smart-plants-panel.js", "smart-plants-panel", 0),
+    ("smart-plants-card.js", "smart-plants-plant-card", 1),
+    ("smart-plants-card-full.js", "smart-plants-plant-card-content", 0),
+)
+
+
 def _check_frontend_artifact(errors: list[str]) -> None:
-    bundle_path = COMPONENT_ROOT / "frontend" / "smart-plants-panel.js"
-    if not bundle_path.is_file():
-        return
-    bundle = bundle_path.read_text(encoding="utf-8")
-    if re.search(r"""(?:^|[;}]\s*)import\s*(?:[({'"]|[\w*])""", bundle, re.MULTILINE):
-        _fail("frontend bundle contains an unresolved import", errors)
-    if "customElements.define" not in bundle or "smart-plants-panel" not in bundle:
-        _fail(
-            "frontend bundle does not register the smart-plants-panel custom element",
-            errors,
+    for name, element, dynamic_imports in FRONTEND_BUNDLES:
+        bundle_path = COMPONENT_ROOT / "frontend" / name
+        if not bundle_path.is_file():
+            continue
+        bundle = bundle_path.read_text(encoding="utf-8")
+        static = re.search(
+            r"""(?:^|[;}]\s*)import\s*(?:[{'"]|[\w*])""", bundle, re.MULTILINE
         )
+        if static or len(re.findall(r"\bimport\s*\(", bundle)) != dynamic_imports:
+            _fail(f"frontend bundle {name} contains an unresolved import", errors)
+        if "customElements.define" not in bundle or element not in bundle:
+            _fail(
+                f"frontend bundle {name} does not register the {element} "
+                "custom element",
+                errors,
+            )
 
 
 def main() -> int:

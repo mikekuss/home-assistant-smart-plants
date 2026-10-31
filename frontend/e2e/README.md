@@ -17,7 +17,11 @@ two production rebuilds are byte-identical to the artifact being qualified. It
 fails for stale source/artifact pairs. The browser additionally compares the
 served module bytes with the on-disk package and records its SHA-256.
 
-The harness imports only
+`card-harness.html` renders the packaged dashboard card on a synthetic
+dashboard (`card.spec.ts`). It imports only the card loader, which imports
+the card content next to it.
+
+The panel harness imports only
 `custom_components/smart_plants/frontend/smart-plants-panel.js`. It does not
 import application TypeScript or run a Vite source server. All HA WebSocket,
 registry, provider and image IO is synthetic. Browser requests are restricted

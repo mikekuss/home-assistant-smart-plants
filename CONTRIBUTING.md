@@ -45,7 +45,7 @@ npm ci
 npm run lint
 npm run typecheck
 npm test
-npm run build          # writes custom_components/smart_plants/frontend/smart-plants-panel.js
+npm run build          # writes the panel and card bundles to custom_components/smart_plants/frontend/
 npm run test:browser   # Playwright + axe against the built bundle
 ```
 
