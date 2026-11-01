@@ -47,6 +47,15 @@ describe("plant view", () => {
     expect(plant.overview.roles.illuminance).toMatchObject({ value: 1120, range: { min: 500, max: null } });
     expect(Object.keys(plant.overview.roles)).toEqual(["moisture", "temperature", "illuminance", "battery"]);
   });
+  it("reads the photo id from the stale sensor", () => {
+    const stale = (attributes: Record<string, unknown>, value = "off") => cardHass({ "binary_sensor.office_aloe_sensor_stale": { entity_id: "binary_sensor.office_aloe_sensor_stale", state: value, attributes } });
+    const photoId = (hass: ReturnType<typeof cardHass>) => (plantView(hass, DEVICE) as PlantView).photoId;
+    expect(photoId(stale({ sources: 1, photo_id: "fedcba9876543210fedcba9876543210" }))).toBe("fedcba9876543210fedcba9876543210");
+    expect(photoId(stale({ sources: 1, photo_id: null }))).toBeNull();
+    expect(photoId(stale({ sources: 1, photo_id: "" }))).toBeNull();
+    // Unavailable entities drop their attributes, so a paused plant doesn't say.
+    expect(photoId(stale({}, "unavailable"))).toBeUndefined();
+  });
   it("marks the reading that is out of range", () => {
     const hass = cardHass({
       "binary_sensor.office_aloe_needs_water": { entity_id: "binary_sensor.office_aloe_needs_water", state: "off", attributes: { last_watered: null } },

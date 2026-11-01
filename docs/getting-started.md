@@ -395,7 +395,9 @@ Add or change a photo in the **Settings** tab under **Photo** (or during creatio
   keeps its aspect ratio and orientation.
 
 Smart Plants re-encodes every photo to WebP and strips metadata such as EXIF (including
-location data) before storing it locally. Only logged-in administrators can load the photos.
+location data) before storing it locally. Every logged-in user can view the photos, so the
+[dashboard card](dashboard-card.md) can show them; only administrators can add, change or
+remove them.
 Select **Remove photo** to delete it.
 
 ## Edit plant details

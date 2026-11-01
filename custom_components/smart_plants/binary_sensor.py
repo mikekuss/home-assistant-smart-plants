@@ -237,10 +237,16 @@ class _SensorStaleBinary(_MoistureBinaryBase):
         # How many moisture sensors are assigned. This sensor stays available
         # while the plant is active, so a dashboard card can tell a plant
         # without moisture sensors from one whose sensor stopped reporting.
+        # The id of the plant photo, or None without one, so a dashboard card
+        # only requests a photo that exists. A new photo gets a new id, which
+        # the card also uses to keep the image in the browser cache.
         plant = self._manager.snapshot.plants.get(self._plant_id)
         if plant is None:
             return {}
-        return {"sources": len(plant.moisture.sources)}
+        return {
+            "sources": len(plant.moisture.sources),
+            "photo_id": None if plant.image is None else plant.image.id,
+        }
 
 
 class _LowLightBinary(SmartPlantsBinarySensorEntity):

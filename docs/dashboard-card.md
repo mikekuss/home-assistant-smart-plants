@@ -58,9 +58,10 @@ Use the card editor to pick the plant. It fills in the device ID for you.
 
 ## What the card shows
 
-- **Head.** The plant's photo, name and area, and the species when the plant has one.
-  Administrators see the photo. Other users see the plant icon, because only administrators may
-  read plant photos.
+- **Head.** The plant's photo, name and area, and the species when the plant has one. Every
+  user who can see the card sees the photo. A plant without a photo shows the plant icon. A
+  plant that is paused while the dashboard is open keeps its photo; after a reload it shows the
+  plant icon until you resume it, because its entities don't report the photo while paused.
 - **Status.** The same status as on the panel, for example **Needs water**, **Too hot +1** or
   **Paused**, with the reason below it. A snoozed plant also shows **Snoozed until** and the
   date. **Care due** appears while a care task is due.
