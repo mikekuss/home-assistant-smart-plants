@@ -13,16 +13,16 @@
     "test:browser": "node e2e/verify-artifact.mjs && playwright test"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.13.0",
-    "@playwright/test": "1.63.0",
-    "@types/node": "22.20.4",
-    "@typescript-eslint/eslint-plugin": "8.70.1",
-    "@typescript-eslint/parser": "8.70.1",
-    "eslint": "10.11.0",
-    "happy-dom": "20.14.5",
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.64.1",
+    "@types/node": "22.20.5",
+    "@typescript-eslint/eslint-plugin": "8.72.1",
+    "@typescript-eslint/parser": "8.72.1",
+    "eslint": "10.13.0",
+    "happy-dom": "20.14.6",
     "typescript": "5.9.3",
-    "vite": "8.3.1",
-    "vitest": "5.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.0.5",
     "yaml": "2.9.1"
   },
   "dependencies": {
