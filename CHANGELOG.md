@@ -10,14 +10,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - A **Smart Plants plant card** for dashboards shows one plant with its status, soil moisture
   bar, readings, last watering and a **Watered** button. Users who aren't administrators can
-  use it too. Pick it in the card picker; it loads only when a card is on screen. See
+  use it too, and every user sees the plant photo. Pick it in the card picker; it loads only when a card is on screen. See
   [Dashboard card](docs/dashboard-card.md).
 - The *Soil moisture* sensor has the attributes `min`, `target` and `max` with the moisture
   thresholds in effect, *Needs water* has `last_watered` with the time of the last watering,
-  and *Sensor stale* has `sources` with the number of soil moisture sensors assigned. See
+  and *Sensor stale* has `sources` with the number of soil moisture sensors assigned and
+  `photo_id` with the ID of the plant's photo. See
   [Entities](docs/entities.md#sensors).
 - The panel opens a plant from a link such as `/smart-plants/plant/<plant_id>`. The dashboard
   card's plant name links there for administrators.
+
+### Changed
+
+- Every logged-in Home Assistant user can now view plant photos, so dashboard cards can show
+  them to people who aren't administrators. Adding, replacing and removing photos stays
+  admin-only.
 
 ### Fixed
 

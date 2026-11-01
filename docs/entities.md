@@ -84,7 +84,7 @@ problem. The care task binary sensors are described under [Care tasks](#care-tas
 | --- | --- | --- | --- |
 | Needs water | Always | none | `last_watered` |
 | Too wet | Always | none | none |
-| Sensor stale | Always | none | `sources` |
+| Sensor stale | Always | none | `sources`, `photo_id` |
 | Temperature stress | First temperature source | none | `confidence`, `reason`, `cold_threshold_celsius`, `cold_clear_celsius`, `hot_threshold_celsius`, `hot_clear_celsius` |
 | Humidity stress | First humidity source | none | `confidence`, `reason`, `dry_threshold_percent`, `dry_clear_percent`, `damp_threshold_percent`, `damp_clear_percent` |
 | Low light | First illuminance source | none | `confidence`, `reason`, `sample_count`, `target_lux`, `clear_lux` |
@@ -107,6 +107,10 @@ The `reason` attribute explains the current state, for example `cold_stress`, `h
 `sources` on *Sensor stale* is how many soil moisture sensors the plant has assigned. *Sensor
 stale* stays available while the plant is active, so `sources` tells a plant without soil
 moisture sensors from one whose sensor stopped reporting.
+
+`photo_id` on *Sensor stale* is the ID of the plant's photo, or `null` when the plant has none.
+It changes whenever you add or replace the photo. The dashboard card uses it to load the photo
+only for plants that have one.
 
 *Needs water* and *Too wet* are unavailable while there is no valid moisture reading.
 *Sensor stale* stays available: it's off when no moisture sensor is assigned and on while any

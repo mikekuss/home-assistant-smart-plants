@@ -3,8 +3,9 @@
 // card itself and imports this module once a card is on screen. The card looks
 // like a plant card on the panel overview and works for every signed-in user,
 // so it reads only entity states and the registries the frontend already has,
-// and logs a watering with the smart_plants.log_care action. Admins also get
-// the plant photo, a link to the plant in the panel and Undo.
+// loads the plant photo from the image view every signed-in user may read, and
+// logs a watering with the smart_plants.log_care action. Admins also get a
+// link to the plant in the panel and Undo.
 import { LitElement, css, html, nothing } from "lit";
 import { property, state } from "lit/decorators.js";
 import "../components/sp-moisture-bar.js";
@@ -158,17 +159,22 @@ export class SmartPlantsPlantCardContent extends LitElement {
     return plantView(this.hass, this._config.device_id);
   }
 
-  // Admins may read the plant photo; the image view refuses everyone else.
+  // The photo is requested only when the stale sensor names one, so a plant
+  // without a photo makes no request. The id in the URL changes with every new
+  // photo and lets the browser cache it. A paused plant's sensors don't say,
+  // so a photo already on screen for the same plant stays.
   private _syncPhoto(): void {
     const plant = this._plant();
-    const plantId = plant?.kind === "plant" && this._admin && this.isConnected ? plant.plantId : null;
-    if (plantId === this._photoFor) return;
+    const view = plant?.kind === "plant" && this.isConnected ? plant : null;
+    if (view && view.photoId === undefined && this._photoFor?.startsWith(`${view.plantId}/`)) return;
+    const key = view?.photoId ? `${view.plantId}/${view.photoId}` : null;
+    if (key === this._photoFor) return;
     this._clearPhoto();
-    this._photoFor = plantId;
-    if (!plantId || !this.hass) return;
+    this._photoFor = key;
+    if (!view?.photoId || !this.hass) return;
     const request = ++this._photoRequest;
     const hass = this.hass;
-    const path = `/api/${DOMAIN}/plants/${encodeURIComponent(plantId)}/image`;
+    const path = `/api/${DOMAIN}/plants/${encodeURIComponent(view.plantId)}/image?v=${encodeURIComponent(view.photoId)}`;
     const fetching = hass.fetchWithAuth ? hass.fetchWithAuth(path) : fetch(path, { credentials: "same-origin" });
     void fetching.then(async response => {
       if (!response.ok) return;
@@ -176,6 +182,13 @@ export class SmartPlantsPlantCardContent extends LitElement {
       if (request !== this._photoRequest || !blob.type.startsWith("image/") || !blob.size) return;
       this._photo = URL.createObjectURL(blob);
     }).catch(() => undefined);
+  }
+
+  // A photo that downloaded but cannot be shown leaves the plant icon. The
+  // same photo isn't requested again; a new photo id is.
+  private _dropPhoto(): void {
+    if (this._photo) URL.revokeObjectURL(this._photo);
+    this._photo = null;
   }
 
   private _clearPhoto(): void {
@@ -276,7 +289,7 @@ export class SmartPlantsPlantCardContent extends LitElement {
     const canOpen = this._admin || plant.moreInfoEntity !== null;
     const label = l.t(this._admin ? "plant_card.open_label" : "plant_card.details_label", { name: plant.name });
     return html`<ha-card>
-      <div class="head"><sp-plant-avatar .src=${this._photo} .name=${plant.name} .l=${l} @photo-error=${() => this._clearPhoto()}></sp-plant-avatar>
+      <div class="head"><sp-plant-avatar .src=${this._photo} .name=${plant.name} .l=${l} @photo-error=${() => this._dropPhoto()}></sp-plant-avatar>
         <div class="title"><h2>${canOpen ? html`<button type="button" class="name" title=${label} @click=${() => this._open(plant)}>${plant.name}</button>` : plant.name}</h2>
           ${plant.area || plant.species ? html`<span class="sub" title=${[plant.area, plant.species].filter(Boolean).join(" · ")}>${plant.area ? html`<ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>` : nothing}<span class="subtext">${plant.area ?? nothing}${plant.area && plant.species ? " · " : ""}${plant.species ? html`<i>${plant.species}</i>` : nothing}</span></span>` : nothing}</div></div>
       <div class="status"><div class="chiprow"><sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip>${snoozed ? html`<sp-snooze-chip .label=${snoozed}></sp-snooze-chip>` : nothing}</div>${reason ? html`<span class="reason" title=${reason}>${reason}</span>` : nothing}</div>

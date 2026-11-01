@@ -380,19 +380,77 @@ describe("Watered button", () => {
 });
 
 describe("photo", () => {
-  it("is fetched for admins only", async () => {
-    const admin = cardHass({}, { admin: true });
+  const PHOTO = "fedcba9876543210fedcba9876543210";
+  const STALE = "binary_sensor.office_aloe_sensor_stale";
+  const stale = (attributes: Record<string, unknown>, value = "off"): CardState => ({ entity_id: STALE, state: value, attributes: { sources: 1, ...attributes } });
+  const photoUrl = (id: string) => `/api/smart_plants/plants/${PLANT_ID}/image?v=${id}`;
+  const avatar = (content: Element) => $<HTMLElement & { src: string | null }>(content, "sp-plant-avatar")!;
+  function serve(hass: Hass): string[] {
     const fetches: string[] = [];
-    admin.fetchWithAuth = async (path: string) => { fetches.push(path); return new Response(new Blob(["x"], { type: "image/webp" })); };
+    hass.fetchWithAuth = async (path: string) => { fetches.push(path); return new Response(new Blob(["x"], { type: "image/webp" })); };
+    return fetches;
+  }
+  const flush = () => new Promise(resolve => setTimeout(resolve, 0));
+
+  it.each([false, true])("is shown to every user (admin: %s)", async admin => {
+    const hass = cardHass({ [STALE]: stale({ photo_id: PHOTO }) }, { admin });
+    const fetches = serve(hass);
     vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:photo");
-    const content = await mount(admin);
-    await vi.waitFor(() => expect($<HTMLElement & { src: string | null }>(content, "sp-plant-avatar")!.src).toBe("blob:photo"));
-    expect(fetches).toEqual([`/api/smart_plants/plants/${PLANT_ID}/image`]);
-    document.body.replaceChildren();
-    const user = cardHass();
-    user.fetchWithAuth = async (path: string) => { fetches.push(path); return new Response(null, { status: 403 }); };
-    const other = await mount(user);
-    expect($<HTMLElement & { src: string | null }>(other, "sp-plant-avatar")!.src).toBeNull();
+    const content = await mount(hass);
+    await vi.waitFor(() => expect(avatar(content).src).toBe("blob:photo"));
+    expect(fetches).toEqual([photoUrl(PHOTO)]);
+  });
+
+  it("is not requested for a plant without a photo, or when the sensor doesn't say", async () => {
+    for (const attributes of [{ photo_id: null }, {}]) {
+      const hass = cardHass({ [STALE]: stale(attributes) });
+      const fetches = serve(hass);
+      const content = await mount(hass);
+      await flush();
+      expect(avatar(content).src).toBeNull();
+      expect(fetches).toEqual([]);
+      document.body.replaceChildren();
+    }
+  });
+
+  it("follows a new photo, stays while the plant is paused and goes when it is removed", async () => {
+    const hass = cardHass({ [STALE]: stale({ photo_id: PHOTO }) });
+    const fetches = serve(hass);
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    let n = 0;
+    vi.spyOn(URL, "createObjectURL").mockImplementation(() => `blob:photo-${++n}`);
+    const content = await mount(hass);
+    await vi.waitFor(() => expect(avatar(content).src).toBe("blob:photo-1"));
+    const card = content.getRootNode() as ShadowRoot;
+    const update = async (attributes: Record<string, unknown>, value = "off") => {
+      (card.host as SmartPlantsPlantCard).hass = { ...hass, states: { ...hass.states, [STALE]: { ...stale(attributes, value), attributes: value === "unavailable" ? {} : { sources: 1, ...attributes } } } };
+      await flush(); await content.updateComplete;
+    };
+
+    await update({ photo_id: "00112233445566778899aabbccddeeff" });
+    await vi.waitFor(() => expect(avatar(content).src).toBe("blob:photo-2"));
+    expect(fetches).toEqual([photoUrl(PHOTO), photoUrl("00112233445566778899aabbccddeeff")]);
+
+    await update({}, "unavailable");
+    expect(avatar(content).src).toBe("blob:photo-2");
+    expect(fetches).toHaveLength(2);
+
+    await update({ photo_id: null });
+    expect(avatar(content).src).toBeNull();
+    expect(revoke).toHaveBeenCalledWith("blob:photo-2");
+    expect(fetches).toHaveLength(2);
+  });
+
+  it("isn't requested again when it cannot be shown", async () => {
+    const hass = cardHass({ [STALE]: stale({ photo_id: PHOTO }) });
+    const fetches = serve(hass);
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:photo");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    const content = await mount(hass);
+    await vi.waitFor(() => expect(avatar(content).src).toBe("blob:photo"));
+    avatar(content).dispatchEvent(new CustomEvent("photo-error", { bubbles: true, composed: true }));
+    await flush(); await content.updateComplete;
+    expect(avatar(content).src).toBeNull();
     expect(fetches).toHaveLength(1);
   });
 });

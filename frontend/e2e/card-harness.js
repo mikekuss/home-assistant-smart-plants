@@ -29,12 +29,14 @@ for (const plant of plants) for (const [domain, key] of keys) {
   entities[entity_id] = { entity_id, device_id: plant.device, platform: "smart_plants", translation_key: key };
 }
 const states = {};
+// Office Aloe has a photo; Kitchen Basil has none.
+const OFFICE_ALOE_PHOTO = "0000000000004000800000000000a10e";
 const set = (entity_id, value, attributes) => { states[entity_id] = state(entity_id, value, attributes); };
 // Office Aloe: healthy, four readings, watered two days ago.
 set("sensor.office_aloe_moisture", "36.0", { unit_of_measurement: "%", min: 15, target: 35, max: 60 });
 set("binary_sensor.office_aloe_needs_water", "off", { last_watered: iso(now - 2 * day), snoozed: false, snoozed_until: null });
 set("binary_sensor.office_aloe_too_wet", "off", {});
-set("binary_sensor.office_aloe_sensor_stale", "off", { sources: 1, snoozed: false, snoozed_until: null });
+set("binary_sensor.office_aloe_sensor_stale", "off", { sources: 1, photo_id: OFFICE_ALOE_PHOTO, snoozed: false, snoozed_until: null });
 set("sensor.office_aloe_temperature", "21.5", { unit_of_measurement: "°C" });
 set("binary_sensor.office_aloe_temperature_stress", "off", { reason: "ok", cold_threshold_celsius: 10, hot_threshold_celsius: 28 });
 set("sensor.office_aloe_illuminance", "1120", { unit_of_measurement: "lx" });
@@ -46,14 +48,14 @@ const snoozed = iso(now + 2 * day);
 set("sensor.kitchen_basil_moisture", "12.0", { unit_of_measurement: "%", min: 30, target: 50, max: 70 });
 set("binary_sensor.kitchen_basil_needs_water", "on", { last_watered: iso(now - 9 * day), snoozed: true, snoozed_until: snoozed });
 set("binary_sensor.kitchen_basil_too_wet", "off", { snoozed: true, snoozed_until: snoozed });
-set("binary_sensor.kitchen_basil_sensor_stale", "off", { sources: 1, snoozed: true, snoozed_until: snoozed });
+set("binary_sensor.kitchen_basil_sensor_stale", "off", { sources: 1, photo_id: null, snoozed: true, snoozed_until: snoozed });
 set("sensor.kitchen_basil_temperature", "23", { unit_of_measurement: "°C" });
 set("binary_sensor.kitchen_basil_temperature_stress", "off", { reason: "ok", snoozed: true, snoozed_until: snoozed });
 set("binary_sensor.kitchen_basil_care_due", "on", { due_tasks: ["Fertilize"], snoozed: true, snoozed_until: snoozed });
 // Balcony Lavender: paused, so every entity reads unavailable.
 for (const [domain, key] of keys) if (["moisture", "needs_water", "too_wet", "sensor_stale"].includes(key)) set(`${domain}.balcony_lavender_${key}`, "unavailable", {});
 
-const record = window.__cardHarness = { calls: [], ws: [], toasts: [], moreInfo: [], navigations: [] };
+const record = window.__cardHarness = { calls: [], ws: [], toasts: [], moreInfo: [], navigations: [], fetches: [] };
 const hass = {
   language, locale: { language, number_format: "language", time_format: "language" },
   user: { is_admin: admin, name: admin ? "admin" : "viewer" },
@@ -75,7 +77,16 @@ const hass = {
     if (msg.type === "smart_plants/care/list") return { revision: 4, events: record.calls.filter(c => c.data?.kind === "watering").map((c, i) => ({ id: `event-${i + 1}`, kind: "watering", occurred_at: c.data.occurred_at })) };
     return {};
   },
-  async fetchWithAuth() { return new Response(null, { status: 404 }); },
+  // The image view: a green square for Office Aloe's current photo, 404 otherwise.
+  async fetchWithAuth(path) {
+    record.fetches.push(path);
+    if (path !== `/api/smart_plants/plants/${plants[0].id}/image?v=${OFFICE_ALOE_PHOTO}`) return new Response(null, { status: 404 });
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 8;
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#4caf50"; context.fillRect(0, 0, 8, 8);
+    return new Response(await new Promise(resolve => canvas.toBlob(resolve, "image/png")));
+  },
 };
 
 const cards = [];
