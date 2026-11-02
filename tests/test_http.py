@@ -1,5 +1,5 @@
 """
-Integration tests for the admin-only image HTTP endpoints.
+Integration tests for the image HTTP endpoints.
 
 Every endpoint is exercised against a real HA test client so the
 authentication, error-code shape, and manager/reconciler wiring stay
@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import io
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -27,9 +28,10 @@ from custom_components.smart_plants.manager import (
 )
 from custom_components.smart_plants.roles import source_accepting_roles
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
 from PIL import Image
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import CLIENT_ID, MockConfigEntry
 from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
 
 
@@ -77,14 +79,34 @@ async def test_upload_requires_auth(
     assert resp.status == 401
 
 
+async def _user_token(hass: HomeAssistant, group: str) -> str:
+    """Return an access token for a new user in the given group."""
+    user = await hass.auth.async_create_user("Test user", group_ids=[group])
+    refresh_token = await hass.auth.async_create_refresh_token(
+        user, CLIENT_ID, credential=None
+    )
+    return hass.auth.async_create_access_token(refresh_token)
+
+
+async def _upload(hass: HomeAssistant, client: Any, plant: Any) -> dict[str, Any]:
+    resp = await client.post(
+        f"{_url(plant.id)}?expected_revision={plant.revision}",
+        data=_jpeg(),
+        headers={"Content-Type": "image/jpeg"},
+    )
+    assert resp.status == 200, await resp.text()
+    await hass.async_block_till_done()
+    view: dict[str, Any] = (await resp.json())["plant"]
+    return view
+
+
+@pytest.mark.parametrize("group", ["system-users", "system-read-only"])
 async def test_upload_requires_admin(
-    hass: HomeAssistant,
-    hass_client: ClientSessionGenerator,
-    hass_read_only_access_token: str,
+    hass: HomeAssistant, hass_client: ClientSessionGenerator, group: str
 ) -> None:
     await _setup(hass)
     plant = await _create_plant(hass)
-    client = await hass_client(hass_read_only_access_token)
+    client = await hass_client(await _user_token(hass, group))
     resp = await client.post(
         f"{_url(plant.id)}?expected_revision={plant.revision}",
         data=_jpeg(),
@@ -93,30 +115,112 @@ async def test_upload_requires_admin(
     assert resp.status == 401
     body = await resp.json()
     assert body["error"]["code"] == "unauthorized"
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert entry.runtime_data.manager.get_plant(plant.id).image is None
 
 
-async def test_get_requires_admin(
-    hass: HomeAssistant,
-    hass_client: ClientSessionGenerator,
-    hass_read_only_access_token: str,
-) -> None:
-    await _setup(hass)
-    plant = await _create_plant(hass)
-    client = await hass_client(hass_read_only_access_token)
-    resp = await client.get(_url(plant.id))
-    assert resp.status == 401
-
-
+@pytest.mark.parametrize("group", ["system-users", "system-read-only"])
 async def test_delete_requires_admin(
-    hass: HomeAssistant,
-    hass_client: ClientSessionGenerator,
-    hass_read_only_access_token: str,
+    hass: HomeAssistant, hass_client: ClientSessionGenerator, group: str
 ) -> None:
     await _setup(hass)
     plant = await _create_plant(hass)
-    client = await hass_client(hass_read_only_access_token)
-    resp = await client.delete(f"{_url(plant.id)}?expected_revision={plant.revision}")
+    view = await _upload(hass, await hass_client(), plant)
+    client = await hass_client(await _user_token(hass, group))
+    resp = await client.delete(f"{_url(plant.id)}?expected_revision={view['revision']}")
     assert resp.status == 401
+    assert (await resp.json())["error"]["code"] == "unauthorized"
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert entry.runtime_data.manager.get_plant(plant.id).image is not None
+
+
+async def test_get_requires_auth(
+    hass: HomeAssistant,
+    hass_client: ClientSessionGenerator,
+    hass_client_no_auth: ClientSessionGenerator,
+) -> None:
+    await _setup(hass)
+    plant = await _create_plant(hass)
+    view = await _upload(hass, await hass_client(), plant)
+    client = await hass_client_no_auth()
+    resp = await client.get(f"{_url(plant.id)}?v={view['image']['id']}")
+    assert resp.status == 401
+
+
+# Dashboard cards show the photo to everyone who can see the plant, so any
+# signed-in user may read it.
+@pytest.mark.parametrize("group", ["system-admin", "system-users", "system-read-only"])
+async def test_any_user_can_get_photo(
+    hass: HomeAssistant, hass_client: ClientSessionGenerator, group: str
+) -> None:
+    await _setup(hass)
+    plant = await _create_plant(hass)
+    view = await _upload(hass, await hass_client(), plant)
+    client = await hass_client(await _user_token(hass, group))
+    resp = await client.get(_url(plant.id))
+    assert resp.status == 200
+    assert resp.headers["Content-Type"].startswith("image/webp")
+    with Image.open(io.BytesIO(await resp.read())) as decoded:
+        assert decoded.format == "WEBP"
+
+    resp = await client.get(_url("0123456789abcdef0123456789abcdef"))
+    assert resp.status == 404
+    assert (await resp.json())["error"]["code"] == "not_found"
+    assert view["image"] is not None
+
+
+async def test_get_caches_only_the_current_photo(
+    hass: HomeAssistant, hass_client: ClientSessionGenerator
+) -> None:
+    await _setup(hass)
+    plant = await _create_plant(hass)
+    client = await hass_client()
+    view = await _upload(hass, client, plant)
+    image_id = view["image"]["id"]
+
+    resp = await client.get(f"{_url(plant.id)}?v={image_id}")
+    assert resp.status == 200
+    assert resp.headers["Cache-Control"] == "private, max-age=31536000, immutable"
+
+    for query in ("", "?v=", "?v=0123456789abcdef"):
+        resp = await client.get(f"{_url(plant.id)}{query}")
+        assert resp.status == 200
+        assert resp.headers["Cache-Control"] == "no-store"
+
+
+async def test_sensor_stale_reports_photo_id(
+    hass: HomeAssistant, hass_client: ClientSessionGenerator
+) -> None:
+    await _setup(hass)
+    plant = await _create_plant(hass)
+    await hass.async_block_till_done()
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:sensor_stale"
+    )
+    assert entity_id is not None
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.attributes["photo_id"] is None
+
+    client = await hass_client()
+    view = await _upload(hass, client, plant)
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.attributes["photo_id"] == view["image"]["id"]
+
+    # A new photo gets a new id.
+    replaced = SimpleNamespace(id=plant.id, revision=view["revision"])
+    view = await _upload(hass, client, replaced)
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.attributes["photo_id"] == view["image"]["id"]
+
+    resp = await client.delete(f"{_url(plant.id)}?expected_revision={view['revision']}")
+    assert resp.status == 200
+    await hass.async_block_till_done()
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.attributes["photo_id"] is None
 
 
 # --- Happy path ---------------------------------------------------------

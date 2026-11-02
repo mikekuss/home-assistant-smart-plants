@@ -1,18 +1,24 @@
 """
-Admin-only HTTP endpoints for the Smart Plants image lifecycle.
+HTTP endpoints for the Smart Plants image lifecycle.
 
 Three routes, all under ``/api/smart_plants/plants/{plant_id}/image``:
 
-* ``GET``    → returns the plant's current WebP bytes.
+* ``GET``    → returns the plant's current WebP bytes. With ``?v=`` set
+  to the current image id (the ``photo_id`` attribute of the plant's
+  Sensor stale entity), the browser may cache the response for good,
+  because a new photo gets a new id.
 * ``POST``   → validates the upload, re-encodes to WebP, and attaches
   it to the plant. ``expected_revision`` is required as a query param.
 * ``DELETE`` → detaches and removes the image file. ``expected_revision``
   is required as a query param.
 
-Every handler is admin-gated (``request['hass_user'].is_admin``) and
-resolves the loaded manager per request via the singleton entry lookup,
-returning ``integration_not_loaded`` while unloaded — matching the
-WebSocket API's error codes.
+Every handler requires a signed-in Home Assistant user. Reading the photo
+is open to every user, including read-only ones, because dashboard cards
+show it to everyone who can see the plant; uploading and deleting stay
+admin-only (``request['hass_user'].is_admin``). Each handler resolves the
+loaded manager per request via the singleton entry lookup, returning
+``integration_not_loaded`` while unloaded — matching the WebSocket API's
+error codes.
 """
 
 from __future__ import annotations
@@ -56,6 +62,13 @@ ERR_UNAUTHORIZED = "unauthorized"
 ERR_UNKNOWN = "unknown_error"
 
 _UNKNOWN_ERROR_MESSAGE = "internal error"
+
+# The response may sit in the viewer's own browser cache only ("private"):
+# the request carries the user's token, and the photo must not be stored by
+# a shared proxy. A URL that names the current image id never changes
+# content, so it is cached for a year; any other request is never cached.
+_CACHE_CURRENT_IMAGE = "private, max-age=31536000, immutable"
+_CACHE_NONE = "no-store"
 
 
 def _not_loaded_response() -> web.Response:
@@ -153,17 +166,13 @@ class SmartPlantsImageView(HomeAssistantView):
 
     url = "/api/smart_plants/plants/{plant_id}/image"
     name = "api:smart_plants:plant_image"
-    # HomeAssistantView.requires_auth defaults to True; we still enforce
-    # admin explicitly per handler since ``requires_auth`` only proves a
-    # valid HA user, not an admin.
+    # ``requires_auth`` proves a signed-in HA user, which is all reading
+    # the photo needs. Upload and delete enforce admin per handler.
     requires_auth = True
 
     async def get(  # noqa: PLR0911
         self, request: web.Request, plant_id: str
     ) -> web.Response:
-        auth_error = _require_admin(request)
-        if auth_error is not None:
-            return auth_error
         hass: HomeAssistant = request.app["hass"]
         manager = _current_manager(hass)
         if manager is None:
@@ -203,7 +212,11 @@ class SmartPlantsImageView(HomeAssistantView):
             body=data,
             content_type=plant.image.content_type or IMAGE_OUTPUT_CONTENT_TYPE,
             headers={
-                "Cache-Control": "no-store",
+                "Cache-Control": (
+                    _CACHE_CURRENT_IMAGE
+                    if request.query.get("v") == plant.image.id
+                    else _CACHE_NONE
+                ),
                 "X-Content-Type-Options": "nosniff",
             },
         )

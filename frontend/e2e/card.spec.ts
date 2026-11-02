@@ -6,7 +6,7 @@ import { writeFile } from "node:fs/promises";
 // and as a user without admin rights, at desktop width and at 390 pixels.
 
 const url = "/frontend/e2e/card-harness.html";
-interface HarnessRecord { ready?: boolean; calls: { service: string; data: { kind?: string }; target: unknown }[]; ws: { type: string }[]; toasts: string[]; moreInfo: string[]; navigations: string[]; picker?: { type: string; name: string }[] }
+interface HarnessRecord { ready?: boolean; fetches: string[]; calls: { service: string; data: { kind?: string }; target: unknown }[]; ws: { type: string }[]; toasts: string[]; moreInfo: string[]; navigations: string[]; picker?: { type: string; name: string }[] }
 const record = (page: Page) => page.evaluate(() => (window as unknown as { __cardHarness: HarnessRecord }).__cardHarness);
 const card = (page: Page, name: string) => page.locator("smart-plants-plant-card", { hasText: name });
 
@@ -65,6 +65,19 @@ test("admin sees the plants, opens one in the panel and undoes a watering", asyn
   await aloe.getByRole("button", { name: "Office Aloe", exact: true }).click();
   expect((await record(page)).navigations).toEqual(["/smart-plants/plant/00000000000040008000000000000001"]);
 });
+
+// Every user sees the photo. Only a plant whose stale sensor names a photo is
+// requested: Kitchen Basil has none and the paused Balcony Lavender doesn't say.
+for (const role of ["admin", "user"] as const) {
+  test(`${role} sees the plant photo and no other photo is requested`, async ({ page }) => {
+    await open(page, role === "admin" ? "?admin" : "");
+    const photo = card(page, "Office Aloe").getByRole("img", { name: "Photo of Office Aloe" });
+    await expect(photo).toBeVisible();
+    await expect.poll(() => photo.evaluate(img => (img as HTMLImageElement).naturalWidth)).toBe(8);
+    for (const name of ["Kitchen Basil", "Balcony Lavender"]) await expect(card(page, name).locator("sp-plant-avatar img")).toHaveCount(0);
+    expect((await record(page)).fetches).toEqual(["/api/smart_plants/plants/00000000000040008000000000000001/image?v=0000000000004000800000000000a10e"]);
+  });
+}
 
 test("other users get more-info and a toast without Undo", async ({ page }, info) => {
   await open(page);

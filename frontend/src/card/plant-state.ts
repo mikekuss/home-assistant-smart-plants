@@ -198,6 +198,9 @@ export interface PlantView {
   // Entity for Home Assistant's more-info dialog: the moisture sensor, or the
   // first reading sensor when there is no moisture source.
   moreInfoEntity: string | null;
+  // The plant photo's id from the stale sensor, null without a photo, and
+  // undefined while that sensor doesn't say, such as for a paused plant.
+  photoId: string | null | undefined;
 }
 export type CardPlant = PlantView | { kind: "missing" };
 
@@ -247,6 +250,9 @@ export function plantView(hass: CardHassData, deviceId: string): CardPlant {
     .find(s => s && typeof s.attributes.snoozed_until === "string");
   const firstReading = READING_ROLES.filter(r => r !== "moisture").map(r => entities.get(`sensor.${r}`)).find(id => id !== undefined && numState(hass.states[id]) !== null);
   const moistureId = entities.get("sensor.moisture") ?? null;
+  const staleAttrs = state("binary_sensor.sensor_stale")?.attributes;
+  const photoId = staleAttrs && "photo_id" in staleAttrs
+    ? (typeof staleAttrs.photo_id === "string" && staleAttrs.photo_id ? staleAttrs.photo_id : null) : undefined;
   const model = device.model?.trim();
   const overview: PlantOverview = {
     plant_id: plantId, revision: 0, lifecycle_state: paused ? "disabled" : "active", status, problems, roles,
@@ -258,5 +264,6 @@ export function plantView(hass: CardHassData, deviceId: string): CardPlant {
     species: model && model !== "Plant" ? model : null,
     overview, careDue: !paused && state("binary_sensor.care_due")?.state === "on", lastWatered,
     moreInfoEntity: moistureValue !== null || !firstReading ? moistureId : firstReading,
+    photoId,
   };
 }

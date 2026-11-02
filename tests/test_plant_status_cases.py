@@ -111,6 +111,7 @@ def _manager(case: dict[str, Any], evaluations: dict[str, Any]) -> SimpleNamespa
         ),
         care_events=(),
         snoozed_until=None,
+        image=None,
     )
 
     def controller(role: str) -> SimpleNamespace | None:
