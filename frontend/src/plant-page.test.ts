@@ -344,3 +344,81 @@ describe("species common names", () => {
   });
 
 });
+
+describe("plant page errors and focus", () => {
+  it("says the status failed to load on the plant page and retries", async () => {
+    let fail = true;
+    const h = harness([structuredClone(sample)], msg => {
+      if (msg.type === "smart_plants/plants/overview" && fail) throw { code: "integration_not_loaded" };
+      return undefined;
+    });
+    const panel = new SmartPlantsPanel(); panel.hass = h.hass; document.body.append(panel);
+    await settle(panel); await click(panel, "Aloe"); await settle(panel);
+    const alert = panel.shadowRoot!.querySelector(".pd > .load-error[role=alert]");
+    expect(alert?.textContent).toContain("Plant status is unavailable");
+    const readings = panel.shadowRoot!.querySelector("section[aria-labelledby=readings-heading]")!;
+    // A failed read is no plant without sensors.
+    expect(readings.textContent).toContain("Readings are unavailable");
+    expect(readings.textContent).not.toContain("Assign");
+    fail = false;
+    const retry = [...alert!.querySelectorAll("button")].find(b => b.textContent?.trim() === "Try again")!;
+    retry.focus(); retry.click(); await settle(panel); await settle(panel);
+    expect(panel.shadowRoot!.querySelector(".load-error")).toBeNull();
+    expect(panel.shadowRoot!.activeElement?.tagName).toBe("H1");
+  });
+
+  it("moves focus to the selected tab after a button in another tab opens it", async () => {
+    const h = harness([structuredClone(sample)]);
+    const panel = new SmartPlantsPanel(); panel.hass = h.hass; document.body.append(panel);
+    await settle(panel); await click(panel, "Aloe"); await settle(panel);
+    for (const [selector, tab] of [["section[aria-labelledby=readings-heading] .card-h button, section[aria-labelledby=readings-heading] .empty-box button", "sensors"], ["section[aria-labelledby=about-heading] .card-h button", "settings"]] as const) {
+      await click(panel, "Overview"); await settle(panel);
+      const action = panel.shadowRoot!.querySelector<HTMLButtonElement>(selector)!;
+      action.focus(); action.click(); await settle(panel); await settle(panel);
+      expect(panel.shadowRoot!.activeElement?.id).toBe(`tab-${tab}`);
+      expect(panel.shadowRoot!.querySelector(`#tab-${tab}`)!.getAttribute("aria-selected")).toBe("true");
+    }
+  });
+
+  it("names the Watered button with its visible text", async () => {
+    const h = harness([structuredClone(sample)]);
+    const panel = new SmartPlantsPanel(); panel.hass = h.hass; document.body.append(panel);
+    await settle(panel);
+    const overview = panel.shadowRoot!.querySelector("smart-plants-overview")!;
+    await settle(overview as unknown as { updateComplete: Promise<unknown> });
+    const watered = [...overview.shadowRoot!.querySelectorAll("button")].find(b => b.textContent?.trim() === "Watered")!;
+    expect(watered.getAttribute("aria-label")).toBe("Watered: Aloe");
+  });
+});
+
+describe("sidebar button", () => {
+  it("opens Home Assistant's sidebar on a narrow screen and stays away on the plant page", async () => {
+    const h = harness([structuredClone(sample)]);
+    const panel = new SmartPlantsPanel(); panel.hass = h.hass; document.body.append(panel);
+    await settle(panel);
+    expect(panel.shadowRoot!.querySelector("[slot=navigationIcon]")).toBeNull();
+    panel.narrow = true; await settle(panel);
+    const toggle = panel.shadowRoot!.querySelector<HTMLElement & { label?: string }>("ha-icon-button.sidebar-toggle")!;
+    expect(toggle.getAttribute("slot")).toBe("navigationIcon");
+    expect(toggle.label).toBe("Show sidebar");
+    const toggled = vi.fn(); window.addEventListener("hass-toggle-menu", toggled);
+    toggle.click();
+    window.removeEventListener("hass-toggle-menu", toggled);
+    expect(toggled).toHaveBeenCalledTimes(1);
+    await click(panel, "Aloe"); await settle(panel);
+    expect(panel.shadowRoot!.querySelector("ha-icon-button.sidebar-toggle")).toBeNull();
+    expect(panel.shadowRoot!.querySelector("ha-icon-button.back")).not.toBeNull();
+  });
+
+  it("uses Home Assistant's own menu button once it is defined", async () => {
+    if (!customElements.get("ha-menu-button")) customElements.define("ha-menu-button", class extends HTMLElement { hass?: unknown; narrow?: boolean });
+    const h = harness([structuredClone(sample)]);
+    const panel = new SmartPlantsPanel(); panel.hass = h.hass; panel.narrow = true; document.body.append(panel);
+    await settle(panel);
+    const button = panel.shadowRoot!.querySelector<HTMLElement & { hass?: unknown; narrow?: boolean }>("ha-menu-button")!;
+    expect(button.getAttribute("slot")).toBe("navigationIcon");
+    expect(button.hass).toBe(h.hass);
+    expect(button.narrow).toBe(true);
+    expect(panel.shadowRoot!.querySelector("ha-icon-button.sidebar-toggle")).toBeNull();
+  });
+});

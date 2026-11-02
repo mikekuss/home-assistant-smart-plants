@@ -35,7 +35,7 @@ test("German inventory, detail tabs and sensors use the German catalog", async (
   await expect(card).toContainText("Braucht Wasser");
   await expect(card).toContainText("Bodenfeuchte 12 % liegt unter dem Minimum von 20 %");
   await expect(page.getByRole("button", { name: "Sortierung: Handlungsbedarf zuerst" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Gießen für Office Aloe eintragen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Gegossen: Office Aloe" })).toBeVisible();
   await audit(page, info, "german-inventory");
 
   await button(page, "Office Aloe").click();

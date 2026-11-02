@@ -101,6 +101,9 @@ export interface TaskEditorState {
   step: 1 | 2;
   // The task being edited; null while adding.
   taskId: string | null;
+  // The task as it was when the editor opened, or after the person reviewed
+  // a change made elsewhere. Saving sends only what differs from it.
+  baseline?: CareTask;
   draft: TaskDraft;
   errors: DraftErrors;
   // Error reported by Home Assistant when saving.

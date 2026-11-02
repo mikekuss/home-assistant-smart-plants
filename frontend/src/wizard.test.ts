@@ -78,6 +78,7 @@ describe("three-step creation wizard", () => {
     expect(created).toHaveBeenCalledOnce();
     expect(text(el)).toContain(`${sample.name} is ready`);
     expect(text(el)).toContain("The plant is now a device in Home Assistant.");
+    expect(text(el)).toContain("To get a notification when it needs water, open the plant and choose Notifications in its ⋮ menu.");
     expect(root(el).activeElement?.tagName).toBe("H2");
     expect(text(el)).not.toContain(draft.draft_token);
   });
