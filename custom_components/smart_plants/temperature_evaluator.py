@@ -253,7 +253,9 @@ def _evaluate_temperature_stress(  # noqa: PLR0911
             hot_threshold_celsius=hot_threshold,
             hot_clear_celsius=hot_clear,
         )
-    if previous_stress == "cold":
+    # Hysteresis holds only while the reading stays short of the opposite
+    # trigger; a jump straight to the other extreme falls through to it.
+    if previous_stress == "cold" and computed_celsius < hot_threshold:
         stress = computed_celsius < cold_clear
         return TemperatureStressEvaluation(
             temperature_stress=stress,
@@ -265,7 +267,7 @@ def _evaluate_temperature_stress(  # noqa: PLR0911
             hot_threshold_celsius=hot_threshold,
             hot_clear_celsius=hot_clear,
         )
-    if previous_stress == "hot":
+    if previous_stress == "hot" and computed_celsius > cold_threshold:
         stress = computed_celsius > hot_clear
         return TemperatureStressEvaluation(
             temperature_stress=stress,

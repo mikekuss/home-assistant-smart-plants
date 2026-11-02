@@ -252,6 +252,9 @@ class _SensorStaleBinary(_MoistureBinaryBase):
 class _LowLightBinary(SmartPlantsBinarySensorEntity):
     _attr_translation_key = ROLE_LOW_LIGHT
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    # The sample count moves with every new light sample during the day;
+    # recording it would add a history row each time for a diagnostic value.
+    _unrecorded_attributes = SNOOZE_ATTRIBUTES | {"sample_count"}
 
     def __init__(self, manager: SmartPlantsManager, plant_id: str) -> None:
         super().__init__(manager, plant_id, ROLE_LOW_LIGHT, ROLE_LOW_LIGHT)

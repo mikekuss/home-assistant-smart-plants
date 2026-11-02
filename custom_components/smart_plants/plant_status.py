@@ -13,8 +13,9 @@ Status priority, highest first:
 3. ``too_wet`` -- the moisture evaluation reports ``too_wet``.
 4. ``problem`` -- another role's stress signal is on (temperature, humidity,
    low light, conductivity, soil temperature, CO2, low battery).
-5. ``stale`` -- a moisture source is stale, or the moisture value is
-   unavailable although sources are assigned.
+5. ``stale`` -- an assigned sensor is stale or gives no usable value. This
+   covers moisture and every other reading except the battery. A light
+   sensor is not checked at night.
 6. ``no_sensors`` -- the moisture role has no sources.
 7. ``healthy`` -- none of the above.
 
@@ -87,6 +88,13 @@ _STRESS_SIGNALS: Final[dict[str, _StressSignal]] = {
 
 STRESS_ROLE_ORDER: Final[tuple[str, ...]] = tuple(_STRESS_SIGNALS)
 
+# Roles whose assigned sensors must report for a plant to be healthy, after
+# moisture. The battery is left out: many battery sensors only report when the
+# level changes, so a quiet one is not a failed input.
+INPUT_ROLE_ORDER: Final[tuple[str, ...]] = tuple(
+    role for role in STRESS_ROLE_ORDER if role != "battery"
+)
+
 # Fallback kind for a stress signal whose reason carries no direction. The
 # built-in evaluators always report a direction; this keeps a future role or
 # reason from being dropped silently.
@@ -157,19 +165,22 @@ def _moisture_value_problem(evaluation: Any) -> str | None:
     return None
 
 
-def _moisture_reading_problem(evaluation: Any) -> str | None:
+def _reading_problem(role: str, evaluation: Any) -> str | None:
     """
-    Return why an assigned moisture reading has no usable value, if it has none.
+    Return why an assigned reading has no usable value, if it has none.
 
     ``stale`` or ``unavailable`` point at the sensors; ``no_main_sensor`` means
     several sensors are combined with ``primary`` but none is chosen, so the
-    sensors themselves may be fine.
+    sensors themselves may be fine. Light sensors often stay quiet at night, so
+    the light reading is only checked during the day.
     """
     if not _has_sources(evaluation):
         return None
-    if evaluation.sensor_stale:
+    if role == "illuminance" and getattr(evaluation, "nighttime", False):
+        return None
+    if getattr(evaluation, "sensor_stale", False):
         return "stale"
-    if not evaluation.computed_available:
+    if not getattr(evaluation, "computed_available", False):
         if "no_primary" in getattr(evaluation, "reasons", ()):
             return "no_main_sensor"
         return "unavailable"
@@ -197,21 +208,26 @@ def evaluate_plant_status(
     value_problem = _moisture_value_problem(moisture)
     if value_problem is not None:
         problems.append(RoleProblem(MOISTURE_ROLE, value_problem))
-    for role in STRESS_ROLE_ORDER:
-        kind = stress_kind(role, evaluations.get(role))
-        if kind is not None:
-            problems.append(RoleProblem(role, kind))
-    reading_problem = _moisture_reading_problem(moisture)
-    if reading_problem is not None:
-        problems.append(RoleProblem(MOISTURE_ROLE, reading_problem))
+    stress_problems = [
+        RoleProblem(role, kind)
+        for role in STRESS_ROLE_ORDER
+        if (kind := stress_kind(role, evaluations.get(role))) is not None
+    ]
+    problems.extend(stress_problems)
+    reading_problems = [
+        RoleProblem(role, kind)
+        for role in (MOISTURE_ROLE, *INPUT_ROLE_ORDER)
+        if (kind := _reading_problem(role, evaluations.get(role))) is not None
+    ]
+    problems.extend(reading_problems)
     if not _has_sources(moisture):
         problems.append(RoleProblem(MOISTURE_ROLE, "no_sensors"))
 
     if value_problem is not None:
         status: PlantStatus = value_problem  # type: ignore[assignment]
-    elif any(problem.role != MOISTURE_ROLE for problem in problems):
+    elif stress_problems:
         status = "problem"
-    elif reading_problem is not None:
+    elif reading_problems:
         status = "stale"
     elif not _has_sources(moisture):
         status = "no_sensors"

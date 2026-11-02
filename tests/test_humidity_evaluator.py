@@ -180,6 +180,26 @@ def test_humidity_stress_hysteresis_clears_matching_side() -> None:
     assert damp_cleared.humidity_stress.humidity_stress is False
 
 
+def test_humidity_stress_jumps_to_opposite_extreme() -> None:
+    dry_to_damp = evaluate(
+        _config(),
+        {"sensor.a": _reading(90.0)},
+        now=0.0,
+        previous_humidity_stress="dry",
+    )
+    assert dry_to_damp.humidity_stress.humidity_stress is True
+    assert dry_to_damp.humidity_stress.reason == "damp_stress"
+
+    damp_to_dry = evaluate(
+        _config(),
+        {"sensor.a": _reading(20.0)},
+        now=0.0,
+        previous_humidity_stress="damp",
+    )
+    assert damp_to_dry.humidity_stress.humidity_stress is True
+    assert damp_to_dry.humidity_stress.reason == "dry_stress"
+
+
 def test_humidity_stress_unavailable_when_humidity_unavailable() -> None:
     result = evaluate(_config(), {"sensor.a": _reading("unavailable")}, now=0.0)
     assert result.humidity_stress.available is False

@@ -345,11 +345,104 @@ def test_missing_moisture_evaluation_counts_as_no_sensors() -> None:
     assert _status() == ("no_sensors", [("moisture", "no_sensors")])
 
 
-def test_stale_secondary_role_is_not_a_problem() -> None:
+def test_stale_secondary_role_marks_the_plant_stale() -> None:
     assert _status(moisture=_moisture(), temperature=_temperature(stale=True)) == (
+        "stale",
+        [("temperature", "stale")],
+    )
+
+
+def test_secondary_role_without_a_value_marks_the_plant_stale() -> None:
+    temperature = TemperatureEvaluation(
+        computed_celsius=None,
+        sensor_stale=False,
+        computed_available=False,
+        temperature_stress=TemperatureStressEvaluation(
+            temperature_stress=False,
+            available=False,
+            confidence="none",
+            reason="temperature_unavailable",
+        ),
+        reasons=("invalid:sensor.mock_temperature",),
+    )
+    assert _status(moisture=_moisture(), temperature=temperature) == (
+        "stale",
+        [("temperature", "unavailable")],
+    )
+
+
+def test_failed_secondary_inputs_follow_moisture_and_stress_problems() -> None:
+    assert _status(
+        moisture=_moisture(stale=True),
+        temperature=_temperature(stale=True),
+        co2=_co2(stress=True),
+    ) == (
+        "problem",
+        [("co2", "high_co2"), ("moisture", "stale"), ("temperature", "stale")],
+    )
+    assert _status(
+        moisture=_no_moisture_sources(), temperature=_temperature(stale=True)
+    ) == ("stale", [("temperature", "stale"), ("moisture", "no_sensors")])
+
+
+def _stale_light(*, nighttime: bool) -> IlluminanceEvaluation:
+    return IlluminanceEvaluation(
+        computed_lux=None,
+        sensor_stale=True,
+        computed_available=False,
+        low_light=LowLightEvaluation(
+            low_light=False,
+            available=False,
+            confidence="none",
+            reason="illuminance_stale",
+            sample_count=0,
+        ),
+        reasons=("stale:sensor.mock_lux",),
+        nighttime=nighttime,
+    )
+
+
+def test_quiet_light_sensor_counts_only_during_the_day() -> None:
+    assert _status(moisture=_moisture(), illuminance=_stale_light(nighttime=True)) == (
         "healthy",
         [],
     )
+    assert _status(moisture=_moisture(), illuminance=_stale_light(nighttime=False)) == (
+        "stale",
+        [("illuminance", "stale")],
+    )
+
+
+def test_light_waiting_for_daytime_samples_is_healthy() -> None:
+    waiting = IlluminanceEvaluation(
+        computed_lux=100.0,
+        sensor_stale=False,
+        computed_available=True,
+        low_light=LowLightEvaluation(
+            low_light=False,
+            available=False,
+            confidence="none",
+            reason="insufficient_daytime_samples",
+            sample_count=1,
+        ),
+    )
+    assert _status(moisture=_moisture(), illuminance=waiting) == ("healthy", [])
+
+
+def test_quiet_battery_sensor_is_not_a_failed_input() -> None:
+    battery = BatteryEvaluation(
+        computed_percent=None,
+        sensor_stale=True,
+        computed_available=False,
+        low_battery=LowBatteryEvaluation(
+            low_battery=False,
+            available=False,
+            confidence="none",
+            reason="battery_stale",
+        ),
+        reasons=("stale:sensor.mock_battery",),
+    )
+    assert _status(moisture=_moisture(), battery=battery) == ("healthy", [])
 
 
 def test_unknown_stress_reason_uses_generic_kind() -> None:

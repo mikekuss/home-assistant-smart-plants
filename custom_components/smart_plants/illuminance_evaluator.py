@@ -57,6 +57,9 @@ class IlluminanceEvaluation:
     computed_available: bool
     low_light: LowLightEvaluation
     reasons: tuple[str, ...] = ()
+    # Evaluated outside the 08:00-18:00 daytime window. A light sensor that
+    # stays quiet at night is expected, so the plant status ignores it then.
+    nighttime: bool = False
 
 
 def parse_illuminance(value: object, unit: object) -> float | None:  # noqa: PLR0911
@@ -113,6 +116,7 @@ def evaluate(  # noqa: PLR0912, PLR0913
     reasons: list[str] = []
     sources: tuple[SensorSource, ...] = config.sources
     thresholds = _effective_thresholds(config)
+    nighttime = now_datetime is not None and not is_daytime(now_datetime)
     if not sources:
         return IlluminanceEvaluation(
             computed_lux=None,
@@ -129,6 +133,7 @@ def evaluate(  # noqa: PLR0912, PLR0913
                 thresholds=thresholds,
             ),
             reasons=("no_sources",),
+            nighttime=nighttime,
         )
 
     stale_any = False
@@ -202,6 +207,7 @@ def evaluate(  # noqa: PLR0912, PLR0913
                 thresholds=thresholds,
             ),
             reasons=tuple(reasons),
+            nighttime=nighttime,
         )
     computed_lux = round(computed, 1)
     return IlluminanceEvaluation(
@@ -219,6 +225,7 @@ def evaluate(  # noqa: PLR0912, PLR0913
             thresholds=thresholds,
         ),
         reasons=tuple(reasons),
+        nighttime=nighttime,
     )
 
 

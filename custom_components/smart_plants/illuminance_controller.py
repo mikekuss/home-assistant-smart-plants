@@ -8,6 +8,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+from homeassistant.core import callback
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.util import dt as dt_util
 
@@ -22,6 +23,11 @@ if TYPE_CHECKING:
     from .roles import MeasurementAdapter
 
 _LOGGER = logging.getLogger(__name__)
+
+# Light samples are kept per minute, holding the brightest reading of that
+# minute. A sensor that reports every second then keeps at most one sample a
+# minute for the low-light window instead of one per report.
+LIGHT_SAMPLE_BUCKET_SECONDS = 60
 
 
 def next_daytime_edge(now_local: datetime) -> datetime:
@@ -64,6 +70,7 @@ class IlluminancePlantController:
             hass,
             is_valid=adapter.is_valid,
             on_change=self._recompute_and_notify,
+            on_report=self._on_report,
         )
         self._tracker.configure(
             config.sources, stale_after=timedelta(seconds=config.stale_after_seconds)
@@ -125,6 +132,7 @@ class IlluminancePlantController:
         when = next_daytime_edge(dt_util.now())
         self._unsub_edge = async_track_point_in_time(self._hass, self._on_edge, when)
 
+    @callback
     def _on_edge(self, _now: datetime) -> None:
         # Fired by async_track_point_in_time at the day/night edge. Recompute
         # against the current time and schedule the following edge.
@@ -190,6 +198,7 @@ class IlluminancePlantController:
             previous_low_light=self._previous_low_light,
         )
         latest = max(observed_at, default=None)
+        last_sample = self._light_samples[-1] if self._light_samples else None
         if (
             preliminary.computed_available
             and not preliminary.sensor_stale
@@ -201,9 +210,15 @@ class IlluminancePlantController:
             )
             and all(sample.observed_at != latest for sample in self._light_samples)
         ):
-            self._light_samples.append(
-                illuminance_evaluator.LightSample(latest, preliminary.computed_lux)
-            )
+            sample = illuminance_evaluator.LightSample(latest, preliminary.computed_lux)
+            if last_sample is not None and int(
+                last_sample.observed_at // LIGHT_SAMPLE_BUCKET_SECONDS
+            ) == int(latest // LIGHT_SAMPLE_BUCKET_SECONDS):
+                self._light_samples[-1] = illuminance_evaluator.LightSample(
+                    latest, max(last_sample.lux, sample.lux)
+                )
+            else:
+                self._light_samples.append(sample)
         cutoff = timestamp - illuminance_evaluator.LOW_LIGHT_WINDOW_SECONDS
         self._light_samples = [
             sample for sample in self._light_samples if sample.observed_at >= cutoff
@@ -220,9 +235,22 @@ class IlluminancePlantController:
             self._previous_low_light = evaluation.low_light.low_light
         return evaluation
 
+    @callback
+    def _on_report(self, now: datetime) -> None:
+        # An identical re-report is a new light observation for the daytime
+        # window. Listeners only hear about it when the result changes.
+        previous = self._evaluation
+        self._evaluation_now = now
+        self._evaluation = self._evaluate_now()
+        if self._evaluation != previous:
+            self._notify()
+
     def _recompute_and_notify(self, now: datetime) -> None:
         self._evaluation_now = now
         self._evaluation = self._evaluate_now()
+        self._notify()
+
+    def _notify(self) -> None:
         for listener in list(self._listeners):
             try:
                 listener()

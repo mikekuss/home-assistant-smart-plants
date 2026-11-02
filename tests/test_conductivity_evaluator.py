@@ -249,6 +249,26 @@ def test_conductivity_stress_hysteresis_clears_matching_side() -> None:
     assert high_cleared.conductivity_stress.conductivity_stress is False
 
 
+def test_conductivity_stress_jumps_to_opposite_extreme() -> None:
+    low_to_high = evaluate(
+        _config(),
+        {"sensor.a": _reading(CONDUCTIVITY_HIGH_THRESHOLD_MICROSIEMENS_PER_CM)},
+        now=0.0,
+        previous_conductivity_stress="low",
+    )
+    assert low_to_high.conductivity_stress.conductivity_stress is True
+    assert low_to_high.conductivity_stress.reason == "high_conductivity_stress"
+
+    high_to_low = evaluate(
+        _config(),
+        {"sensor.a": _reading(CONDUCTIVITY_LOW_THRESHOLD_MICROSIEMENS_PER_CM)},
+        now=0.0,
+        previous_conductivity_stress="high",
+    )
+    assert high_to_low.conductivity_stress.conductivity_stress is True
+    assert high_to_low.conductivity_stress.reason == "low_conductivity_stress"
+
+
 def test_conductivity_stress_unavailable_when_conductivity_unavailable() -> None:
     result = evaluate(_config(), {"sensor.a": _reading("unavailable")}, now=0.0)
     assert result.conductivity_stress.available is False

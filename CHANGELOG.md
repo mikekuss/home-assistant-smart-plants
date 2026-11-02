@@ -35,12 +35,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- A plant shows *No recent data* instead of *Healthy* when a temperature, humidity, light,
+  conductivity, soil temperature or CO2 sensor is stale or gives no usable value. Before,
+  only the soil moisture sensor counted. Battery sensors don't count, and a light sensor
+  counts only between 08:00 and 18:00. Such plants now also appear under the **Sensor issues**
+  filter. See [Staleness](docs/sensors-and-health.md#staleness).
+- Low light keeps one light sample per minute, the brightest of that minute, and its
+  `sample_count` attribute is no longer recorded in history.
 - Every logged-in Home Assistant user can now view plant photos, so dashboard cards can show
   them to people who aren't administrators. Adding, replacing and removing photos stays
   admin-only.
 
 ### Fixed
 
+- A stress alert such as *Temperature stress* no longer turns off when the reading jumps
+  straight from one extreme to the other, for example from too cold to too hot. It now
+  reports the new direction. This applies to temperature, humidity, conductivity and soil
+  temperature.
+- *Low light* now counts a light sensor that keeps reporting the same value. Before, a
+  steady dim reading could leave *Low light* unavailable all day.
+- *Low light* updates reliably at 08:00 and 18:00. Before, the update could fail and the
+  next one was then never scheduled.
 - Smart Plants keeps working on future Home Assistant releases that no longer include
   voluptuous. On Home Assistant 2026.9 and later it now validates its settings, actions,
   automation options and panel requests with probatio, which Home Assistant itself has used

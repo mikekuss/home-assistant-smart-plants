@@ -32,7 +32,16 @@ from custom_components.smart_plants.binary_sensor import (
 )
 from custom_components.smart_plants.moisture_evaluator import MoistureEvaluation
 from custom_components.smart_plants.plant_status import evaluate_plant_status
-from custom_components.smart_plants.sensor import _MoistureSensor
+from custom_components.smart_plants.sensor import (
+    _BatterySensor,
+    _Co2Sensor,
+    _ConductivitySensor,
+    _HumiditySensor,
+    _IlluminanceSensor,
+    _MoistureSensor,
+    _SoilTemperatureSensor,
+    _TemperatureSensor,
+)
 
 _CASES = json.loads(
     (Path(__file__).parent / "fixtures" / "plant_status_cases.json").read_text(
@@ -65,6 +74,20 @@ _STRESS: dict[str, tuple[str, str, type]] = {
 }
 
 
+# Role -> (value attribute on the evaluation, the reading sensor).
+_READING: dict[str, tuple[str, type]] = {
+    "temperature": ("computed_celsius", _TemperatureSensor),
+    "humidity": ("computed_percent", _HumiditySensor),
+    "illuminance": ("computed_lux", _IlluminanceSensor),
+    "conductivity": ("computed_micro_siemens_per_cm", _ConductivitySensor),
+    "soil_temperature": ("computed_celsius", _SoilTemperatureSensor),
+    "co2": ("computed_ppm", _Co2Sensor),
+    "battery": ("computed_percent", _BatterySensor),
+}
+# The reading a case's role shows unless it sets ``reading``.
+_DEFAULT_READING = 20.0
+
+
 class _Fields(SimpleNamespace):
     """A stress result; attributes the case does not set read as ``None``."""
 
@@ -90,7 +113,14 @@ def _stress(role: str, data: dict[str, Any]) -> SimpleNamespace:
     result = _Fields(
         available=data["available"], reason=data["reason"], **{flag: data["on"]}
     )
-    return SimpleNamespace(computed_available=True, **{attribute: result})
+    value = data.get("reading", _DEFAULT_READING)
+    return SimpleNamespace(
+        computed_available=value is not None,
+        sensor_stale=data.get("stale", False),
+        nighttime=data.get("nighttime", False),
+        reasons=tuple(data.get("reasons", ())),
+        **{_READING[role][0]: value, attribute: result},
+    )
 
 
 def _evaluations(case: dict[str, Any]) -> dict[str, Any]:
@@ -146,6 +176,7 @@ def _entity_states(manager: Any, case: dict[str, Any]) -> dict[str, Any]:
         )
     }
     stress = {role: _STRESS[role][2](manager, _PLANT_ID) for role in case["stress"]}
+    readings = {role: _READING[role][1](manager, _PLANT_ID) for role in case["stress"]}
     moisture_state = str(moisture.native_value) if moisture.available else "unavailable"
     states: dict[str, Any] = {
         "moisture": moisture_state,
@@ -161,6 +192,12 @@ def _entity_states(manager: Any, case: dict[str, Any]) -> dict[str, Any]:
             }
             for role, entity in stress.items()
         },
+        "readings": {
+            role: str(entity.native_value) if entity.available else "unavailable"
+            for role, entity in readings.items()
+        },
+        # Not an entity state: the card reads the time of day from the clock.
+        "night": any(data.get("nighttime", False) for data in case["stress"].values()),
     }
     stale = binaries["sensor_stale"]
     states["sources"] = (
@@ -168,6 +205,7 @@ def _entity_states(manager: Any, case: dict[str, Any]) -> dict[str, Any]:
     )
     every = [states["moisture"], *(states[key] for key in binaries)]
     every += [item["state"] for item in states["stress"].values()]
+    every += list(states["readings"].values())
     states["allUnavailable"] = all(state == "unavailable" for state in every)
     return states
 
@@ -187,11 +225,17 @@ def test_entities_show_fixture_states(case: dict[str, Any]) -> None:
     assert _entity_states(_manager(case, evaluations), case) == case["entities"]
 
 
-def test_card_differs_only_where_no_main_sensor_is_chosen() -> None:
+def test_card_differs_only_in_why_a_sensor_gives_no_value() -> None:
     # The entities don't say that several moisture sensors wait for a main
-    # sensor; the card reports them as not reporting, with the same status.
+    # sensor, or whether a reading without a value went stale. The card
+    # reports both as not reporting, with the same status.
     differences = [case for case in _CASES if "card" in case]
-    assert [case["problems"] for case in differences] == [
-        [{"role": "moisture", "kind": "no_main_sensor"}]
-    ]
-    assert differences[0]["card"]["status"] == differences[0]["status"]
+    assert differences
+    for case in differences:
+        assert case["card"]["status"] == case["status"]
+        pairs = zip(case["card"]["problems"], case["problems"], strict=True)
+        for card, backend in pairs:
+            assert card["role"] == backend["role"]
+            if card != backend:
+                assert backend["kind"] in ("no_main_sensor", "stale")
+                assert card["kind"] == "unavailable"

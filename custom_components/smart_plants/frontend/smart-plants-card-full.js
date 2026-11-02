@@ -3543,14 +3543,14 @@ var X = "smart_plants", Z = [
 		sensor: "low_battery",
 		kinds: { low_battery: "battery_low" }
 	}
-], yt = "stress", bt = /* @__PURE__ */ new Set([
+], yt = new Set(Z.map((e) => e.role).filter((e) => e !== "battery")), bt = 8, xt = 18, St = "stress", Ct = /* @__PURE__ */ new Set([
 	"needs_water",
 	"too_cold",
 	"too_dry",
 	"low_light",
 	"low_conductivity",
 	"battery_low"
-]), xt = {
+]), wt = {
 	temperature: {
 		range: ["cold_threshold_celsius", "hot_threshold_celsius"],
 		clear: ["cold_clear_celsius", "hot_clear_celsius"]
@@ -3579,12 +3579,12 @@ var X = "smart_plants", Z = [
 		range: ["threshold_percent", null],
 		clear: ["clear_percent", null]
 	}
-}, St = /* @__PURE__ */ new Set(["unavailable", "unknown"]), Ct = /* @__PURE__ */ new Set(["on", "off"]), Q = (e) => typeof e == "number" && Number.isFinite(e) ? e : null, wt = (e) => {
-	if (!e || St.has(e.state)) return null;
-	let t = Number(e.state);
-	return e.state.trim() !== "" && Number.isFinite(t) ? t : null;
-};
-function Tt(e, t) {
+}, Tt = /* @__PURE__ */ new Set(["unavailable", "unknown"]), Et = /* @__PURE__ */ new Set(["on", "off"]), Q = (e) => typeof e == "number" && Number.isFinite(e) ? e : null, Dt = (e) => {
+	if (Tt.has(e)) return null;
+	let t = Number(e);
+	return e.trim() !== "" && Number.isFinite(t) ? t : null;
+}, Ot = (e) => e ? Dt(e.state) : null;
+function kt(e, t) {
 	let n = /* @__PURE__ */ new Map();
 	for (let r of Object.values(e.entities ?? {})) {
 		if (!r || r.device_id !== t || r.platform !== "smart_plants" || !r.translation_key) continue;
@@ -3593,14 +3593,14 @@ function Tt(e, t) {
 	}
 	return n;
 }
-function Et(e) {
+function At(e) {
 	return e?.identifiers?.find(([e]) => e === "smart_plants")?.[1] ?? null;
 }
-function Dt(e) {
-	return Object.values(e.devices ?? {}).filter((e) => !!e && Et(e) !== null).sort((e, t) => Ot(e).localeCompare(Ot(t), void 0, { sensitivity: "base" }));
+function jt(e) {
+	return Object.values(e.devices ?? {}).filter((e) => !!e && At(e) !== null).sort((e, t) => Mt(e).localeCompare(Mt(t), void 0, { sensitivity: "base" }));
 }
-var Ot = (e) => e.name_by_user || e.name || "";
-function kt(e) {
+var Mt = (e) => e.name_by_user || e.name || "";
+function Nt(e) {
 	if (e.allUnavailable) return {
 		status: "paused",
 		problems: []
@@ -3610,58 +3610,95 @@ function kt(e) {
 		role: "moisture",
 		kind: n
 	});
+	let r = !1;
 	for (let n of Z) {
-		let r = e.stress[n.role];
-		r?.state === "on" && t.push({
+		let i = e.stress[n.role];
+		i?.state === "on" && (t.push({
 			role: n.role,
-			kind: n.kinds[r.reason ?? ""] ?? yt
-		});
+			kind: n.kinds[i.reason ?? ""] ?? St
+		}), r = !0);
 	}
-	let r = e.moisture !== null && !St.has(e.moisture), i = e.sensor_stale === "on", a = e.sources === null ? r || i : e.sources > 0, o = n !== null || Ct.has(e.needs_water ?? "") && Ct.has(e.too_wet ?? ""), s = a ? i ? "stale" : r && o ? null : "unavailable" : null;
-	s && t.push({
+	let i = e.moisture !== null && !Tt.has(e.moisture), a = e.sensor_stale === "on", o = e.sources === null ? i || a : e.sources > 0, s = n !== null || Et.has(e.needs_water ?? "") && Et.has(e.too_wet ?? ""), c = o ? a ? "stale" : i && s ? null : "unavailable" : null;
+	c && t.push({
 		role: "moisture",
-		kind: s
-	}), a || t.push({
+		kind: c
+	});
+	let l = Pt(e);
+	t.push(...l), o || t.push({
 		role: "moisture",
 		kind: "no_sensors"
 	});
-	let c;
-	return c = n || (t.some((e) => e.role !== "moisture") ? "problem" : s ? "stale" : a ? "healthy" : "no_sensors"), {
-		status: c,
+	let u;
+	return u = n || (r ? "problem" : c || l.length ? "stale" : o ? "healthy" : "no_sensors"), {
+		status: u,
 		problems: t
 	};
 }
-function At(e, t) {
-	let n = (n) => {
+function Pt(e) {
+	let t = [];
+	for (let { role: n } of Z) {
+		let r = e.readings[n];
+		yt.has(n) && r !== void 0 && (n === "illuminance" && e.night || (Dt(r) === null ? t.push({
+			role: n,
+			kind: "unavailable"
+		}) : n !== "illuminance" && e.stress[n]?.state === "unavailable" && t.push({
+			role: n,
+			kind: "stale"
+		})));
+	}
+	return t;
+}
+function Ft(e, t = Date.now()) {
+	let n = typeof e.config?.time_zone == "string" ? e.config.time_zone : void 0, r;
+	try {
+		r = Number(new Intl.DateTimeFormat("en-US", {
+			hour: "numeric",
+			hourCycle: "h23",
+			timeZone: n
+		}).format(t));
+	} catch {
+		r = new Date(t).getHours();
+	}
+	return r < bt || r >= xt;
+}
+function It(e, t, n = Date.now()) {
+	let r = (n) => {
 		let r = t.get(n);
 		return r ? e.states[r] : void 0;
-	}, r = {};
+	}, i = {};
 	for (let e of Z) {
-		let t = n(`binary_sensor.${e.sensor}`);
-		t && (r[e.role] = {
+		let t = r(`binary_sensor.${e.sensor}`);
+		t && (i[e.role] = {
 			state: t.state,
 			reason: typeof t.attributes.reason == "string" ? t.attributes.reason : null
 		});
 	}
-	let i = [...t.values()];
+	let a = {};
+	for (let { role: e } of Z) {
+		let t = r(`sensor.${e}`);
+		t && (a[e] = t.state);
+	}
+	let o = [...t.values()];
 	return {
-		allUnavailable: i.length > 0 && i.every((t) => {
+		allUnavailable: o.length > 0 && o.every((t) => {
 			let n = e.states[t];
 			return !n || n.state === "unavailable";
 		}),
-		moisture: n("sensor.moisture")?.state ?? null,
-		needs_water: n("binary_sensor.needs_water")?.state ?? null,
-		too_wet: n("binary_sensor.too_wet")?.state ?? null,
-		sensor_stale: n("binary_sensor.sensor_stale")?.state ?? null,
-		sources: Q(n("binary_sensor.sensor_stale")?.attributes.sources),
-		stress: r
+		moisture: r("sensor.moisture")?.state ?? null,
+		needs_water: r("binary_sensor.needs_water")?.state ?? null,
+		too_wet: r("binary_sensor.too_wet")?.state ?? null,
+		sensor_stale: r("binary_sensor.sensor_stale")?.state ?? null,
+		sources: Q(r("binary_sensor.sensor_stale")?.attributes.sources),
+		stress: i,
+		readings: a,
+		night: Ft(e, n)
 	};
 }
-var jt = /* @__PURE__ */ new Set(["temperature", "soil_temperature"]), Mt = (e, t) => t === "°F" ? Math.round((e * 9 / 5 + 32) * 10) / 10 : t === "K" ? Math.round((e + 273.15) * 100) / 100 : e;
-function Nt(e, t, n) {
-	let r = xt[e], i = (r) => {
-		let i = r && t && !St.has(t.state) ? Q(t.attributes[r]) : null;
-		return i !== null && jt.has(e) ? Mt(i, n) : i;
+var Lt = /* @__PURE__ */ new Set(["temperature", "soil_temperature"]), Rt = (e, t) => t === "°F" ? Math.round((e * 9 / 5 + 32) * 10) / 10 : t === "K" ? Math.round((e + 273.15) * 100) / 100 : e;
+function zt(e, t, n) {
+	let r = wt[e], i = (r) => {
+		let i = r && t && !Tt.has(t.state) ? Q(t.attributes[r]) : null;
+		return i !== null && Lt.has(e) ? Rt(i, n) : i;
 	};
 	return {
 		range: {
@@ -3675,22 +3712,22 @@ function Nt(e, t, n) {
 		}
 	};
 }
-function Pt(e, t, n) {
-	return n ? "stale" : e === null ? "unavailable" : t ? bt.has(t.kind) ? "low" : "high" : "ok";
+function Bt(e, t, n) {
+	return n ? "stale" : e === null ? "unavailable" : t ? Ct.has(t.kind) ? "low" : "high" : "ok";
 }
-function Ft(e, t) {
-	let n = e.devices?.[t], r = Et(n);
+function Vt(e, t) {
+	let n = e.devices?.[t], r = At(n);
 	if (!n || !r) return { kind: "missing" };
-	let i = Tt(e, t), a = (t) => {
+	let i = kt(e, t), a = (t) => {
 		let n = i.get(t);
 		return n ? e.states[n] : void 0;
-	}, o = At(e, i), { status: s, problems: c } = kt(o), l = s === "paused", u = {}, d = a("sensor.moisture"), f = wt(d), ee = o.sensor_stale === "on", p = c.every((e) => e.kind !== "no_sensors");
+	}, o = It(e, i), { status: s, problems: c } = Nt(o), l = s === "paused", u = {}, d = a("sensor.moisture"), f = Ot(d), ee = o.sensor_stale === "on", p = c.every((e) => e.kind !== "no_sensors");
 	if (!l && (f !== null || p)) {
 		let e = d?.attributes ?? {}, t = Q(e.min), n = Q(e.max);
 		u.moisture = {
 			value: f,
 			unit: "%",
-			state: Pt(f, c.find((e) => e.role === "moisture" && (e.kind === "needs_water" || e.kind === "too_wet")), ee),
+			state: Bt(f, c.find((e) => e.role === "moisture" && (e.kind === "needs_water" || e.kind === "too_wet")), ee),
 			range: {
 				min: t,
 				target: Q(e.target),
@@ -3706,15 +3743,15 @@ function Ft(e, t) {
 	}
 	for (let e of We) {
 		if (e === "moisture" || l) continue;
-		let t = a(`sensor.${e}`), n = wt(t);
-		if (n === null) continue;
-		let r = Z.find((t) => t.role === e), i = typeof t?.attributes.unit_of_measurement == "string" ? t.attributes.unit_of_measurement : "", { range: o, clear: s } = Nt(e, r ? a(`binary_sensor.${r.sensor}`) : void 0, i);
+		let t = a(`sensor.${e}`), n = Ot(t), r = c.find((t) => t.role === e), i = r?.kind === "stale" || r?.kind === "unavailable";
+		if (n === null && !i) continue;
+		let o = Z.find((t) => t.role === e), s = typeof t?.attributes.unit_of_measurement == "string" ? t.attributes.unit_of_measurement : "", { range: d, clear: f } = zt(e, o ? a(`binary_sensor.${o.sensor}`) : void 0, s);
 		u[e] = {
 			value: n,
-			unit: i,
-			state: Pt(n, c.find((t) => t.role === e), !1),
-			range: o,
-			clear: s,
+			unit: s,
+			state: Bt(n, i ? void 0 : r, r?.kind === "stale"),
+			range: d,
+			clear: f,
 			last_reported: null,
 			sources: []
 		};
@@ -3723,7 +3760,7 @@ function Ft(e, t) {
 		a("binary_sensor.sensor_stale"),
 		m,
 		...Z.map((e) => a(`binary_sensor.${e.sensor}`))
-	].find((e) => e && typeof e.attributes.snoozed_until == "string"), _ = We.filter((e) => e !== "moisture").map((e) => i.get(`sensor.${e}`)).find((t) => t !== void 0 && wt(e.states[t]) !== null), te = i.get("sensor.moisture") ?? null, v = a("binary_sensor.sensor_stale")?.attributes, y = v && "photo_id" in v ? typeof v.photo_id == "string" && v.photo_id ? v.photo_id : null : void 0, b = n.model?.trim(), ne = {
+	].find((e) => e && typeof e.attributes.snoozed_until == "string"), _ = We.filter((e) => e !== "moisture").map((e) => i.get(`sensor.${e}`)).find((t) => t !== void 0 && Ot(e.states[t]) !== null), te = i.get("sensor.moisture") ?? null, v = a("binary_sensor.sensor_stale")?.attributes, y = v && "photo_id" in v ? typeof v.photo_id == "string" && v.photo_id ? v.photo_id : null : void 0, b = n.model?.trim(), ne = {
 		plant_id: r,
 		revision: 0,
 		lifecycle_state: l ? "disabled" : "active",
@@ -3741,7 +3778,7 @@ function Ft(e, t) {
 		kind: "plant",
 		deviceId: t,
 		plantId: r,
-		name: Ot(n),
+		name: Mt(n),
 		area: n.area_id && e.areas?.[n.area_id]?.name || null,
 		species: b && b !== "Plant" ? b : null,
 		overview: ne,
@@ -3753,12 +3790,12 @@ function Ft(e, t) {
 }
 //#endregion
 //#region src/card/plant-card.ts
-var It, Lt = "smart-plants-plant-card-content", Rt = "/smart-plants";
-function zt(e) {
+var Ht, Ut = "smart-plants-plant-card-content", Wt = "/smart-plants";
+function Gt(e) {
 	let t = -e.getTimezoneOffset(), n = (e) => String(Math.trunc(Math.abs(e))).padStart(2, "0");
 	return `${new Date(e.getTime() + t * 6e4).toISOString().slice(0, 19)}${t < 0 ? "-" : "+"}${n(t / 60)}:${n(t % 60)}`;
 }
-var Bt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code : null, Vt = () => He({ language: document.documentElement.lang || "en" }), $ = class extends L {
+var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code : null, qt = () => He({ language: document.documentElement.lang || "en" }), $ = class extends L {
 	constructor(...e) {
 		super(...e), this._config = null, this._busy = !1, this._photo = null, this._photoFor = null, this._photoRequest = 0;
 	}
@@ -3785,7 +3822,7 @@ var Bt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		return this.hass?.user?.is_admin === !0;
 	}
 	_plant() {
-		return !this.hass || !this._config?.device_id ? null : Ft(this.hass, this._config.device_id);
+		return !this.hass || !this._config?.device_id ? null : Vt(this.hass, this._config.device_id);
 	}
 	_syncPhoto() {
 		let e = this._plant(), t = e?.kind === "plant" && this.isConnected ? e : null;
@@ -3821,7 +3858,7 @@ var Bt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 	}
 	_open(e, t) {
 		if (this._admin) {
-			this._navigate(`${Rt}/plant/${encodeURIComponent(e.plantId)}${t ? `/${t}` : ""}`);
+			this._navigate(`${Wt}/plant/${encodeURIComponent(e.plantId)}${t ? `/${t}` : ""}`);
 			return;
 		}
 		e.moreInfoEntity && this.dispatchEvent(new CustomEvent("hass-more-info", {
@@ -3832,7 +3869,7 @@ var Bt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 	}
 	async _logWatering(e) {
 		if (!this.hass || this._busy) return;
-		let t = this.hass, n = this._l, r = zt(/* @__PURE__ */ new Date());
+		let t = this.hass, n = this._l, r = Gt(/* @__PURE__ */ new Date());
 		this._busy = !0;
 		try {
 			let i = this._admin ? await this._wateringIds(t, e) : null;
@@ -3846,7 +3883,7 @@ var Bt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 				action: () => void this._undo(e, i, r)
 			}) : this._toast(a);
 		} catch (t) {
-			this._toast(Bt(t) === "unauthorized" ? n.t("plant_card.unauthorized") : n.t("plant_card.log_failed", { name: e.name }));
+			this._toast(Kt(t) === "unauthorized" ? n.t("plant_card.unauthorized") : n.t("plant_card.log_failed", { name: e.name }));
 		} finally {
 			this._busy = !1;
 		}
@@ -3918,7 +3955,7 @@ var Bt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
     </div>`;
 	}
 };
-It = $, It.styles = [W, o`
+Ht = $, Ht.styles = [W, o`
     :host { display: block; container-type: inline-size; }
     ha-card { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; color: var(--sp-text);
       background: var(--ha-card-background, var(--sp-card)); border-radius: var(--ha-card-border-radius, 12px);
@@ -3981,9 +4018,9 @@ It = $, It.styles = [W, o`
       .foot { padding: 6px 6px 8px 12px; }
       .warning { padding: 12px; }
     }
-  `], G([R({ attribute: !1 })], $.prototype, "hass", void 0), G([je()], $.prototype, "_config", void 0), G([je()], $.prototype, "_busy", void 0), G([je()], $.prototype, "_photo", void 0), customElements.get("smart-plants-plant-card-content") || customElements.define(Lt, $);
-function Ht() {
-	let e = Vt(), t = {
+  `], G([R({ attribute: !1 })], $.prototype, "hass", void 0), G([je()], $.prototype, "_config", void 0), G([je()], $.prototype, "_busy", void 0), G([je()], $.prototype, "_photo", void 0), customElements.get("smart-plants-plant-card-content") || customElements.define(Ut, $);
+function Jt() {
+	let e = qt(), t = {
 		device_id: "plant_card.editor_plant",
 		show_readings: "plant_card.editor_show_readings",
 		show_watering: "plant_card.editor_show_watering"
@@ -4013,9 +4050,9 @@ function Ht() {
 		computeHelper: (t) => n[t.name] ? e.t(n[t.name]) : void 0
 	};
 }
-function Ut(e) {
-	let t = Dt(e), n = t.find((t) => {
-		let n = Ft(e, t.id);
+function Yt(e) {
+	let t = jt(e), n = t.find((t) => {
+		let n = Vt(e, t.id);
 		return n.kind === "plant" && n.overview.status === "needs_water";
 	}) ?? t[0];
 	return {
@@ -4025,4 +4062,4 @@ function Ut(e) {
 	};
 }
 //#endregion
-export { Lt as CONTENT_ELEMENT, Rt as PANEL_PATH, $ as SmartPlantsPlantCardContent, Ht as getConfigForm, Ut as getStubConfig };
+export { Ut as CONTENT_ELEMENT, Wt as PANEL_PATH, $ as SmartPlantsPlantCardContent, Jt as getConfigForm, Yt as getStubConfig };

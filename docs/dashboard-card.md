@@ -108,7 +108,9 @@ A plant without sensors shows "No sensors assigned yet". For administrators it a
   reason.
 - **No main sensor.** When several soil moisture sensors wait for you to choose the main
   sensor, the panel says **No main sensor**. The card shows **No recent data** with "sensor is
-  not reporting", because the entities don't say why there is no value.
+  not reporting", because the entities don't say why there is no value. For the same reason
+  the card says "not reporting" for a stale temperature, humidity or other sensor where the
+  panel names the time of its last reading.
 - **Missing alert sensors.** The card shows **No recent data** instead of a healthy status
   when *Needs water* or *Too wet* is disabled or has no state, because it can't tell whether
   the soil is in range.

@@ -96,6 +96,9 @@ problem. The care task binary sensors are described under [Care tasks](#care-tas
 Every binary sensor of a plant, including the care task ones, also has the attributes
 `snoozed` and `snoozed_until`; see [Snoozed plants](#snoozed-plants).
 
+*Low light*'s `sample_count` is the number of daytime light samples it uses. It changes
+during the day, so it is not recorded in history.
+
 The threshold attributes show the thresholds currently in effect (built-in or your override).
 The `reason` attribute explains the current state, for example `cold_stress`, `hot_stress`,
 `temperature_ok`, `low_light`, `enough_light`, `nighttime`, or `battery_ok`.
