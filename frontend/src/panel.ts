@@ -777,14 +777,15 @@ export class SmartPlantsPanel extends LitElement {
     if (!target) return nothing;
     const l = this._l; const o = this._overview[plant.id];
     const data = this._history?.key === target.key ? this._history : null;
-    const markerKind = target.role === "moisture" ? "watering" : target.role === "conductivity" ? "fertilizing" : null;
-    const markers = markerKind ? (this._careHistory?.events ?? []).filter(event => event.kind === markerKind).map(event => Date.parse(event.occurred_at)).filter(Number.isFinite) : [];
+    const care = (this._careHistory?.events ?? []).map(event => ({ t: Date.parse(event.occurred_at), kind: event.kind })).filter(event => Number.isFinite(event.t));
     const lastWatered = o?.last_watered_at ? Date.parse(o.last_watered_at) : NaN;
     return renderHistoryCard(l, {
       roles: target.roles, role: target.role, range: this._historyRange, status: data?.status ?? "loading", points: data?.points ?? [],
-      reading: o?.roles[target.role], markers, markerLabel: markerKind ? l.t(`history.legend_${markerKind}`) : "",
+      reading: o?.roles[target.role], care,
       lastWatered: Number.isFinite(lastWatered) ? lastWatered : null, now: Date.now(),
-      onLogWatering: this._blocked ? null : t => this._logCareAt("watering", t),
+      // Other care starts on fertilizing next to the watering button, so the
+      // two buttons do not open the same form.
+      onLogCare: this._blocked ? null : (kind, t) => this._logCareAt(kind ?? (target.role === "moisture" ? "fertilizing" : "watering"), t, kind === null),
       onRole: role => { this._historyRole = role; store(HISTORY_ROLE_KEY, role); },
       onRange: range => { this._historyRange = range; store(HISTORY_RANGE_KEY, range); },
       // Home Assistant's own dialog for the sensor, with its chart and the link to History.
@@ -802,6 +803,7 @@ export class SmartPlantsPanel extends LitElement {
       }
       case "pruning": return { part: this._careFields.part?.trim() || null, note };
       case "repotting": return { container: this._careFields.container?.trim() || null, medium: this._careFields.medium?.trim() || null, note };
+      case "pest_control": return { pest: this._careFields.pest?.trim() || null, product: this._careFields.product?.trim() || null, note };
       case "note": return { text: this._careFields.text?.trim() ?? "" };
     }
   }
@@ -859,12 +861,13 @@ export class SmartPlantsPanel extends LitElement {
     this._careFormOpen = true;
     this._goTo("care", "#care-form select, #care-form input");
   }
-  // Opens the care form for a new entry of this kind at a past time, picked on the History chart.
-  private _logCareAt(kind: CareEvent["kind"], t: number): void {
+  // Opens the care form for a new entry of this kind at a past time, picked on
+  // the History chart; with pickKind the type select gets focus to change it.
+  private _logCareAt(kind: CareEvent["kind"], t: number, pickKind = false): void {
     const when = new Date(Math.min(t, Date.now()));
     this._careEditingId = null; this._careTaskId = null; this._careKind = kind; this._careFields = {}; this._careNote = ""; this._careError = "";
     this._careDate = new Date(when.getTime() - when.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    this._careFormOpen = true; this._goTo("care", "#care-form input[type=datetime-local]");
+    this._careFormOpen = true; this._goTo("care", pickKind ? "#care-form select" : "#care-form input[type=datetime-local]");
   }
   private _closeCareForm(): void {
     this._careFormOpen = false; this._careEditingId = null; this._careTaskId = null; this._careKind = "watering"; this._careFields = {}; this._careNote = ""; this._careError = "";
@@ -872,7 +875,7 @@ export class SmartPlantsPanel extends LitElement {
   private _renderCare(plant: PlantRecord) {
     const l = this._l;
     const history = this._careHistory;
-    const details: Record<string, string[]> = { fertilizing: ["product", "amount", "unit"], pruning: ["part"], repotting: ["container", "medium"], note: ["text"] };
+    const details: Record<string, string[]> = { fertilizing: ["product", "amount", "unit"], pruning: ["part"], repotting: ["container", "medium"], pest_control: ["pest", "product"], note: ["text"] };
     const fieldLabel = (key: string) => { const k = `care_field.${key}`; return isMessageKey(k) ? l.t(k) : key; };
     const kindLabel = (kind: CareEvent["kind"]) => l.t(`care_kind.${kind}`);
     const kindPhrase = (kind: CareEvent["kind"]) => l.t(`care_kind_phrase.${kind}`);

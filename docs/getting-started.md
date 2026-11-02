@@ -129,17 +129,21 @@ appears as soon as the plant has at least one assigned sensor.
 - The line is the average value. The light area around it is the lowest to highest value of
   each hour or day. The green band is the target range; a dashed line marks the ideal soil
   moisture.
-- A dotted vertical line marks each logged watering on the soil moisture chart, and each
-  logged fertilizing on the fertilizer level chart.
+- A dotted vertical line marks each care entry, in one color per care type: watering blue,
+  fertilizing amber, pruning teal, repotting brown, pest control red, notes grey and done care
+  tasks purple. The legend below the chart lists the types shown. Waterings appear only on
+  the soil moisture and fertilizer level charts. Point at a marker to see its type and time.
 - Point at the chart to read the value at that time. With the keyboard, focus the chart and
   use the arrow keys.
 - Click or tap the chart to pin the value so it stays while you move away; press **Enter**
   to pin it with the keyboard. Click the same point again, click outside the chart or press
   **Escape** to unpin it.
-- On the soil moisture chart, a pinned value offers **Log watering at this time** for a
-  watering you forgot to log. It opens the **Care** tab with a watering entry at that time;
-  check the time and select **Record care**. On the **1 year** range one point covers a
-  whole day, so set the hour yourself.
+- A pinned value offers **Log care at this time** for care you forgot to log. It opens the
+  **Care** tab with a new entry at that time; pick the care type, check the time and select
+  **Record care**. On the soil moisture chart the buttons are **Log watering at this time**,
+  which starts a watering entry, and **Log other care**, which starts a fertilizing entry you
+  can change to any type. On the **1 year** range one point covers a whole day, so set the
+  hour yourself.
 - For soil moisture, the line below the chart says how fast the value is dropping since the
   last watering (or since it last rose), for example *Dropping about 5.5% per day*, and
   estimates when it reaches the minimum at that rate. The estimate needs at least twelve hours
@@ -203,7 +207,7 @@ Open the plant and select **Log care** in the header or on the **Care history** 
 **Care** tab. Choose a care type, set the date and time (your local time, not in the future),
 fill in the optional details, and select **Record care**. Once the history holds more than
 one kind of entry, chips at the top of the **Care history** card (All, Watering, Fertilizing,
-Pruning, Repotting, Notes) filter the entries.
+Pruning, Repotting, Pest control, Notes) filter the entries.
 
 | Care type | Details you can record |
 | --- | --- |
@@ -211,6 +215,7 @@ Pruning, Repotting, Notes) filter the entries.
 | Fertilizing | Product, amount with unit (g or mL), note |
 | Pruning | Part pruned, note |
 | Repotting | Container, medium, note |
+| Pest control | Pest, product, note |
 | Note | Text (required, up to 1000 characters) |
 
 Notes can be up to 500 characters and other details up to 120. The **⋮** menu of an entry

@@ -22,14 +22,28 @@ export const SECTION_LABELS: Record<DetailSection, MessageKey> = {
 
 // Kinds a person can log or filter by. Care task completions use the "task"
 // kind, which is only ever created by completing a task.
-export const CARE_KINDS: readonly CareEvent["kind"][] = ["watering", "fertilizing", "pruning", "repotting", "note"];
+export const CARE_KINDS: readonly CareEvent["kind"][] = ["watering", "fertilizing", "pruning", "repotting", "pest_control", "note"];
 export const CARE_ICONS: Record<CareEvent["kind"], string> = {
   watering: "mdi:water",
   fertilizing: "mdi:flask-outline",
   pruning: "mdi:content-cut",
   repotting: "mdi:shovel",
+  pest_control: "mdi:spray-bottle",
   note: "mdi:note-text-outline",
   task: "mdi:clipboard-check-outline",
+};
+// Every kind in the order the chart legend lists them.
+const CARE_KINDS_ALL: readonly CareEvent["kind"][] = [...CARE_KINDS, "task"];
+// Marker colour of each kind on the History chart. Green is left to the
+// target band.
+export const CARE_COLORS: Record<CareEvent["kind"], string> = {
+  watering: "var(--sp-info)",
+  fertilizing: "var(--amber-color, #c99000)",
+  pruning: "var(--teal-color, #009688)",
+  repotting: "var(--brown-color, #795548)",
+  pest_control: "var(--sp-error)",
+  note: "var(--sp-text-secondary)",
+  task: "var(--sp-care)",
 };
 
 // The sensor's name as Home Assistant shows it, never its entity ID.
@@ -132,14 +146,14 @@ export interface HistoryCard {
   status: HistoryStatus;
   points: readonly HistoryPoint[];
   reading: RoleReading | undefined;
-  // Times of logged care to mark on the chart.
-  markers: number[];
-  markerLabel: string;
+  // Logged care to mark on the chart.
+  care: readonly { t: number; kind: CareEvent["kind"] }[];
   lastWatered: number | null;
   now: number;
-  // Offered for a pinned point on the soil moisture chart, to log a watering
-  // that was forgotten at that time; omitted when care cannot be logged.
-  onLogWatering: ((t: number) => void) | null;
+  // Offered for a pinned point, to log care that was forgotten at that time:
+  // a watering on the soil moisture chart, or care of any kind (null) on
+  // every chart; omitted when care cannot be logged.
+  onLogCare: ((kind: CareEvent["kind"] | null, t: number) => void) | null;
   onRole: (role: ReadingRole) => void;
   onRange: (range: HistoryRange) => void;
   onOpen: () => void;
@@ -158,6 +172,14 @@ export function renderHistoryCard(l: Localizer, card: HistoryCard) {
   const target = formatRange(l, role, reading?.range, unit);
   const estimate = role === "moisture" && points.length ? dryingEstimate(points, { periodMs: spec.periodMs, wateredAt: card.lastWatered, min: band.min }) : null;
   const drying = estimate ? dryingText(l, estimate, band.min) : null;
+  // Watering shows only where it moves the reading; it would crowd the others.
+  const kinds = CARE_KINDS_ALL.filter(kind => kind !== "watering" || role === "moisture" || role === "conductivity");
+  const markerGroups = kinds.map(kind => ({ key: kind, label: l.t(`history.legend_${kind}`), color: CARE_COLORS[kind] }));
+  const markers = card.care.map(event => ({ t: event.t, group: event.kind }));
+  const actions = card.onLogCare ? [
+    ...(role === "moisture" ? [{ key: "watering", label: l.t("history.log_watering_at") }] : []),
+    { key: "care", label: l.t(role === "moisture" ? "history.log_other_care_at" : "history.log_care_at") },
+  ] : [];
   const message = card.status === "loading" ? l.t("history.loading") : card.status === "unavailable" ? l.t("history.unavailable") : card.status === "ready" && !points.length ? l.t("history.empty") : "";
   return html`<section class="sp-card history-card" aria-labelledby="history-heading"><div class="card-h"><h3 id="history-heading">${l.t("history.heading")}</h3>
       ${card.status !== "unavailable" ? html`<button type="button" class="btn text sm" @click=${card.onOpen}>${l.t("history.open_native")}</button>` : nothing}</div>
@@ -169,9 +191,9 @@ export function renderHistoryCard(l: Localizer, card: HistoryCard) {
       </div>
       ${card.status === "error" ? html`<div class="row"><span class="error-text" role="alert">${l.t("history.error")}</span><button type="button" class="btn text sm" @click=${card.onRetry}>${l.t("history.retry")}</button></div>`
         : message ? html`<p class="muted history-message" role="status">${message}</p>`
-        : html`<sp-history-chart .points=${points} .start=${card.now - spec.spanMs} .end=${card.now} .periodMs=${spec.periodMs} .unit=${unit} .band=${band} .markers=${card.markers}
-            .summary=${historySummary(l, readingLabel(l, role), range, points, unit)} .bandLabel=${target ? l.t("history.legend_target", { range: target }) : ""} .markerLabel=${card.markerLabel}
-            .actionLabel=${role === "moisture" && card.onLogWatering ? l.t("history.log_watering_at") : ""} @point-action=${(e: CustomEvent<{ t: number }>) => card.onLogWatering?.(e.detail.t)} .l=${l}></sp-history-chart>`}
+        : html`<sp-history-chart .points=${points} .start=${card.now - spec.spanMs} .end=${card.now} .periodMs=${spec.periodMs} .unit=${unit} .band=${band} .markers=${markers} .markerGroups=${markerGroups}
+            .summary=${historySummary(l, readingLabel(l, role), range, points, unit)} .bandLabel=${target ? l.t("history.legend_target", { range: target }) : ""}
+            .actions=${actions} @point-action=${(e: CustomEvent<{ t: number; key: string }>) => card.onLogCare?.(e.detail.key === "watering" ? "watering" : null, e.detail.t)} .l=${l}></sp-history-chart>`}
       ${drying ? html`<p class="small history-rate"><strong>${drying.rate}</strong>${drying.forecast ? html` <span class="muted">${drying.forecast}</span>` : nothing}</p>` : nothing}
     </div></section>`;
 }

@@ -131,6 +131,10 @@ def test_non_watering_payloads_are_strict_and_validated() -> None:
         ("fertilizing", {"product": "Feed", "amount": 2.5, "unit": "mL", "note": None}),
         ("pruning", {"part": "dead leaves", "note": None}),
         ("repotting", {"container": "pot", "medium": "soil", "note": None}),
+        (
+            "pest_control",
+            {"pest": "Aphids", "product": "Soap solution", "note": None},
+        ),
         ("note", {"text": "Observed new growth"}),
     )
     for kind, payload in cases:
@@ -141,9 +145,11 @@ def test_non_watering_payloads_are_strict_and_validated() -> None:
         ("fertilizing", {"product": None, "amount": True, "unit": "g", "note": None}),
         ("fertilizing", {"product": None, "amount": 1, "unit": None, "note": None}),
         ("pruning", {"part": " leaves ", "note": None}),
+        ("pest_control", {"pest": " aphids", "product": None, "note": None}),
+        ("pest_control", {"pest": None, "note": None}),
         ("note", {"text": " "}),
     ):
-        with pytest.raises(ValueError, match=r"care event|amount|unit|text|part"):
+        with pytest.raises(ValueError, match=r"care event|amount|unit|text|part|pest"):
             CareEvent.from_storage({**base, "kind": kind, "payload": payload})
     invalid_payloads = (
         (
@@ -162,6 +168,7 @@ def test_non_watering_payloads_are_strict_and_validated() -> None:
         ),
         ("pruning", {"part": "x" * 121, "note": None}),
         ("repotting", {"container": "pot", "medium": "x" * 121, "note": None}),
+        ("pest_control", {"pest": None, "product": "x" * 121, "note": None}),
         ("note", {"text": "x" * 1001}),
     )
     for kind, payload in invalid_payloads:
@@ -189,9 +196,41 @@ async def test_minor_ten_migration_adds_empty_history(
         },
     }
     loaded = await SmartPlantsStore(hass).async_load()
-    assert STORAGE_MINOR_VERSION == 16
+    assert STORAGE_MINOR_VERSION == 17
     assert loaded.plants["p"].care_events == ()
     assert hass_storage[STORAGE_KEY]["data"]["plants"][0]["care_events"] == []
+
+
+async def test_older_minor_with_pest_control_fails_closed(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    plant = PlantRecord(
+        id="p", revision=1, name="Aloe", created_at="2026-01-01T00:00:00Z"
+    ).as_storage()
+    event = {
+        **_event(),
+        "kind": "pest_control",
+        "payload": {"pest": None, "product": None, "note": None},
+    }
+    for minor, expected in ((16, None), (STORAGE_MINOR_VERSION, "pest_control")):
+        plant["care_events"] = [event]
+        hass_storage[STORAGE_KEY] = {
+            "key": STORAGE_KEY,
+            "version": 1,
+            "minor_version": minor,
+            "data": {
+                "revision": 1,
+                "plants": [plant],
+                "pending_operations": [],
+                "tombstones": [],
+            },
+        }
+        if expected is None:
+            with pytest.raises(SmartPlantsInvalidStorageError, match="pest control"):
+                await SmartPlantsStore(hass).async_load()
+        else:
+            loaded = await SmartPlantsStore(hass).async_load()
+            assert loaded.plants["p"].care_events[0].kind == expected
 
 
 async def test_current_minor_corrupt_history_refuses_setup(
@@ -509,6 +548,7 @@ async def test_care_websocket_admin_revision_and_summary(
         ("fertilizing", {"product": "Feed", "amount": 2.5, "unit": "mL", "note": None}),
         ("pruning", {"part": "dead leaves", "note": None}),
         ("repotting", {"container": "clay pot", "medium": "bark", "note": None}),
+        ("pest_control", {"pest": "Aphids", "product": "Soap", "note": None}),
         ("note", {"text": "New growth"}),
     )
     revision = history["revision"]
@@ -567,6 +607,7 @@ async def test_care_websocket_admin_revision_and_summary(
     final = (await admin.receive_json())["result"]
     assert final["summary"]["watering_count"] == 1
     assert [row["kind"] for row in final["events"]] == [
+        "pest_control",
         "repotting",
         "pruning",
         "fertilizing",
