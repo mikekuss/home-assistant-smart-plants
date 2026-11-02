@@ -44,8 +44,9 @@ With the provider enabled, you can search OpenPlantBook in two places:
 - For an existing plant, in the **Settings** tab under **Species** (**Find species** or
   **Change species**), choose *OpenPlantBook* as the species provider and search.
 
-Type at least three characters. The search uses your Home Assistant language. Selecting a
-result opens a **read-only preview** that shows:
+Type at least three characters. Smart Plants doesn't send your language with the search, so
+the results use OpenPlantBook's own names. The species details in the preview use your Home
+Assistant language where OpenPlantBook has a translation. Selecting a result opens a **read-only preview** that shows:
 
 - common name, scientific name, and category,
 - care text supplied by OpenPlantBook (watering, sunlight, soil, pruning, fertilization),

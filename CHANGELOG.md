@@ -25,6 +25,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A pinned value on any **History** chart offers **Log care at this time**, which opens the
   care form at that time for any care type. On the soil moisture chart it is **Log other
   care**, next to **Log watering at this time**. See [History](docs/getting-started.md#history).
+- The installation guide says which Home Assistant versions are supported, what a version
+  number promises, how deprecations and fixes are handled, and how to roll back to an earlier
+  version. See [Supported versions](docs/installation.md#supported-versions).
 
 ### Changed
 
@@ -32,9 +35,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   legend lists the kinds shown. Before, it marked only waterings on the soil moisture chart
   and fertilizing on the fertilizer level chart. Waterings still appear only on those two
   charts.
-
-### Changed
-
 - A plant shows *No recent data* instead of *Healthy* when a temperature, humidity, light,
   conductivity, soil temperature or CO2 sensor is stale or gives no usable value. Before,
   only the soil moisture sensor counted. Battery sensors don't count, and a light sensor
@@ -60,6 +60,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   voluptuous. On Home Assistant 2026.9 and later it now validates its settings, actions,
   automation options and panel requests with probatio, which Home Assistant itself has used
   since 2026.9.
+- The integration diagnostics no longer include the entity ID of the weather entity that a
+  forecast care task watches. The troubleshooting guide promised that the file contains no
+  entity IDs.
 
 ## [0.15.0] - 2026-10-30
 
