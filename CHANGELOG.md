@@ -25,6 +25,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A pinned value on any **History** chart offers **Log care at this time**, which opens the
   care form at that time for any care type. On the soil moisture chart it is **Log other
   care**, next to **Log watering at this time**. See [History](docs/getting-started.md#history).
+- Before Smart Plants converts its storage for a new version, it saves a copy of the old
+  inventory as `.storage/smart_plants.inventory.backup`. To roll back an update, restore this
+  file. See [Update](docs/installation.md#update).
 
 ### Changed
 
@@ -45,6 +48,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   voluptuous. On Home Assistant 2026.9 and later it now validates its settings, actions,
   automation options and panel requests with probatio, which Home Assistant itself has used
   since 2026.9.
+- Smart Plants refuses to add a plant beyond 1,000 plants with *Smart Plants manages at most
+  1000 plants*. Before, the 1,001st plant was saved and Smart Plants then failed to start.
+  Every save now runs the same checks as loading, so a save can no longer leave storage that
+  stops Smart Plants from starting.
+- A photo upload or removal whose final save failed no longer comes back after a restart
+  when a later photo change for the same plant succeeded. The newest photo change wins, and
+  the file of the replaced upload is removed.
+- Smart Plants no longer hangs at startup when two unfinished photo uploads for the same
+  plant are waiting to be finished.
 
 ## [0.15.0] - 2026-10-30
 

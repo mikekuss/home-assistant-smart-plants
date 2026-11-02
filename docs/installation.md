@@ -92,6 +92,23 @@ never affects your local plants.
 
 Smart Plants keeps your plant data outside `custom_components/`, so updating never touches it.
 
+### Roll back an update
+
+Some updates convert the plant inventory to a newer storage format, and an older Smart Plants
+version can't load the converted inventory. Before it converts, Smart Plants saves a copy of
+the old inventory as `.storage/smart_plants.inventory.backup`. Each conversion replaces that
+copy. To go back to the version you updated from:
+
+1. Stop Home Assistant.
+2. Install the previous Smart Plants version (in HACS: **Redownload** and pick the version).
+3. Copy `.storage/smart_plants.inventory.backup` over `.storage/smart_plants.inventory`.
+4. Start Home Assistant.
+
+Changes you made after the update, such as new plants or logged care, are not in the copy.
+If the update didn't convert the inventory, there is no new copy, and the previous version
+loads your inventory as it is. Deleting the integration deletes the copy along with the
+inventory, unless *Preserve inventory when the integration is removed* is enabled.
+
 A browser tab that stays open while Home Assistant restarts keeps running the previous
 version of the panel until the page is reloaded. The panel notices this and shows
 *Smart Plants was updated* with a **Reload** button. Reloading loads the new version; you do

@@ -688,6 +688,9 @@
     "snooze_rejected": {
       "message": "The snooze of {target} was not saved: {reason}"
     },
+    "plant_limit": {
+      "message": "Smart Plants manages at most {max} plants. Delete a plant before you add another one."
+    },
     "storage_full": {
       "message": "Smart Plants storage is full. Delete old care log entries or notes, then try again."
     }

@@ -688,6 +688,9 @@
     "snooze_rejected": {
       "message": "Die Stummschaltung von {target} wurde nicht gespeichert: {reason}"
     },
+    "plant_limit": {
+      "message": "Smart Plants verwaltet höchstens {max} Pflanzen. Lösche eine Pflanze, bevor du eine weitere hinzufügst."
+    },
     "storage_full": {
       "message": "Der Speicher von Smart Plants ist voll. Lösche alte Einträge oder Notizen im Pflegeprotokoll und versuche es erneut."
     }
