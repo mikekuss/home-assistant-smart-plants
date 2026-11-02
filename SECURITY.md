@@ -2,7 +2,9 @@
 
 ## Supported versions
 
-Only the latest release of Smart Plants receives security fixes.
+Only the latest release of Smart Plants receives security fixes. Older releases don't get
+backports, so update to get them. The latest release supports the Home Assistant versions
+listed in [Supported versions](docs/installation.md#supported-versions).
 
 ## Reporting a vulnerability
 
