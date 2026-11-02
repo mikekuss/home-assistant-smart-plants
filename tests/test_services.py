@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import timedelta
 from http import HTTPStatus
-from typing import Any
+from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
@@ -602,6 +602,62 @@ async def test_log_care_for_tasks_of_several_plants_and_a_device(
     assert {event.provenance for event in second_events} == {"action"}
 
 
+async def test_log_care_returns_the_created_events(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    first = await _plant(hass, entry, "Aloe")
+    second = await _plant(hass, entry, "Office Aloe")
+    second_task, second_entity = await _task(hass, entry, second)
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_LOG_CARE,
+        {
+            "device_id": [_device_id(hass, first), _device_id(hass, second)],
+            "entity_id": second_entity,
+            "kind": "fertilizing",
+        },
+        blocking=True,
+        return_response=True,
+    )
+
+    assert response is not None
+    events = cast("list[dict[str, Any]]", response["events"])
+    stored = {
+        event.id: (plant_id, event)
+        for plant_id in (first, second)
+        for event in _plant_record(entry, plant_id).care_events
+    }
+    assert len(events) == len(stored) == 3
+    for row in events:
+        plant_id, event = stored[row["event_id"]]
+        assert row == {
+            "plant_id": plant_id,
+            "event_id": event.id,
+            "kind": "fertilizing",
+            "occurred_at": event.occurred_at,
+            "task_id": event.task_id,
+        }
+    assert [row["task_id"] for row in events if row["plant_id"] == second] == [
+        None,
+        second_task,
+    ]
+
+
+async def test_log_care_without_response_returns_nothing(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    plant_id = await _plant(hass, entry, "Aloe")
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_LOG_CARE,
+        {"device_id": _device_id(hass, plant_id), "kind": "watering"},
+        blocking=True,
+    )
+
+    assert response is None
+    assert len(_plant_record(entry, plant_id).care_events) == 1
+
+
 async def test_task_entity_errors(hass: HomeAssistant) -> None:
     entry = await _setup(hass)
     plant_id = await _plant(hass, entry, "Aloe")
@@ -722,6 +778,30 @@ async def test_skip_care_task_requires_task_entities(hass: HomeAssistant) -> Non
         {"label_id": "plants"},
         "unsupported_target",
     )
+
+
+async def test_failed_save_is_reported_and_changes_nothing(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    plant_id = await _plant(hass, entry, "Aloe")
+    with (
+        patch.object(
+            manager._store,
+            "async_save",
+            side_effect=OSError("disk full"),
+        ),
+        pytest.raises(HomeAssistantError) as info,
+    ):
+        await _call(
+            hass,
+            SERVICE_LOG_CARE,
+            {"device_id": _device_id(hass, plant_id), "kind": "watering"},
+        )
+    assert info.value.translation_domain == DOMAIN
+    assert info.value.translation_key == "storage_failed"
+    assert _plant_record(entry, plant_id).care_events == ()
 
 
 # --- Storage size limit ------------------------------------------------------

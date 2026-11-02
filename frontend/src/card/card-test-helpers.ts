@@ -9,6 +9,9 @@ const state = (entity_id: string, value: string, attributes: Record<string, unkn
 
 // One plant "Office Aloe" in the Office whose soil is dry, with temperature,
 // illuminance and battery readings. `overrides` replaces or removes states.
+// The response of a log_care call that created one watering for the plant.
+export const loggedReply = (eventId: string) => ({ context: { id: "context" }, response: { events: [{ plant_id: PLANT_ID, event_id: eventId, kind: "watering", occurred_at: "2026-09-11T12:00:00+00:00", task_id: null }] } });
+
 export function cardHass(overrides: Record<string, CardState | null> = {}, options: { admin?: boolean; language?: string } = {}): CardHass & { calls: unknown[][]; ws: Record<string, unknown>[] } {
   const entries: [string, string][] = [
     ["sensor.office_aloe_soil_moisture", "moisture"], ["binary_sensor.office_aloe_needs_water", "needs_water"],
@@ -19,7 +22,7 @@ export function cardHass(overrides: Record<string, CardState | null> = {}, optio
     ["binary_sensor.office_aloe_care_due", "care_due"], ["sensor.office_aloe_health_score", "health_score"],
   ];
   const states: Record<string, CardState | undefined> = {
-    "sensor.office_aloe_soil_moisture": state("sensor.office_aloe_soil_moisture", "12.0", { unit_of_measurement: "%", min: 20, target: 40, max: 60 }),
+    "sensor.office_aloe_soil_moisture": state("sensor.office_aloe_soil_moisture", "12.0", { unit_of_measurement: "%", min_threshold_percent: 20, target_threshold_percent: 40, max_threshold_percent: 60 }),
     "binary_sensor.office_aloe_needs_water": state("binary_sensor.office_aloe_needs_water", "on", { last_watered: "2026-09-11T12:00:00+00:00", snoozed: false, snoozed_until: null }),
     "binary_sensor.office_aloe_too_wet": state("binary_sensor.office_aloe_too_wet", "off"),
     "binary_sensor.office_aloe_sensor_stale": state("binary_sensor.office_aloe_sensor_stale", "off", { sources: 1, photo_id: null, snoozed: false, snoozed_until: null }),
@@ -55,7 +58,8 @@ export function cardHass(overrides: Record<string, CardState | null> = {}, optio
       "device-other": { id: "device-other", name: "Lamp", area_id: "office", model: null, identifiers: [["mock", "lamp"]] },
     },
     areas: { office: { area_id: "office", name: "Office" } },
-    callService: async (...args: unknown[]) => { calls.push(args); return undefined; },
+    // log_care answers with the event it created when asked for a response.
+    callService: async (...args: unknown[]) => { calls.push(args); return args[5] ? loggedReply(`event-${calls.length}`) : undefined; },
     callWS: async <T>(msg: Record<string, unknown>): Promise<T> => {
       ws.push(msg);
       // Each logged watering becomes event-1, event-2, ... in the care history.

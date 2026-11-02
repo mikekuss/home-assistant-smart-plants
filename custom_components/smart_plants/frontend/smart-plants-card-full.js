@@ -3686,14 +3686,14 @@ function Ft(e, t) {
 		return n ? e.states[n] : void 0;
 	}, o = At(e, i), { status: s, problems: c } = kt(o), l = s === "paused", u = {}, d = a("sensor.moisture"), f = wt(d), ee = o.sensor_stale === "on", p = c.every((e) => e.kind !== "no_sensors");
 	if (!l && (f !== null || p)) {
-		let e = d?.attributes ?? {}, t = Q(e.min), n = Q(e.max);
+		let e = d?.attributes ?? {}, t = Q(e.min_threshold_percent), n = Q(e.max_threshold_percent);
 		u.moisture = {
 			value: f,
 			unit: "%",
 			state: Pt(f, c.find((e) => e.role === "moisture" && (e.kind === "needs_water" || e.kind === "too_wet")), ee),
 			range: {
 				min: t,
-				target: Q(e.target),
+				target: Q(e.target_threshold_percent),
 				max: n
 			},
 			clear: {
@@ -3754,11 +3754,15 @@ function Ft(e, t) {
 //#endregion
 //#region src/card/plant-card.ts
 var It, Lt = "smart-plants-plant-card-content", Rt = "/smart-plants";
-function zt(e) {
+function zt(e, t) {
+	let n = e?.response?.events, r = Array.isArray(n) ? n.find((e) => e?.plant_id === t && e.kind === "watering") : void 0;
+	return typeof r?.event_id == "string" ? r.event_id : null;
+}
+function Bt(e) {
 	let t = -e.getTimezoneOffset(), n = (e) => String(Math.trunc(Math.abs(e))).padStart(2, "0");
 	return `${new Date(e.getTime() + t * 6e4).toISOString().slice(0, 19)}${t < 0 ? "-" : "+"}${n(t / 60)}:${n(t % 60)}`;
 }
-var Bt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code : null, Vt = () => He({ language: document.documentElement.lang || "en" }), $ = class extends L {
+var Vt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code : null, Ht = () => He({ language: document.documentElement.lang || "en" }), $ = class extends L {
 	constructor(...e) {
 		super(...e), this._config = null, this._busy = !1, this._photo = null, this._photoFor = null, this._photoRequest = 0;
 	}
@@ -3832,53 +3836,39 @@ var Bt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 	}
 	async _logWatering(e) {
 		if (!this.hass || this._busy) return;
-		let t = this.hass, n = this._l, r = zt(/* @__PURE__ */ new Date());
+		let t = this.hass, n = this._l, r = Bt(/* @__PURE__ */ new Date());
 		this._busy = !0;
 		try {
-			let i = this._admin ? await this._wateringIds(t, e) : null;
-			await t.callService(X, "log_care", {
+			let i = {
 				kind: "watering",
 				occurred_at: r
-			}, { device_id: e.deviceId }, !1);
-			let a = n.t("watering.logged", { name: e.name });
-			i ? this._toast(a, {
+			}, a = { device_id: e.deviceId }, o = this._admin && !!t.callWS, s = o ? await t.callService(X, "log_care", i, a, !1, !0) : await t.callService(X, "log_care", i, a, !1), c = o ? zt(s, e.plantId) : null, l = n.t("watering.logged", { name: e.name });
+			c ? this._toast(l, {
 				text: n.t("watering.undo"),
-				action: () => void this._undo(e, i, r)
-			}) : this._toast(a);
+				action: () => void this._undo(e, c)
+			}) : this._toast(l);
 		} catch (t) {
-			this._toast(Bt(t) === "unauthorized" ? n.t("plant_card.unauthorized") : n.t("plant_card.log_failed", { name: e.name }));
+			this._toast(Vt(t) === "unauthorized" ? n.t("plant_card.unauthorized") : n.t("plant_card.log_failed", { name: e.name }));
 		} finally {
 			this._busy = !1;
 		}
 	}
-	async _wateringIds(e, t) {
-		if (!e.callWS) return null;
-		try {
-			let n = await e.callWS({
-				type: `${X}/care/list`,
-				plant_id: t.plantId
-			});
-			return new Set(n.events.filter((e) => e.kind === "watering").map((e) => e.id));
-		} catch {
-			return null;
-		}
-	}
-	async _undo(e, t, n) {
-		let r = this.hass, i = this._l;
-		if (r?.callWS) try {
-			let a = await r.callWS({
+	async _undo(e, t) {
+		let n = this.hass, r = this._l;
+		if (n?.callWS) try {
+			let i = await n.callWS({
 				type: `${X}/care/list`,
 				plant_id: e.plantId
-			}), o = Date.parse(n), s = a.events.filter((e) => e.kind === "watering" && !t.has(e.id)).sort((e, t) => Math.abs(Date.parse(e.occurred_at) - o) - Math.abs(Date.parse(t.occurred_at) - o))[0];
-			if (!s) throw Error("not found");
-			await r.callWS({
+			});
+			if (!i.events.some((e) => e.id === t)) throw Error("not found");
+			await n.callWS({
 				type: `${X}/care/delete`,
 				plant_id: e.plantId,
-				expected_revision: a.revision,
-				event_id: s.id
-			}), this._toast(i.t("watering.removed", { name: e.name }));
+				expected_revision: i.revision,
+				event_id: t
+			}), this._toast(r.t("watering.removed", { name: e.name }));
 		} catch {
-			this._toast(i.t("plant_card.undo_failed", { name: e.name }));
+			this._toast(r.t("plant_card.undo_failed", { name: e.name }));
 		}
 	}
 	render() {
@@ -3982,8 +3972,8 @@ It = $, It.styles = [W, o`
       .warning { padding: 12px; }
     }
   `], G([R({ attribute: !1 })], $.prototype, "hass", void 0), G([je()], $.prototype, "_config", void 0), G([je()], $.prototype, "_busy", void 0), G([je()], $.prototype, "_photo", void 0), customElements.get("smart-plants-plant-card-content") || customElements.define(Lt, $);
-function Ht() {
-	let e = Vt(), t = {
+function Ut() {
+	let e = Ht(), t = {
 		device_id: "plant_card.editor_plant",
 		show_readings: "plant_card.editor_show_readings",
 		show_watering: "plant_card.editor_show_watering"
@@ -4013,7 +4003,7 @@ function Ht() {
 		computeHelper: (t) => n[t.name] ? e.t(n[t.name]) : void 0
 	};
 }
-function Ut(e) {
+function Wt(e) {
 	let t = Dt(e), n = t.find((t) => {
 		let n = Ft(e, t.id);
 		return n.kind === "plant" && n.overview.status === "needs_water";
@@ -4025,4 +4015,4 @@ function Ut(e) {
 	};
 }
 //#endregion
-export { Lt as CONTENT_ELEMENT, Rt as PANEL_PATH, $ as SmartPlantsPlantCardContent, Ht as getConfigForm, Ut as getStubConfig };
+export { Lt as CONTENT_ELEMENT, Rt as PANEL_PATH, $ as SmartPlantsPlantCardContent, Ut as getConfigForm, Wt as getStubConfig };

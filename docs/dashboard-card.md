@@ -71,7 +71,8 @@ Use the card editor to pick the plant. It fills in the device ID for you.
   **Watered** button.
 
 The card reads the plant's entities, so it updates as soon as they change. The target band
-comes from the `min`, `target` and `max` attributes of the soil moisture sensor. The last
+comes from the `min_threshold_percent`, `target_threshold_percent` and
+`max_threshold_percent` attributes of the soil moisture sensor. The last
 watering comes from the `last_watered` attribute of *Needs water*. The `sources` attribute of
 *Sensor stale* tells the card whether the plant has soil moisture sensors. They are described
 in [Entities](entities.md#sensors).
@@ -85,7 +86,9 @@ for a paused plant.
 **Watered** logs a watering for the plant right away, the same as the
 [`smart_plants.log_care`](automations.md#log-care-with-actions) action. A notice confirms it,
 for example "Watering logged for Office Aloe". For administrators the notice offers **Undo**,
-which removes that watering again. Other users get the notice without **Undo**.
+which removes that watering again. If someone already deleted it, Undo says it could not
+remove the watering and leaves the care history as it is. Other users get the notice
+without **Undo**.
 
 Users in Home Assistant's read-only group may not log care. For them the card shows "You don't
 have permission to log care" and logs nothing. The button is off while the plant is paused.

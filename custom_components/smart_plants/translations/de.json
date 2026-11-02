@@ -690,6 +690,21 @@
     },
     "storage_full": {
       "message": "Der Speicher von Smart Plants ist voll. Lösche alte Einträge oder Notizen im Pflegeprotokoll und versuche es erneut."
+    },
+    "storage_failed": {
+      "message": "Smart Plants konnte die Änderung nicht speichern. Es wurde nichts geändert. Prüfen Sie das Home-Assistant-Protokoll und versuchen Sie es erneut."
+    },
+    "plant_not_found": {
+      "message": "Diese Pflanze gibt es nicht mehr."
+    },
+    "plant_changed": {
+      "message": "Die Pflanze wurde geändert, während der Wert gespeichert wurde. Versuchen Sie es erneut."
+    },
+    "moisture_threshold_whole": {
+      "message": "Die Feuchtewerte Minimum, Zielwert und Maximum müssen ganze Prozentpunkte sein."
+    },
+    "moisture_thresholds_invalid": {
+      "message": "Bei der Feuchte muss das Minimum unter dem Zielwert und der Zielwert unter dem Maximum liegen, mit mindestens {span} Prozentpunkten zwischen Minimum und Maximum."
     }
   },
   "triggers": {

@@ -105,7 +105,7 @@ describe("plant view", () => {
 });
 
 describe("open moisture verdict", () => {
-  const dry = { entity_id: "sensor.office_aloe_soil_moisture", state: "12.0", attributes: { unit_of_measurement: "%", min: 20, target: 40, max: 60 } };
+  const dry = { entity_id: "sensor.office_aloe_soil_moisture", state: "12.0", attributes: { unit_of_measurement: "%", min_threshold_percent: 20, target_threshold_percent: 40, max_threshold_percent: 60 } };
   it.each([
     ["missing", null],
     ["unknown", { entity_id: "binary_sensor.office_aloe_needs_water", state: "unknown", attributes: {} }],

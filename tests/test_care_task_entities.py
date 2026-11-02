@@ -9,9 +9,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from custom_components.smart_plants import sensor as sensor_module
-from custom_components.smart_plants.care_entities import CareEntityLifecycle
+from custom_components.smart_plants.care_entities import (
+    CareEntityLifecycle,
+    _care_entry_owner,
+)
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.manager import SmartPlantsManager
+from custom_components.smart_plants.models import PlantRecord
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_UNAVAILABLE
@@ -581,3 +585,64 @@ def test_icons_and_translations_cover_care_entities() -> None:
             assert f"{key}_next" in entity["sensor"]
         assert set(entity["binary_sensor"]["care_due"]["state"]) == {"on", "off"}
         assert "{task_name}" in entity["sensor"]["care_task_named_next"]["name"]
+
+
+@pytest.mark.parametrize("order", [("a", "a:care_task:x"), ("a:care_task:x", "a")])
+def test_care_entry_owner_prefers_the_longest_plant_id(
+    order: tuple[str, str],
+) -> None:
+    # Stored plant IDs from older versions may contain colons, so one ID can
+    # be a prefix of another. The longest matching ID owns the entry.
+    plants = {
+        plant_id: PlantRecord(
+            id=plant_id,
+            revision=1,
+            name=plant_id,
+            created_at="2026-09-05T00:00:00Z",
+        )
+        for plant_id in order
+    }
+    owner = _care_entry_owner(f"{DOMAIN}:a:care_task:x:moisture", plants)
+    assert owner is None
+    owner = _care_entry_owner(f"{DOMAIN}:a:care_task:x:care_task:t:due", plants)
+    assert owner is not None
+    assert (owner[0].id, owner[1]) == ("a:care_task:x", "care_task:t:due")
+    owner = _care_entry_owner(f"{DOMAIN}:a:care_task:t:due", plants)
+    assert owner is not None
+    assert (owner[0].id, owner[1]) == ("a", "care_task:t:due")
+    assert _care_entry_owner(f"{DOMAIN}:b:care_due", plants) is None
+
+
+async def test_care_setup_keeps_entries_of_overlapping_plant_ids(
+    hass: HomeAssistant,
+) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    plants = [
+        PlantRecord(
+            id=plant_id,
+            revision=1,
+            name=name,
+            created_at="2026-09-05T00:00:00Z",
+        )
+        for plant_id, name in (("a", "Aloe"), ("a:care_task:x", "Office Aloe"))
+    ]
+    await manager.async_mutate_for_test(
+        lambda snapshot: snapshot.with_plant(plants[0]).with_plant(plants[1])
+    )
+    registry = er.async_get(hass)
+    moisture = registry.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        f"{DOMAIN}:a:care_task:x:moisture",
+        config_entry=entry,
+        suggested_object_id="office_aloe_soil_moisture",
+    )
+
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert registry.async_get(moisture.entity_id) is not None

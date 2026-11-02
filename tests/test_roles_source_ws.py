@@ -1,10 +1,9 @@
 """
 WebSocket coverage for the generic smart_plants/roles/* source commands.
 
-These commands let a user configure sources for every role, not just
-moisture. They delegate to the same manager methods as the moisture-scoped
-aliases, so error mapping, revision checks, and retained-missing semantics
-must be identical.
+These commands let a user configure sources for every role, including
+moisture, so error mapping, revision checks, and retained-missing semantics
+must be identical across roles.
 """
 
 from __future__ import annotations
@@ -60,40 +59,24 @@ async def _set_sources(
     plant: PlantRecord,
     role: str,
     sources: list[dict[str, str]],
-    *,
-    alias: bool = False,
 ) -> dict[str, Any]:
     payload = {
-        "type": (
-            "smart_plants/moisture/set_sources"
-            if alias
-            else "smart_plants/roles/set_sources"
-        ),
+        "type": "smart_plants/roles/set_sources",
         "plant_id": plant.id,
         "expected_revision": plant.revision,
+        "role": role,
         "sources": sources,
     }
-    if not alias:
-        payload["role"] = role
     await client.send_json_auto_id(payload)
     return cast("dict[str, Any]", await client.receive_json())
 
 
-@pytest.mark.parametrize(
-    ("role", "command"),
-    [
-        *((role, "smart_plants/roles/set_sources") for role in SOURCE_ROLES),
-        ("moisture", "smart_plants/moisture/set_sources"),
-    ],
-    ids=[*SOURCE_ROLES, "moisture_alias"],
-)
+@pytest.mark.parametrize("role", SOURCE_ROLES)
 async def test_missing_registry_source_retained_and_rejected_substitutions(  # noqa: PLR0915
     hass: HomeAssistant,
     hass_ws_client: WebSocketGenerator,
     role: str,
-    command: str,
 ) -> None:
-    alias = command == "smart_plants/moisture/set_sources"
     entry = await _setup(hass)
     manager: SmartPlantsManager = entry.runtime_data.manager
     registry = er.async_get(hass)
@@ -105,14 +88,14 @@ async def test_missing_registry_source_retained_and_rejected_substitutions(  # n
     other = await manager.async_create_plant(name="Fern")
     client = await hass_ws_client(hass)
 
-    response = await _set_sources(client, plant, role, [pair], alias=alias)
+    response = await _set_sources(client, plant, role, [pair])
     assert response["success"] is True
     plant = manager.get_plant(plant.id)
     registry.async_remove(source.entity_id)
     await hass.async_block_till_done()
 
     # Another plant cannot introduce the missing UUID as a new assignment.
-    response = await _set_sources(client, other, role, [pair], alias=alias)
+    response = await _set_sources(client, other, role, [pair])
     assert response["error"]["code"] == ERR_INVALID_FORMAT
     assert manager.get_plant(other.id).revision == other.revision
 
@@ -129,19 +112,19 @@ async def test_missing_registry_source_retained_and_rejected_substitutions(  # n
         {"entity_id": "sensor.forged", "registry_id": source.id},
         {"entity_id": source.entity_id, "registry_id": "forged-uuid"},
     ):
-        response = await _set_sources(client, plant, role, [attempted], alias=alias)
+        response = await _set_sources(client, plant, role, [attempted])
         assert response["success"] is False
         assert response["error"]["code"] == ERR_INVALID_FORMAT
         assert manager.get_plant(plant.id).revision == plant.revision
 
-    response = await _set_sources(client, plant, role, [pair], alias=alias)
+    response = await _set_sources(client, plant, role, [pair])
     assert response["success"] is True
     assert manager.get_plant(plant.id).revision == plant.revision
 
     # An unrelated source can be added while keeping the missing pair intact.
     stale = plant
     response = await _set_sources(
-        client, plant, role, [pair, {"entity_id": "sensor.extra"}], alias=alias
+        client, plant, role, [pair, {"entity_id": "sensor.extra"}]
     )
     assert response["success"] is True
     plant = manager.get_plant(plant.id)
@@ -151,12 +134,12 @@ async def test_missing_registry_source_retained_and_rejected_substitutions(  # n
         SensorSource(source.entity_id, source.id),
         SensorSource("sensor.extra", None),
     )
-    response = await _set_sources(client, stale, role, [pair], alias=alias)
+    response = await _set_sources(client, stale, role, [pair])
     assert response["success"] is False
     assert response["error"]["code"] == ERR_REVISION_CONFLICT
     assert manager.get_plant(plant.id).revision == plant.revision
 
-    response = await _set_sources(client, plant, role, [pair], alias=alias)
+    response = await _set_sources(client, plant, role, [pair])
     assert response["success"] is True
     plant = manager.get_plant(plant.id)
     config = require_role(role).config_for(plant)
@@ -170,15 +153,15 @@ async def test_missing_registry_source_retained_and_rejected_substitutions(  # n
     config = require_role(role).config_for(persisted)
     assert config is not None
     assert config.sources == (SensorSource(source.entity_id, source.id),)
-    response = await _set_sources(client, persisted, role, [pair], alias=alias)
+    response = await _set_sources(client, persisted, role, [pair])
     assert response["success"] is True
     assert manager.get_plant(plant.id).revision == persisted.revision
 
     # Once removed from this plant, the missing UUID cannot be reintroduced.
-    response = await _set_sources(client, persisted, role, [], alias=alias)
+    response = await _set_sources(client, persisted, role, [])
     assert response["success"] is True
     cleared = manager.get_plant(plant.id)
-    response = await _set_sources(client, cleared, role, [pair], alias=alias)
+    response = await _set_sources(client, cleared, role, [pair])
     assert response["success"] is False
     assert response["error"]["code"] == ERR_INVALID_FORMAT
     assert manager.get_plant(plant.id).revision == cleared.revision
@@ -379,28 +362,35 @@ async def test_role_source_commands_require_admin(
     assert response["error"]["code"] == "unauthorized"
 
 
-async def test_moisture_aliases_still_work(
-    hass: HomeAssistant, hass_ws_client: WebSocketGenerator
+@pytest.mark.parametrize(
+    "suffix",
+    [
+        "set_sources",
+        "set_primary",
+        "set_aggregation",
+        "set_stale_after",
+        "set_thresholds",
+    ],
+)
+async def test_moisture_scoped_commands_are_not_registered(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator, suffix: str
 ) -> None:
-    # The moisture-scoped commands must keep working unchanged alongside the
-    # new generic role commands.
+    # Moisture is configured through the generic roles/* commands and
+    # moisture/configure; the old moisture-scoped writers are gone.
     entry = await _setup(hass)
     manager: SmartPlantsManager = entry.runtime_data.manager
     plant = await manager.async_create_plant(name="Aloe")
     client = await hass_ws_client(hass)
     await client.send_json_auto_id(
         {
-            "type": "smart_plants/moisture/set_sources",
+            "type": f"smart_plants/moisture/{suffix}",
             "plant_id": plant.id,
             "expected_revision": plant.revision,
-            "sources": [{"entity_id": "sensor.soil"}],
         }
     )
     response = await client.receive_json()
-    assert response["success"] is True
-    current = manager.get_plant(plant.id)
-    assert current is not None
-    assert [s.entity_id for s in current.moisture.sources] == ["sensor.soil"]
+    assert response["success"] is False
+    assert response["error"]["code"] == "unknown_command"
 
 
 async def test_new_plant_view_includes_default_for_every_source_role(

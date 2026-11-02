@@ -57,7 +57,7 @@ its device and all of its entities.
 
 | Entity name | Created | Unit | Device class | Category | Attributes |
 | --- | --- | --- | --- | --- | --- |
-| Soil moisture | Always | % | moisture | none | `min`, `target`, `max` |
+| Soil moisture | Always | % | moisture | none | `min_threshold_percent`, `target_threshold_percent`, `max_threshold_percent` |
 | Health score | Always | % | none | none | `confidence`, `confidence_label`, `contributors`, `configured` |
 | Temperature | First temperature source | °C | temperature | none | none |
 | Humidity | First humidity source | % | humidity | none | none |
@@ -71,9 +71,9 @@ All sensors have the *measurement* state class, so Home Assistant records long-t
 statistics for them. A sensor is unavailable when its role has no valid value (see
 [Sensors and health](sensors-and-health.md)).
 
-The `min`, `target` and `max` attributes of *Soil moisture* are the moisture thresholds in
-effect, in percent (built-in, from the species, or your override). Dashboards and templates
-can read them without enabling the [number entities](#number-entities).
+The `min_threshold_percent`, `target_threshold_percent` and `max_threshold_percent`
+attributes of *Soil moisture* are the moisture thresholds in effect, in percent (built-in,
+from the species, or your override). Dashboards and templates can read them without enabling the [number entities](#number-entities).
 
 ## Binary sensors
 
@@ -221,8 +221,7 @@ using the plant's combined value in °C, %, lx, µS/cm, or ppm), one sensor enti
 forecast low or high temperature of a weather entity (see
 [Forecast readings](#forecast-readings)). Any task type can use a reading schedule. You create
 and edit reading tasks in the panel (see
-[Reading tasks](getting-started.md#reading-tasks)) or through the
-`smart_plants/care_tasks/create` WebSocket command.
+[Reading tasks](getting-started.md#reading-tasks)).
 
 How a reading task behaves:
 

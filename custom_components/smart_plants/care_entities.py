@@ -409,11 +409,21 @@ def _care_entry_owner(
     unique_id: str, plants: Mapping[str, PlantRecord]
 ) -> tuple[PlantRecord, str] | None:
     """Return the plant and role of a care entity unique id, if it is one."""
-    for plant in plants.values():
-        prefix = f"{DOMAIN}:{plant.id}:"
-        if not unique_id.startswith(prefix):
-            continue
-        role = unique_id.removeprefix(prefix)
-        if role == ROLE_CARE_DUE or role.startswith(TASK_ROLE_PREFIX):
-            return plant, role
+    # Plant IDs stored by older versions may contain colons, so one ID can be
+    # a prefix of another ("a" and "a:care_task:x"). The longest matching ID
+    # owns the entry; only its remainder is read as the role.
+    owner = max(
+        (
+            plant
+            for plant in plants.values()
+            if unique_id.startswith(f"{DOMAIN}:{plant.id}:")
+        ),
+        key=lambda plant: len(plant.id),
+        default=None,
+    )
+    if owner is None:
+        return None
+    role = unique_id.removeprefix(f"{DOMAIN}:{owner.id}:")
+    if role == ROLE_CARE_DUE or role.startswith(TASK_ROLE_PREFIX):
+        return owner, role
     return None
