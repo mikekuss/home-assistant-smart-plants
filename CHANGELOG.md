@@ -25,9 +25,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A pinned value on any **History** chart offers **Log care at this time**, which opens the
   care form at that time for any care type. On the soil moisture chart it is **Log other
   care**, next to **Log watering at this time**. See [History](docs/getting-started.md#history).
+- The installation guide says which Home Assistant versions are supported, what a version
+  number promises, how deprecations and fixes are handled, and how to roll back to an earlier
+  version. See [Supported versions](docs/installation.md#supported-versions).
 - Before Smart Plants converts its storage for a new version, it saves a copy of the old
   inventory as `.storage/smart_plants.inventory.backup`. To roll back an update, restore this
-  file. See [Update](docs/installation.md#update).
+  file. See [Roll back to an earlier version](docs/installation.md#roll-back-to-an-earlier-version).
 
 ### Changed
 
@@ -35,9 +38,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   legend lists the kinds shown. Before, it marked only waterings on the soil moisture chart
   and fertilizing on the fertilizer level chart. Waterings still appear only on those two
   charts.
-
-### Changed
-
 - Every logged-in Home Assistant user can now view plant photos, so dashboard cards can show
   them to people who aren't administrators. Adding, replacing and removing photos stays
   admin-only.
@@ -48,6 +48,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   voluptuous. On Home Assistant 2026.9 and later it now validates its settings, actions,
   automation options and panel requests with probatio, which Home Assistant itself has used
   since 2026.9.
+- The integration diagnostics no longer include the entity ID of the weather entity that a
+  forecast care task watches. The troubleshooting guide promised that the file contains no
+  entity IDs.
 - Smart Plants refuses to add a plant beyond 1,000 plants with *Smart Plants manages at most
   1000 plants*. Before, the 1,001st plant was saved and Smart Plants then failed to start.
   Every save now runs the same checks as loading, so a save can no longer leave storage that

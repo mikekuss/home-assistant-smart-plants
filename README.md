@@ -12,8 +12,10 @@ entities you can use in normal automations. You don't need YAML or template sens
 
 ![Smart Plants panel overview with status tiles, search and plant cards](docs/images/overview.png)
 
-> **Status:** early development. Expect rough edges and make sure your Home Assistant
-> backups include Smart Plants data (see [Installation](docs/installation.md#backup-and-restore)).
+> **Before you update:** check that your Home Assistant backups include Smart Plants data. An
+> older version can't read data written by a newer one, so going back to an earlier release
+> means restoring that backup. See
+> [Roll back to an earlier version](docs/installation.md#roll-back-to-an-earlier-version).
 
 ## Features
 
@@ -57,8 +59,12 @@ The panel, setup, entity names and repairs are available in English and German.
 
 ## Requirements
 
-- Home Assistant **2026.8.0** or newer.
+- Home Assistant **2026.8.0** or newer. CI tests each change against that version and against
+  the newest stable Home Assistant release.
 - Optional: an OpenPlantBook account with API client credentials.
+
+Which Home Assistant versions are supported, what a version number promises, and how long
+fixes are provided is described in [Supported versions](docs/installation.md#supported-versions).
 
 ## Installation
 

@@ -890,7 +890,6 @@ async def test_websocket_accepts_forecast_tasks_and_shows_them(
     rows = diagnostics["reading_care_tasks"]
     assert "forecast_source" not in rows[0]
     assert rows[1]["forecast_source"] == {
-        "entity_id": WEATHER,
         "reading": "low",
         "hours": 48,
         "last_fetch_had_value": True,
@@ -898,6 +897,7 @@ async def test_websocket_accepts_forecast_tasks_and_shows_them(
     assert rows[1]["role_source"] is False
     assert rows[1]["entity_source"] is False
     text = str(diagnostics)
+    assert WEATHER not in text
     assert "templow" not in text
     assert "-5.0" not in text
     await _unload(hass, entry)
