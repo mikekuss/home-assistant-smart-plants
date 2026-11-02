@@ -118,7 +118,7 @@ A plant without sensors shows "No sensors assigned yet". For administrators it a
 ## Loading
 
 Smart Plants loads a small script in every Home Assistant browser session. It adds the card to
-the card picker and is about 3 KB. The card itself, with its translations, loads only when a
+the card picker and is about 4 KB. The card itself, with its translations, loads only when a
 card is on screen or the card editor opens. If that fails, for example while Home Assistant
 restarts, the card says it could not be loaded and tries again every 10 seconds. The card
 follows your Home Assistant language. It is available in English and German.

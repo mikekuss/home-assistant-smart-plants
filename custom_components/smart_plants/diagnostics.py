@@ -20,11 +20,6 @@ if TYPE_CHECKING:
 
     from . import SmartPlantsConfigEntry
 
-_REDACTED = "**REDACTED**"
-_SENSITIVE_KEYS = frozenset(
-    {CONF_OPENPLANTBOOK_CLIENT_ID, CONF_OPENPLANTBOOK_CLIENT_SECRET}
-)
-
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: SmartPlantsConfigEntry
@@ -58,17 +53,6 @@ async def async_get_config_entry_diagnostics(
         "inventory": _inventory_summary(runtime.manager.snapshot),
         "reading_care_tasks": _reading_task_summary(runtime.manager),
     }
-
-
-def _redact(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {
-            key: _REDACTED if key in _SENSITIVE_KEYS else _redact(item)
-            for key, item in value.items()
-        }
-    if isinstance(value, list):
-        return [_redact(item) for item in value]
-    return value
 
 
 def _inventory_summary(snapshot: Any) -> dict[str, Any]:
@@ -130,11 +114,12 @@ def _reading_task_summary(manager: Any) -> list[dict[str, Any]]:
     Describe each reading care task without names, values or sensor ids.
 
     Only the schedule kind, the condition, which kind of source is set and
-    the current status are reported; a sensor entity id could identify a
-    device, and readings and thresholds say nothing about a malfunction. A
-    forecast source also reports its weather entity, its window and whether
-    the last fetch gave a value, which tells a missing forecast apart from a
-    task that is simply not due; the forecast itself is left out.
+    the current status are reported; an entity id can carry a name the user
+    chose, and readings and thresholds say nothing about a malfunction. A
+    forecast source also reports its reading, its window and whether the
+    last fetch gave a value, which tells a missing forecast apart from a task
+    that is simply not due; the weather entity and the forecast itself are
+    left out.
     """
     tracker = manager.reading_tracker
     summary: list[dict[str, Any]] = []
@@ -156,7 +141,6 @@ def _reading_task_summary(manager: Any) -> list[dict[str, Any]]:
             }
             if (forecast := schedule.source.forecast) is not None:
                 entry["forecast_source"] = {
-                    "entity_id": forecast.entity_id,
                     "reading": forecast.reading,
                     "hours": forecast.hours,
                     "last_fetch_had_value": (
