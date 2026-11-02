@@ -54,7 +54,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Smart Plants refuses to add a plant beyond 1,000 plants with *Smart Plants manages at most
   1000 plants*. Before, the 1,001st plant was saved and Smart Plants then failed to start.
   Every save now runs the same checks as loading, so a save can no longer leave storage that
-  stops Smart Plants from starting.
+  stops Smart Plants from starting. When 1,000 unfinished changes are already waiting, a new
+  change is refused with a message that asks you to restart Home Assistant.
 - A photo upload or removal whose final save failed no longer comes back after a restart
   when a later photo change for the same plant succeeded. The newest photo change wins, and
   the file of the replaced upload is removed.

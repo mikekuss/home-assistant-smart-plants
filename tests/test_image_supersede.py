@@ -321,3 +321,49 @@ async def test_replay_finishes_only_the_latest_of_two_pending_uploads(
     assert image.id == LATER_IMAGE_ID
     assert manager.snapshot.pending_operations == ()
     assert _image_files(hass) == {LATER_IMAGE_ID}
+
+
+async def test_replay_skips_upload_when_later_changes_left_no_photo(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    # An older release left a failed first upload pending. A later upload and
+    # removal both succeeded, so the plant shows no photo again, just as it
+    # did when the failed upload was requested. Only the revision tells them
+    # apart.
+    _seed(
+        hass,
+        hass_storage,
+        plant=_plant_dict(None, revision=3),
+        operations=[_upload_op("op-stale", NEW_IMAGE_ID, None)],
+        files=(NEW_IMAGE_ID,),
+    )
+
+    entry = await _setup_entry(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+
+    assert manager.get_plant("plt-1").image is None
+    assert manager.snapshot.pending_operations == ()
+    assert _image_files(hass) == set()
+
+
+async def test_replay_skips_delete_when_the_plant_changed_since(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    # The removal's final save failed and a later rename succeeded, so the
+    # photo the user still sees stays.
+    _seed(
+        hass,
+        hass_storage,
+        plant=_plant_dict(OLD_IMAGE_ID, revision=2),
+        operations=[_delete_op("op-stale-delete", OLD_IMAGE_ID)],
+        files=(OLD_IMAGE_ID,),
+    )
+
+    entry = await _setup_entry(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+
+    image = manager.get_plant("plt-1").image
+    assert image is not None
+    assert image.id == OLD_IMAGE_ID
+    assert manager.snapshot.pending_operations == ()
+    assert _image_files(hass) == {OLD_IMAGE_ID}

@@ -16,6 +16,7 @@ from homeassistant.util import dt as dt_util
 
 from .care import parse_utc_timestamp, validate_task_id
 from .const import (
+    DOMAIN,
     READING_STATE_STORAGE_KEY,
     READING_STATE_STORAGE_VERSION,
     STORAGE_KEY,
@@ -94,8 +95,31 @@ class SmartPlantsStorageFullError(SmartPlantsStorageError):
     pass
 
 
+class SmartPlantsPendingOperationsFullError(
+    HomeAssistantError, SmartPlantsStorageError
+):
+    """
+    Too many unfinished operations wait for replay.
+
+    They only pile up when side effects keep failing, and replay at startup
+    clears them, so deleting data does not help. The message says to restart.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            f"Smart Plants already has {COLLECTION_MAX_COUNT} unfinished operations",
+            translation_domain=DOMAIN,
+            translation_key="pending_operations_full",
+            translation_placeholders={"max": str(COLLECTION_MAX_COUNT)},
+        )
+
+
 class _SmartPlantsStorageLimitError(SmartPlantsInvalidStorageError):
     """The payload crosses a size or count limit; a save maps it to full."""
+
+
+class _SmartPlantsPendingLimitError(_SmartPlantsStorageLimitError):
+    """The payload holds more pending operations than the loader accepts."""
 
 
 def _encoded_inventory_size(inventory: object) -> int:
@@ -133,6 +157,8 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
         """
         Keep the pre-migration inventory with its original version.
 
+        ``data`` must be a copy that nothing else changes.
+
         An older Smart Plants release refuses storage written by a newer
         one. Copying this file back over the inventory is how a user rolls
         back an update. Migration stops if the copy cannot be written.
@@ -144,7 +170,7 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
             atomic_writes=True,
             minor_version=minor_version,
         )
-        await backup.async_save(copy.deepcopy(data))
+        await backup.async_save(data)
         write_error: BaseException | None = backup._last_write_error
         if write_error is not None:
             raise SmartPlantsStorageError(
@@ -173,7 +199,9 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                 "Smart Plants storage major version is not supported"
             )
 
-        await self._async_write_backup(old_major_version, old_minor_version, old_data)
+        # The steps below change the payload in place, so keep the original
+        # for the backup that is written once the result proves loadable.
+        original_data = copy.deepcopy(old_data)
 
         # Migrations must recognize the previous format's minimum shape
         # before transforming it. Otherwise a payload that happens
@@ -559,6 +587,13 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                             "older storage cannot contain pest control care events"
                         )
 
+        # Home Assistant writes the result back right after this returns.
+        # Check it first, so storage that fails to migrate never replaces
+        # the backup of the last inventory that converted cleanly.
+        _snapshot_from_payload(data, require_roles=True)
+        await self._async_write_backup(
+            old_major_version, old_minor_version, original_data
+        )
         return data
 
 
@@ -659,6 +694,8 @@ class SmartPlantsStore:
             await self._hass.async_add_executor_job(
                 partial(_snapshot_from_payload, payload, require_roles=True)
             )
+        except _SmartPlantsPendingLimitError as err:
+            raise SmartPlantsPendingOperationsFullError from err
         except _SmartPlantsStorageLimitError as err:
             raise SmartPlantsStorageFullError(str(err)) from err
         except SmartPlantsInvalidStorageError as err:
@@ -838,9 +875,12 @@ def _snapshot_from_payload(  # noqa: PLR0912
         )
     if not isinstance(tombstones, list):
         raise SmartPlantsInvalidStorageError("Smart Plants tombstones are invalid")
+    if len(pending_operations) > COLLECTION_MAX_COUNT:
+        raise _SmartPlantsPendingLimitError(
+            "Smart Plants collection size limit exceeded"
+        )
     if any(
-        len(collection) > COLLECTION_MAX_COUNT
-        for collection in (plants, pending_operations, tombstones)
+        len(collection) > COLLECTION_MAX_COUNT for collection in (plants, tombstones)
     ):
         raise _SmartPlantsStorageLimitError(
             "Smart Plants collection size limit exceeded"

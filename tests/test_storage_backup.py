@@ -103,3 +103,27 @@ async def test_removing_storage_removes_the_backup(
 
     assert STORAGE_KEY not in hass_storage
     assert STORAGE_BACKUP_KEY not in hass_storage
+
+
+async def test_migration_that_cannot_load_keeps_the_previous_backup(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    previous_backup = {
+        "version": STORAGE_MAJOR_VERSION,
+        "minor_version": OLDER_MINOR - 1,
+        "key": STORAGE_BACKUP_KEY,
+        "data": _older_inventory(),
+    }
+    hass_storage[STORAGE_BACKUP_KEY] = copy.deepcopy(previous_backup)
+    # Valid JSON with the expected top-level fields, but a plant record the
+    # loader refuses.
+    broken = _older_inventory()
+    broken["plants"][0]["name"] = 42
+    _seed(hass_storage, OLDER_MINOR, broken)
+    stored = copy.deepcopy(hass_storage[STORAGE_KEY])
+
+    with pytest.raises(SmartPlantsStorageError):
+        await SmartPlantsStore(hass).async_load()
+
+    assert hass_storage[STORAGE_BACKUP_KEY] == previous_backup
+    assert hass_storage[STORAGE_KEY] == stored

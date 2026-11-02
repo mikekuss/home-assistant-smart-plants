@@ -26,6 +26,7 @@ from custom_components.smart_plants.models import (
     Tombstone,
 )
 from custom_components.smart_plants.storage import (
+    SmartPlantsPendingOperationsFullError,
     SmartPlantsStorageError,
     SmartPlantsStorageFullError,
     SmartPlantsStore,
@@ -100,7 +101,12 @@ async def test_save_over_the_collection_limit_is_refused(
     await store.async_save(_snapshot(collection, COLLECTION_MAX_COUNT))
     stored = copy.deepcopy(hass_storage[STORAGE_KEY])
 
-    with pytest.raises(SmartPlantsStorageFullError):
+    expected = (
+        SmartPlantsPendingOperationsFullError
+        if collection == "pending_operations"
+        else SmartPlantsStorageFullError
+    )
+    with pytest.raises(expected):
         await store.async_save(_snapshot(collection, COLLECTION_MAX_COUNT + 1))
 
     assert hass_storage[STORAGE_KEY] == stored
@@ -233,8 +239,15 @@ async def test_pending_operation_over_the_limit_is_refused(
     before = manager.snapshot
     stored = copy.deepcopy(hass_storage[STORAGE_KEY])
 
-    with pytest.raises(SmartPlantsStorageFullError):
+    with pytest.raises(SmartPlantsPendingOperationsFullError) as caught:
         await manager.async_record_pending_operation(_operations(1)[0])
 
+    # Deleting care log entries does not help here; the message points to a
+    # restart instead of the storage full message.
+    err = caught.value
+    assert not isinstance(err, SmartPlantsStorageFullError)
+    assert isinstance(err, HomeAssistantError)
+    assert err.translation_key == "pending_operations_full"
+    assert err.translation_placeholders == {"max": str(COLLECTION_MAX_COUNT)}
     assert manager.snapshot == before
     assert hass_storage[STORAGE_KEY] == stored

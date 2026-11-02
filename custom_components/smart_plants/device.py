@@ -564,9 +564,14 @@ class SmartPlantsDeviceReconciler:
             return True
 
         current_image_id = plant.image.id if plant.image is not None else None
-        if current_image_id != previous_image_id:
-            # The plant no longer shows the photo this upload replaced, so a
-            # later change superseded it. Keep the current photo.
+        if (
+            current_image_id != previous_image_id
+            or plant.revision != op.expected_revision
+        ):
+            # The plant changed after this upload was requested, so the
+            # upload's final save failed and a later change was saved on top
+            # of it. Keep the plant as it is now. Comparing the photo alone
+            # misses a later upload and removal that left no photo again.
             await self._retire_superseded_image_op(
                 op,
                 plants=plants,
@@ -636,17 +641,19 @@ class SmartPlantsDeviceReconciler:
             # load should have rejected this, but keep the op if the
             # payload cannot be interpreted rather than losing intent.
             return False
-        # A different current photo means a later upload superseded this
-        # removal; only the removed file is left to clean up.
-        if (
+        # A different photo or a newer revision means a later change was
+        # saved after this removal failed; keep the plant as it is now and
+        # only clean up the removed file if nothing uses it.
+        still_shown = (
             plant is not None
             and plant.image is not None
             and plant.image.id == previous_image_id
-        ):
+        )
+        if still_shown and plant is not None and plant.revision == op.expected_revision:
             updated = plant.with_next_revision(image=None)
             plant_updates[plant.id] = updated
             return False
-        if _is_image_safely_deletable(
+        if not still_shown and _is_image_safely_deletable(
             previous_image_id,
             tombstone_plant_id=op.plant_id,
             plants=plants,
