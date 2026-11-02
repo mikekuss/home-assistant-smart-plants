@@ -386,6 +386,8 @@ class CareEntityLifecycle:
             if entry.platform != DOMAIN or entry.domain != self._platform:
                 continue
             owner = _care_entry_owner(entry.unique_id, plants)
+            # An entry whose owner has no care role here is left alone:
+            # keeping a stale entry is safer than removing another plant's.
             if owner is None:
                 continue
             plant, role = owner

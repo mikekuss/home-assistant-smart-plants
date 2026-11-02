@@ -539,8 +539,9 @@ plant device and one per care task:
 ```
 
 `logged.events` is a list. Each item has `plant_id`, `event_id` (the ID of the new care log
-entry), `kind`, `occurred_at` (the time Smart Plants saved) and `task_id` (the care task it
-marks as done, or `null`).
+entry), `kind`, `occurred_at` (the time stored for the entry: the `occurred_at` you passed, or
+the current time if you passed none or one up to five minutes ahead) and `task_id` (the care
+task it marks as done, or `null`).
 
 ### Log a watering by scanning an NFC tag
 
