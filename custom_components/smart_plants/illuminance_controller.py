@@ -30,9 +30,14 @@ _LOGGER = logging.getLogger(__name__)
 LIGHT_SAMPLE_BUCKET_SECONDS = 60
 
 
-def next_daytime_edge(now_local: datetime) -> datetime:
+def next_daytime_edge(
+    now_local: datetime, stale_after: timedelta | None = None
+) -> datetime:
     """
     Return the next local 08:00 or 18:00 wall-clock boundary strictly after now.
+
+    With ``stale_after``, 08:00 plus that time is a boundary too when it falls
+    before 18:00: from then on a quiet light sensor counts as not reporting.
 
     Computed from wall-clock dates so it stays correct across DST transitions:
     the returned datetime carries the local offset in effect on that date, so
@@ -42,10 +47,14 @@ def next_daytime_edge(now_local: datetime) -> datetime:
     candidates: list[datetime] = []
     for day_offset in (0, 1):
         day = now_local + timedelta(days=day_offset)
-        for hour in (LOW_LIGHT_DAY_START_HOUR, LOW_LIGHT_DAY_END_HOUR):
-            edge = day.replace(hour=hour, minute=0, second=0, microsecond=0)
-            if edge > now_local:
-                candidates.append(edge)
+        start, end = (
+            day.replace(hour=hour, minute=0, second=0, microsecond=0)
+            for hour in (LOW_LIGHT_DAY_START_HOUR, LOW_LIGHT_DAY_END_HOUR)
+        )
+        edges = [start, end]
+        if stale_after is not None and start + stale_after < end:
+            edges.append(start + stale_after)
+        candidates.extend(edge for edge in edges if edge > now_local)
     return min(candidates)
 
 
@@ -129,7 +138,9 @@ class IlluminancePlantController:
         self._cancel_edge()
         if not self._active or not self._config.sources:
             return
-        when = next_daytime_edge(dt_util.now())
+        when = next_daytime_edge(
+            dt_util.now(), timedelta(seconds=self._config.stale_after_seconds)
+        )
         self._unsub_edge = async_track_point_in_time(self._hass, self._on_edge, when)
 
     @callback

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import fixture from "../../../tests/fixtures/plant_status_cases.json";
 import { deriveStatus, plantDevices, plantEntities, plantView, statusInput } from "./plant-state.js";
 import { cardReason } from "../overview-model.js";
@@ -157,40 +157,32 @@ describe("temperature in Fahrenheit", () => {
 describe("other sensors that give no value", () => {
   const ok = { entity_id: "binary_sensor.office_aloe_needs_water", state: "off", attributes: {} };
   const unavailable = (entity_id: string) => ({ entity_id, state: "unavailable", attributes: {} });
-  const at = (iso: string) => Date.parse(iso);
-  afterEach(() => { vi.useRealTimers(); });
+  const staleSensor = (inputProblems: Record<string, string>) => ({ entity_id: "binary_sensor.office_aloe_sensor_stale", state: "off", attributes: { sources: 1, input_problems: inputProblems } });
 
-  it("are not reporting when the reading is unavailable", () => {
-    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "sensor.office_aloe_temperature": unavailable("sensor.office_aloe_temperature"), "binary_sensor.office_aloe_temperature_stress": unavailable("binary_sensor.office_aloe_temperature_stress") });
-    vi.useFakeTimers(); vi.setSystemTime(at("2026-06-01T12:00:00Z"));
+  it("are not reporting when the backend says so", () => {
+    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "binary_sensor.office_aloe_sensor_stale": staleSensor({ temperature: "unavailable" }), "sensor.office_aloe_temperature": unavailable("sensor.office_aloe_temperature"), "binary_sensor.office_aloe_temperature_stress": unavailable("binary_sensor.office_aloe_temperature_stress") });
     const plant = view(hass);
     expect(plant.overview).toMatchObject({ status: "stale", problems: [{ role: "temperature", kind: "unavailable" }] });
     expect(plant.overview.roles.temperature).toMatchObject({ value: null, state: "unavailable" });
   });
-  it("are stale when the reading has a value but its alert is unavailable", () => {
-    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "binary_sensor.office_aloe_temperature_stress": unavailable("binary_sensor.office_aloe_temperature_stress") });
-    vi.useFakeTimers(); vi.setSystemTime(at("2026-06-01T12:00:00Z"));
+  it("are stale when one of several sensors went stale", () => {
+    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "binary_sensor.office_aloe_sensor_stale": staleSensor({ temperature: "stale" }), "binary_sensor.office_aloe_temperature_stress": unavailable("binary_sensor.office_aloe_temperature_stress") });
     const plant = view(hass);
     expect(plant.overview).toMatchObject({ status: "stale", problems: [{ role: "temperature", kind: "stale" }] });
     expect(plant.overview.roles.temperature).toMatchObject({ value: 21.5, state: "stale" });
   });
-  it("leave a quiet light sensor alone at night, in Home Assistant's time zone", () => {
-    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "sensor.office_aloe_illuminance": unavailable("sensor.office_aloe_illuminance"), "binary_sensor.office_aloe_low_light": unavailable("binary_sensor.office_aloe_low_light") });
-    hass.config = { time_zone: "Europe/Berlin" };
-    vi.useFakeTimers();
-    vi.setSystemTime(at("2026-06-01T16:30:00Z")); // 18:30 in Berlin
-    expect(view(hass).overview).toMatchObject({ status: "healthy", problems: [] });
-    vi.setSystemTime(at("2026-06-01T06:30:00Z")); // 08:30 in Berlin
-    expect(view(hass).overview).toMatchObject({ status: "stale", problems: [{ role: "illuminance", kind: "unavailable" }] });
+  it("show a sensor waiting for a main sensor as not reporting", () => {
+    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "binary_sensor.office_aloe_sensor_stale": staleSensor({ humidity: "no_main_sensor" }) });
+    expect(view(hass).overview).toMatchObject({ status: "stale", problems: [{ role: "humidity", kind: "unavailable" }] });
   });
-  it("don't count a light alert that waits for daytime samples", () => {
-    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "binary_sensor.office_aloe_low_light": unavailable("binary_sensor.office_aloe_low_light") });
-    vi.useFakeTimers(); vi.setSystemTime(at("2026-06-01T09:00:00Z"));
-    expect(view(hass).overview).toMatchObject({ status: "healthy", problems: [] });
+  it("leave a removed sensor alone even though its entities read unavailable", () => {
+    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "binary_sensor.office_aloe_sensor_stale": staleSensor({}), "sensor.office_aloe_temperature": unavailable("sensor.office_aloe_temperature"), "binary_sensor.office_aloe_temperature_stress": unavailable("binary_sensor.office_aloe_temperature_stress") });
+    const plant = view(hass);
+    expect(plant.overview).toMatchObject({ status: "healthy", problems: [] });
+    expect(plant.overview.roles.temperature).toBeUndefined();
   });
-  it("leave out a quiet battery sensor", () => {
-    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "sensor.office_aloe_battery": unavailable("sensor.office_aloe_battery"), "binary_sensor.office_aloe_low_battery": unavailable("binary_sensor.office_aloe_low_battery") });
-    vi.useFakeTimers(); vi.setSystemTime(at("2026-06-01T12:00:00Z"));
+  it("ignore a malformed attribute", () => {
+    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "binary_sensor.office_aloe_sensor_stale": { ...staleSensor({}), attributes: { sources: 1, input_problems: ["temperature"] } } });
     expect(view(hass).overview).toMatchObject({ status: "healthy", problems: [] });
   });
 });

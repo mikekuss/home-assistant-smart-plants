@@ -31,6 +31,7 @@ from custom_components.smart_plants.plant_status import (
     STRESS_ROLE_ORDER,
     RoleProblem,
     evaluate_plant_status,
+    input_problems,
     role_state,
     stress_kind,
 )
@@ -385,7 +386,7 @@ def test_failed_secondary_inputs_follow_moisture_and_stress_problems() -> None:
     ) == ("stale", [("temperature", "stale"), ("moisture", "no_sensors")])
 
 
-def _stale_light(*, nighttime: bool) -> IlluminanceEvaluation:
+def _stale_light(*, quiet_expected: bool) -> IlluminanceEvaluation:
     return IlluminanceEvaluation(
         computed_lux=None,
         sensor_stale=True,
@@ -398,16 +399,20 @@ def _stale_light(*, nighttime: bool) -> IlluminanceEvaluation:
             sample_count=0,
         ),
         reasons=("stale:sensor.mock_lux",),
-        nighttime=nighttime,
+        quiet_expected=quiet_expected,
     )
 
 
-def test_quiet_light_sensor_counts_only_during_the_day() -> None:
-    assert _status(moisture=_moisture(), illuminance=_stale_light(nighttime=True)) == (
+def test_quiet_light_sensor_counts_only_when_not_expected() -> None:
+    assert _status(
+        moisture=_moisture(), illuminance=_stale_light(quiet_expected=True)
+    ) == (
         "healthy",
         [],
     )
-    assert _status(moisture=_moisture(), illuminance=_stale_light(nighttime=False)) == (
+    assert _status(
+        moisture=_moisture(), illuminance=_stale_light(quiet_expected=False)
+    ) == (
         "stale",
         [("illuminance", "stale")],
     )
@@ -498,3 +503,16 @@ def test_role_problem_serializes() -> None:
 )
 def test_role_state(role: str, evaluation: Any, state: str) -> None:
     assert role_state(role, evaluation) == state
+
+
+def test_input_problems_lists_other_roles_only() -> None:
+    problems = input_problems(
+        {
+            "moisture": _moisture(),
+            "temperature": _temperature(stale=True),
+            "illuminance": _stale_light(quiet_expected=True),
+        }
+    )
+    assert [problem.as_dict() for problem in problems] == [
+        {"role": "temperature", "kind": "stale"}
+    ]

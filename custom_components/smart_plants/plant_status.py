@@ -15,7 +15,8 @@ Status priority, highest first:
    low light, conductivity, soil temperature, CO2, low battery).
 5. ``stale`` -- an assigned sensor is stale or gives no usable value. This
    covers moisture and every other reading except the battery. A light
-   sensor is not checked at night.
+   sensor is not checked at night, nor in the morning until it had its stale
+   time to report.
 6. ``no_sensors`` -- the moisture role has no sources.
 7. ``healthy`` -- none of the above.
 
@@ -172,11 +173,12 @@ def _reading_problem(role: str, evaluation: Any) -> str | None:
     ``stale`` or ``unavailable`` point at the sensors; ``no_main_sensor`` means
     several sensors are combined with ``primary`` but none is chosen, so the
     sensors themselves may be fine. Light sensors often stay quiet at night, so
-    the light reading is only checked during the day.
+    the light reading is not checked while its evaluation says a quiet sensor is
+    expected (``quiet_expected``).
     """
     if not _has_sources(evaluation):
         return None
-    if role == "illuminance" and getattr(evaluation, "nighttime", False):
+    if role == "illuminance" and getattr(evaluation, "quiet_expected", False):
         return None
     if getattr(evaluation, "sensor_stale", False):
         return "stale"
@@ -185,6 +187,15 @@ def _reading_problem(role: str, evaluation: Any) -> str | None:
             return "no_main_sensor"
         return "unavailable"
     return None
+
+
+def input_problems(evaluations: dict[str, Any]) -> tuple[RoleProblem, ...]:
+    """Return the reading problems of the assigned sensors other than moisture."""
+    return tuple(
+        RoleProblem(role, kind)
+        for role in INPUT_ROLE_ORDER
+        if (kind := _reading_problem(role, evaluations.get(role))) is not None
+    )
 
 
 def evaluate_plant_status(
@@ -214,10 +225,10 @@ def evaluate_plant_status(
         if (kind := stress_kind(role, evaluations.get(role))) is not None
     ]
     problems.extend(stress_problems)
+    moisture_problem = _reading_problem(MOISTURE_ROLE, moisture)
     reading_problems = [
-        RoleProblem(role, kind)
-        for role in (MOISTURE_ROLE, *INPUT_ROLE_ORDER)
-        if (kind := _reading_problem(role, evaluations.get(role))) is not None
+        *([RoleProblem(MOISTURE_ROLE, moisture_problem)] if moisture_problem else []),
+        *input_problems(evaluations),
     ]
     problems.extend(reading_problems)
     if not _has_sources(moisture):

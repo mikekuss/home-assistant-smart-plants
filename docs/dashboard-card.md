@@ -73,7 +73,8 @@ Use the card editor to pick the plant. It fills in the device ID for you.
 The card reads the plant's entities, so it updates as soon as they change. The target band
 comes from the `min`, `target` and `max` attributes of the soil moisture sensor. The last
 watering comes from the `last_watered` attribute of *Needs water*. The `sources` attribute of
-*Sensor stale* tells the card whether the plant has soil moisture sensors. They are described
+*Sensor stale* tells the card whether the plant has soil moisture sensors, and its
+`input_problems` attribute which other sensors aren't reporting. They are described
 in [Entities](entities.md#sensors).
 
 Home Assistant drops these attributes while an entity is unavailable. So the card shows no

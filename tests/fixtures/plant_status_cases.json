@@ -1,5 +1,5 @@
 {
-  "description": "Plant status cases shared by tests/test_plant_status_cases.py and frontend/src/card/plant-state.test.ts. Each case gives the role evaluations, the entity states Home Assistant shows for them, and the status. Python checks the status and the entity states; the dashboard card derives the status from the entity states. 'card' records where the entity states don't carry enough to match: they don't say that several moisture sensors wait for a main sensor, or whether a reading without a value went stale, so the card reports both as not reporting. 'night' in the entity states is the card's clock, not an entity state.",
+  "description": "Plant status cases shared by tests/test_plant_status_cases.py and frontend/src/card/plant-state.test.ts. Each case gives the role evaluations, the entity states Home Assistant shows for them, and the status. Python checks the status and the entity states; the dashboard card derives the status from the entity states. 'card' records where the entity states don't carry enough to match: they don't say that several moisture sensors wait for a main sensor, so the card reports them as not reporting. 'input_problems' is the attribute of the same name on the stale sensor.",
   "cases": [
     {
       "name": "healthy",
@@ -32,10 +32,7 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "temperature": "20.0"
-        },
-        "night": false
+        "input_problems": {}
       },
       "status": "healthy",
       "problems": []
@@ -71,10 +68,7 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "temperature": "20.0"
-        },
-        "night": false
+        "input_problems": {}
       },
       "status": "needs_water",
       "problems": [
@@ -108,8 +102,7 @@
         "sensor_stale": "off",
         "stress": {},
         "sources": 1,
-        "readings": {},
-        "night": false
+        "input_problems": {}
       },
       "status": "too_wet",
       "problems": [
@@ -168,12 +161,7 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "humidity": "20.0",
-          "temperature": "20.0",
-          "illuminance": "20.0"
-        },
-        "night": false
+        "input_problems": {}
       },
       "status": "problem",
       "problems": [
@@ -245,13 +233,7 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "battery": "20",
-          "co2": "20",
-          "soil_temperature": "20.0",
-          "conductivity": "20.0"
-        },
-        "night": false
+        "input_problems": {}
       },
       "status": "problem",
       "problems": [
@@ -304,10 +286,7 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "temperature": "20.0"
-        },
-        "night": false
+        "input_problems": {}
       },
       "status": "problem",
       "problems": [
@@ -348,10 +327,7 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "illuminance": "20.0"
-        },
-        "night": false
+        "input_problems": {}
       },
       "status": "healthy",
       "problems": []
@@ -378,8 +354,7 @@
         "sensor_stale": "on",
         "stress": {},
         "sources": 1,
-        "readings": {},
-        "night": false
+        "input_problems": {}
       },
       "status": "stale",
       "problems": [
@@ -411,8 +386,7 @@
         "sensor_stale": "on",
         "stress": {},
         "sources": 2,
-        "readings": {},
-        "night": false
+        "input_problems": {}
       },
       "status": "stale",
       "problems": [
@@ -444,8 +418,7 @@
         "sensor_stale": "on",
         "stress": {},
         "sources": 2,
-        "readings": {},
-        "night": false
+        "input_problems": {}
       },
       "status": "needs_water",
       "problems": [
@@ -492,10 +465,7 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "temperature": "20.0"
-        },
-        "night": false
+        "input_problems": {}
       },
       "status": "problem",
       "problems": [
@@ -531,8 +501,7 @@
         "sensor_stale": "off",
         "stress": {},
         "sources": 0,
-        "readings": {},
-        "night": false
+        "input_problems": {}
       },
       "status": "no_sensors",
       "problems": [
@@ -575,10 +544,7 @@
           }
         },
         "sources": 0,
-        "readings": {
-          "illuminance": "20.0"
-        },
-        "night": false
+        "input_problems": {}
       },
       "status": "problem",
       "problems": [
@@ -615,8 +581,7 @@
         "sensor_stale": "off",
         "stress": {},
         "sources": 1,
-        "readings": {},
-        "night": false
+        "input_problems": {}
       },
       "status": "stale",
       "problems": [
@@ -648,8 +613,7 @@
         "sensor_stale": "off",
         "stress": {},
         "sources": 2,
-        "readings": {},
-        "night": false
+        "input_problems": {}
       },
       "status": "stale",
       "problems": [
@@ -704,10 +668,9 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "temperature": "unavailable"
-        },
-        "night": false
+        "input_problems": {
+          "temperature": "stale"
+        }
       },
       "status": "stale",
       "problems": [
@@ -715,16 +678,7 @@
           "role": "temperature",
           "kind": "stale"
         }
-      ],
-      "card": {
-        "status": "stale",
-        "problems": [
-          {
-            "role": "temperature",
-            "kind": "unavailable"
-          }
-        ]
-      }
+      ]
     },
     {
       "name": "one of two humidity sensors stale",
@@ -761,10 +715,9 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "humidity": "20.0"
-        },
-        "night": false
+        "input_problems": {
+          "humidity": "stale"
+        }
       },
       "status": "stale",
       "problems": [
@@ -818,11 +771,9 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "temperature": "20.0",
+        "input_problems": {
           "conductivity": "unavailable"
-        },
-        "night": false
+        }
       },
       "status": "problem",
       "problems": [
@@ -854,10 +805,10 @@
           "reason": "illuminance_stale",
           "reading": null,
           "stale": true,
-          "nighttime": true,
           "reasons": [
             "stale:sensor.mock_lux"
-          ]
+          ],
+          "quiet_expected": true
         }
       },
       "entities": {
@@ -873,10 +824,7 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "illuminance": "unavailable"
-        },
-        "night": true
+        "input_problems": {}
       },
       "status": "healthy",
       "problems": []
@@ -917,10 +865,9 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "illuminance": "unavailable"
-        },
-        "night": false
+        "input_problems": {
+          "illuminance": "stale"
+        }
       },
       "status": "stale",
       "problems": [
@@ -928,16 +875,7 @@
           "role": "illuminance",
           "kind": "stale"
         }
-      ],
-      "card": {
-        "status": "stale",
-        "problems": [
-          {
-            "role": "illuminance",
-            "kind": "unavailable"
-          }
-        ]
-      }
+      ]
     },
     {
       "name": "quiet battery sensor is no problem",
@@ -975,13 +913,139 @@
           }
         },
         "sources": 1,
-        "readings": {
-          "battery": "unavailable"
-        },
-        "night": false
+        "input_problems": {}
       },
       "status": "healthy",
       "problems": []
+    },
+    {
+      "name": "temperature sensor removed, its entities kept",
+      "disabled": false,
+      "moisture": {
+        "percent": 41.0,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
+      },
+      "stress": {
+        "temperature": {
+          "available": false,
+          "on": false,
+          "reason": "temperature_unavailable",
+          "reading": null,
+          "reasons": [
+            "no_sources"
+          ]
+        }
+      },
+      "entities": {
+        "allUnavailable": false,
+        "moisture": "41.0",
+        "needs_water": "off",
+        "too_wet": "off",
+        "sensor_stale": "off",
+        "stress": {
+          "temperature": {
+            "state": "unavailable",
+            "reason": null
+          }
+        },
+        "sources": 1,
+        "input_problems": {}
+      },
+      "status": "healthy",
+      "problems": []
+    },
+    {
+      "name": "light sensor quiet in the morning before its stale time",
+      "disabled": false,
+      "moisture": {
+        "percent": 41.0,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
+      },
+      "stress": {
+        "illuminance": {
+          "available": false,
+          "on": false,
+          "reason": "illuminance_stale",
+          "reading": null,
+          "stale": true,
+          "quiet_expected": true,
+          "reasons": [
+            "stale:sensor.mock_lux"
+          ]
+        }
+      },
+      "entities": {
+        "allUnavailable": false,
+        "moisture": "41.0",
+        "needs_water": "off",
+        "too_wet": "off",
+        "sensor_stale": "off",
+        "stress": {
+          "illuminance": {
+            "state": "unavailable",
+            "reason": null
+          }
+        },
+        "sources": 1,
+        "input_problems": {}
+      },
+      "status": "healthy",
+      "problems": []
+    },
+    {
+      "name": "one of two light sensors stale during the day",
+      "disabled": false,
+      "moisture": {
+        "percent": 41.0,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
+      },
+      "stress": {
+        "illuminance": {
+          "available": false,
+          "on": false,
+          "reason": "illuminance_stale",
+          "stale": true,
+          "reasons": [
+            "stale:sensor.mock_lux_b"
+          ]
+        }
+      },
+      "entities": {
+        "allUnavailable": false,
+        "moisture": "41.0",
+        "needs_water": "off",
+        "too_wet": "off",
+        "sensor_stale": "off",
+        "stress": {
+          "illuminance": {
+            "state": "unavailable",
+            "reason": null
+          }
+        },
+        "sources": 1,
+        "input_problems": {
+          "illuminance": "stale"
+        }
+      },
+      "status": "stale",
+      "problems": [
+        {
+          "role": "illuminance",
+          "kind": "stale"
+        }
+      ]
     },
     {
       "name": "paused",
@@ -1014,10 +1078,7 @@
           }
         },
         "sources": null,
-        "readings": {
-          "temperature": "unavailable"
-        },
-        "night": false
+        "input_problems": {}
       },
       "status": "paused",
       "problems": []

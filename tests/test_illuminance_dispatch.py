@@ -153,6 +153,49 @@ async def test_frequent_reports_keep_a_bounded_sample_history(
     assert controller.current_evaluation.low_light.reason == "enough_light"
 
 
+def _input_problems(hass: HomeAssistant, plant_id: str) -> Any:
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{DOMAIN}:{plant_id}:sensor_stale"
+    )
+    assert entity_id is not None
+    state = hass.states.get(entity_id)
+    assert state is not None
+    return state.attributes["input_problems"]
+
+
+async def test_light_sensor_quiet_overnight_counts_only_after_its_stale_time(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    # A sensor that reports only on change sits at 0 lx all night and goes
+    # stale before dawn. The plant keeps no problem at 08:00 and only counts
+    # the sensor once it has stayed quiet for the stale time of daylight.
+    await hass.config.async_set_time_zone("UTC")
+    start = datetime(2026, 12, 1, 20, tzinfo=UTC)
+    freezer.move_to(start)
+    manager = await _setup(hass)
+    hass.states.async_set("sensor.mock_lux", "0", LUX)
+    plant_id = await _plant_with_light(manager)
+    await hass.async_block_till_done()
+    controller = manager.get_role_controller(plant_id, "illuminance")
+    assert controller is not None
+    stale_after = timedelta(seconds=controller._config.stale_after_seconds)
+    assert stale_after < timedelta(hours=10)
+
+    await _move_to(hass, freezer, datetime(2026, 12, 2, 8, 0, 1, tzinfo=UTC))
+    assert controller.current_evaluation.sensor_stale is True
+    assert _input_problems(hass, plant_id) == {}
+
+    # No report arrives; the timer at 08:00 plus the stale time counts it.
+    grace_end = datetime(2026, 12, 2, 8, tzinfo=UTC) + stale_after
+    await _move_to(hass, freezer, grace_end + timedelta(seconds=1))
+    assert _input_problems(hass, plant_id) == {"illuminance": "stale"}
+
+    # A new reading clears it.
+    hass.states.async_set("sensor.mock_lux", "300", LUX)
+    await hass.async_block_till_done()
+    assert _input_problems(hass, plant_id) == {}
+
+
 def test_low_light_sample_count_stays_out_of_the_recorder() -> None:
     unrecorded = binary_sensor._LowLightBinary._unrecorded_attributes
     assert "sample_count" in unrecorded

@@ -22,8 +22,6 @@ export interface CardHassData {
   entities?: Record<string, CardEntityEntry | undefined>;
   devices?: Record<string, CardDeviceEntry | undefined>;
   areas?: Record<string, CardArea | undefined>;
-  // Home Assistant's time zone, for the day/night window of light sensors.
-  config?: { time_zone?: unknown };
 }
 
 // Non-moisture roles in status priority order, with the binary sensor that
@@ -37,13 +35,6 @@ export const STRESS_SIGNALS: readonly { role: ReadingRole; sensor: string; kinds
   { role: "co2", sensor: "co2_stress", kinds: { co2_stress: "high_co2" } },
   { role: "battery", sensor: "low_battery", kinds: { low_battery: "battery_low" } },
 ];
-// Roles whose sensors must report for a plant to be healthy, besides
-// moisture. As in the backend, a quiet battery sensor is not a failed input.
-const INPUT_ROLES = new Set<ReadingRole>(STRESS_SIGNALS.map(s => s.role).filter(role => role !== "battery"));
-// Low light is judged between 08:00 and 18:00; outside that window a light
-// sensor that stays quiet is expected.
-const DAY_START_HOUR = 8;
-const DAY_END_HOUR = 18;
 // A stress reason without a direction still counts, as in the backend.
 const GENERIC_STRESS_KIND = "stress";
 const LOW_KINDS = new Set(["needs_water", "too_cold", "too_dry", "low_light", "low_conductivity", "battery_low"]);
@@ -109,19 +100,18 @@ export interface StatusInput {
   // are assigned. null while the stale sensor is unavailable or doesn't say.
   sources: number | null;
   stress: Partial<Record<ReadingRole, { state: string; reason: string | null }>>;
-  // The state of each other role's reading sensor the plant has.
-  readings: Partial<Record<ReadingRole, string>>;
-  // Outside the daytime window in Home Assistant's time zone.
-  night: boolean;
+  // The `input_problems` attribute of the stale sensor: the other assigned
+  // sensors that give no usable value, by role, as the backend counts them.
+  input_problems: Partial<Record<ReadingRole, string>>;
 }
 
 export interface StatusResult { status: PlantStatus; problems: PlantProblem[] }
 
 // The plant status and its issues, most urgent first, as plant_status.py
-// derives them. The entities don't say why assigned sensors give no value; the
-// card reports them as not reporting, also when they went stale or when
-// several moisture sensors wait for a main sensor to be chosen (the panel
-// names those cases).
+// derives them. The entities don't say why moisture sensors give no value;
+// the card reports them as not reporting, also when they went stale or when
+// several of them wait for a main sensor to be chosen (the panel names those
+// cases). Other sensors waiting for a main sensor also show as not reporting.
 export function deriveStatus(input: StatusInput): StatusResult {
   if (input.allUnavailable) return { status: "paused", problems: [] };
   const problems: PlantProblem[] = [];
@@ -157,45 +147,32 @@ export function deriveStatus(input: StatusInput): StatusResult {
   return { status, problems };
 }
 
-// Other assigned sensors that give no usable value. A reading without a value
-// is not reporting. A reading with a value whose alert is unavailable means one
-// of several combined sensors went stale; the light alert also waits for
-// daytime samples, so for light only the reading counts.
+// Other assigned sensors that give no usable value. The backend decides which
+// count, so a removed sensor or a light sensor that is quiet at night or early
+// in the morning is no problem here either.
 function inputProblemsOf(input: StatusInput): PlantProblem[] {
   const found: PlantProblem[] = [];
   for (const { role } of STRESS_SIGNALS) {
-    const reading = input.readings[role];
-    if (!INPUT_ROLES.has(role) || reading === undefined) continue;
-    if (role === "illuminance" && input.night) continue;
-    if (numeric(reading) === null) found.push({ role, kind: "unavailable" });
-    else if (role !== "illuminance" && input.stress[role]?.state === "unavailable") found.push({ role, kind: "stale" });
+    const kind = input.input_problems[role];
+    if (kind !== undefined) found.push({ role, kind: kind === "stale" ? "stale" : "unavailable" });
   }
   return found;
 }
 
-export function isNight(hass: CardHassData, now: number = Date.now()): boolean {
-  const timeZone = typeof hass.config?.time_zone === "string" ? hass.config.time_zone : undefined;
-  let hour: number;
-  try {
-    hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone }).format(now));
-  } catch {
-    // An unknown time zone name: fall back to the browser's.
-    hour = new Date(now).getHours();
-  }
-  return hour < DAY_START_HOUR || hour >= DAY_END_HOUR;
-}
-
-export function statusInput(hass: CardHassData, entities: Map<string, string>, now: number = Date.now()): StatusInput {
+export function statusInput(hass: CardHassData, entities: Map<string, string>): StatusInput {
   const state = (key: string) => { const id = entities.get(key); return id ? hass.states[id] : undefined; };
   const stress: StatusInput["stress"] = {};
   for (const signal of STRESS_SIGNALS) {
     const s = state(`binary_sensor.${signal.sensor}`);
     if (s) stress[signal.role] = { state: s.state, reason: typeof s.attributes.reason === "string" ? s.attributes.reason : null };
   }
-  const readings: StatusInput["readings"] = {};
-  for (const { role } of STRESS_SIGNALS) {
-    const s = state(`sensor.${role}`);
-    if (s) readings[role] = s.state;
+  const inputProblems: StatusInput["input_problems"] = {};
+  const reported = state("binary_sensor.sensor_stale")?.attributes.input_problems;
+  if (typeof reported === "object" && reported !== null) {
+    for (const { role } of STRESS_SIGNALS) {
+      const kind = (reported as Record<string, unknown>)[role];
+      if (typeof kind === "string") inputProblems[role] = kind;
+    }
   }
   const ids = [...entities.values()];
   return {
@@ -206,8 +183,7 @@ export function statusInput(hass: CardHassData, entities: Map<string, string>, n
     sensor_stale: state("binary_sensor.sensor_stale")?.state ?? null,
     sources: num(state("binary_sensor.sensor_stale")?.attributes.sources),
     stress,
-    readings,
-    night: isNight(hass, now),
+    input_problems: inputProblems,
   };
 }
 

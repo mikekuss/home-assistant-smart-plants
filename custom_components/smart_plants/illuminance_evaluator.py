@@ -57,9 +57,11 @@ class IlluminanceEvaluation:
     computed_available: bool
     low_light: LowLightEvaluation
     reasons: tuple[str, ...] = ()
-    # Evaluated outside the 08:00-18:00 daytime window. A light sensor that
-    # stays quiet at night is expected, so the plant status ignores it then.
-    nighttime: bool = False
+    # A quiet light sensor is expected now, so the plant status ignores it:
+    # outside the 08:00-18:00 daytime window, and in the morning until the
+    # sensor had the stale time to report again. Many light sensors report only
+    # on change and sit at 0 lx all night.
+    quiet_expected: bool = False
 
 
 def parse_illuminance(value: object, unit: object) -> float | None:  # noqa: PLR0911
@@ -116,7 +118,7 @@ def evaluate(  # noqa: PLR0912, PLR0913
     reasons: list[str] = []
     sources: tuple[SensorSource, ...] = config.sources
     thresholds = _effective_thresholds(config)
-    nighttime = now_datetime is not None and not is_daytime(now_datetime)
+    quiet_expected = light_quiet_expected(now_datetime, config.stale_after_seconds)
     if not sources:
         return IlluminanceEvaluation(
             computed_lux=None,
@@ -133,7 +135,7 @@ def evaluate(  # noqa: PLR0912, PLR0913
                 thresholds=thresholds,
             ),
             reasons=("no_sources",),
-            nighttime=nighttime,
+            quiet_expected=quiet_expected,
         )
 
     stale_any = False
@@ -207,7 +209,7 @@ def evaluate(  # noqa: PLR0912, PLR0913
                 thresholds=thresholds,
             ),
             reasons=tuple(reasons),
-            nighttime=nighttime,
+            quiet_expected=quiet_expected,
         )
     computed_lux = round(computed, 1)
     return IlluminanceEvaluation(
@@ -225,7 +227,7 @@ def evaluate(  # noqa: PLR0912, PLR0913
             thresholds=thresholds,
         ),
         reasons=tuple(reasons),
-        nighttime=nighttime,
+        quiet_expected=quiet_expected,
     )
 
 
@@ -321,3 +323,24 @@ def _evaluate_low_light(  # noqa: PLR0913
 
 def is_daytime(value: datetime) -> bool:
     return LOW_LIGHT_DAY_START_HOUR <= value.hour < LOW_LIGHT_DAY_END_HOUR
+
+
+def light_quiet_expected(
+    now_datetime: datetime | None, stale_after_seconds: int
+) -> bool:
+    """
+    Return whether a quiet light sensor is expected at ``now_datetime``.
+
+    That is the case at night, and during the day until ``stale_after_seconds``
+    have passed since 08:00. A sensor that last reported before 08:00 then gets
+    the full stale time of daylight to report before it counts as not
+    reporting; one that reported during the day only goes stale later anyway.
+    """
+    if now_datetime is None:
+        return False
+    if not is_daytime(now_datetime):
+        return True
+    day_start = now_datetime.replace(
+        hour=LOW_LIGHT_DAY_START_HOUR, minute=0, second=0, microsecond=0
+    )
+    return (now_datetime - day_start).total_seconds() < stale_after_seconds

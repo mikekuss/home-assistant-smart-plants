@@ -88,7 +88,8 @@ The same applies to the other roles with their own units; see
 A source is considered stale when it hasn't reported a valid reading to Home Assistant within
 the **Not updating after** window (6 hours by default). The panel shows such a sensor as
 *not updating* and the plant as *No recent data*, unless the stale sensor is the battery
-sensor, or a light sensor at night. Some sensors only report when the value
+sensor, or a light sensor at night or early in the morning (see
+[Staleness](sensors-and-health.md#staleness)). Some sensors only report when the value
 changes, and a very stable reading can look stale. Increase **Not updating after** for that
 reading in the plant's **Sensors** tab under **Several sensors for one reading**, or check
 whether the device has stopped reporting.

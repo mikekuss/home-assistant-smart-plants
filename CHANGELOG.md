@@ -43,9 +43,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   charts.
 - A plant shows *No recent data* instead of *Healthy* when a temperature, humidity, light,
   conductivity, soil temperature or CO2 sensor is stale or gives no usable value. Before,
-  only the soil moisture sensor counted. Battery sensors don't count, and a light sensor
-  counts only between 08:00 and 18:00. Such plants now also appear under the **Sensor issues**
-  filter. See [Staleness](docs/sensors-and-health.md#staleness).
+  only the soil moisture sensor counted. Battery sensors don't count. A light sensor doesn't
+  count at night, nor in the morning until its staleness window has passed since 08:00, so a
+  sensor that sat at 0 lx overnight has time to report. Such plants now also appear under the
+  **Sensor issues** filter. The new `input_problems` attribute of *Sensor stale* names these
+  sensors, and the dashboard card uses it. See
+  [Staleness](docs/sensors-and-health.md#staleness).
 - Low light keeps one light sample per minute, the brightest of that minute, and its
   `sample_count` attribute is no longer recorded in history.
 - Every logged-in Home Assistant user can now view plant photos, so dashboard cards can show

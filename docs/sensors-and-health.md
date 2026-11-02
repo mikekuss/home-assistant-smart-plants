@@ -74,9 +74,13 @@ panel shows a stale sensor as *not updating*.
 A plant shows *No recent data* when an assigned sensor is stale or gives no usable value, and
 no other problem applies. This covers soil moisture and every other reading except the
 battery, because many battery sensors only report when the level changes. A light sensor
-counts only between 08:00 and 18:00, so one that stays quiet at night doesn't change the
-status. The plant page and the card name the sensor, for example *Temperature: not
-reporting*.
+doesn't count at night (18:00 to 08:00), and in the morning it doesn't count until its
+staleness window has passed since 08:00. A light sensor that only reports changes can sit at
+0 lx all night and go stale before dawn; it then has the full window of daylight to report
+before the plant shows *No recent data*. With the default 6 hours, a light sensor that
+stays quiet all day counts from 14:00. The plant page and the card name the sensor, for
+example *Temperature: not reporting*. A sensor you removed from a role doesn't count, even
+though its entities stay and read unavailable.
 
 - A newly assigned source gets one full window as a grace period before it can be stale.
 - An assigned sensor that no longer exists counts as stale.
