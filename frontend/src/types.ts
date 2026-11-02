@@ -253,6 +253,9 @@ export interface HomeAssistantLike {
   // Core configuration; the panel reads the Home Assistant time zone so care
   // dates match the dates the backend computes.
   config?: { time_zone?: unknown };
+  // "docked", "auto" or "always_hidden"; with "always_hidden" the sidebar
+  // opens from a menu button even on wide screens.
+  dockedSidebar?: string;
   // Home Assistant frontend supplies `localize` on the hass object. It may
   // return the empty string when a key is unknown; callers must fall back.
   localize?: (key: string, ...args: unknown[]) => string;

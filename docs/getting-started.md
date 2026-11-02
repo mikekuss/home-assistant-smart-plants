@@ -43,6 +43,7 @@ panel can use it too.
 Use **Add plant** at the bottom right (or **⋮ → Add plant** in the top bar) to start the
 creation wizard. Select a plant's name to open its page. The **⋮** menu also opens
 [Notifications](notifications.md) and links to the integration options and this documentation.
+On a phone, the menu button at the top left opens the Home Assistant sidebar.
 
 ## Create your first plant
 
@@ -99,7 +100,7 @@ their target range. Two buttons sit next to it:
 - **Log care** opens the care form in the **Care** tab.
 
 The **⋮** menu in the top bar offers **Open device**, **Download diagnostics**,
-**Snooze alerts…** (see [Going on vacation](#going-on-vacation)), **Pause monitoring** (or
+**Notifications…** (starting with this plant), **Snooze alerts…** (see [Going on vacation](#going-on-vacation)), **Pause monitoring** (or
 **Resume monitoring**) and **Delete plant**. The back arrow returns to
 the overview.
 
@@ -220,7 +221,7 @@ Pruning, Repotting, Pest control, Notes) filter the entries.
 | Pest control | Pest, product, note |
 | Note | Text (required, up to 1000 characters) |
 
-Notes can be up to 500 characters and other details up to 120. The **⋮** menu of an entry
+Notes can be up to 500 characters and other details, such as the product or the plant part, up to 120. The **⋮** menu of an entry
 edits or deletes it. An entry that marks a care task as done keeps its care type when you edit
 it. Pest checks and custom tasks appear under the task's name. Each plant keeps up to 256 care
 entries. After that, Smart Plants removes the oldest waterings to make room (see
@@ -285,6 +286,9 @@ The task's **⋮** menu has more:
 - **Mark as done…**: opens the care form, where you can pick another date and add a note.
 - **Skip this time**: counts the task as handled for now. The notification has **Undo**.
 - **Edit**: changes the name, schedule, instructions or last done date. The task type stays.
+  Saving sends only the fields you changed, so a change made elsewhere to another field
+  stays. If someone else changed the same field in the meantime, the editor says so and keeps
+  your values; save again to use them.
 - **Automate…**: shows the task's entity IDs and opens the automation editor.
 - **Delete**: asks first, then removes the task and its entities. Automations that use those
   entities stop working. The care history keeps the task's entries.

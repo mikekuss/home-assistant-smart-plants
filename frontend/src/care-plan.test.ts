@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SmartPlantsPanel } from "./panel.js";
 import { ENGLISH, createLocalizer } from "./localize.js";
-import { careLine, careNote, careOnlyChange, careSuggestions, draftFromTask, draftSummary, forecastEntities, forecastMissing, forecastShortText, forecastShortUntil, forecastUnit, fromCelsius, lastDone, localDate, matchingTask, monthsInRange, numericSensor, pickMonth, pickSource, plantReadingRoles, presetDraft, readingSuggestion, restDraft, restSentence, restTaskChanges, resumeDate, scheduleText, shortDate, sourceUnit, taskChanges, taskChip, validateDraft, validateRest, winterDraft, winterSourceMissing } from "./care-plan.js";
+import { careLine, careNote, careOnlyChange, careSuggestions, draftFromTask, draftSummary, forecastEntities, forecastMissing, forecastShortText, forecastShortUntil, forecastUnit, fromCelsius, lastDone, localDate, matchingTask, mergeTaskChanges, monthsInRange, numericSensor, pickMonth, pickSource, plantReadingRoles, presetDraft, readingSuggestion, restDraft, restSentence, restTaskChanges, resumeDate, scheduleText, shortDate, sourceUnit, taskChanges, taskChip, validateDraft, validateRest, winterDraft, winterSourceMissing } from "./care-plan.js";
 import { matchesFilter } from "./overview-model.js";
 import type { CareTaskSummary, PlantOverview } from "./overview-model.js";
 import type { CareEvent, CareTask, HAEntity, HAState, HomeAssistantLike, PlantRecord, PlantSpecies, RestPeriod } from "./types.js";
@@ -1070,5 +1070,50 @@ describe("forecast reading tasks in the panel", () => {
     expect(dialogButton(el, "Save").disabled).toBe(false);
     dialogButton(el, "Save").click(); await settle(el);
     expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/update")).toMatchObject({ schedule: { ...frostSchedule, source: { forecast: { ...frostSchedule.source.forecast, entity_id: other.entity_id } } } });
+  });
+});
+
+describe("editing a task changed elsewhere", () => {
+  it("merges only the edited fields onto the latest task", () => {
+    const input = validateDraft({ ...draftFromTask(fertilize), every: "6" }, TODAY).input!;
+    const latest = { ...fertilize, instructions: "Feed lightly" };
+    expect(mergeTaskChanges(fertilize, latest, input)).toEqual({ changes: { schedule: { kind: "interval", every: 6, unit: "weeks", growing_season_only: true } }, overlaps: [] });
+    // Both set the same value: nothing left to send.
+    expect(mergeTaskChanges(fertilize, { ...fertilize, schedule: input.schedule }, input)).toEqual({ changes: {}, overlaps: [] });
+    // Both changed the schedule to different values.
+    const other = { ...fertilize, schedule: { ...fertilize.schedule, every: 8 } } as CareTask;
+    expect(mergeTaskChanges(fertilize, other, input)).toEqual({ changes: { schedule: input.schedule }, overlaps: ["schedule"] });
+  });
+
+  it("keeps a change made elsewhere to a field the person did not touch", async () => {
+    const backend = careBackend(plantWith({ care_tasks: [fertilize] }));
+    const el = await openCare(backend);
+    await menu(el, 0, "edit");
+    // Another browser adds instructions while the editor is open.
+    const plant = backend.current();
+    backend.change({ ...plant, revision: plant.revision + 1, care_tasks: [{ ...fertilize, instructions: "Feed lightly" }] });
+    await (el as unknown as { _refresh(showLoading: boolean): Promise<void> })._refresh(false); await settle(el);
+    await typeInto(el, dialog(el)!.querySelector<HTMLInputElement>('input[type="number"]')!, "6");
+    dialogButton(el, "Save").click(); await settle(el); await settle(el);
+    expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/update")).toEqual({ type: "smart_plants/care_tasks/update", plant_id: sample.id, task_id: FERTILIZE_ID, expected_revision: 2, schedule: { kind: "interval", every: 6, unit: "weeks", growing_season_only: true } });
+    expect(backend.current().care_tasks![0]!.instructions).toBe("Feed lightly");
+  });
+
+  it("asks before overwriting a field that was changed elsewhere too", async () => {
+    const backend = careBackend(plantWith({ care_tasks: [fertilize] }));
+    const el = await openCare(backend);
+    await menu(el, 0, "edit");
+    const plant = backend.current();
+    backend.change({ ...plant, revision: plant.revision + 1, care_tasks: [{ ...fertilize, schedule: { ...fertilize.schedule, every: 8 } as CareTask["schedule"] }] });
+    await (el as unknown as { _refresh(showLoading: boolean): Promise<void> })._refresh(false); await settle(el);
+    await typeInto(el, dialog(el)!.querySelector<HTMLInputElement>('input[type="number"]')!, "6");
+    dialogButton(el, "Save").click(); await settle(el); await settle(el);
+    expect(backend.h.calls.some(c => c.type === "smart_plants/care_tasks/update")).toBe(false);
+    expect(dialog(el)!.textContent).toContain("This task was changed somewhere else while you edited it: when it's due.");
+    expect(dialog(el)!.querySelector<HTMLInputElement>('input[type="number"]')!.value).toBe("6");
+    // Saving again keeps the person's value.
+    dialogButton(el, "Save").click(); await settle(el); await settle(el);
+    expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/update")).toMatchObject({ expected_revision: 2, schedule: { every: 6 } });
+    expect(dialog(el)).toBeNull();
   });
 });

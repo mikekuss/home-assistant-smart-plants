@@ -60,6 +60,7 @@ export class SmartPlantsNotifications extends LitElement {
     .plant-choices { display: flex; flex-direction: column; gap: 4px; padding-inline-start: 34px; }
     .plant-choices .check, .choices .check { margin: 4px 0; }
     .hint { margin: 0; }
+    .notify-list .toggle-error { grid-column: 1 / -1; }
     @media (max-width: 600px) { .preset-fields, .plant-choices { padding-inline-start: 0; } .preset-fields { grid-template-columns: 1fr; } }
   `];
   @property({ attribute: false }) public hass?: NotifyHass;
@@ -68,14 +69,19 @@ export class SmartPlantsNotifications extends LitElement {
   @property({ attribute: false }) public devices: HADevice[] = [];
   @property({ attribute: false }) public entities: HAEntity[] = [];
   @property({ attribute: false }) public states: Record<string, HAState> = {};
+  // Opened from a plant page: the new notification starts with that plant chosen.
+  @property({ attribute: false }) public plantId: string | null = null;
   @state() private _draft: Draft = { kind: "daily_report", time: "08:00", delayMinutes: 30, quiet: false, quietFrom: "22:00", quietTo: "07:00", allPlants: true, plantIds: new Set(), target: "", error: "" };
   @state() private _found: FoundNotification[] = [];
   @state() private _toggling: ReadonlySet<string> = new Set();
+  // The last failed on/off switch and why, shown under its row.
+  @state() private _toggleError: { entityId: string; message: string } | null = null;
   private _request = 0;
   private _unsubscribe: (() => void) | null = null;
 
   connectedCallback(): void {
     super.connectedCallback();
+    if (this.plantId && !this.hasUpdated) this._draft = { ...this._draft, allPlants: false, plantIds: new Set([this.plantId]) };
     void this._load();
     const hass = this.hass;
     // Saving in the automation editor reloads automations; read them again then.
@@ -155,11 +161,18 @@ export class SmartPlantsNotifications extends LitElement {
     window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
     this._close();
   }
-  private async _toggle(entityId: string, on: boolean): Promise<void> {
+  private async _toggle(entityId: string, input: HTMLInputElement): Promise<void> {
+    const on = input.checked;
     const hass = this.hass; if (!hass || this._toggling.has(entityId)) return;
-    this._toggling = new Set([...this._toggling, entityId]);
+    this._toggling = new Set([...this._toggling, entityId]); this._toggleError = null;
     try { await hass.connection.sendMessagePromise({ type: "call_service", domain: "automation", service: on ? "turn_on" : "turn_off", target: { entity_id: entityId } }); }
-    catch { this.requestUpdate(); }
+    catch (e) {
+      // The switch goes back to the automation's state; the row says why.
+      input.checked = this.states[entityId]?.state === "on";
+      const state = this.states[entityId]; const name = typeof state?.attributes.friendly_name === "string" && state.attributes.friendly_name ? state.attributes.friendly_name : entityId;
+      const reason = e && typeof e === "object" && "message" in e && typeof e.message === "string" && e.message ? e.message : this.l.t("api_error.unknown");
+      this._toggleError = { entityId, message: this.l.t(on ? "notifications.toggle_on_failed" : "notifications.toggle_off_failed", { name, error: reason }) };
+    }
     finally { const next = new Set(this._toggling); next.delete(entityId); this._toggling = next; }
   }
   private _renderExisting() {
@@ -174,9 +187,10 @@ export class SmartPlantsNotifications extends LitElement {
         const sent = typeof last === "string" && last ? l.t("notifications.last_sent", { time: relativeTime(l, last) }) : l.t("notifications.never_sent");
         return html`<li>
           <input class="switch" type="checkbox" role="switch" aria-label=${name} aria-describedby=${`sent-${entityId}`} .checked=${state!.state === "on"} ?disabled=${this._toggling.has(entityId) || state!.state === "unavailable"}
-            @change=${(e: Event) => void this._toggle(entityId, (e.target as HTMLInputElement).checked)}>
+            @change=${(e: Event) => void this._toggle(entityId, e.target as HTMLInputElement)}>
           <span class="row-text"><span>${name}</span><span class="small muted" id=${`sent-${entityId}`}>${sent}</span></span>
           ${typeof id === "string" && id ? html`<a href=${`/config/automation/edit/${encodeURIComponent(id)}`} @click=${(e: MouseEvent) => this._link(e)} aria-label=${l.t("notifications.edit_label", { name })}>${l.t("notifications.edit")}</a>` : html`<span></span>`}
+          ${this._toggleError?.entityId === entityId ? html`<span class="error-text small toggle-error" role="alert">${this._toggleError.message}</span>` : nothing}
         </li>`;
       })}</ul></section>`;
   }
