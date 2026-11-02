@@ -570,6 +570,24 @@ export function taskChanges(task: CareTask, input: CareTaskInput): CareTaskChang
   return changes;
 }
 
+// Merges an edit made from `baseline` (the task when the editor opened) onto
+// `latest` (the task now). Only fields the person changed are sent, so a
+// change made elsewhere to another field is kept. A field both changed to
+// different values is an overlap: nothing is sent until the person has seen it.
+export function mergeTaskChanges(baseline: CareTask, latest: CareTask, input: CareTaskInput): { changes: CareTaskChanges; overlaps: (keyof CareTaskChanges)[] } {
+  const mine = taskChanges(baseline, input);
+  const current = taskChanges(latest, input);
+  const theirs = taskChanges(baseline, { task_type: latest.type, name: latest.name, schedule: latest.schedule, instructions: latest.instructions, baseline_done_on: latest.baseline_done_on });
+  const changes: CareTaskChanges = {};
+  const overlaps: (keyof CareTaskChanges)[] = [];
+  for (const key of Object.keys(mine) as (keyof CareTaskChanges)[]) {
+    if (!(key in current)) continue;
+    if (key in theirs) overlaps.push(key);
+    Object.assign(changes, { [key]: current[key] });
+  }
+  return { changes, overlaps };
+}
+
 // Live read-back of the draft's schedule for the editor's summary line.
 export function draftSummary(l: Localizer, draft: TaskDraft, restPeriod: RestPeriod | null, states?: Record<string, HAState>): string {
   if (draft.mode === "reading") return readingSummary(l, draft, states);

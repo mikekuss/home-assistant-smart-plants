@@ -12,7 +12,9 @@ conditions and the `smart_plants.get_report` action described in
 ## Set up a notification
 
 1. Open **Smart Plants** in the sidebar.
-2. On the plants overview, open **⋮ → Notifications…**.
+2. On the plants overview or a plant's page, open **⋮ → Notifications…**. From a plant's page,
+   the notification starts with that plant chosen. A plant with no automations also offers
+   **Set up notifications** in its **Automations** card.
 3. Choose one of the two notifications, the plants, and where to send the message.
 4. Select **Open in automation editor**. Home Assistant's editor opens with the automation
    filled in.

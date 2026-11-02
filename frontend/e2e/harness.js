@@ -742,4 +742,9 @@ document.documentElement.lang = language;
 const timeZone = params.get("tz");
 panel.hass = { auth: { accessToken: "playwright-token" }, connection, language, ...(params.has("notifications") ? { services: { notify: { send_message: {}, notify: {}, mobile_app_mock_phone: {} } } } : {}), locale: { language, number_format: "language", time_format: "language", date_format: "language" }, user: { is_admin: true, name: "Synthetic browser admin" }, ...(timeZone ? { config: { time_zone: timeZone } } : {}) };
 panel.panel = { title: "Smart Plants", url_path: "smart-plants" };
+// Home Assistant marks a panel narrow below 870 pixels and hides its sidebar there.
+const narrow = window.matchMedia("(max-width: 870px)");
+panel.narrow = narrow.matches;
+narrow.addEventListener("change", event => { panel.narrow = event.matches; });
+window.addEventListener("hass-toggle-menu", () => { window.__smartPlantsSidebarToggles = (window.__smartPlantsSidebarToggles ?? 0) + 1; });
 document.body.append(panel);

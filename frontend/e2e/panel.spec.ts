@@ -901,7 +901,7 @@ test("watering from a card logs now and can be undone from the toast", async ({ 
   });
   const card = cards(page).filter({ hasText: "Office Aloe" });
   await expect(card).toContainText("Not watered yet");
-  await button(page, "Log watering for Office Aloe").click();
+  await button(page, "Watered: Office Aloe").click();
   await expect(card).toContainText("Watered just now");
   const [added] = await messages(page, "care/add_watering");
   expect(added).toMatchObject({ plant_id: id(1), expected_revision: 1, note: null });
@@ -1028,6 +1028,25 @@ test("disabled provider capability supports completely network-free manual creat
   await finishManual(page, "Offline plant");
   expect(await messages(page, "species/search")).toHaveLength(0);
   expect((await inventory(page))[0]!.species).toBeNull();
+});
+
+test("a phone can open Home Assistant's sidebar from the overview", async ({ page }, info) => {
+  await open(page);
+  const toggles = () => page.evaluate(() => (window as unknown as { __smartPlantsSidebarToggles?: number }).__smartPlantsSidebarToggles ?? 0);
+  if (info.project.name !== "mobile") { await expect(button(page, "Show sidebar")).toHaveCount(0); return; }
+  expect(page.viewportSize()!.width).toBe(375);
+  const sidebar = button(page, "Show sidebar");
+  await expect(sidebar).toBeVisible();
+  const box = (await sidebar.boundingBox())!;
+  expect(box.x).toBeLessThan(80);
+  expect(box.width).toBeGreaterThanOrEqual(44);
+  await sidebar.click();
+  expect(await toggles()).toBe(1);
+  await audit(page, info, "overview-sidebar-button");
+  // The plant page has its back arrow there instead.
+  await button(page, "Office Aloe").click();
+  await expect(button(page, "Back")).toBeVisible();
+  await expect(button(page, "Show sidebar")).toHaveCount(0);
 });
 
 test("wizard actions stay reachable at the bottom on small screens", async ({ page }, info) => {

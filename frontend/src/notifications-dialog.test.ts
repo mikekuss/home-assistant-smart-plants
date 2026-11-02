@@ -61,7 +61,7 @@ function captureEditor() {
 }
 
 describe("notifications dialog", () => {
-  it("adds one item to the overview menu and none to the plant page menu", async () => {
+  it("adds one item to the overview menu", async () => {
     const { el } = await mount();
     const items = [...root(el).querySelectorAll("ha-dropdown-item")].map(item => item.getAttribute("value"));
     // Snooze all plants… shows too: the fixture has two active plants.
@@ -255,5 +255,45 @@ describe("notifications dialog", () => {
     expect(dialog(el)!.textContent).toContain("Täglicher Pflanzenbericht");
     expect(dialog(el)!.textContent).toContain("Deine Benachrichtigungen");
     expect(buttonNamed(el, "Im Automatisierungseditor öffnen")).toBeDefined();
+  });
+});
+
+describe("notifications from the plant page", () => {
+  it("opens from the plant page menu with that plant chosen", async () => {
+    const { el } = await mount();
+    const card = el.shadowRoot!.querySelector("smart-plants-overview")!;
+    [...card.shadowRoot!.querySelectorAll<HTMLElement>("button, a, [role=button]")].find(b => b.textContent?.includes("Office Aloe"))!.click();
+    await settle(el);
+    expect(root(el).querySelector('ha-dropdown-item[value="notifications"]')!.textContent?.trim()).toBe("Notifications…");
+    await openDialog(el);
+    expect(inside<HTMLInputElement>(el, 'input[name=notification-plants][value="choose"]')!.checked).toBe(true);
+    expect(all<HTMLInputElement>(el, ".plant-choices input").map(input => input.checked)).toEqual([false, true]);
+    buttonNamed(el, "Cancel").click(); await settle(el);
+    expect(dialogElement(el)).toBeNull();
+    expect(root(el).activeElement).toBe(root(el).querySelector(".panel-appbar ha-dropdown [slot=trigger]"));
+  });
+
+  it("offers notifications in the Automations card while the plant has none", async () => {
+    const { el } = await mount({ states: {} });
+    const card = el.shadowRoot!.querySelector("smart-plants-overview")!;
+    [...card.shadowRoot!.querySelectorAll<HTMLElement>("button, a, [role=button]")].find(b => b.textContent?.includes("Office Aloe"))!.click();
+    await settle(el);
+    const offer = [...root(el).querySelectorAll<HTMLButtonElement>("section[aria-labelledby=automations-heading] button")].find(b => b.textContent?.trim() === "Set up notifications")!;
+    offer.focus(); offer.click(); await settle(el); await settle(dialogElement(el)!); await settle(dialogElement(el)!);
+    expect(dialog(el)!.open).toBe(true);
+    expect(all<HTMLInputElement>(el, ".plant-choices input").map(input => input.checked)).toEqual([false, true]);
+    buttonNamed(el, "Cancel").click(); await settle(el);
+    expect(root(el).activeElement).toBe(offer);
+  });
+
+  it("says when a switch could not be changed and shows the automation's state again", async () => {
+    const { el } = await mount({ callService: () => Promise.reject({ code: "home_assistant_error", message: "Automation is busy." }) });
+    await openDialog(el);
+    const daily = all(el, ".notify-list li")[0]!.querySelector<HTMLInputElement>("input.switch")!;
+    await change(el, daily, "off");
+    await settle(dialogElement(el)!);
+    expect(daily.checked).toBe(true);
+    const error = all(el, ".notify-list li")[0]!.querySelector("[role=alert]");
+    expect(error?.textContent).toBe("Smart Plants: daily plant report couldn't be turned off: Automation is busy.");
   });
 });
