@@ -18,7 +18,7 @@ import { RANGE_SPECS, isHistoryRange } from "./history-model.js";
 import type { HistoryPoint, HistoryRange } from "./history-model.js";
 import { CARE_ICONS, CARE_KINDS, DETAIL_SECTIONS, SECTION_LABELS, careDetails, expander, formatDuration, friendlyName, headerReason, readingPhrase, plantStyles, readingsInOrder, renderHistoryCard, renderKeyReadings, renderReadingRow, reportedAt } from "./views/plant.js";
 import type { DetailSection, HistoryStatus } from "./views/plant.js";
-import { TASK_KINDS, careOnlyChange, draftFromTask, dueTasks, localDate, matchingTask, pickMonth, presetDraft, restDraft, restTaskChanges, suggestionDraft, summaryName, taskChanges, taskChip, taskEntityUniqueIds, taskName, validateDraft, validateRest } from "./care-plan.js";
+import { TASK_KINDS, careOnlyChange, draftFromTask, dueTasks, localDate, matchingTask, mergeTaskChanges, pickMonth, presetDraft, restDraft, restTaskChanges, suggestionDraft, summaryName, taskChip, taskEntityUniqueIds, taskName, validateDraft, validateRest } from "./care-plan.js";
 import type { RestDraft, TaskDraft } from "./care-plan.js";
 import { carePlanStyles, renderAutomate, renderCarePlan, renderRestEditor, renderTaskEditor, taskEditorTitle } from "./views/care-plan.js";
 import type { AutomateRow, TaskAction, TaskEditorState } from "./views/care-plan.js";
@@ -121,6 +121,7 @@ const _EDITOR_BY_PROBLEM_ROLE: Record<string, ThresholdEditorSpec> = Object.from
 const MENU_ICON_PATH = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z";
 const ADD_ICON_PATH = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z";
 const BACK_ICON_PATH = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
+const SIDEBAR_ICON_PATH = "M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z";
 // Sections of the plant page that expand and collapse.
 type Expandable = "combine" | "troubleshooting" | "other_targets" | "more_details";
 type SettingRow = "name" | "area" | "species";
@@ -148,6 +149,10 @@ const PLANT_ROUTE = /^\/plant\/([^/]+)(?:\/(sensors))?\/?$/;
 interface Edits { name: string; acquired: string; placement: PlantPlacement | null; category: string; tagText: string; area: string; common: string; latin: string; moisture: MoistureInput | null }
 type SaveKind = "identity" | "taxonomy" | "area" | "moisture" | "species";
 interface Conflict { before: PlantRecord; after: PlantRecord; changes: string[] }
+
+// Free-text detail fields of the Log care form, by care kind. The fertilizing
+// unit is a separate select and a note's text has its own limit.
+const CARE_DETAIL_FIELDS: Partial<Record<CareEvent["kind"], readonly string[]>> = { fertilizing: ["product", "amount"], pruning: ["part"], repotting: ["container", "medium"], pest_control: ["pest", "product"] };
 
 // Local wall-clock time with its UTC offset, as care events are recorded.
 function localTimestamp(date: Date): string {
@@ -213,6 +218,8 @@ export class SmartPlantsPanel extends LitElement {
   // Recorded values of one plant sensor for one time range, keyed by both.
   @state() private _history: { key: string; status: HistoryStatus; points: HistoryPoint[] } | null = null;
   @state() private _careError = "";
+  // A failed care history read, shown with a retry where the history would be.
+  @state() private _careLoadError = "";
   @state() private _careDate = "";
   @state() private _careNote = "";
   @state() private _careKind: CareEvent["kind"] = "watering";
@@ -255,6 +262,8 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _careTaskId: string | null = null;
   @state() private _wizardStarted = false;
   @state() private _notificationsOpen = false;
+  // Where focus goes when the Notifications dialog closes; the ⋮ menu otherwise.
+  private _notificationsReturn: HTMLElement | null = null;
   @state() private _creationNotice = "";
   // Photo part of the creation notice, shown on the wizard's confirmation.
   @state() private _creationPhoto = "";
@@ -339,7 +348,7 @@ export class SmartPlantsPanel extends LitElement {
     super.connectedCallback();
     if (this.hasUpdated) { this._bind(); void this._refresh(); this._syncImage(); }
     // Home Assistant may register its tab and expansion elements after the panel first renders.
-    for (const tag of ["ha-tab-group", "ha-expansion-panel", "ha-alert", "ha-area-picker"]) void customElements.whenDefined(tag).then(() => this.requestUpdate());
+    for (const tag of ["ha-tab-group", "ha-expansion-panel", "ha-alert", "ha-area-picker", "ha-menu-button"]) void customElements.whenDefined(tag).then(() => this.requestUpdate());
     // Bounded read refresh also catches integration lifecycle and other admin edits.
     this._timer = setInterval(() => { if (!this._formBusy && !this._loading && this.isConnected) void this._refresh(false); }, 30000);
   }
@@ -593,8 +602,8 @@ export class SmartPlantsPanel extends LitElement {
   private _show(view: View): void {
     const routed = PLANT_ROUTE.exec(this.route?.path ?? "");
     if (routed && !(view.kind === "detail" && encodeURIComponent(view.plantId) === routed[1])) this._clearRoute();
-    this._context++; this._closeDialog(); this._formBusy = false;
-    this._providerRequest++; this._view = view; this._error = ""; this._notice = ""; this._healthError = ""; this._careHistory = null; this._careError = "";
+    this._context++; this._closeDialog(); this._formBusy = false; this._notificationsOpen = false; this._notificationsReturn = null;
+    this._providerRequest++; this._view = view; this._error = ""; this._notice = ""; this._healthError = ""; this._careHistory = null; this._careError = ""; this._careLoadError = "";
     // Every plant opens with a new search for its automations.
     this._forgetRelated(); this._related = []; this._relatedAllPlants = []; this._relatedExpanded = new Set();
     if (view.kind === "create") this._wizardStarted = true;
@@ -620,7 +629,7 @@ export class SmartPlantsPanel extends LitElement {
   private _handleMenuAction(event: CustomEvent<{ item: { value: string } }>): void {
     if (event.detail.item.value === "add-plant") this._show({ kind: "create" });
     if (event.detail.item.value === "back-to-overview") this._show({ kind: "list" });
-    if (event.detail.item.value === "notifications") this._notificationsOpen = true;
+    if (event.detail.item.value === "notifications") this._openNotifications(null);
     if (event.detail.item.value === "snooze-all") this._openSnoozeAll();
     if (event.detail.item.value === "integration-options") this._navigate("/config/integrations/integration/smart_plants");
     if (event.detail.item.value === "documentation") window.open(DOCUMENTATION_URL, "_blank", "noopener,noreferrer");
@@ -632,6 +641,14 @@ export class SmartPlantsPanel extends LitElement {
     if (event.detail.item.value === "toggle-monitoring") this._toggleMonitoring(plant);
     if (event.detail.item.value === "snooze") this._openSnooze(plant);
     if (event.detail.item.value === "delete-plant") this._openDialog("delete", this.shadowRoot?.querySelector<HTMLElement>(".panel-appbar ha-dropdown [slot=trigger]") ?? null);
+  }
+  private _openNotifications(trigger: HTMLElement | null): void {
+    this._notificationsReturn = trigger; this._notificationsOpen = true;
+  }
+  private _closeNotifications(): void {
+    this._notificationsOpen = false;
+    const target = this._notificationsReturn?.isConnected ? this._notificationsReturn : this.shadowRoot?.querySelector<HTMLElement>(".panel-appbar ha-dropdown [slot=trigger]");
+    this._notificationsReturn = null; target?.focus();
   }
   // Home Assistant's own client-side navigation.
   private _navigate(path: string): void {
@@ -648,6 +665,18 @@ export class SmartPlantsPanel extends LitElement {
   }
   private _selectSection(section: string): void {
     if ((DETAIL_SECTIONS as readonly string[]).includes(section) && section !== this._detailSection) this._detailSection = section as DetailSection;
+  }
+  // Switches tab from a button inside the tab body. The body is replaced, so
+  // focus moves to the selected tab and keyboard users keep their place.
+  private _openSection(section: DetailSection): void {
+    this._selectSection(section);
+    const context = this._context;
+    void this.updateComplete.then(() => {
+      if (context !== this._context) return;
+      const root = this.shadowRoot;
+      const tab = root?.querySelector<HTMLElement>(`#tab-${section}`) ?? [...root?.querySelectorAll<HTMLElement & { panel?: string }>("ha-tab-group-tab") ?? []].find(item => item.panel === section);
+      tab?.focus();
+    });
   }
   // Switches tab and brings a part of it into view, for links between tabs.
   private _goTo(section: DetailSection, target?: string, expand?: Expandable): void {
@@ -727,11 +756,34 @@ export class SmartPlantsPanel extends LitElement {
     try {
       const history = await api.careHistory(this.hass, plantId);
       if (careRequest === this._careRequest && context === this._context && (request === undefined || request === this._request) && this._view.kind === "detail" && this._view.plantId === plantId) {
-        this._careHistory = history; this._careError = "";
+        this._careHistory = history; this._careLoadError = "";
       }
     } catch (error) {
-      if (careRequest === this._careRequest && context === this._context && (request === undefined || request === this._request)) { this._careHistory = null; this._careError = this._friendly(error); }
+      if (careRequest === this._careRequest && context === this._context && (request === undefined || request === this._request)) { this._careHistory = null; this._careLoadError = this._friendly(error); }
     }
+  }
+  // While the care history is missing: loading, or the failed read with a retry.
+  private _renderCareMissing(plantId: string) {
+    const l = this._l;
+    if (!this._careLoadError) return html`<p class="card-b muted" role="status">${l.t("care.loading")}</p>`;
+    return html`<div class="card-b load-error" role="alert"><span>${l.t("care.load_failed", { error: this._careLoadError })}</span>
+      <button type="button" class="btn text sm" @click=${(e: Event) => this._retryCare(plantId, e.currentTarget as HTMLElement)}>${l.t("history.retry")}</button></div>`;
+  }
+  private _retryCare(plantId: string, button: HTMLElement): void {
+    const context = this._context;
+    this._careLoadError = "";
+    void this._loadCare(plantId, context).then(() => this._refocus(button, context));
+  }
+  // After a retry removed its button, focus goes to the page heading instead of being lost.
+  private _refocus(button: HTMLElement, context: number): void {
+    void this.updateComplete.then(() => { if (context === this._context && !button.isConnected) this.shadowRoot?.querySelector<HTMLElement>("h1")?.focus(); });
+  }
+  // A failed status read, with a retry. On the plant page the readings and
+  // status are missing, which must not look like a plant without sensors.
+  private _renderStatusError() {
+    const l = this._l;
+    return html`<div class="error load-error" role="alert"><span>${l.t("overview.status_unavailable", { error: this._overviewError })}</span>
+      <button type="button" class="btn text sm" ?disabled=${this._loading} @click=${(e: Event) => { const button = e.currentTarget as HTMLElement; const context = this._context; void this._refresh(false).then(() => this._refocus(button, context)); }}>${l.t("history.retry")}</button></div>`;
   }
   // ---- History chart ----
   // The plant's own sensor for a role. Its statistics survive a swap of the
@@ -835,7 +887,8 @@ export class SmartPlantsPanel extends LitElement {
       this._careError = this._l.t("care.error_amount"); return;
     }
     if (this._careKind === "note" && (!String(payload.text).trim() || String(payload.text).length > 1000)) { this._careError = this._l.t("care.error_note_text"); return; }
-    if (Object.values(fields).some(value => value.length > 120)) { this._careError = this._l.t("care.error_details_length"); return; }
+    // Notes have their own limits above; only the short detail fields stop at 120.
+    if ((CARE_DETAIL_FIELDS[this._careKind] ?? []).some(key => (fields[key] ?? "").length > 120)) { this._careError = this._l.t("care.error_details_length"); return; }
     const offset = -date.getTimezoneOffset();
     const suffix = `${offset < 0 ? "-" : "+"}${String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0")}:${String(Math.abs(offset) % 60).padStart(2, "0")}`;
     const occurredAt = `${this._careDate}:00${suffix}`; const hass = this.hass; this._careError = "";
@@ -875,7 +928,6 @@ export class SmartPlantsPanel extends LitElement {
   private _renderCare(plant: PlantRecord) {
     const l = this._l;
     const history = this._careHistory;
-    const details: Record<string, string[]> = { fertilizing: ["product", "amount", "unit"], pruning: ["part"], repotting: ["container", "medium"], pest_control: ["pest", "product"], note: ["text"] };
     const fieldLabel = (key: string) => { const k = `care_field.${key}`; return isMessageKey(k) ? l.t(k) : key; };
     const kindLabel = (kind: CareEvent["kind"]) => l.t(`care_kind.${kind}`);
     const kindPhrase = (kind: CareEvent["kind"]) => l.t(`care_kind_phrase.${kind}`);
@@ -912,7 +964,7 @@ export class SmartPlantsPanel extends LitElement {
           : html`<label>${l.t("care.type")}<select aria-label=${l.t("care.type")} .value=${this._careKind} @change=${(e: Event) => { this._careKind = (e.target as HTMLSelectElement).value as CareEvent["kind"]; this._careFields = {}; }}>${CARE_KINDS.map(kind => html`<option value=${kind} ?selected=${kind === this._careKind}>${kindLabel(kind)}</option>`)}</select></label>`}
         ${alsoCompletes ? html`<p class="small care-note"><ha-icon aria-hidden="true" .icon=${"mdi:check-circle-outline"}></ha-icon><span>${l.t("care_plan.form_also_marks", { name: taskName(l, alsoCompletes) })}</span></p>` : nothing}
         <label>${l.t("care.when")}<input type="datetime-local" .value=${this._careDate} @input=${(e: Event) => this._careDate = (e.target as HTMLInputElement).value}></label>
-        ${(details[this._careKind] ?? []).map(key => html`<label>${fieldLabel(key)}<input aria-label=${fieldLabel(key)} type=${key === "amount" ? "number" : "text"} maxlength=${key === "text" ? 1000 : 120} .value=${this._careFields[key] ?? ""} @input=${(e: Event) => this._careFields = { ...this._careFields, [key]: (e.target as HTMLInputElement).value }}></label>`)}
+        ${[...CARE_DETAIL_FIELDS[this._careKind] ?? [], ...this._careKind === "note" ? ["text"] : []].map(key => html`<label>${fieldLabel(key)}<input aria-label=${fieldLabel(key)} type=${key === "amount" ? "number" : "text"} maxlength=${key === "text" ? 1000 : 120} .value=${this._careFields[key] ?? ""} @input=${(e: Event) => this._careFields = { ...this._careFields, [key]: (e.target as HTMLInputElement).value }}></label>`)}
         ${this._careKind !== "note" ? html`<label>${l.t("care.note_optional")}<input type="text" maxlength="500" .value=${this._careNote} @input=${(e: Event) => this._careNote = (e.target as HTMLInputElement).value}></label>` : nothing}
         ${this._careKind === "fertilizing" ? html`<label>${l.t("care.unit")}<select aria-label=${l.t("care.unit")} .value=${this._careFields.unit ?? ""} @change=${(e: Event) => this._careFields = { ...this._careFields, unit: (e.target as HTMLSelectElement).value }}><option value="">${l.t("care.no_amount")}</option><option value="g">g</option><option value="mL">mL</option></select></label>` : nothing}
         ${this._careKind === "watering" ? html`<p class="small muted">${l.t("care.no_irrigation")}</p>` : nothing}
@@ -925,7 +977,7 @@ export class SmartPlantsPanel extends LitElement {
         ${showFilters ? html`<div class="row" role="group" aria-label=${l.t("care.filter_label")}>${filters.map(([kind, label]) => html`<button type="button" class="fchip" aria-pressed=${careFilter === kind ? "true" : "false"} @click=${() => { this._careFilter = kind; }}>${label}</button>`)}</div>` : nothing}
         <p class="small muted" role="status">${l.tn(history.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${history.summary.last_watered_local_date ? l.t("care.last_watered", { date: l.date(history.summary.last_watered_local_date) }) : l.t("care.never_watered")}</p>
       </div>` : nothing}
-      ${!history ? html`<p class="card-b muted">${l.t("care.loading")}</p>` : !history.events.length ? html`<p class="card-b muted">${l.t("care.empty")}</p>` : !events.length ? html`<p class="card-b muted">${l.t("care.filter_empty")}</p>`
+      ${!history ? this._renderCareMissing(plant.id) : !history.events.length ? html`<p class="card-b muted">${l.t("care.empty")}</p>` : !events.length ? html`<p class="card-b muted">${l.t("care.filter_empty")}</p>`
         : html`<ul class="list" aria-label=${l.t("care.events_label")}>${events.map(event => {
           const extra = careDetails(l, event, fieldLabel);
           const when = l.recordedDateTime(event.occurred_at);
@@ -1133,7 +1185,7 @@ export class SmartPlantsPanel extends LitElement {
   }
   private _openTaskEditor(task?: CareTask): void {
     this._taskEditor = task
-      ? { step: 2, taskId: task.id, draft: draftFromTask(task), errors: {}, error: "", moreOpen: task.baseline_done_on !== null }
+      ? { step: 2, taskId: task.id, baseline: structuredClone(task), draft: draftFromTask(task), errors: {}, error: "", moreOpen: task.baseline_done_on !== null }
       : { step: 1, taskId: null, draft: presetDraft("custom"), errors: {}, error: "", moreOpen: false };
     this._openDialog("care_task");
   }
@@ -1165,10 +1217,24 @@ export class SmartPlantsPanel extends LitElement {
     try {
       let plant: PlantRecord | undefined;
       if (editor.taskId) {
-        const task = this._plantById(plantId)?.care_tasks?.find(item => item.id === editor.taskId);
-        if (!task) { this._setTaskEditor({ error: l.t("care_plan.error_task_gone") }); return; }
-        const changes = taskChanges(task, input);
-        if (Object.keys(changes).length) plant = await this._withRevision(plantId, revision => api.updateCareTask(hass, plantId, task.id, revision, changes));
+        const taskId = editor.taskId;
+        const latestTask = () => this._plantById(plantId)?.care_tasks?.find(item => item.id === taskId);
+        const task = latestTask(); const baseline = editor.baseline ?? task;
+        if (!task || !baseline) { this._setTaskEditor({ error: l.t("care_plan.error_task_gone") }); return; }
+        // Merged again on a retry, against the task as it is then.
+        let overlaps: string[] = [];
+        plant = await this._withRevision(plantId, async revision => {
+          const latest = latestTask();
+          if (!latest) throw new ApiError("not_found", "Care task not found.");
+          const merged = mergeTaskChanges(baseline, latest, input);
+          if (merged.overlaps.length) { overlaps = merged.overlaps; this._setTaskEditor({ baseline: structuredClone(latest) }); return undefined; }
+          return Object.keys(merged.changes).length ? api.updateCareTask(hass, plantId, taskId, revision, merged.changes) : undefined;
+        });
+        if (overlaps.length) {
+          const fields = overlaps.map(field => l.t(`care_plan.overlap_${field}` as MessageKey)).join(", ");
+          this._setTaskEditor({ error: l.t("care_plan.error_overlap", { fields }) });
+          return;
+        }
       } else {
         plant = (await this._withRevision(plantId, revision => api.createCareTask(hass, plantId, revision, input))).plant;
       }
@@ -2062,21 +2128,22 @@ export class SmartPlantsPanel extends LitElement {
     return html`<div class="cols">
       <div class="stack">
         <section class="sp-card" aria-labelledby="readings-heading"><div class="card-h"><h3 id="readings-heading">${l.t("readings.heading")}</h3>
-          ${readings.length ? html`<button type="button" class="btn text sm" @click=${() => this._selectSection("sensors")}>${l.t("readings.manage")}</button>` : nothing}</div>
+          ${readings.length ? html`<button type="button" class="btn text sm" @click=${() => this._openSection("sensors")}>${l.t("readings.manage")}</button>` : nothing}</div>
           ${readings.length ? html`<ul class="list">${readings.map(([role, reading]) => renderReadingRow(l, role, reading, this._states))}</ul>`
-            : html`<div class="card-b"><div class="empty-box"><span>${o?.status === "paused" ? l.t("readings.paused") : l.t("readings.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._selectSection("sensors")}>${l.t("readings.assign")}</button></div></div>`}
+            : !o && this._overviewError ? html`<p class="card-b muted">${l.t("readings.unavailable")}</p>`
+            : html`<div class="card-b"><div class="empty-box"><span>${o?.status === "paused" ? l.t("readings.paused") : l.t("readings.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._openSection("sensors")}>${l.t("readings.assign")}</button></div></div>`}
         </section>
         ${this._renderHistory(plant)}
         <section class="sp-card" aria-labelledby="recent-heading"><div class="card-h"><h3 id="recent-heading">${l.t("recent.heading")}</h3>
-          ${history?.events.length ? html`<button type="button" class="btn text sm" @click=${() => this._selectSection("care")}>${l.t("recent.show_all")}</button>` : nothing}</div>
-          ${!history ? html`<p class="card-b muted">${l.t("care.loading")}</p>` : recent.length ? html`<ul class="list">${recent.map(event => html`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${CARE_ICONS[event.kind]}></ha-icon></span>
+          ${history?.events.length ? html`<button type="button" class="btn text sm" @click=${() => this._openSection("care")}>${l.t("recent.show_all")}</button>` : nothing}</div>
+          ${!history ? this._renderCareMissing(plant.id) : recent.length ? html`<ul class="list">${recent.map(event => html`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${CARE_ICONS[event.kind]}></ha-icon></span>
             <span class="li-main"><span class="li-title">${l.t(`care_done.${event.kind}`)}</span><span class="li-sub">${l.date(event.local_date)}</span></span><span></span></li>`)}</ul>`
             : html`<div class="card-b"><div class="empty-box"><span>${l.t("care.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._openCareForm()}>${l.t("detail.log_care")}</button></div></div>`}
         </section>
       </div>
       <div class="stack">
         <section class="sp-card" aria-labelledby="about-heading"><div class="card-h"><h3 id="about-heading">${l.t("about.heading")}</h3>
-          <button type="button" class="icon-btn" aria-label=${l.t("about.edit")} @click=${() => this._selectSection("settings")}><ha-icon aria-hidden="true" icon="mdi:pencil-outline"></ha-icon></button></div>
+          <button type="button" class="icon-btn" aria-label=${l.t("about.edit")} @click=${() => this._openSection("settings")}><ha-icon aria-hidden="true" icon="mdi:pencil-outline"></ha-icon></button></div>
           <div class="card-b"><dl class="kv about">
             <dt>${l.t("about.species")}</dt><dd>${snapshot ? html`${snapshot.latin_name ? html`<i>${snapshot.latin_name}</i>` : nothing}${commonName && commonName !== snapshot.latin_name ? html`${snapshot.latin_name ? " · " : ""}${commonName}` : nothing}
               <div class="small muted">${snapshot.source_status === "provider" ? l.t("about.species_provider", { provider: snapshot.provider === "openplantbook" ? "OpenPlantBook" : snapshot.provider }) : l.t("about.species_manual")}</div>`
@@ -2087,7 +2154,7 @@ export class SmartPlantsPanel extends LitElement {
             ${plant.category ? html`<dt>${l.t("about.category")}</dt><dd>${plant.category}</dd>` : nothing}
             ${plant.tags.length ? html`<dt>${l.t("about.tags")}</dt><dd>${plant.tags.map(tag => html`<span class="tag">${tag}</span>`)}</dd>` : nothing}
           </dl>
-          ${detailsMissing ? html`<button type="button" class="btn text sm" @click=${() => this._selectSection("settings")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("about.add_details")}</button>` : nothing}</div></section>
+          ${detailsMissing ? html`<button type="button" class="btn text sm" @click=${() => this._openSection("settings")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("about.add_details")}</button>` : nothing}</div></section>
         ${this._renderAutomations(device)}
       </div></div>`;
   }
@@ -2105,7 +2172,8 @@ export class SmartPlantsPanel extends LitElement {
     return html`<section class="sp-card" aria-labelledby="automations-heading"><div class="card-h"><h3 id="automations-heading">${l.t("automations.heading")}</h3></div>
       ${listed ? html`${this._renderAutomationGroup("plant", related.plant)}${this._renderAutomationGroup("allPlants", related.allPlants)}
         <div class="card-b rel-foot"><p class="small muted">${l.t("automations.not_listed")}</p>${links}</div>`
-        : html`<div class="card-b"><p class="small muted">${l.t("automations.body")}</p>${links}</div>`}</section>`;
+        : html`<div class="card-b"><p class="small muted">${l.t("automations.body")}</p>${links}
+          ${device ? html`<div class="row"><button type="button" class="btn text sm" @click=${(e: Event) => this._openNotifications(e.currentTarget as HTMLElement)}><ha-icon aria-hidden="true" icon="mdi:bell-outline"></ha-icon>${l.t("automations.notifications")}</button></div>` : nothing}</div>`}</section>`;
   }
   private _renderAutomationGroup(group: keyof RelatedAutomations, rows: readonly AutomationRow[]) {
     if (!rows.length) return nothing;
@@ -2218,6 +2286,7 @@ export class SmartPlantsPanel extends LitElement {
     };
     return html`<div class="pd">
       ${this._conflict ? html`<section class="notice" role="alert"><h2>${l.t("conflict.heading")}</h2><p>${l.t("conflict.revision", { before: this._conflict.before.revision, after: this._conflict.after.revision })}</p><ul>${this._conflict.changes.map(c => html`<li class="prose">${c}</li>`)}</ul>${overlaps.length ? html`<p>${l.t("conflict.source_overlap", { fields: this._sourceFieldList(overlaps) })}</p>` : nothing}<div class="actions"><button @click=${() => this._reviewConflict()}>${l.t("conflict.retain")}</button><button @click=${() => this._beginEdit(plant)}>${l.t("conflict.discard")}</button></div></section>` : nothing}
+      ${this._overviewError ? this._renderStatusError() : nothing}
       ${this._renderHeader(plant)}
       ${this._renderTabs()}
       <div class="tabpanel" id="detail-panel" role="tabpanel" aria-label=${l.t(SECTION_LABELS[this._detailSection])}>${panels[this._detailSection]()}</div>
@@ -2285,6 +2354,16 @@ export class SmartPlantsPanel extends LitElement {
     await this._refresh(false);
   }
   private _reload(): void { window.location.reload(); }
+  // Opens Home Assistant's sidebar on phones, where it is hidden. Home
+  // Assistant's own button shows itself only when the sidebar is hidden; a
+  // panel opened directly may load before that element, so a plain button
+  // sends the same event until it is there.
+  private _renderSidebarButton() {
+    if (isDefined("ha-menu-button")) return html`<ha-menu-button slot="navigationIcon" .hass=${this.hass} .narrow=${this.narrow}></ha-menu-button>`;
+    if (!this.narrow && this.hass?.dockedSidebar !== "always_hidden") return nothing;
+    const label = this.hass?.localize?.("ui.sidebar.sidebar_toggle") || this._l.t("panel.sidebar");
+    return html`<ha-icon-button slot="navigationIcon" class="sidebar-toggle" .label=${label} .path=${SIDEBAR_ICON_PATH} @click=${() => this.dispatchEvent(new CustomEvent("hass-toggle-menu", { bubbles: true, composed: true }))}></ha-icon-button>`;
+  }
   protected render() {
     const l = this._l;
     if (this.hass?.user?.is_admin === false) return html`<main><div class="panel-content"><p role="alert">${l.t("panel.admin_required")}</p></div></main>`;
@@ -2292,13 +2371,14 @@ export class SmartPlantsPanel extends LitElement {
     const detailPlant = this._view.kind === "detail" ? this._plantById(this._view.plantId) : undefined;
     const busy = this._formBusy || this._blocked || !!this._conflict;
     return html`<main><ha-top-app-bar-fixed class="panel-appbar" .narrow=${this.narrow}>
-       ${this._view.kind === "detail" ? html`<ha-icon-button slot="navigationIcon" class="back" .label=${l.t("detail.back")} .path=${BACK_ICON_PATH} @click=${() => { if (!this._formBusy) this._show({ kind: "list" }); }}></ha-icon-button>` : nothing}
+       ${this._view.kind === "detail" ? html`<ha-icon-button slot="navigationIcon" class="back" .label=${l.t("detail.back")} .path=${BACK_ICON_PATH} @click=${() => { if (!this._formBusy) this._show({ kind: "list" }); }}></ha-icon-button>` : this._renderSidebarButton()}
        <h1 slot="title" class="page-title" tabindex="-1">${detailPlant ? detailPlant.name : "Smart Plants"}</h1>
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
          <ha-icon-button slot="trigger" .label=${menuLabel} .path=${MENU_ICON_PATH}></ha-icon-button>
          ${detailPlant ? html`
          <ha-dropdown-item value="open-device" ?disabled=${!plantDevice(detailPlant, this._devices)}>${l.t("detail.menu_open_device")}<ha-icon slot="icon" icon="mdi:open-in-new"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="download-diagnostics">${l.t("detail.menu_download")}<ha-icon slot="icon" icon="mdi:download"></ha-icon></ha-dropdown-item>
+         <ha-dropdown-item value="notifications">${l.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="snooze" ?disabled=${busy || detailPlant.lifecycle_state !== "active"}>${activeSnooze(detailPlant.snoozed_until) ? l.t("snooze.menu_change") : l.t("snooze.menu")}<ha-icon slot="icon" icon="mdi:bell-sleep-outline"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="toggle-monitoring" ?disabled=${busy}>${detailPlant.lifecycle_state === "active" ? l.t("manage.pause") : l.t("manage.resume")}<ha-icon slot="icon" .icon=${detailPlant.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="delete-plant" ?disabled=${busy}>${l.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>` : html`
@@ -2311,13 +2391,13 @@ export class SmartPlantsPanel extends LitElement {
        </ha-dropdown>
        <div class="panel-content">${this._updateAvailable ? html`<div class="update-banner" role="status"><p>${l.t("panel.update_available")}</p><button type="button" @click=${() => this._reload()}>${l.t("panel.reload")}</button></div>` : nothing}${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}${this._notice ? html`<p class="notice" role="status">${this._notice}</p>` : nothing}${this._registryError ? html`<p class="notice" role="alert">${l.t("panel.registry_unavailable")}</p>` : nothing}
       ${this._creationNotice && this._view.kind !== "create" ? html`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && !(this._view.kind === "detail" && this._view.plantId === this._createdPlantId) ? html`<button ?disabled=${this._formBusy} @click=${() => { if (this._createdPlantId) this._show({ kind: "detail", plantId: this._createdPlantId }); }}>${l.t("panel.open_created")}</button>` : nothing}` : nothing}
-      ${this._view.kind === "list" && this._overviewError ? html`<p class="error" role="alert">${l.t("overview.status_unavailable", { error: this._overviewError })}</p>` : nothing}
+      ${this._view.kind === "list" && this._overviewError ? this._renderStatusError() : nothing}
       <smart-plants-overview ?hidden=${this._view.kind !== "list"} .l=${l} .plants=${this._plants} .overview=${this._overview} .areaNames=${this._plantAreaNames()}
         .thumbnails=${this._thumbnails} .watering=${this._watering} .timeZone=${this._timeZone()} .loading=${this._loading} .blocked=${this._blocked}
         @open-plant=${(e: CustomEvent<OpenPlantDetail>) => this._openFromOverview(e.detail)} @add-plant=${() => this._show({ kind: "create" })} @log-watering=${(e: CustomEvent<{ plantId: string }>) => void this._logWatering(e.detail.plantId)}></smart-plants-overview>
       ${this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : nothing}
-      ${this._notificationsOpen && this._view.kind === "list" ? html`<smart-plants-notifications .hass=${this.hass} .l=${l} .plants=${this._plants} .devices=${this._devices} .entities=${this._entities} .states=${this._states}
-        @notifications-close=${() => { this._notificationsOpen = false; this.shadowRoot?.querySelector<HTMLElement>(".panel-appbar ha-dropdown [slot=trigger]")?.focus(); }}></smart-plants-notifications>` : nothing}
+      ${this._notificationsOpen && this._view.kind !== "create" ? html`<smart-plants-notifications .hass=${this.hass} .l=${l} .plants=${this._plants} .devices=${this._devices} .entities=${this._entities} .states=${this._states} .plantId=${detailPlant?.id ?? null}
+        @notifications-close=${() => this._closeNotifications()}></smart-plants-notifications>` : nothing}
       ${this._dialog === "snooze_all" && this._view.kind === "list" ? this._renderSnoozeAllDialog() : nothing}
       ${this._wizardStarted && this._capabilities ? html`<div ?hidden=${this._view.kind !== "create"}><smart-plants-wizard .hass=${this.hass} .capabilities=${this._capabilities} .areas=${this._areas} .entities=${this._entities} .devices=${this._devices} .states=${this._states} .blocked=${this._blocked} .navigationContext=${this._context} .photoStatus=${this._creationPhoto} @plant-created=${(e: CustomEvent<{ plant: PlantRecord; photo: File | null; navigationContext: number }>) => void this._created(e)} @wizard-close=${() => this._closeWizard()} @wizard-open-plant=${(e: CustomEvent<{ plantId: string }>) => this._openCreated(e.detail.plantId)} @wizard-restart=${() => this._clearCreationNotice()} @backend-unavailable=${(e: CustomEvent<string>) => { this._blocked = true; this._error = e.detail; }}></smart-plants-wizard></div>` : nothing}
         <p role="status" aria-live="polite">${this._formBusy ? l.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
