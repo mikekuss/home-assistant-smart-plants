@@ -81,9 +81,10 @@ To delete one, use **Settings → Automations & scenes** in Home Assistant. If y
 notification and plants again, the dialog says that you already have it. You can still create
 a second one.
 
-The dialog finds these automations by the **Trigger ID** of their first trigger, which starts
-with `smart_plants_`. Keep that ID when you edit the automation. If you change or remove it,
-the automation keeps working, but the dialog no longer lists it.
+The dialog finds these automations by their **Trigger IDs**. It lists an automation when any of
+its triggers has an ID that starts with `smart_plants_`. Keep those IDs when you edit the
+automation. If you change or remove all of them, the automation keeps working, but the dialog
+no longer lists it.
 
 ## Things to know
 

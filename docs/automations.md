@@ -266,6 +266,17 @@ The report leaves out paused plants, plants with nothing to report, and snoozed 
       "care_tasks": [
         {"name": "Fertilize", "task_type": "fertilize", "status": "due", "entity_id": "binary_sensor.aloe_fertilize"}
       ]
+    },
+    {
+      "plant": "Office Aloe",
+      "device_id": "fedcba9876543210fedcba9876543210",
+      "area": null,
+      "needs_water": false,
+      "snoozed": false,
+      "problems": [
+        {"key": "low_light", "name": "Low light", "entity_id": "binary_sensor.office_aloe_low_light"}
+      ],
+      "care_tasks": []
     }
   ]
 }
@@ -275,7 +286,9 @@ The report leaves out paused plants, plants with nothing to report, and snoozed 
   is `true` when there is at least one.
 - `snoozed` counts the snoozed plants that had something to report but were left out.
   `paused` counts the paused plants.
-- `area` is the plant's area or `null`. `status` of a care task is `due` or `overdue`.
+- `area` is the plant's area or `null`. `status` of a care task is `due` or `overdue`. A task
+  that follows a reading can also be `no_reading`: it was due when its sensor or forecast
+  stopped giving a value, and it stays due until a reading or a **Done** clears it.
 - The message has one line per plant, at most 20. After that, one line says how many more
   plants there are. With nothing to report, the title is *All plants are fine* and the
   message *Nothing needs attention right now.*
@@ -638,7 +651,9 @@ data:
 ### Snooze every plant
 
 Target the **All plants** entity (`binary_sensor.smart_plants_all_plants`) to snooze or resume
-every plant in one step, including plants you add later:
+every plant in one step. The target always means the plants that exist when the action runs,
+so an automation you wrote earlier also covers plants you added since. A plant you add while
+the snooze is running isn't snoozed; run the action again to include it.
 
 - `smart_plants.snooze` with *All plants* snoozes every active plant. A plant that is already
   snoozed until later keeps its end, so a long snooze you set for one plant survives a shorter

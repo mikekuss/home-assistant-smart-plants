@@ -3,6 +3,9 @@ from __future__ import annotations
 DOMAIN = "smart_plants"
 NAME = "Smart Plants"
 
+# Oldest supported Home Assistant release. hacs.json and the test pin in
+# requirements-dev.txt must name the same version; tests/test_manifest.py
+# checks that they do.
 MIN_HA_VERSION = "2026.8.0"
 
 SINGLETON_UNIQUE_ID = "global"

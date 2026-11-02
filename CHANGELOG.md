@@ -29,6 +29,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - `smart_plants.log_care` can return the care log entries it added, with their IDs, when you
   give it a response variable. See
   [Log care with actions](docs/automations.md#log-care-with-actions).
+- The installation guide says which Home Assistant versions are supported, what a version
+  number promises, how deprecations and fixes are handled, and how to roll back to an earlier
+  version. See [Supported versions](docs/installation.md#supported-versions).
 
 ### Changed
 
@@ -36,9 +39,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   legend lists the kinds shown. Before, it marked only waterings on the soil moisture chart
   and fertilizing on the fertilizer level chart. Waterings still appear only on those two
   charts.
-
-### Changed
-
 - Every logged-in Home Assistant user can now view plant photos, so dashboard cards can show
   them to people who aren't administrators. Adding, replacing and removing photos stays
   admin-only.
@@ -65,6 +65,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   voluptuous. On Home Assistant 2026.9 and later it now validates its settings, actions,
   automation options and panel requests with probatio, which Home Assistant itself has used
   since 2026.9.
+- The integration diagnostics no longer include the entity ID of the weather entity that a
+  forecast care task watches. The troubleshooting guide promised that the file contains no
+  entity IDs.
 
 ## [0.15.0] - 2026-10-30
 

@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - main
+  # The Dependabot bundles workflow starts CI this way after it pushes rebuilt
+  # bundles, because its push does not trigger workflows.
+  workflow_dispatch:
   schedule:
     # Weekly, so the latest-Home-Assistant job notices new releases even when
     # the repository is quiet.
@@ -47,13 +50,11 @@ jobs:
 
   pytest-latest-ha:
     name: Pytest (latest Home Assistant)
-    # Runs the test suite against the newest released Home Assistant so that
-    # incompatibilities (for example an integration requirement that conflicts
-    # with a package core has moved on from) show up before users hit them.
-    # requirements-dev.txt stays pinned to the minimum supported version.
-    # Informational for now: failures are reported but do not block PRs.
+    # Runs the test suite against the newest stable Home Assistant release,
+    # which is what most users run. The backend job above covers the minimum
+    # supported version pinned in requirements-dev.txt; together they cover
+    # both schema libraries (voluptuous before 2026.9, probatio from 2026.9).
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Resolve latest Home Assistant test versions
@@ -65,22 +66,58 @@ jobs:
           import re
           import urllib.request
 
+          STABLE = re.compile(r"\d+\.\d+\.\d+")
+
           def pypi(path):
               with urllib.request.urlopen(f"https://pypi.org/pypi/{path}/json") as resp:
-                  return json.load(resp)["info"]
+                  return json.load(resp)
 
-          phcc = pypi("pytest-homeassistant-custom-component")
-          ha_version = next(
-              req.split("==", 1)[1].strip()
-              for req in phcc["requires_dist"]
-              if re.match(r"homeassistant\s*==", req)
+          def key(version):
+              return tuple(int(part) for part in version.split("."))
+
+          stable_ha = max(
+              (v for v in pypi("homeassistant")["releases"] if STABLE.fullmatch(v)),
+              key=key,
           )
-          requires_python = pypi(f"homeassistant/{ha_version}")["requires_python"]
+
+          # pytest-homeassistant-custom-component pins one exact Home Assistant
+          # release, which can be a beta during the week before a monthly
+          # release. Use the newest harness that pins a stable release.
+          phcc_versions = sorted(
+              (
+                  v
+                  for v in pypi("pytest-homeassistant-custom-component")["releases"]
+                  if STABLE.fullmatch(v)
+              ),
+              key=key,
+              reverse=True,
+          )
+          for phcc in phcc_versions[:40]:
+              requires = pypi(f"pytest-homeassistant-custom-component/{phcc}")["info"][
+                  "requires_dist"
+              ]
+              ha_version = next(
+                  req.split("==", 1)[1].strip()
+                  for req in requires
+                  if re.match(r"homeassistant\s*==", req)
+              )
+              if STABLE.fullmatch(ha_version):
+                  break
+          else:
+              raise SystemExit("No test harness release pins a stable Home Assistant")
+
+          if ha_version != stable_ha:
+              print(
+                  f"::warning::Home Assistant {stable_ha} has no test harness release "
+                  f"yet; testing against {ha_version} instead."
+              )
+          requires_python = pypi(f"homeassistant/{ha_version}")["info"]["requires_python"]
           major, minor = re.search(r">=\s*(\d+)\.(\d+)", requires_python).groups()
-          print(f"pytest-homeassistant-custom-component {phcc['version']}")
+          print(f"newest stable homeassistant {stable_ha}")
+          print(f"pytest-homeassistant-custom-component {phcc}")
           print(f"homeassistant {ha_version} (Python {requires_python})")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
-              out.write(f"phcc={phcc['version']}\n")
+              out.write(f"phcc={phcc}\n")
               out.write(f"homeassistant={ha_version}\n")
               out.write(f"python={major}.{minor}\n")
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -142,7 +179,11 @@ jobs:
       - name: Build (production)
         run: npm run build
       - name: Verify tracked artifact is current
-        run: git diff --exit-code -- ../custom_components/smart_plants/frontend/smart-plants-panel.js ../custom_components/smart_plants/frontend/smart-plants-card.js ../custom_components/smart_plants/frontend/smart-plants-card-full.js
+        run: |
+          if ! git diff --exit-code -- ../custom_components/smart_plants/frontend/smart-plants-panel.js ../custom_components/smart_plants/frontend/smart-plants-card.js ../custom_components/smart_plants/frontend/smart-plants-card-full.js; then
+            echo "::error::The committed bundles do not match a fresh build. Run 'npm run build' in frontend/ and commit the three bundles. On Dependabot frontend pull requests the Dependabot bundles workflow does this."
+            exit 1
+          fi
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser smoke (installed production artifact)
