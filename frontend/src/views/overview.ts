@@ -240,7 +240,7 @@ export class SmartPlantsOverview extends LitElement {
           ${others.length ? html`<div class="chips">${others.map(([role, r]) => html`<sp-reading-chip .role=${role} .value=${r.value} .unit=${r.unit} .state=${r.state} .range=${r.range} .l=${l}></sp-reading-chip>`)}</div>` : nothing}
         </div>` : nothing}
       <div class="foot"><span class="last"><ha-icon aria-hidden="true" icon="mdi:history"></ha-icon>${wateredText(l, o?.last_watered_at ?? null, this.now)}</span>
-        <button type="button" class="tonal" ?disabled=${this.blocked || this.watering.has(plant.id)} aria-label=${l.t("card.log_watering_label", { name: plant.name })} @click=${() => this._emit("log-watering", { plantId: plant.id })}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${l.t("card.log_watering")}</button></div>
+        <button type="button" class="tonal" ?disabled=${this.blocked || this.watering.has(plant.id)} aria-label=${l.t("overview.log_watering_label", { name: plant.name })} @click=${() => this._emit("log-watering", { plantId: plant.id })}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${l.t("card.log_watering")}</button></div>
     </article>`;
   }
 

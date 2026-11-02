@@ -25,6 +25,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A pinned value on any **History** chart offers **Log care at this time**, which opens the
   care form at that time for any care type. On the soil moisture chart it is **Log other
   care**, next to **Log watering at this time**. See [History](docs/getting-started.md#history).
+- On a phone, the panel has a menu button at the top left that opens the Home Assistant
+  sidebar. Before, the only way out of the panel was the back gesture.
+- A plant's **⋮** menu has **Notifications…**, which starts with that plant chosen. A plant
+  with no automations also offers **Set up notifications** in its **Automations** card, and
+  the wizard's last screen says where notifications are. See
+  [Notifications](docs/notifications.md).
 - The installation guide says which Home Assistant versions are supported, what a version
   number promises, how deprecations and fixes are handled, and how to roll back to an earlier
   version. See [Supported versions](docs/installation.md#supported-versions).
@@ -44,6 +50,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Editing a care task no longer overwrites changes made to its other fields in another browser
+  while the editor was open. If both changed the same field, the editor says so before saving.
+- A note longer than 120 characters can be saved again. Only short details such as the
+  product or the plant part stop at 120; notes keep their 500 and 1,000 character limits.
+- When the plant status or the care history can't be loaded, the plant page says so and offers
+  **Try again**. Before, the readings looked like a plant without sensors and the care history
+  kept saying it was loading.
+- Turning a notification on or off in **Notifications…** now says when it failed and shows
+  the automation's actual state again.
+- Buttons that open another tab of the plant page, such as **Manage** or **Show all**, move the
+  keyboard focus to that tab.
+- The **Watered** button on the overview is announced as "Watered: plant name", so voice
+  control finds it by the text it shows.
+- The fertilizing care form shows one **Unit** field instead of two.
 - Smart Plants keeps working on future Home Assistant releases that no longer include
   voluptuous. On Home Assistant 2026.9 and later it now validates its settings, actions,
   automation options and panel requests with probatio, which Home Assistant itself has used

@@ -8,6 +8,7 @@ export const HA_ELEMENTS = [
   "ha-button",
   "ha-icon",
   "ha-icon-button",
+  "ha-menu-button",
   "ha-svg-icon",
   "ha-state-icon",
   "ha-tab-group",

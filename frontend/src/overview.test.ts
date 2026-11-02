@@ -104,7 +104,7 @@ describe("overview view", () => {
     expect((card.querySelector("sp-moisture-bar") as HTMLElement & { value: number }).value).toBe(34);
     expect((card.querySelector("sp-reading-chip") as HTMLElement & { role: string }).role).toBe("temperature");
     expect(card.querySelector(".last")!.textContent).toContain("Watered 4 days ago");
-    expect(card.querySelector(".tonal")!.getAttribute("aria-label")).toBe("Log watering for Basil");
+    expect(card.querySelector(".tonal")!.getAttribute("aria-label")).toBe("Watered: Basil");
     expect(card.textContent).not.toContain("Herbs");
     expect(card.textContent).not.toContain("/100");
   });
