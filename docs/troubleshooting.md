@@ -14,11 +14,17 @@ The file is safe to share. It contains:
 - OpenPlantBook connection status, such as whether a token and cached results exist,
 - inventory counts: number of plants, active vs. paused (`disabled`) plants, species
   sources, assigned sensor sources (in total and per role, for example moisture,
-  temperature, or battery), photos, care tasks per type, plants with a rest period, and
-  internal pending operations.
+  temperature, or battery), photos, care tasks per type and per schedule, plants with a rest
+  period, and internal pending operations,
+- when each snooze ends, as a sorted list that doesn't say which plant it belongs to,
+- for each care task that follows a reading: its condition, whether it reads a plant sensor,
+  another sensor or a forecast, and its current status. For a forecast it also lists whether
+  the task uses the forecast low or high, the forecast window in hours and whether the last
+  fetch returned a value.
 
-It does **not** contain plant names, entity IDs, care history, care task names or
-instructions, or photos. Still, have a look at the file before attaching it publicly.
+It does **not** contain plant names, entity IDs (not even of the weather entity a forecast
+task watches), sensor readings, thresholds, care history, care task names or instructions, or
+photos. Still, have a look at the file before attaching it publicly.
 
 > [!NOTE]
 > Each plant also has its own diagnostics in the panel: open the plant, go to the **Sensors**

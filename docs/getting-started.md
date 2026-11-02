@@ -128,8 +128,8 @@ appears as soon as the plant has at least one assigned sensor.
   and the time range with **24 h**, **7 days**, **30 days** or **1 year**. Your choice is
   remembered in the browser.
 - The line is the average value. The light area around it is the lowest to highest value of
-  each hour or day. The green band is the target range; a dashed line marks the ideal soil
-  moisture.
+  each 5 minutes (24 h), hour (7 and 30 days) or day (1 year). The green band is the target
+  range; a dashed line marks the ideal soil moisture.
 - A dotted vertical line marks each care entry, in one color per care type: watering blue,
   fertilizing amber, pruning teal, repotting brown, pest control red, notes grey and done care
   tasks purple. The legend below the chart lists the types shown. Waterings appear only on
@@ -176,7 +176,9 @@ Open the plant and go to the **Sensors** tab.
 When the soil moisture sensor stops reporting, a warning at the top of the tab names the
 sensor and when it last reported.
 
-The sensor picker is filtered by device class and unit for each reading. Tick
+The sensor picker is filtered by device class for soil moisture and by device class and unit
+for every other reading. A soil moisture sensor must report in %, so check the unit of one you
+pick. Tick
 **Show all sensors, including ones that don't look like a match** to pick anything else, or
 type an entity ID and press Enter to assign a sensor that is currently unavailable. Each
 reading accepts up to 32 sensors.

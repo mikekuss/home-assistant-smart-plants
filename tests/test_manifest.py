@@ -4,6 +4,7 @@ import json
 from importlib import metadata
 from pathlib import Path
 
+from custom_components.smart_plants.const import MIN_HA_VERSION
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
@@ -59,3 +60,28 @@ def test_unlisted_runtime_packages_are_provided_by_home_assistant_core() -> None
             f"{name} is no longer a Home Assistant core dependency; "
             "add it to the manifest requirements"
         )
+
+
+def test_minimum_home_assistant_version_matches_hacs_and_test_pin() -> None:
+    """
+    MIN_HA_VERSION, hacs.json and the pinned test environment agree.
+
+    HACS reads the minimum from hacs.json, and the default test job runs
+    against the version pinned in requirements-dev.txt, so the constant is
+    only true while all three name the same release.
+    """
+    root = MANIFEST_PATH.parent.parent.parent
+    hacs = json.loads((root / "hacs.json").read_text(encoding="utf-8"))
+    pinned = [
+        Requirement(line)
+        for line in (root / "requirements-dev.txt")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if line.strip() and not line.lstrip().startswith(("#", "-"))
+    ]
+    ha_pin = next(
+        req for req in pinned if canonicalize_name(req.name) == "homeassistant"
+    )
+
+    assert hacs["homeassistant"] == MIN_HA_VERSION
+    assert str(ha_pin.specifier) == f"=={MIN_HA_VERSION}"
