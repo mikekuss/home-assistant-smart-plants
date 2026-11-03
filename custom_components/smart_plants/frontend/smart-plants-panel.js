@@ -1,4 +1,4 @@
-//#region node_modules/@lit/reactive-element/css-tag.js
+// node_modules/@lit/reactive-element/css-tag.js
 /**
 * @license
 * Copyright 2019 Google LLC
@@ -262,8 +262,7 @@ var y = class extends HTMLElement {
 	firstUpdated(e) {}
 };
 y.elementStyles = [], y.shadowRootOptions = { mode: "open" }, y[ne("elementProperties")] = /* @__PURE__ */ new Map(), y[ne("finalized")] = /* @__PURE__ */ new Map(), te?.({ ReactiveElement: y }), (g.reactiveElementVersions ?? (g.reactiveElementVersions = [])).push("2.1.2");
-//#endregion
-//#region node_modules/lit-html/lit-html.js
+// node_modules/lit-html/lit-html.js
 /**
 * @license
 * Copyright 2017 Google LLC
@@ -529,8 +528,7 @@ var Ue = (e, t, n) => {
 S._$litElement$ = !0, S.finalized = !0, We.litElementHydrateSupport?.({ LitElement: S });
 var Ge = We.litElementPolyfillSupport;
 Ge?.({ LitElement: S }), (We.litElementVersions ?? (We.litElementVersions = [])).push("4.2.2");
-//#endregion
-//#region node_modules/@lit/reactive-element/decorators/property.js
+// node_modules/@lit/reactive-element/decorators/property.js
 /**
 * @license
 * Copyright 2017 Google LLC
@@ -570,8 +568,7 @@ function C(e) {
 		return t.constructor.createProperty(n, e), r ? Object.getOwnPropertyDescriptor(t, n) : void 0;
 	})(e, t, n);
 }
-//#endregion
-//#region node_modules/@lit/reactive-element/decorators/state.js
+// node_modules/@lit/reactive-element/decorators/state.js
 /**
 * @license
 * Copyright 2017 Google LLC
@@ -583,8 +580,7 @@ function C(e) {
 		attribute: !1
 	});
 }
-//#endregion
-//#region src/validation.ts
+// src/validation.ts
 var T = (e) => typeof e == "object" && !!e && !Array.isArray(e), E = (e, t = 500) => typeof e == "string" && e.length > 0 && e.length <= t, D = (e, t = 500) => e === null || E(e, t), O = (e, t, n) => typeof e == "number" && Number.isSafeInteger(e) && e >= t && e <= n, k = (e) => E(e, 64) && /^\d{4}-\d\d-\d\dT/.test(e) && Number.isFinite(Date.parse(e)), Je = (e) => e === null || k(e) || typeof e == "string" && /^\d{4}-\d\d-\d\d$/.test(e) && Number.isFinite(Date.parse(e)), Ye = (e, t) => T(e) && Object.keys(e).length <= 32 && Object.entries(e).every(([e, n]) => E(e, 60) && t(n)), Xe = (e) => e == null || typeof e == "number" && Number.isFinite(e) && e >= -100 && e <= 100, Ze = {
 	provider: (e) => E(e, 60),
 	provider_id: (e) => D(e, 200),
@@ -864,8 +860,7 @@ function Dt(e, t) {
 	}
 	return $e(t.plant) && T(t.plant) && (e.plant_id === void 0 || t.plant.id === e.plant_id);
 }
-//#endregion
-//#region src/status.ts
+// src/status.ts
 var Ot = [
 	"needs_water",
 	"too_wet",
@@ -999,8 +994,7 @@ function Lt(e, t, n = Date.now()) {
 	}
 	return t;
 }
-//#endregion
-//#region src/overview-model.ts
+// src/overview-model.ts
 var Rt = [
 	"ok",
 	"low",
@@ -1259,8 +1253,7 @@ function pn(e) {
 		items: t
 	}));
 }
-//#endregion
-//#region src/history-model.ts
+// src/history-model.ts
 var mn = [
 	"24h",
 	"7d",
@@ -1332,7 +1325,7 @@ function Cn(e) {
 }
 function wn(e, t, n) {
 	let r = Math.min(...e.map((e) => e.min)), i = Math.max(...e.map((e) => e.max));
-	(!Number.isFinite(r) || !Number.isFinite(i)) && (r = 0, i = n === "%" ? 100 : 1);
+	Number.isFinite(r) && Number.isFinite(i) || (r = 0, i = n === "%" ? 100 : 1);
 	let a = Math.max(i - r, n === "%" ? 10 : Math.max(Math.abs(i) * .1, 1)) * 1.5;
 	for (let e of t) e != null && Number.isFinite(e) && (e < r && e >= r - a && (r = e), e > i && e <= i + a && (i = e));
 	let o = n === "%" ? 10 : Math.max(Math.abs(i) * .05, 2);
@@ -1447,8 +1440,7 @@ function Pn(e, t) {
 		target: t?.target ?? null
 	};
 }
-//#endregion
-//#region src/api.ts
+// src/api.ts
 var N = class extends Error {
 	constructor(e, t) {
 		super(t), this.code = e, this.name = "ApiError";
@@ -1901,8 +1893,7 @@ async function Rn(e, t, n) {
 	if (!c || !$e(c.plant) || c.plant.id !== n.plantId) throw new N("invalid_response", "The image response is incompatible. Refresh before retrying.");
 	return c.plant;
 }
-//#endregion
-//#region src/translations/de.ts
+// src/translations/de.ts
 var zn = {
 	"format.percent": "{value} %",
 	"format.recorded_date_time": "{datetime} (UTC{offset})",
@@ -5104,7 +5095,7 @@ function Mi(e, t, n, r, i = L) {
 	let o = n[a?.entity_id ?? e.entity_id], s = [];
 	if (a || s.push(i.t("source_warning.unregistered")), (!o || ["unknown", "unavailable"].includes(o.state)) && s.push(i.t("source_warning.unavailable")), o) {
 		let e = o.attributes.unit_of_measurement, t = o.attributes.device_class;
-		(typeof e != "string" || !r.acceptedUnits.includes(e) || t !== r.deviceClass) && s.push(i.t("source_warning.role_metadata", {
+		typeof e == "string" && r.acceptedUnits.includes(e) && t === r.deviceClass || s.push(i.t("source_warning.role_metadata", {
 			role: Ti(r.role, i),
 			device_class: r.deviceClass,
 			units: r.acceptedUnits.join(" / ")
@@ -5118,8 +5109,7 @@ function Ni(e) {
 function Pi(e, t, n = L) {
 	return e.length > 60 || t.length > 32 || t.some((e) => e.length > 60) ? n.t("validation.taxonomy") : null;
 }
-//#endregion
-//#region src/editors.ts
+// src/editors.ts
 var Fi = (e) => e.target.value;
 function Ii(e, t, n, r = "text", i = 200) {
 	return b`<label>${e}<input type=${r} maxlength=${i} .value=${t} @input=${(e) => n(Fi(e))}></label>`;
@@ -5273,11 +5263,7 @@ function Ji(e, t, n, r, i, a, o, s, c, l, u, d, f = "all") {
 		if (r.key !== "Enter") return;
 		r.preventDefault();
 		let i = r.target, a = i.value.trim();
-		if (bi(n).has(a)) {
-			i.setCustomValidity(e.t("sources.own_sensor_refused")), i.reportValidity();
-			return;
-		}
-		/^sensor\.[a-z0-9_]+$/.test(a) && !t.sources.some((e) => e.entity_id === a) && (h(a), i.value = "");
+		bi(n).has(a) ? (i.setCustomValidity(e.t("sources.own_sensor_refused")), i.reportValidity()) : /^sensor\.[a-z0-9_]+$/.test(a) && !t.sources.some((e) => e.entity_id === a) && (h(a), i.value = "");
 	}}></label><small>${e.t("sources.press_enter")}</small>
     <ul>${t.sources.map((i) => {
 		let a = V(i, n), o = i.registry_id && !a ? void 0 : r[a?.entity_id ?? i.entity_id];
@@ -5339,8 +5325,7 @@ function Zi(e, t, n) {
     </details>
     ${n ? b`<p class="small muted">${e.t("snapshot.preview_read_only")}</p>` : x}</article>`;
 }
-//#endregion
-//#region src/components/shared-styles.ts
+// src/components/shared-styles.ts
 var U = o`
   :host {
     --sp-success: var(--success-color, #4caf50);
@@ -5367,16 +5352,14 @@ function $i(e) {
 		default: return "var(--sp-disabled)";
 	}
 }
-//#endregion
-//#region \0@oxc-project+runtime@0.151.0/helpers/esm/decorate.js
+// \0@oxc-project+runtime@0.156.0/helpers/esm/decorate.js
 function W(e, t, n, r) {
 	var i = arguments.length, a = i < 3 ? t : r === null ? r = Object.getOwnPropertyDescriptor(t, n) : r, o;
 	if (typeof Reflect == "object" && typeof Reflect.decorate == "function") a = Reflect.decorate(e, t, n, r);
 	else for (var s = e.length - 1; s >= 0; s--) (o = e[s]) && (a = (i < 3 ? o(a) : i > 3 ? o(t, n, a) : o(t, n)) || a);
 	return i > 3 && a && Object.defineProperty(t, n, a), a;
 }
-//#endregion
-//#region src/components/sp-status-chip.ts
+// src/components/sp-status-chip.ts
 var ea, ta = class extends S {
 	constructor(...e) {
 		super(...e), this.status = "healthy", this.label = "", this.more = 0, this.l = L;
@@ -5406,8 +5389,7 @@ ea = ta, ea.styles = [
     .label { overflow-wrap: anywhere; hyphens: auto; }
   `
 ], W([C({ reflect: !0 })], ta.prototype, "status", void 0), W([C()], ta.prototype, "label", void 0), W([C({ type: Number })], ta.prototype, "more", void 0), W([C({ attribute: !1 })], ta.prototype, "l", void 0), customElements.get("sp-status-chip") || customElements.define("sp-status-chip", ta);
-//#endregion
-//#region src/components/sp-moisture-bar.ts
+// src/components/sp-moisture-bar.ts
 var na, ra = (e) => Math.min(100, Math.max(0, e)), ia = class extends S {
 	constructor(...e) {
 		super(...e), this.value = null, this.range = null, this.state = "ok", this.lastReported = null, this.now = void 0, this.l = L;
@@ -5463,8 +5445,7 @@ na = ia, na.styles = [U, o`
     .age { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
     .age ha-icon { --mdc-icon-size: 15px; }
   `], W([C({ type: Number })], ia.prototype, "value", void 0), W([C({ attribute: !1 })], ia.prototype, "range", void 0), W([C({ reflect: !0 })], ia.prototype, "state", void 0), W([C({ attribute: !1 })], ia.prototype, "lastReported", void 0), W([C({ attribute: !1 })], ia.prototype, "now", void 0), W([C({ attribute: !1 })], ia.prototype, "l", void 0), customElements.get("sp-moisture-bar") || customElements.define("sp-moisture-bar", ia);
-//#endregion
-//#region src/components/sp-reading-chip.ts
+// src/components/sp-reading-chip.ts
 var aa, oa = class extends S {
 	constructor(...e) {
 		super(...e), this.role = "temperature", this.value = null, this.unit = "", this.state = "ok", this.range = null, this.l = L;
@@ -5498,8 +5479,7 @@ aa = oa, aa.styles = [
     :host([state="stale"]) .chip, :host([state="unavailable"]) .chip { opacity: .6; }
   `
 ], W([C()], oa.prototype, "role", void 0), W([C({ type: Number })], oa.prototype, "value", void 0), W([C()], oa.prototype, "unit", void 0), W([C({ reflect: !0 })], oa.prototype, "state", void 0), W([C({ attribute: !1 })], oa.prototype, "range", void 0), W([C({ attribute: !1 })], oa.prototype, "l", void 0), customElements.get("sp-reading-chip") || customElements.define("sp-reading-chip", oa);
-//#endregion
-//#region src/components/sp-plant-avatar.ts
+// src/components/sp-plant-avatar.ts
 var sa, ca = class extends S {
 	constructor(...e) {
 		super(...e), this.src = null, this.name = "", this.size = "small", this.l = L;
@@ -5520,8 +5500,7 @@ sa = ca, sa.styles = [U, o`
     img { width: 100%; height: 100%; object-fit: cover; display: block; }
     ha-icon { --mdc-icon-size: calc(var(--sp-avatar-size) * .54); }
   `], W([C({ attribute: !1 })], ca.prototype, "src", void 0), W([C()], ca.prototype, "name", void 0), W([C({ reflect: !0 })], ca.prototype, "size", void 0), W([C({ attribute: !1 })], ca.prototype, "l", void 0), customElements.get("sp-plant-avatar") || customElements.define("sp-plant-avatar", ca);
-//#endregion
-//#region src/components/sp-empty-state.ts
+// src/components/sp-empty-state.ts
 var la, ua = class extends S {
 	constructor(...e) {
 		super(...e), this.icon = "mdi:sprout", this.heading = "", this.compact = !1;
@@ -5547,8 +5526,7 @@ la = ua, la.styles = [U, o`
 	type: Boolean,
 	reflect: !0
 })], ua.prototype, "compact", void 0), customElements.get("sp-empty-state") || customElements.define("sp-empty-state", ua);
-//#endregion
-//#region src/components/sp-history-chart.ts
+// src/components/sp-history-chart.ts
 var da, fa = 200, G = {
 	top: 10,
 	right: 12,
@@ -5618,11 +5596,7 @@ var da, fa = 200, G = {
 			this._pinned || (this._active = this._nearest(e.clientX));
 		}, ae = (e) => {
 			let t = this._nearest(e.clientX);
-			if (this._pinned && t === this._active) {
-				this._unpin();
-				return;
-			}
-			this._pin(t);
+			this._pinned && t === this._active ? this._unpin() : this._pin(t);
 		}, oe = (e) => {
 			e.key === "Enter" && t.length ? (e.preventDefault(), this._pin(this._active ?? t.length - 1)) : e.key === "Escape" && this._pinned && (e.stopPropagation(), this._unpin());
 		}, se = this._pinned && v ? this.actions : [];
@@ -5698,8 +5672,7 @@ da = K, da.styles = [
     .key.marker { width: 8px; border-radius: 50%; }
   `
 ], W([C({ attribute: !1 })], K.prototype, "points", void 0), W([C({ attribute: !1 })], K.prototype, "start", void 0), W([C({ attribute: !1 })], K.prototype, "end", void 0), W([C({ attribute: !1 })], K.prototype, "periodMs", void 0), W([C()], K.prototype, "unit", void 0), W([C({ attribute: !1 })], K.prototype, "band", void 0), W([C({ attribute: !1 })], K.prototype, "markers", void 0), W([C({ attribute: !1 })], K.prototype, "markerGroups", void 0), W([C()], K.prototype, "summary", void 0), W([C()], K.prototype, "bandLabel", void 0), W([C({ attribute: !1 })], K.prototype, "actions", void 0), W([C({ attribute: !1 })], K.prototype, "l", void 0), W([w()], K.prototype, "_width", void 0), W([w()], K.prototype, "_active", void 0), W([w()], K.prototype, "_pinned", void 0), customElements.get("sp-history-chart") || customElements.define("sp-history-chart", K);
-//#endregion
-//#region src/components/sp-snooze-chip.ts
+// src/components/sp-snooze-chip.ts
 var pa, ma = class extends S {
 	constructor(...e) {
 		super(...e), this.label = "";
@@ -5719,13 +5692,11 @@ pa = ma, pa.styles = [U, o`
     ha-icon { --mdc-icon-size: 17px; flex: none; }
     .label { overflow-wrap: anywhere; hyphens: auto; }
   `], W([C()], ma.prototype, "label", void 0), customElements.get("sp-snooze-chip") || customElements.define("sp-snooze-chip", ma);
-//#endregion
-//#region src/ha-elements.ts
+// src/ha-elements.ts
 function q(e, t = customElements) {
 	return t.get(e) !== void 0;
 }
-//#endregion
-//#region src/views/plant.ts
+// src/views/plant.ts
 var ha = [
 	"overview",
 	"sensors",
@@ -6805,8 +6776,7 @@ function ls(e, t) {
 		}
 	}] : []);
 }
-//#endregion
-//#region src/views/care-plan.ts
+// src/views/care-plan.ts
 function us(e) {
 	let { l: t, plant: n } = e, r = n.care_tasks ?? [], i = r.length >= 20;
 	return b`<section class="sp-card care-plan" aria-labelledby="care-plan-heading">
@@ -7280,8 +7250,7 @@ async function Ls(e, t = L) {
 		a();
 	}
 }
-//#endregion
-//#region src/bundle-version.ts
+// src/bundle-version.ts
 function Rs(e) {
 	try {
 		return new URL(e).searchParams.get("v") || null;
@@ -7292,8 +7261,7 @@ function Rs(e) {
 function zs(e, t) {
 	return !!e && !!t && e !== t;
 }
-//#endregion
-//#region src/snooze.ts
+// src/snooze.ts
 var Bs = [
 	{
 		choice: "1",
@@ -7394,8 +7362,7 @@ function Qs(e, t, n, r, i = Date.now()) {
 	let a = Ys(t, i), o = a ? Xs(a, r) : null;
 	return o ? e.t("snooze.chip", { date: Zs(e, o, n).replace(/\s/g, "\xA0") }) : null;
 }
-//#endregion
-//#region src/styles.ts
+// src/styles.ts
 var $s = o`
   :host{display:block;color:var(--primary-text-color,#212121);font-family:var(--paper-font-body1_-_font-family,system-ui,sans-serif);line-height:1.5;overflow-wrap:anywhere}
   *{box-sizing:border-box} .update-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-left:4px solid var(--info-color,#039be5);padding:8px 16px;margin-bottom:16px;background:var(--card-background-color,#fff)} .update-banner p{margin:0} main{width:100%;max-width:none;margin:0;padding:0} .panel-content{width:100%;max-width:1280px;margin:0 auto;padding:16px 24px 24px} header,.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap} header{justify-content:space-between;margin-bottom:24px}
@@ -8465,8 +8432,7 @@ function Sc(e, t, n) {
 		location.href === r && (history.pushState(null, "", "/config/automation/edit/new"), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } })), n());
 	});
 }
-//#endregion
-//#region src/views/notifications.ts
+// src/views/notifications.ts
 var Cc, Z = class extends S {
 	constructor(...e) {
 		super(...e), this.plants = [], this.devices = [], this.entities = [], this.states = {}, this.plantId = null, this._draft = {
@@ -8717,8 +8683,7 @@ Cc = Z, Cc.styles = [
     @media (max-width: 600px) { .preset-fields, .plant-choices { padding-inline-start: 0; } .preset-fields { grid-template-columns: 1fr; } }
   `
 ], W([C({ attribute: !1 })], Z.prototype, "hass", void 0), W([C({ attribute: !1 })], Z.prototype, "l", void 0), W([C({ attribute: !1 })], Z.prototype, "plants", void 0), W([C({ attribute: !1 })], Z.prototype, "devices", void 0), W([C({ attribute: !1 })], Z.prototype, "entities", void 0), W([C({ attribute: !1 })], Z.prototype, "states", void 0), W([C({ attribute: !1 })], Z.prototype, "plantId", void 0), W([w()], Z.prototype, "_draft", void 0), W([w()], Z.prototype, "_found", void 0), W([w()], Z.prototype, "_toggling", void 0), W([w()], Z.prototype, "_toggleError", void 0), customElements.get("smart-plants-notifications") || customElements.define("smart-plants-notifications", Z);
-//#endregion
-//#region src/views/overview.ts
+// src/views/overview.ts
 var wc, Tc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", Ec = {
 	all: {
 		label: "overview.tile_all",
@@ -9012,8 +8977,7 @@ function Mc(e, t, n = Date.now()) {
 	let r = t.lastTriggered ? e.t("automations.last_ran", { time: Lt(e, t.lastTriggered, Math.max(n, Date.parse(t.lastTriggered))) }) : e.t("automations.never_ran");
 	return t.editPath ? r : `${e.t("automations.yaml")} · ${r}`;
 }
-//#endregion
-//#region src/panel.ts
+// src/panel.ts
 var Nc, Pc = Object.fromEntries([
 	{
 		problemRole: "temperature_stress",
@@ -9206,13 +9170,7 @@ var $ = class e extends S {
 	}
 	_scheduleCareRefresh() {
 		this._careTimer === void 0 && (this._careTimer = setTimeout(() => {
-			if (this._careTimer = void 0, this.isConnected) {
-				if (this._formBusy) {
-					this._scheduleCareRefresh();
-					return;
-				}
-				this._refresh(!1);
-			}
+			this._careTimer = void 0, this.isConnected && (this._formBusy ? this._scheduleCareRefresh() : this._refresh(!1));
 		}, Gc));
 	}
 	_clearCareTimer() {
@@ -9304,11 +9262,7 @@ var $ = class e extends S {
 		let n = this._imageRequest, r = new AbortController();
 		this._imageAbort = r, this._imageLoading = !0, F.fetchImage(this.hass, e.id, r.signal).then((e) => {
 			let t = URL.createObjectURL(e);
-			if (n !== this._imageRequest || !this.isConnected) {
-				URL.revokeObjectURL(t);
-				return;
-			}
-			this._imageAbort = void 0, this._imageUrl = t, this._imageLoading = !1;
+			n !== this._imageRequest || !this.isConnected ? URL.revokeObjectURL(t) : (this._imageAbort = void 0, this._imageUrl = t, this._imageLoading = !1);
 		}).catch((e) => {
 			n === this._imageRequest && (this._imageAbort = void 0, this._imageLoading = !1, e instanceof DOMException && e.name === "AbortError" || (this._imageError = this._friendly(e)));
 		});
@@ -9683,7 +9637,7 @@ var $ = class e extends S {
 		let { key: r, entityId: i, role: a } = n, o = this._history?.key === r;
 		if (o && !e && Date.now() - this._historyLoadedAt < Wc) return;
 		let s = ++this._historyRequest;
-		this._historyLoadedAt = Date.now(), (!o || this._history?.status !== "ready") && (this._history = {
+		this._historyLoadedAt = Date.now(), o && this._history?.status === "ready" || (this._history = {
 			key: r,
 			status: "loading",
 			points: []
@@ -10200,11 +10154,8 @@ var $ = class e extends S {
 					let r = s();
 					if (!r) throw new N("not_found", "Care task not found.");
 					let i = qo(l, r, a);
-					if (i.overlaps.length) {
-						u = i.overlaps, this._setTaskEditor({ baseline: structuredClone(r) });
-						return;
-					}
-					return Object.keys(i.changes).length ? F.updateCareTask(n, e, o, t, i.changes) : void 0;
+					if (i.overlaps.length) u = i.overlaps, this._setTaskEditor({ baseline: structuredClone(r) });
+					else return Object.keys(i.changes).length ? F.updateCareTask(n, e, o, t, i.changes) : void 0;
 				}), u.length) {
 					let e = u.map((e) => r.t(`care_plan.overlap_${e}`)).join(", ");
 					this._setTaskEditor({ error: r.t("care_plan.error_overlap", { fields: e }) });
@@ -10355,11 +10306,7 @@ var $ = class e extends S {
 	}
 	_copyEntityId(e) {
 		let t = this._l, n = typeof navigator > "u" ? void 0 : navigator.clipboard;
-		if (!n) {
-			this._toast(t.t("care_plan.copy_failed"));
-			return;
-		}
-		n.writeText(e).then(() => this._toast(t.t("care_plan.copied", { entity: e })), () => this._toast(t.t("care_plan.copy_failed")));
+		n ? n.writeText(e).then(() => this._toast(t.t("care_plan.copied", { entity: e })), () => this._toast(t.t("care_plan.copy_failed"))) : this._toast(t.t("care_plan.copy_failed"));
 	}
 	_renderCareDialog(e) {
 		let t = this._l, n = this._plantById(e);
@@ -10566,18 +10513,10 @@ var $ = class e extends S {
 		return i;
 	}
 	_toggleThresholdEdit(e, t) {
-		if (this._thresholdRole === e.problemRole && this._thresholdEdits !== null) {
-			this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._pendingThresholdSwitch = null;
-			return;
-		}
-		if (this._thresholdRole && this._thresholdRole !== e.problemRole && this._hasUnsavedThresholdChanges()) {
-			this._pendingThresholdSwitch = {
-				spec: e,
-				plant: t
-			};
-			return;
-		}
-		this._openThresholdEditor(e, t);
+		this._thresholdRole === e.problemRole && this._thresholdEdits !== null ? (this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._pendingThresholdSwitch = null) : this._thresholdRole && this._thresholdRole !== e.problemRole && this._hasUnsavedThresholdChanges() ? this._pendingThresholdSwitch = {
+			spec: e,
+			plant: t
+		} : this._openThresholdEditor(e, t);
 	}
 	_openThresholdEditor(e, t) {
 		let n = e.seed(this._persistedRoleOverrides(e, t));
@@ -10655,28 +10594,14 @@ var $ = class e extends S {
 				return;
 			}
 			this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._pendingSourceSwitch = null;
-			return;
-		}
-		this._openSensorEditor(e, t, n);
+		} else this._openSensorEditor(e, t, n);
 	}
 	_openSensorEditor(e, t, n) {
-		if (e === "moisture") {
-			this._moistureMode = n, this._focusEditor(n, e);
-			return;
-		}
-		if (this._sourceRole === e && this._sourceEdits !== null) {
-			this._sourceMode = n, this._focusEditor(n, e);
-			return;
-		}
-		if (this._sourceRole && this._sourceRole !== e && this._hasUnsavedSourceChanges()) {
-			this._pendingSourceSwitch = {
-				role: e,
-				plant: t,
-				mode: n
-			};
-			return;
-		}
-		this._openSourceEditor(e, t, n);
+		e === "moisture" ? (this._moistureMode = n, this._focusEditor(n, e)) : this._sourceRole === e && this._sourceEdits !== null ? (this._sourceMode = n, this._focusEditor(n, e)) : this._sourceRole && this._sourceRole !== e && this._hasUnsavedSourceChanges() ? this._pendingSourceSwitch = {
+			role: e,
+			plant: t,
+			mode: n
+		} : this._openSourceEditor(e, t, n);
 	}
 	_focusEditor(e, t) {
 		if (e !== "pick") return;
@@ -10739,11 +10664,7 @@ var $ = class e extends S {
 		this._moistureMode = null, this._moistureSourceError = "";
 	}
 	async _saveMoistureSensors() {
-		if (this._edits?.moisture && Ai(this._edits.moisture)) {
-			this._moistureSourceError = this._l.t("validation.main_sensor");
-			return;
-		}
-		this._moistureSourceError = "", await this._save("moisture"), this._error || (this._moistureMode = null);
+		this._edits?.moisture && Ai(this._edits.moisture) ? this._moistureSourceError = this._l.t("validation.main_sensor") : (this._moistureSourceError = "", await this._save("moisture"), this._error || (this._moistureMode = null));
 	}
 	_assignedSensors(e) {
 		let t = ["moisture", ...Ci.map((e) => e.role)], n = Object.keys(A);
@@ -11035,14 +10956,10 @@ var $ = class e extends S {
 		let e = this._snoozeDraft;
 		if (!e) return;
 		let t = Ks(e.choice, this._today(), e.date, this._timeZone());
-		if (!t) {
-			this._snoozeDraft = {
-				...e,
-				error: this._l.t("snooze.error_date")
-			}, this.updateComplete.then(() => this.shadowRoot?.querySelector("#snooze-date")?.focus());
-			return;
-		}
-		this._closeDialog(), this._snoozeMany(t);
+		t ? (this._closeDialog(), this._snoozeMany(t)) : (this._snoozeDraft = {
+			...e,
+			error: this._l.t("snooze.error_date")
+		}, this.updateComplete.then(() => this.shadowRoot?.querySelector("#snooze-date")?.focus()));
 	}
 	async _snoozeMany(e) {
 		if (!this.hass || this._formBusy || this._blocked) return;
@@ -11078,7 +10995,7 @@ var $ = class e extends S {
 			}
 			return t;
 		} catch (e) {
-			return t !== this._context || !this.isConnected ? null : (this._error = this._friendly(e), e instanceof N && ["integration_not_loaded", "unauthorized"].includes(e.code) && (this._blocked = !0, this._clearImage()), null);
+			return t !== this._context || !this.isConnected || (this._error = this._friendly(e), e instanceof N && ["integration_not_loaded", "unauthorized"].includes(e.code) && (this._blocked = !0, this._clearImage())), null;
 		} finally {
 			t === this._context && (this._formBusy = !1), this._refresh(!1);
 		}
@@ -11143,7 +11060,7 @@ var $ = class e extends S {
 		let r = this.hass, i = ji(this._sourceEdits, this._entities), a = H(t, e);
 		await this._mutate(async () => {
 			let n = t.revision, o = t;
-			return (!a || JSON.stringify(a.sources) !== JSON.stringify(i.sources)) && (o = await F.setRoleSources(r, t.id, n, e, i.sources), n = o.revision), (!a || H(o, e)?.primary_entity_id !== i.primary_entity_id) && (o = await F.setRolePrimary(r, t.id, n, e, i.primary_entity_id), n = o.revision), (!a || a.aggregation !== i.aggregation) && (o = await F.setRoleAggregation(r, t.id, n, e, i.aggregation), n = o.revision), (!a || a.stale_after_seconds !== i.stale_after_seconds) && (o = await F.setRoleStaleAfter(r, t.id, n, e, i.stale_after_seconds), n = o.revision), o;
+			return a && JSON.stringify(a.sources) === JSON.stringify(i.sources) || (o = await F.setRoleSources(r, t.id, n, e, i.sources), n = o.revision), a && H(o, e)?.primary_entity_id === i.primary_entity_id || (o = await F.setRolePrimary(r, t.id, n, e, i.primary_entity_id), n = o.revision), a && a.aggregation === i.aggregation || (o = await F.setRoleAggregation(r, t.id, n, e, i.aggregation), n = o.revision), a && a.stale_after_seconds === i.stale_after_seconds || (o = await F.setRoleStaleAfter(r, t.id, n, e, i.stale_after_seconds), n = o.revision), o;
 		}), this._error || (this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._pendingSourceSwitch = null, this._sourceSaved = {
 			...this._sourceSaved,
 			[e]: this._l.t("sensors.saved", { role: j(this._l, e) })
@@ -11470,5 +11387,4 @@ Nc = $, Nc.styles = [
 	type: Boolean,
 	reflect: !0
 })], $.prototype, "narrow", void 0), W([C({ attribute: !1 })], $.prototype, "route", void 0), W([w()], $.prototype, "_plants", void 0), W([w()], $.prototype, "_loading", void 0), W([w()], $.prototype, "_error", void 0), W([w()], $.prototype, "_notice", void 0), W([w()], $.prototype, "_view", void 0), W([w()], $.prototype, "_detailSection", void 0), W([w()], $.prototype, "_formBusy", void 0), W([w()], $.prototype, "_capabilities", void 0), W([w()], $.prototype, "_updateAvailable", void 0), W([w()], $.prototype, "_blocked", void 0), W([w()], $.prototype, "_areas", void 0), W([w()], $.prototype, "_entities", void 0), W([w()], $.prototype, "_devices", void 0), W([w()], $.prototype, "_states", void 0), W([w()], $.prototype, "_evaluations", void 0), W([w()], $.prototype, "_health", void 0), W([w()], $.prototype, "_healthError", void 0), W([w()], $.prototype, "_careHistory", void 0), W([w()], $.prototype, "_historyRole", void 0), W([w()], $.prototype, "_historyRange", void 0), W([w()], $.prototype, "_history", void 0), W([w()], $.prototype, "_careError", void 0), W([w()], $.prototype, "_careLoadError", void 0), W([w()], $.prototype, "_careDate", void 0), W([w()], $.prototype, "_careNote", void 0), W([w()], $.prototype, "_careKind", void 0), W([w()], $.prototype, "_careFields", void 0), W([w()], $.prototype, "_careEditingId", void 0), W([w()], $.prototype, "_registryError", void 0), W([w()], $.prototype, "_areaReview", void 0), W([w()], $.prototype, "_overview", void 0), W([w()], $.prototype, "_overviewError", void 0), W([w()], $.prototype, "_thumbnails", void 0), W([w()], $.prototype, "_watering", void 0), W([w()], $.prototype, "_edits", void 0), W([w()], $.prototype, "_conflict", void 0), W([w()], $.prototype, "_allSensors", void 0), W([w()], $.prototype, "_preview", void 0), W([w()], $.prototype, "_provider", void 0), W([w()], $.prototype, "_query", void 0), W([w()], $.prototype, "_results", void 0), W([w()], $.prototype, "_related", void 0), W([w()], $.prototype, "_relatedAllPlants", void 0), W([w()], $.prototype, "_relatedExpanded", void 0), W([w()], $.prototype, "_imageUrl", void 0), W([w()], $.prototype, "_imageLoading", void 0), W([w()], $.prototype, "_imageError", void 0), W([w()], $.prototype, "_dialog", void 0), W([w()], $.prototype, "_snoozeDraft", void 0), W([w()], $.prototype, "_restEditor", void 0), W([w()], $.prototype, "_taskEditor", void 0), W([w()], $.prototype, "_automateTaskId", void 0), W([w()], $.prototype, "_carePending", void 0), W([w()], $.prototype, "_careTaskId", void 0), W([w()], $.prototype, "_wizardStarted", void 0), W([w()], $.prototype, "_notificationsOpen", void 0), W([w()], $.prototype, "_creationNotice", void 0), W([w()], $.prototype, "_creationPhoto", void 0), W([w()], $.prototype, "_createdPlantId", void 0), W([w()], $.prototype, "_thresholdRole", void 0), W([w()], $.prototype, "_thresholdEdits", void 0), W([w()], $.prototype, "_thresholdBaseline", void 0), W([w()], $.prototype, "_thresholdError", void 0), W([w()], $.prototype, "_thresholdSaved", void 0), W([w()], $.prototype, "_pendingThresholdSwitch", void 0), W([w()], $.prototype, "_sourceRole", void 0), W([w()], $.prototype, "_sourceEdits", void 0), W([w()], $.prototype, "_sourceBaseline", void 0), W([w()], $.prototype, "_sourceError", void 0), W([w()], $.prototype, "_sourceUnavailable", void 0), W([w()], $.prototype, "_sourceSaved", void 0), W([w()], $.prototype, "_pendingSourceSwitch", void 0), W([w()], $.prototype, "_sourceMode", void 0), W([w()], $.prototype, "_moistureMode", void 0), W([w()], $.prototype, "_moistureSourceError", void 0), W([w()], $.prototype, "_expanded", void 0), W([w()], $.prototype, "_settingsOpen", void 0), W([w()], $.prototype, "_careFilter", void 0), W([w()], $.prototype, "_careFormOpen", void 0), W([w()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);
-//#endregion
 export { $ as SmartPlantsPanel };
