@@ -24,7 +24,7 @@ from custom_components.smart_plants.const import (
     SINGLETON_UNIQUE_ID,
 )
 from custom_components.smart_plants.manager import SmartPlantsManager
-from custom_components.smart_plants.models import PlantRecord
+from custom_components.smart_plants.models import PendingOperation, PlantRecord
 from custom_components.smart_plants.storage import SmartPlantsStorageError
 from homeassistant.core import HomeAssistant
 from PIL import Image
@@ -367,3 +367,45 @@ async def test_replay_skips_delete_when_the_plant_changed_since(
     assert image.id == OLD_IMAGE_ID
     assert manager.snapshot.pending_operations == ()
     assert _image_files(hass) == {OLD_IMAGE_ID}
+
+
+async def test_replay_keeps_a_photo_uploaded_while_it_runs(
+    hass: HomeAssistant,
+) -> None:
+    # Replay works on a copy of the plants read before it starts. A photo
+    # uploaded in the meantime must survive when replay saves its result.
+    entry = await _setup_entry(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    images_dir = _images_dir(hass)
+    images_dir.mkdir(parents=True, exist_ok=True)
+    (images_dir / f"{NEW_IMAGE_ID}.webp").write_bytes(_webp())
+    await manager.async_record_pending_operation(
+        PendingOperation.from_storage(
+            {
+                **_upload_op("op-pending", NEW_IMAGE_ID, None),
+                "plant_id": plant.id,
+                "expected_revision": plant.revision,
+                "schema_version": 2,
+            }
+        )
+    )
+
+    reconciler = manager._reconciler
+    assert reconciler is not None
+    real_replay = reconciler.async_replay
+    uploaded: list[PlantRecord] = []
+
+    async def replay_with_upload(**kwargs: Any) -> Any:
+        result = await real_replay(**kwargs)
+        if not uploaded:
+            uploaded.append(await _upload(manager, plant.id, (10, 10, 200)))
+        return result
+
+    with patch.object(reconciler, "async_replay", side_effect=replay_with_upload):
+        await manager.async_replay_pending()
+
+    assert uploaded[0].image is not None
+    assert uploaded[0].image.id != NEW_IMAGE_ID
+    assert manager.get_plant(plant.id) == uploaded[0]
+    assert manager.snapshot.pending_operations == ()

@@ -119,6 +119,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   the file of the replaced upload is removed.
 - Smart Plants no longer hangs at startup when two unfinished photo uploads for the same
   plant are waiting to be finished.
+- A photo uploaded or another plant change saved while Smart Plants is still finishing
+  unfinished changes at startup is no longer undone by that startup work.
+- The *All plants* sensor no longer re-checks every plant when a plant sensor changes only
+  an attribute it doesn't use, such as a reading or the light sample count.
 
 ## [0.15.0] - 2026-10-30
 
