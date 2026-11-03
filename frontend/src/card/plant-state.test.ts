@@ -153,3 +153,36 @@ describe("temperature in Fahrenheit", () => {
     expect(view().overview.roles.temperature).toMatchObject({ unit: "°C", range: { min: 10, max: 28 } });
   });
 });
+
+describe("other sensors that give no value", () => {
+  const ok = { entity_id: "binary_sensor.office_aloe_needs_water", state: "off", attributes: {} };
+  const unavailable = (entity_id: string) => ({ entity_id, state: "unavailable", attributes: {} });
+  const staleSensor = (inputProblems: Record<string, string>) => ({ entity_id: "binary_sensor.office_aloe_sensor_stale", state: "off", attributes: { sources: 1, input_problems: inputProblems } });
+
+  it("are not reporting when the backend says so", () => {
+    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "binary_sensor.office_aloe_sensor_stale": staleSensor({ temperature: "unavailable" }), "sensor.office_aloe_temperature": unavailable("sensor.office_aloe_temperature"), "binary_sensor.office_aloe_temperature_stress": unavailable("binary_sensor.office_aloe_temperature_stress") });
+    const plant = view(hass);
+    expect(plant.overview).toMatchObject({ status: "stale", problems: [{ role: "temperature", kind: "unavailable" }] });
+    expect(plant.overview.roles.temperature).toMatchObject({ value: null, state: "unavailable" });
+  });
+  it("are stale when one of several sensors went stale", () => {
+    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "binary_sensor.office_aloe_sensor_stale": staleSensor({ temperature: "stale" }), "binary_sensor.office_aloe_temperature_stress": unavailable("binary_sensor.office_aloe_temperature_stress") });
+    const plant = view(hass);
+    expect(plant.overview).toMatchObject({ status: "stale", problems: [{ role: "temperature", kind: "stale" }] });
+    expect(plant.overview.roles.temperature).toMatchObject({ value: 21.5, state: "stale" });
+  });
+  it("show a sensor waiting for a main sensor as not reporting", () => {
+    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "binary_sensor.office_aloe_sensor_stale": staleSensor({ humidity: "no_main_sensor" }) });
+    expect(view(hass).overview).toMatchObject({ status: "stale", problems: [{ role: "humidity", kind: "unavailable" }] });
+  });
+  it("leave a removed sensor alone even though its entities read unavailable", () => {
+    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "binary_sensor.office_aloe_sensor_stale": staleSensor({}), "sensor.office_aloe_temperature": unavailable("sensor.office_aloe_temperature"), "binary_sensor.office_aloe_temperature_stress": unavailable("binary_sensor.office_aloe_temperature_stress") });
+    const plant = view(hass);
+    expect(plant.overview).toMatchObject({ status: "healthy", problems: [] });
+    expect(plant.overview.roles.temperature).toBeUndefined();
+  });
+  it("ignore a malformed attribute", () => {
+    const hass = cardHass({ "binary_sensor.office_aloe_needs_water": ok, "binary_sensor.office_aloe_sensor_stale": { ...staleSensor({}), attributes: { sources: 1, input_problems: ["temperature"] } } });
+    expect(view(hass).overview).toMatchObject({ status: "healthy", problems: [] });
+  });
+});

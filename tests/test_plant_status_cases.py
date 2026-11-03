@@ -65,6 +65,20 @@ _STRESS: dict[str, tuple[str, str, type]] = {
 }
 
 
+# Role -> the value attribute on the evaluation.
+_READING: dict[str, str] = {
+    "temperature": "computed_celsius",
+    "humidity": "computed_percent",
+    "illuminance": "computed_lux",
+    "conductivity": "computed_micro_siemens_per_cm",
+    "soil_temperature": "computed_celsius",
+    "co2": "computed_ppm",
+    "battery": "computed_percent",
+}
+# The reading a case's role shows unless it sets ``reading``.
+_DEFAULT_READING = 20.0
+
+
 class _Fields(SimpleNamespace):
     """A stress result; attributes the case does not set read as ``None``."""
 
@@ -90,7 +104,14 @@ def _stress(role: str, data: dict[str, Any]) -> SimpleNamespace:
     result = _Fields(
         available=data["available"], reason=data["reason"], **{flag: data["on"]}
     )
-    return SimpleNamespace(computed_available=True, **{attribute: result})
+    value = data.get("reading", _DEFAULT_READING)
+    return SimpleNamespace(
+        computed_available=value is not None,
+        sensor_stale=data.get("stale", False),
+        quiet_expected=data.get("quiet_expected", False),
+        reasons=tuple(data.get("reasons", ())),
+        **{_READING[role]: value, attribute: result},
+    )
 
 
 def _evaluations(case: dict[str, Any]) -> dict[str, Any]:
@@ -163,9 +184,9 @@ def _entity_states(manager: Any, case: dict[str, Any]) -> dict[str, Any]:
         },
     }
     stale = binaries["sensor_stale"]
-    states["sources"] = (
-        stale.extra_state_attributes.get("sources") if stale.available else None
-    )
+    attributes = stale.extra_state_attributes if stale.available else {}
+    states["sources"] = attributes.get("sources")
+    states["input_problems"] = attributes.get("input_problems", {})
     every = [states["moisture"], *(states[key] for key in binaries)]
     every += [item["state"] for item in states["stress"].values()]
     states["allUnavailable"] = all(state == "unavailable" for state in every)
@@ -190,6 +211,7 @@ def test_entities_show_fixture_states(case: dict[str, Any]) -> None:
 def test_card_differs_only_where_no_main_sensor_is_chosen() -> None:
     # The entities don't say that several moisture sensors wait for a main
     # sensor; the card reports them as not reporting, with the same status.
+    # Other roles' problems reach the card through ``input_problems``.
     differences = [case for case in _CASES if "card" in case]
     assert [case["problems"] for case in differences] == [
         [{"role": "moisture", "kind": "no_main_sensor"}]

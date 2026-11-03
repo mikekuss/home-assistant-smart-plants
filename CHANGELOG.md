@@ -44,12 +44,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   legend lists the kinds shown. Before, it marked only waterings on the soil moisture chart
   and fertilizing on the fertilizer level chart. Waterings still appear only on those two
   charts.
+- A plant shows *No recent data* instead of *Healthy* when a temperature, humidity, light,
+  conductivity, soil temperature or CO2 sensor is stale or gives no usable value. Before,
+  only the soil moisture sensor counted. Battery sensors don't count. A light sensor doesn't
+  count at night, nor in the morning until its staleness window has passed since 08:00, so a
+  sensor that sat at 0 lx overnight has time to report. Such plants now also appear under the
+  **Sensor issues** filter. The new `input_problems` attribute of *Sensor stale* names these
+  sensors, and the dashboard card uses it. See
+  [Staleness](docs/sensors-and-health.md#staleness).
+- Low light keeps one light sample per minute, the brightest of that minute, and its
+  `sample_count` attribute is no longer recorded in history.
 - Every logged-in Home Assistant user can now view plant photos, so dashboard cards can show
   them to people who aren't administrators. Adding, replacing and removing photos stays
   admin-only.
 
 ### Fixed
 
+- A stress alert such as *Temperature stress* no longer turns off when the reading jumps
+  straight from one extreme to the other, for example from too cold to too hot. It now
+  reports the new direction. This applies to temperature, humidity, conductivity and soil
+  temperature.
+- *Low light* now counts a light sensor that keeps reporting the same value. Before, a
+  steady dim reading could leave *Low light* unavailable all day.
+- *Low light* updates reliably at 08:00 and 18:00. Before, the update could fail and the
+  next one was then never scheduled.
 - Editing a care task no longer overwrites changes made to its other fields in another browser
   while the editor was open. If both changed the same field, the editor says so before saving.
 - A note longer than 120 characters can be saved again. Only short details such as the

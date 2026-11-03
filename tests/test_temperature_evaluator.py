@@ -194,6 +194,26 @@ def test_temperature_stress_hysteresis_clears_matching_side() -> None:
     assert hot_cleared.temperature_stress.temperature_stress is False
 
 
+def test_temperature_stress_jumps_to_opposite_extreme() -> None:
+    cold_to_hot = evaluate(
+        _config(),
+        {"sensor.a": _reading(40.0)},
+        now=0.0,
+        previous_temperature_stress="cold",
+    )
+    assert cold_to_hot.temperature_stress.temperature_stress is True
+    assert cold_to_hot.temperature_stress.reason == "hot_stress"
+
+    hot_to_cold = evaluate(
+        _config(),
+        {"sensor.a": _reading(5.0)},
+        now=0.0,
+        previous_temperature_stress="hot",
+    )
+    assert hot_to_cold.temperature_stress.temperature_stress is True
+    assert hot_to_cold.temperature_stress.reason == "cold_stress"
+
+
 def test_temperature_stress_unavailable_when_temperature_unavailable() -> None:
     result = evaluate(_config(), {"sensor.a": _reading("unavailable")}, now=0.0)
     assert result.temperature_stress.available is False

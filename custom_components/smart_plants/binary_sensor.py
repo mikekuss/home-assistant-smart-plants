@@ -61,10 +61,12 @@ from .entity import (
     SmartPlantsEntity,
     async_setup_platform_lifecycle,
 )
+from .plant_status import INPUT_ROLE_ORDER, input_problems
 from .report import collect_plants, select_plants
 from .roles import EntityRole, RoleDefinition, entity_factories
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from datetime import datetime
 
     from homeassistant.config_entries import ConfigEntry
@@ -225,6 +227,8 @@ class _SensorStaleBinary(_MoistureBinaryBase):
 
     def __init__(self, manager: SmartPlantsManager, plant_id: str) -> None:
         super().__init__(manager, plant_id, ROLE_SENSOR_STALE)
+        self._unsub_inputs: list[Callable[[], None]] = []
+        self._written_input_problems: dict[str, str] | None = None
 
     @property
     def is_on(self) -> bool | None:
@@ -233,6 +237,34 @@ class _SensorStaleBinary(_MoistureBinaryBase):
             return False
         return bool(controller.current_evaluation.sensor_stale)
 
+    def _attach_controller_listener(self) -> None:
+        super()._attach_controller_listener()
+        if self._unsub_inputs:
+            return
+        for role in INPUT_ROLE_ORDER:
+            controller = self._manager.get_role_controller(self._plant_id, role)
+            if controller is not None:
+                self._unsub_inputs.append(controller.add_listener(self._on_input))
+
+    def _detach_controller_listener(self) -> None:
+        super()._detach_controller_listener()
+        for unsubscribe in self._unsub_inputs:
+            unsubscribe()
+        self._unsub_inputs.clear()
+
+    def _on_input(self) -> None:
+        # Other roles update often; write only when their problems change.
+        if self._input_problems() != self._written_input_problems:
+            self.async_write_ha_state()
+
+    def _input_problems(self) -> dict[str, str]:
+        evaluations = {}
+        for role in INPUT_ROLE_ORDER:
+            controller = self._manager.get_role_controller(self._plant_id, role)
+            if controller is not None:
+                evaluations[role] = controller.current_evaluation
+        return {problem.role: problem.kind for problem in input_problems(evaluations)}
+
     def _alert_attributes(self) -> dict[str, Any]:
         # How many moisture sensors are assigned. This sensor stays available
         # while the plant is active, so a dashboard card can tell a plant
@@ -240,18 +272,27 @@ class _SensorStaleBinary(_MoistureBinaryBase):
         # The id of the plant photo, or None without one, so a dashboard card
         # only requests a photo that exists. A new photo gets a new id, which
         # the card also uses to keep the image in the browser cache.
+        # The other assigned sensors that give no usable value, by role, as
+        # the plant status counts them, so the card shows the same status.
         plant = self._manager.snapshot.plants.get(self._plant_id)
         if plant is None:
             return {}
+        self._written_input_problems = self._input_problems()
         return {
             "sources": len(plant.moisture.sources),
             "photo_id": None if plant.image is None else plant.image.id,
+            "input_problems": self._written_input_problems,
         }
 
 
 class _LowLightBinary(SmartPlantsBinarySensorEntity):
     _attr_translation_key = ROLE_LOW_LIGHT
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    # The sample count moves with every new light sample during the day. It is
+    # a diagnostic value, so the recorder leaves it out of the stored
+    # attributes. A new count still writes the state, and the recorder still
+    # adds a states row for that write.
+    _unrecorded_attributes = SNOOZE_ATTRIBUTES | {"sample_count"}
 
     def __init__(self, manager: SmartPlantsManager, plant_id: str) -> None:
         super().__init__(manager, plant_id, ROLE_LOW_LIGHT, ROLE_LOW_LIGHT)

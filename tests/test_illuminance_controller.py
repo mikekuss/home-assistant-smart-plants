@@ -31,6 +31,23 @@ def test_next_edge_picks_soonest_08_or_18() -> None:
     )
 
 
+def test_next_edge_includes_the_end_of_the_morning_grace() -> None:
+    # From 08:00 plus the stale time a quiet light sensor counts again.
+    six_hours = timedelta(hours=6)
+    now = datetime(2026, 6, 1, 9, 0, tzinfo=BERLIN)
+    assert next_daytime_edge(now, six_hours) == datetime(
+        2026, 6, 1, 14, 0, tzinfo=BERLIN
+    )
+    now = datetime(2026, 6, 1, 14, 0, tzinfo=BERLIN)
+    assert next_daytime_edge(now, six_hours) == datetime(
+        2026, 6, 1, 18, 0, tzinfo=BERLIN
+    )
+    # A stale time that reaches past 18:00 adds no edge.
+    assert next_daytime_edge(now, timedelta(hours=12)) == datetime(
+        2026, 6, 1, 18, 0, tzinfo=BERLIN
+    )
+
+
 def test_next_edge_across_spring_forward_uses_post_transition_offset() -> None:
     # Europe/Berlin springs forward 2026-03-29 02:00 CET -> 03:00 CEST.
     # An edge computed the evening before must land at 08:00 CEST (+02:00),

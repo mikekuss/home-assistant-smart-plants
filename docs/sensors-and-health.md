@@ -69,8 +69,18 @@ left out; if none remain, the value is unavailable.
 Each role has a **Not updating after** window: 6 hours by default, adjustable from 60 seconds
 to 7 days (the field takes seconds, 60–604800) in the plant's **Sensors** tab under
 **Several sensors for one reading**. A source is stale when it hasn't delivered a valid reading within that window. The
-panel shows a stale sensor as *not updating*, and a plant whose soil moisture sensor is stale
-as *No recent data*.
+panel shows a stale sensor as *not updating*.
+
+A plant shows *No recent data* when an assigned sensor is stale or gives no usable value, and
+no other problem applies. This covers soil moisture and every other reading except the
+battery, because many battery sensors only report when the level changes. A light sensor
+doesn't count at night (18:00 to 08:00), and in the morning it doesn't count until its
+staleness window has passed since 08:00. A light sensor that only reports changes can sit at
+0 lx all night and go stale before dawn; it then has the full window of daylight to report
+before the plant shows *No recent data*. With the default 6 hours, a light sensor that
+stays quiet all day counts from 14:00. The plant page and the card name the sensor, for
+example *Temperature: not reporting*. A sensor you removed from a role doesn't count, even
+though its entities stay and read unavailable.
 
 - A newly assigned source gets one full window as a grace period before it can be stale.
 - An assigned sensor that no longer exists counts as stale.
@@ -117,8 +127,10 @@ period doesn't change the moisture value, *Too wet*, *Sensor stale*, or the heal
 ### Low light
 
 Low light counts daytime readings only (08:00–18:00 in Home Assistant's time zone).
-It uses the brightest reading of the last two hours and needs at least two daytime readings;
-until then it's unavailable. Outside daytime, *Low light* stays off and illuminance is left
+It uses the brightest reading of the last two hours and needs daytime readings from at least
+two different minutes; until then it's unavailable. A sensor that reports the same value
+again still counts, and readings within one minute count once, with the brightest one kept.
+At 08:00 and 18:00 Low light updates on its own, without waiting for a new reading. Outside daytime, *Low light* stays off and illuminance is left
 out of the health score.
 
 ## Built-in thresholds

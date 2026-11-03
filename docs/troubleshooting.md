@@ -87,7 +87,9 @@ The same applies to the other roles with their own units; see
 
 A source is considered stale when it hasn't reported a valid reading to Home Assistant within
 the **Not updating after** window (6 hours by default). The panel shows such a sensor as
-*not updating* and the plant as *No recent data*. Some sensors only report when the value
+*not updating* and the plant as *No recent data*, unless the stale sensor is the battery
+sensor, or a light sensor at night or early in the morning (see
+[Staleness](sensors-and-health.md#staleness)). Some sensors only report when the value
 changes, and a very stable reading can look stale. Increase **Not updating after** for that
 reading in the plant's **Sensors** tab under **Several sensors for one reading**, or check
 whether the device has stopped reporting.
@@ -100,7 +102,7 @@ Unavailable means Smart Plants has no trustworthy value, which is deliberately d
 - no valid reading from the assigned sensors (unit mismatch, out-of-range value, sensor
   offline),
 - a source for that role is stale,
-- for *Low light*: fewer than two daytime readings in the last two hours,
+- for *Low light*: daytime readings from fewer than two different minutes in the last two hours,
 - the plant is paused (**Pause monitoring**).
 
 ### "Smart Plants: assigned source missing" in Repairs
