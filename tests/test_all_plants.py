@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import patch
 
 from custom_components.smart_plants.const import DOMAIN
+from custom_components.smart_plants.report import collect_plants
 from homeassistant.components.automation.config import async_validate_config_item
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.const import (
@@ -118,6 +120,25 @@ async def test_entity_turns_off_when_the_last_plant_goes(hass: HomeAssistant) ->
         registry.async_remove(entity_id)
         hass.states.async_remove(entity_id)
     await hass.async_block_till_done()
+    assert state_of(hass, ALL_PLANTS) == STATE_OFF
+
+
+async def test_entity_ignores_attribute_only_updates(hass: HomeAssistant) -> None:
+    entry = await setup_integration(hass)
+    aloe = mock_plant(hass, entry, "Aloe")
+    await change(hass, aloe["low_light"], STATE_OFF)
+
+    with patch(
+        "custom_components.smart_plants.binary_sensor.collect_plants",
+        wraps=collect_plants,
+    ) as collect:
+        await change(hass, aloe["low_light"], STATE_OFF, sample_count=12)
+        assert collect.call_count == 0
+
+        await change(hass, aloe["low_light"], STATE_OFF, snoozed=True)
+        assert collect.call_count == 1
+        await change(hass, aloe["low_light"], STATE_ON)
+        assert collect.call_count == 2
     assert state_of(hass, ALL_PLANTS) == STATE_OFF
 
 

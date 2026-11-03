@@ -41,6 +41,7 @@ from homeassistant.helpers import entity_registry as er
 from .automation_targets import (
     ALL_PLANTS_SUGGESTED_ENTITY_ID,
     ALL_PLANTS_UNIQUE_ID,
+    ATTR_SNOOZED,
     plant_binary_sensor_filter,
 )
 from .care import care_summary
@@ -1107,6 +1108,19 @@ class AllPlantsBinarySensor(BinarySensorEntity):
 
     @callback
     def _is_plant_state_change(self, event_data: EventStateChangedData) -> bool:
+        # Only a plant binary sensor's state and its snooze decide whether a
+        # plant needs attention. Other attribute updates, such as a reading
+        # or a sample count, leave this sensor's result as it was.
+        old_state = event_data["old_state"]
+        new_state = event_data["new_state"]
+        if (
+            old_state is not None
+            and new_state is not None
+            and old_state.state == new_state.state
+            and old_state.attributes.get(ATTR_SNOOZED)
+            == new_state.attributes.get(ATTR_SNOOZED)
+        ):
+            return False
         entry = er.async_get(self.hass).async_get(event_data["entity_id"])
         return entry is not None and plant_binary_sensor_filter(entry)
 

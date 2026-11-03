@@ -2439,12 +2439,13 @@ class SmartPlantsManager:
         if self._reconciler is None:
             return
         while True:
+            read_plants = dict(self._snapshot.plants)
             (
                 completed_ops,
                 completed_tombstones,
                 plant_updates,
             ) = await self._reconciler.async_replay(
-                plants=dict(self._snapshot.plants),
+                plants=read_plants,
                 pending_operations=self._snapshot.pending_operations,
                 tombstones=self._snapshot.tombstones,
             )
@@ -2464,10 +2465,22 @@ class SmartPlantsManager:
                 )
             async with self._mutation_lock:
                 self._raise_if_unavailable()
+                # Replay ran outside the lock on the plants read above. A
+                # plant saved in the meantime (for example a photo upload)
+                # must not be overwritten by that older copy: skip its
+                # update, keep its operations pending and replay it again
+                # against the saved plant on the next pass.
+                stale_plant_ids = {
+                    plant_id
+                    for plant_id in plant_updates
+                    if plant_id in self._snapshot.plants
+                    and self._snapshot.plants[plant_id].revision
+                    != read_plants[plant_id].revision
+                }
                 remaining_ops = tuple(
                     op
                     for op in self._snapshot.pending_operations
-                    if op.op_id not in completed_ops
+                    if op.op_id not in completed_ops or op.plant_id in stale_plant_ids
                 )
                 remaining_tombstones = tuple(
                     replace(
@@ -2484,7 +2497,7 @@ class SmartPlantsManager:
                 )
                 merged_plants = dict(self._snapshot.plants)
                 for plant_id, plant in plant_updates.items():
-                    if plant_id in merged_plants:
+                    if plant_id in merged_plants and plant_id not in stale_plant_ids:
                         merged_plants[plant_id] = plant
                 progressed = InventorySnapshot(
                     revision=self._snapshot.revision + 1,
