@@ -34,6 +34,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The installation guide says which Home Assistant versions are supported, what a version
   number promises, how deprecations and fixes are handled, and how to roll back to an earlier
   version. See [Supported versions](docs/installation.md#supported-versions).
+- Before Smart Plants converts its storage for a new version, it saves a copy of the old
+  inventory as `.storage/smart_plants.inventory.backup`. To roll back an update, restore this
+  file. See [Roll back to an earlier version](docs/installation.md#roll-back-to-an-earlier-version).
 
 ### Changed
 
@@ -68,6 +71,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The integration diagnostics no longer include the entity ID of the weather entity that a
   forecast care task watches. The troubleshooting guide promised that the file contains no
   entity IDs.
+- Smart Plants refuses to add a plant beyond 1,000 plants with *Smart Plants manages at most
+  1000 plants*. Before, the 1,001st plant was saved and Smart Plants then failed to start.
+  Every save now runs the same checks as loading, so a save can no longer leave storage that
+  stops Smart Plants from starting. When 1,000 unfinished changes are already waiting, a new
+  change is refused with a message that asks you to restart Home Assistant.
+- A photo upload or removal whose final save failed no longer comes back after a restart
+  when a later photo change for the same plant succeeded. The newest photo change wins, and
+  the file of the replaced upload is removed.
+- Smart Plants no longer hangs at startup when two unfinished photo uploads for the same
+  plant are waiting to be finished.
 
 ## [0.15.0] - 2026-10-30
 

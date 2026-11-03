@@ -81,6 +81,7 @@ if TYPE_CHECKING:
 
 _MANUFACTURER = "Smart Plants"
 _MODEL_DEFAULT = "Plant"
+_IMAGE_OPERATION_KINDS = frozenset({"create_image", "replace_image", "delete_image"})
 
 
 def device_model(plant: PlantRecord) -> str:
@@ -297,6 +298,14 @@ class SmartPlantsDeviceReconciler:
             *(tombstone.plant_id for tombstone in tombstones),
         }
 
+        # Only the newest photo operation of a plant may still change its
+        # photo. Older ones were superseded before they finished.
+        latest_image_op: dict[str, str] = {
+            op.plant_id: op.op_id
+            for op in pending_operations
+            if op.kind in _IMAGE_OPERATION_KINDS
+        }
+
         def _current(plant_id: str) -> PlantRecord | None:
             # Read-through the in-flight updates so two ops touching the
             # same plant compose correctly during a single replay pass.
@@ -341,6 +350,19 @@ class SmartPlantsDeviceReconciler:
                     await self.async_reconcile_present(plant)
                     if await self.async_apply_area(op.plant_id, target):
                         completed_ops.add(op.op_id)
+            elif (
+                op.kind in _IMAGE_OPERATION_KINDS
+                and latest_image_op[op.plant_id] != op.op_id
+            ):
+                await self._retire_superseded_image_op(
+                    op,
+                    plants=plants,
+                    plant_updates=plant_updates,
+                    pending_operations=pending_operations,
+                    completed_ops=completed_ops,
+                    images_dir=images_dir,
+                )
+                completed_ops.add(op.op_id)
             elif op.kind in ("create_image", "replace_image"):
                 if await self._replay_image_upsert(
                     op,
@@ -456,7 +478,7 @@ class SmartPlantsDeviceReconciler:
             plant_updates,
         )
 
-    async def _replay_image_upsert(  # noqa: PLR0913
+    async def _replay_image_upsert(  # noqa: PLR0911, PLR0913
         self,
         op: PendingOperation,
         *,
@@ -541,10 +563,59 @@ class SmartPlantsDeviceReconciler:
                 )
             return True
 
+        current_image_id = plant.image.id if plant.image is not None else None
+        if (
+            current_image_id != previous_image_id
+            or plant.revision != op.expected_revision
+        ):
+            # The plant changed after this upload was requested, so the
+            # upload's final save failed and a later change was saved on top
+            # of it. Keep the plant as it is now. Comparing the photo alone
+            # misses a later upload and removal that left no photo again.
+            await self._retire_superseded_image_op(
+                op,
+                plants=plants,
+                plant_updates=plant_updates,
+                pending_operations=pending_operations,
+                completed_ops=completed_ops,
+                images_dir=images_dir,
+            )
+            return True
+
         # Persist the advanced record before deleting anything it replaces.
         updated = plant.with_next_revision(image=new_image)
         plant_updates[plant.id] = updated
         return False
+
+    async def _retire_superseded_image_op(  # noqa: PLR0913
+        self,
+        op: PendingOperation,
+        *,
+        plants: dict[str, PlantRecord],
+        plant_updates: dict[str, PlantRecord],
+        pending_operations: tuple[PendingOperation, ...],
+        completed_ops: set[str],
+        images_dir: Any,
+    ) -> None:
+        """Delete the file a superseded upload wrote, unless something uses it."""
+        payload_image = op.payload.get("new_image") if op.payload else None
+        if not isinstance(payload_image, Mapping):
+            return
+        image_id = payload_image.get("id")
+        owner = plant_updates.get(op.plant_id, plants.get(op.plant_id))
+        if owner is not None and owner.image is not None and owner.image.id == image_id:
+            return
+        if isinstance(image_id, str) and _is_image_safely_deletable(
+            image_id,
+            tombstone_plant_id=op.plant_id,
+            plants=plants,
+            plant_updates=plant_updates,
+            pending_operations=pending_operations,
+            completed_ops={*completed_ops, op.op_id},
+        ):
+            await self._hass.async_add_executor_job(
+                delete_image_file, images_dir, image_id
+            )
 
     async def _replay_image_delete(  # noqa: PLR0913
         self,
@@ -570,11 +641,19 @@ class SmartPlantsDeviceReconciler:
             # load should have rejected this, but keep the op if the
             # payload cannot be interpreted rather than losing intent.
             return False
-        if plant is not None and plant.image is not None:
+        # A different photo or a newer revision means a later change was
+        # saved after this removal failed; keep the plant as it is now and
+        # only clean up the removed file if nothing uses it.
+        still_shown = (
+            plant is not None
+            and plant.image is not None
+            and plant.image.id == previous_image_id
+        )
+        if still_shown and plant is not None and plant.revision == op.expected_revision:
             updated = plant.with_next_revision(image=None)
             plant_updates[plant.id] = updated
             return False
-        if _is_image_safely_deletable(
+        if not still_shown and _is_image_safely_deletable(
             previous_image_id,
             tombstone_plant_id=op.plant_id,
             plants=plants,

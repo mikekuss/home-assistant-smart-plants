@@ -135,7 +135,7 @@ Before you update, make sure a recent backup includes the Smart Plants data (see
 Smart Plants keeps your plant data outside `custom_components/`, so replacing the folder
 doesn't touch it. When a new version starts for the first time, it may convert the stored data
 to its own format. Older versions can't read the converted data, which is why rolling back
-needs the backup.
+needs a copy of the old data.
 
 A browser tab that stays open while Home Assistant restarts keeps running the previous
 version of the panel until the page is reloaded. The panel notices this and shows
@@ -155,13 +155,17 @@ version. To go back:
 1. Install the earlier version. In HACS, open Smart Plants, open the **⋮** menu, select
    **Redownload** and pick the version. For a manual installation, replace the
    `custom_components/smart_plants` folder with the one from that release.
-2. Stop Home Assistant, then restore all three Smart Plants data locations from a backup made
-   before the update (see [Backup and restore](#backup-and-restore)). Restoring that whole
-   Home Assistant backup works too.
+2. Stop Home Assistant and copy `.storage/smart_plants.inventory.backup` over
+   `.storage/smart_plants.inventory`. Smart Plants saves that copy of the old inventory right
+   before it converts, and each conversion replaces it. If the copy is missing, restore all
+   three Smart Plants data locations from a backup made before the update instead (see
+   [Backup and restore](#backup-and-restore)). Restoring that whole Home Assistant backup
+   works too.
 3. Start Home Assistant and check that your plants and photos appear in the panel.
 
-Anything you changed after that backup is lost, such as new plants, logged care and new
-photos.
+Anything you changed since the copy or backup was made is lost, such as new plants, logged
+care and new photos. Deleting the integration deletes the copy along with the inventory,
+unless *Preserve inventory when the integration is removed* is enabled.
 
 ## Uninstall
 

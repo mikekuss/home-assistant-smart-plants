@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from homeassistant.core import CALLBACK_TYPE, callback, valid_entity_id
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.util import dt as dt_util
 
@@ -55,6 +56,7 @@ from .images import (
 )
 from .models import (
     CARE_TASK_MAX_COUNT,
+    COLLECTION_MAX_COUNT,
     CareTask,
     IntervalSchedule,
     InventorySnapshot,
@@ -134,6 +136,18 @@ class SmartPlantsManagerUnavailableError(RuntimeError):
 
 class SmartPlantsValidationError(ValueError):
     """Raised when a caller-supplied field fails server validation."""
+
+
+class SmartPlantsPlantLimitError(HomeAssistantError, SmartPlantsValidationError):
+    """Raised when a new plant would exceed the number of plants storage holds."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            f"Smart Plants manages at most {COLLECTION_MAX_COUNT} plants",
+            translation_domain=DOMAIN,
+            translation_key="plant_limit",
+            translation_placeholders={"max": str(COLLECTION_MAX_COUNT)},
+        )
 
 
 class SmartPlantsPlantNotFoundError(LookupError):
@@ -1329,6 +1343,8 @@ class SmartPlantsManager:
         self._raise_if_unavailable()
         async with self._mutation_lock:
             self._raise_if_unavailable()
+            if len(self._snapshot.plants) >= COLLECTION_MAX_COUNT:
+                raise SmartPlantsPlantLimitError
             identity = str(uuid4())
             if _wizard is not None:
                 identity = self.require_wizard_draft(*_wizard)
@@ -2258,7 +2274,7 @@ class SmartPlantsManager:
             snapshot = self._snapshot.without_plant(plant_id)
             snapshot = replace(
                 snapshot,
-                tombstones=(*snapshot.tombstones, tombstone),
+                tombstones=(*_tombstones_with_room(snapshot.tombstones), tombstone),
             )
             await self._async_publish(snapshot)
             event = PlantDeletedEvent(
@@ -2537,7 +2553,12 @@ class SmartPlantsManager:
             intent_snapshot = replace(
                 self._snapshot,
                 revision=self._snapshot.revision + 1,
-                pending_operations=(*self._snapshot.pending_operations, pending_op),
+                pending_operations=(
+                    *_without_image_operations(
+                        self._snapshot.pending_operations, plant_id
+                    ),
+                    pending_op,
+                ),
             )
             await self._async_publish(intent_snapshot)
 
@@ -2607,7 +2628,12 @@ class SmartPlantsManager:
             intent_snapshot = replace(
                 self._snapshot,
                 revision=self._snapshot.revision + 1,
-                pending_operations=(*self._snapshot.pending_operations, pending_op),
+                pending_operations=(
+                    *_without_image_operations(
+                        self._snapshot.pending_operations, plant_id
+                    ),
+                    pending_op,
+                ),
             )
             await self._async_publish(intent_snapshot)
 
@@ -2771,6 +2797,60 @@ class SmartPlantsManager:
             ) from err
         self._snapshot = snapshot
         self._sync_snooze_timers()
+
+
+_IMAGE_OPERATION_KINDS = frozenset({"create_image", "replace_image", "delete_image"})
+
+
+def _without_image_operations(
+    operations: tuple[PendingOperation, ...], plant_id: str
+) -> tuple[PendingOperation, ...]:
+    """
+    Drop the unfinished photo operations of ``plant_id``.
+
+    A photo operation stays pending when its final save fails. The plant
+    record still shows the photo from before it, and the next photo change
+    starts from that record, so it supersedes the unfinished operation.
+    Replaying the older one later would bring back a photo the user
+    already replaced or removed. A file the dropped operation wrote is no
+    longer referenced and is removed by orphan cleanup.
+    """
+    return tuple(
+        op
+        for op in operations
+        if op.plant_id != plant_id or op.kind not in _IMAGE_OPERATION_KINDS
+    )
+
+
+def _tombstones_with_room(tombstones: tuple[Tombstone, ...]) -> tuple[Tombstone, ...]:
+    """
+    Return ``tombstones`` with room for one more within the storage limit.
+
+    A tombstone only finishes the cleanup of a plant that is already gone
+    from the inventory, so dropping one never loses plant data. Refusing a
+    deletion instead would leave the user unable to delete any plant once
+    cleanup has failed often enough. The oldest tombstone whose registry
+    cleanup is already saved goes first, because only its photo file is
+    left, and orphan cleanup removes that file anyway. Otherwise the oldest
+    tombstone goes, and its device may stay in the device registry.
+    """
+    if len(tombstones) < COLLECTION_MAX_COUNT:
+        return tombstones
+    victim = next(
+        (
+            tombstone
+            for tombstone in tombstones
+            if tombstone.payload.get("cleanup_phase") == "registry_persisted"
+        ),
+        tombstones[0],
+    )
+    _LOGGER.warning(
+        "Smart Plants holds %s deleted plants whose cleanup has not finished; "
+        "dropping the oldest cleanup record",
+        len(tombstones),
+    )
+    kept = [tombstone for tombstone in tombstones if tombstone is not victim]
+    return _tombstones_with_room(tuple(kept))
 
 
 def _snooze_ended(plant: PlantRecord, now: datetime) -> bool:
