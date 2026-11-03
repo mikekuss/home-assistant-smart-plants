@@ -1,4 +1,4 @@
-//#region node_modules/@lit/reactive-element/css-tag.js
+// node_modules/@lit/reactive-element/css-tag.js
 /**
 * @license
 * Copyright 2019 Google LLC
@@ -262,8 +262,7 @@ var x = class extends HTMLElement {
 	firstUpdated(e) {}
 };
 x.elementStyles = [], x.shadowRootOptions = { mode: "open" }, x[v("elementProperties")] = /* @__PURE__ */ new Map(), x[v("finalized")] = /* @__PURE__ */ new Map(), te?.({ ReactiveElement: x }), (h.reactiveElementVersions ?? (h.reactiveElementVersions = [])).push("2.1.2");
-//#endregion
-//#region node_modules/lit-html/lit-html.js
+// node_modules/lit-html/lit-html.js
 /**
 * @license
 * Copyright 2017 Google LLC
@@ -529,8 +528,7 @@ var De = (e, t, n) => {
 L._$litElement$ = !0, L.finalized = !0, I.litElementHydrateSupport?.({ LitElement: L });
 var Oe = I.litElementPolyfillSupport;
 Oe?.({ LitElement: L }), (I.litElementVersions ?? (I.litElementVersions = [])).push("4.2.2");
-//#endregion
-//#region node_modules/@lit/reactive-element/decorators/property.js
+// node_modules/@lit/reactive-element/decorators/property.js
 /**
 * @license
 * Copyright 2017 Google LLC
@@ -570,8 +568,7 @@ function R(e) {
 		return t.constructor.createProperty(n, e), r ? Object.getOwnPropertyDescriptor(t, n) : void 0;
 	})(e, t, n);
 }
-//#endregion
-//#region node_modules/@lit/reactive-element/decorators/state.js
+// node_modules/@lit/reactive-element/decorators/state.js
 /**
 * @license
 * Copyright 2017 Google LLC
@@ -583,8 +580,7 @@ function R(e) {
 		attribute: !1
 	});
 }
-//#endregion
-//#region src/translations/de.ts
+// src/translations/de.ts
 var Me = {
 	"format.percent": "{value} %",
 	"format.recorded_date_time": "{datetime} (UTC{offset})",
@@ -3136,8 +3132,7 @@ function U(e, t, n = Date.now()) {
 	}
 	return t;
 }
-//#endregion
-//#region src/components/shared-styles.ts
+// src/components/shared-styles.ts
 var W = o`
   :host {
     --sp-success: var(--success-color, #4caf50);
@@ -3164,16 +3159,14 @@ function Xe(e) {
 		default: return "var(--sp-disabled)";
 	}
 }
-//#endregion
-//#region \0@oxc-project+runtime@0.151.0/helpers/esm/decorate.js
+// \0@oxc-project+runtime@0.156.0/helpers/esm/decorate.js
 function G(e, t, n, r) {
 	var i = arguments.length, a = i < 3 ? t : r === null ? r = Object.getOwnPropertyDescriptor(t, n) : r, o;
 	if (typeof Reflect == "object" && typeof Reflect.decorate == "function") a = Reflect.decorate(e, t, n, r);
 	else for (var s = e.length - 1; s >= 0; s--) (o = e[s]) && (a = (i < 3 ? o(a) : i > 3 ? o(t, n, a) : o(t, n)) || a);
 	return i > 3 && a && Object.defineProperty(t, n, a), a;
 }
-//#endregion
-//#region src/components/sp-moisture-bar.ts
+// src/components/sp-moisture-bar.ts
 var Ze, Qe = (e) => Math.min(100, Math.max(0, e)), K = class extends L {
 	constructor(...e) {
 		super(...e), this.value = null, this.range = null, this.state = "ok", this.lastReported = null, this.now = void 0, this.l = z;
@@ -3229,8 +3222,7 @@ Ze = K, Ze.styles = [W, o`
     .age { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
     .age ha-icon { --mdc-icon-size: 15px; }
   `], G([R({ type: Number })], K.prototype, "value", void 0), G([R({ attribute: !1 })], K.prototype, "range", void 0), G([R({ reflect: !0 })], K.prototype, "state", void 0), G([R({ attribute: !1 })], K.prototype, "lastReported", void 0), G([R({ attribute: !1 })], K.prototype, "now", void 0), G([R({ attribute: !1 })], K.prototype, "l", void 0), customElements.get("sp-moisture-bar") || customElements.define("sp-moisture-bar", K);
-//#endregion
-//#region src/components/sp-plant-avatar.ts
+// src/components/sp-plant-avatar.ts
 var $e, q = class extends L {
 	constructor(...e) {
 		super(...e), this.src = null, this.name = "", this.size = "small", this.l = z;
@@ -3251,8 +3243,7 @@ $e = q, $e.styles = [W, o`
     img { width: 100%; height: 100%; object-fit: cover; display: block; }
     ha-icon { --mdc-icon-size: calc(var(--sp-avatar-size) * .54); }
   `], G([R({ attribute: !1 })], q.prototype, "src", void 0), G([R()], q.prototype, "name", void 0), G([R({ reflect: !0 })], q.prototype, "size", void 0), G([R({ attribute: !1 })], q.prototype, "l", void 0), customElements.get("sp-plant-avatar") || customElements.define("sp-plant-avatar", q);
-//#endregion
-//#region src/components/sp-reading-chip.ts
+// src/components/sp-reading-chip.ts
 var et, J = class extends L {
 	constructor(...e) {
 		super(...e), this.role = "temperature", this.value = null, this.unit = "", this.state = "ok", this.range = null, this.l = z;
@@ -3286,8 +3277,7 @@ et = J, et.styles = [
     :host([state="stale"]) .chip, :host([state="unavailable"]) .chip { opacity: .6; }
   `
 ], G([R()], J.prototype, "role", void 0), G([R({ type: Number })], J.prototype, "value", void 0), G([R()], J.prototype, "unit", void 0), G([R({ reflect: !0 })], J.prototype, "state", void 0), G([R({ attribute: !1 })], J.prototype, "range", void 0), G([R({ attribute: !1 })], J.prototype, "l", void 0), customElements.get("sp-reading-chip") || customElements.define("sp-reading-chip", J);
-//#endregion
-//#region src/components/sp-snooze-chip.ts
+// src/components/sp-snooze-chip.ts
 var tt, nt = class extends L {
 	constructor(...e) {
 		super(...e), this.label = "";
@@ -3307,8 +3297,7 @@ tt = nt, tt.styles = [W, o`
     ha-icon { --mdc-icon-size: 17px; flex: none; }
     .label { overflow-wrap: anywhere; hyphens: auto; }
   `], G([R()], nt.prototype, "label", void 0), customElements.get("sp-snooze-chip") || customElements.define("sp-snooze-chip", nt);
-//#endregion
-//#region src/components/sp-status-chip.ts
+// src/components/sp-status-chip.ts
 var rt, Y = class extends L {
 	constructor(...e) {
 		super(...e), this.status = "healthy", this.label = "", this.more = 0, this.l = z;
@@ -3338,8 +3327,7 @@ rt = Y, rt.styles = [
     .label { overflow-wrap: anywhere; hyphens: auto; }
   `
 ], G([R({ reflect: !0 })], Y.prototype, "status", void 0), G([R()], Y.prototype, "label", void 0), G([R({ type: Number })], Y.prototype, "more", void 0), G([R({ attribute: !1 })], Y.prototype, "l", void 0), customElements.get("sp-status-chip") || customElements.define("sp-status-chip", Y);
-//#endregion
-//#region src/overview-model.ts
+// src/overview-model.ts
 var it = {
 	too_cold: "problem_kind.too_cold",
 	too_hot: "problem_kind.too_hot",
@@ -3467,8 +3455,7 @@ function ft(e, t) {
 	let i = Object.fromEntries(r.formatToParts(n).map((e) => [e.type, e.value]));
 	return `${i.year}-${i.month}-${i.day}`;
 }
-//#endregion
-//#region src/snooze.ts
+// src/snooze.ts
 var pt = /^(\d{4})-(\d\d)-(\d\d)$/;
 function mt(e, t) {
 	let n = {
@@ -3517,8 +3504,7 @@ function vt(e, t, n, r, i = Date.now()) {
 	let a = ht(t, i), o = a ? gt(a, r) : null;
 	return o ? e.t("snooze.chip", { date: _t(e, o, n).replace(/\s/g, "\xA0") }) : null;
 }
-//#endregion
-//#region src/card/plant-state.ts
+// src/card/plant-state.ts
 var X = "smart_plants", Z = [
 	{
 		role: "temperature",
@@ -3795,8 +3781,7 @@ function Lt(e, t) {
 		photoId: y
 	};
 }
-//#endregion
-//#region src/card/plant-card.ts
+// src/card/plant-card.ts
 var Rt, zt = "smart-plants-plant-card-content", Bt = "/smart-plants";
 function Vt(e, t) {
 	let n = e?.response?.events, r = Array.isArray(n) ? n.find((e) => e?.plant_id === t && e.kind === "watering") : void 0;
@@ -3868,11 +3853,7 @@ var Ut = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		history.pushState(null, "", e), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
 	}
 	_open(e, t) {
-		if (this._admin) {
-			this._navigate(`${Bt}/plant/${encodeURIComponent(e.plantId)}${t ? `/${t}` : ""}`);
-			return;
-		}
-		e.moreInfoEntity && this.dispatchEvent(new CustomEvent("hass-more-info", {
+		this._admin ? this._navigate(`${Bt}/plant/${encodeURIComponent(e.plantId)}${t ? `/${t}` : ""}`) : e.moreInfoEntity && this.dispatchEvent(new CustomEvent("hass-more-info", {
 			bubbles: !0,
 			composed: !0,
 			detail: { entityId: e.moreInfoEntity }
@@ -4058,5 +4039,4 @@ function Kt(e) {
 		show_watering: !0
 	};
 }
-//#endregion
 export { zt as CONTENT_ELEMENT, Bt as PANEL_PATH, $ as SmartPlantsPlantCardContent, Gt as getConfigForm, Kt as getStubConfig };
