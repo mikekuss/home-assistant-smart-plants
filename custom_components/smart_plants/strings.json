@@ -696,6 +696,21 @@
     },
     "storage_full": {
       "message": "Smart Plants storage is full. Delete old care log entries or notes, then try again."
+    },
+    "storage_failed": {
+      "message": "Smart Plants could not save the change. Nothing was changed. Check the Home Assistant log, then try again."
+    },
+    "plant_not_found": {
+      "message": "This plant no longer exists."
+    },
+    "plant_changed": {
+      "message": "The plant changed while the value was being saved. Try again."
+    },
+    "moisture_threshold_whole": {
+      "message": "Moisture thresholds must be whole percentage points."
+    },
+    "moisture_thresholds_invalid": {
+      "message": "The moisture thresholds must keep the minimum below the target and the target below the maximum, with at least {span} percentage points between minimum and maximum."
     }
   },
   "triggers": {

@@ -526,6 +526,23 @@ targets; pick the plants or care tasks directly.
 Logging `watering` also keeps *Needs water* off for 24 hours, exactly like the panel's
 **Watered** button.
 
+With a response variable, `smart_plants.log_care` returns the entries it added, one per
+plant device and one per care task:
+
+```yaml
+- action: smart_plants.log_care
+  target:
+    device_id: 0123456789abcdef0123456789abcdef
+  data:
+    kind: watering
+  response_variable: logged
+```
+
+`logged.events` is a list. Each item has `plant_id`, `event_id` (the ID of the new care log
+entry), `kind`, `occurred_at` (the time stored for the entry: the `occurred_at` you passed, or
+the current time if you passed none or one up to five minutes ahead) and `task_id` (the care
+task it marks as done, or `null`).
+
 ### Log a watering by scanning an NFC tag
 
 Stick an NFC tag on the pot and scan it with the companion app after watering:

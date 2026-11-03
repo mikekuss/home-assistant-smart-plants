@@ -168,9 +168,9 @@ class _MoistureSensor(_MoistureControlledSensor):
             return {}
         config = plant.moisture
         return {
-            "min": config.moisture_min,
-            "target": config.moisture_target,
-            "max": config.moisture_max,
+            "min_threshold_percent": config.moisture_min,
+            "target_threshold_percent": config.moisture_target,
+            "max_threshold_percent": config.moisture_max,
         }
 
 

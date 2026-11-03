@@ -8,6 +8,7 @@ plumbing, and number-entity write path.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import timedelta
 from typing import Any
 from unittest.mock import patch
@@ -16,12 +17,18 @@ import pytest
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.manager import (
     SmartPlantsManager,
+    SmartPlantsManagerUnavailableError,
+    SmartPlantsPlantNotFoundError,
     SmartPlantsRevisionConflictError,
-    SmartPlantsValidationError,
 )
 from custom_components.smart_plants.number import SmartPlantsNumberEntity
+from custom_components.smart_plants.storage import (
+    SmartPlantsStorageError,
+    SmartPlantsStorageFullError,
+)
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
@@ -213,9 +220,9 @@ async def test_moisture_sensor_reports_effective_thresholds(
     config = manager.get_plant(plant.id).moisture
     state = hass.states.get(entity_id)
     assert state is not None
-    assert state.attributes["min"] == config.moisture_min
-    assert state.attributes["target"] == config.moisture_target
-    assert state.attributes["max"] == config.moisture_max
+    assert state.attributes["min_threshold_percent"] == config.moisture_min
+    assert state.attributes["target_threshold_percent"] == config.moisture_target
+    assert state.attributes["max_threshold_percent"] == config.moisture_max
 
     await manager.async_set_moisture_thresholds(
         plant.id,
@@ -227,8 +234,9 @@ async def test_moisture_sensor_reports_effective_thresholds(
     await hass.async_block_till_done()
     state = hass.states.get(entity_id)
     assert state is not None
-    assert (state.attributes["min"], state.attributes["target"]) == (25, 45)
-    assert state.attributes["max"] == 65
+    assert state.attributes["min_threshold_percent"] == 25
+    assert state.attributes["target_threshold_percent"] == 45
+    assert state.attributes["max_threshold_percent"] == 65
 
 
 async def test_needs_water_reports_last_watering(hass: HomeAssistant) -> None:
@@ -654,13 +662,16 @@ async def test_number_write_rejects_bad_ordering(hass: HomeAssistant) -> None:
     assert max_entity is not None
     # Setting max below target should be refused by the manager and the
     # threshold record must survive unchanged.
-    with pytest.raises((SmartPlantsValidationError, ValueError)):
+    with pytest.raises(ServiceValidationError) as info:
         await hass.services.async_call(
             "number",
             "set_value",
             {"entity_id": max_entity, "value": 10},
             blocking=True,
         )
+    assert info.value.translation_domain == DOMAIN
+    assert info.value.translation_key == "moisture_thresholds_invalid"
+    assert info.value.translation_placeholders == {"span": "4"}
     assert manager.get_plant(plant_id).moisture.moisture_max == 55
 
 
@@ -757,9 +768,70 @@ async def test_number_write_rejects_fractional_threshold(
     manager, plant_id = await _create_with_enabled_thresholds(hass, entry)
     entity = manager.get_entity("number", plant_id, "moisture_min")
     assert entity is not None
-    with pytest.raises(SmartPlantsValidationError, match="whole"):
+    with pytest.raises(ServiceValidationError) as info:
         await entity.async_set_native_value(20.5)
+    assert info.value.translation_domain == DOMAIN
+    assert info.value.translation_key == "moisture_threshold_whole"
     assert manager.get_plant(plant_id).moisture.moisture_min == 15
+
+
+async def test_number_write_reports_a_second_revision_conflict(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    manager, plant_id = await _create_with_enabled_thresholds(hass, entry)
+    entity = manager.get_entity("number", plant_id, "moisture_min")
+    assert entity is not None
+    with (
+        patch.object(
+            manager,
+            "async_set_moisture_thresholds",
+            side_effect=SmartPlantsRevisionConflictError(plant_id, 1, 2),
+        ) as write,
+        pytest.raises(HomeAssistantError) as info,
+    ):
+        await entity.async_set_native_value(18)
+    assert write.call_count == 2
+    assert info.value.translation_domain == DOMAIN
+    assert info.value.translation_key == "plant_changed"
+
+
+@pytest.mark.parametrize(
+    ("error", "key"),
+    [
+        (SmartPlantsPlantNotFoundError("gone"), "plant_not_found"),
+        (SmartPlantsManagerUnavailableError(), "integration_not_loaded"),
+        (SmartPlantsStorageError("disk"), "storage_failed"),
+        (SmartPlantsStorageFullError("full"), "storage_full"),
+    ],
+)
+async def test_number_write_translates_manager_errors(
+    hass: HomeAssistant, error: Exception, key: str
+) -> None:
+    entry = await _setup(hass)
+    manager, plant_id = await _create_with_enabled_thresholds(hass, entry)
+    entity = manager.get_entity("number", plant_id, "moisture_min")
+    assert entity is not None
+    with (
+        patch.object(manager, "async_set_moisture_thresholds", side_effect=error),
+        pytest.raises(HomeAssistantError) as info,
+    ):
+        await entity.async_set_native_value(18)
+    assert info.value.translation_domain == DOMAIN
+    assert info.value.translation_key == key
+
+
+async def test_number_write_for_a_removed_plant_fails(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    manager, plant_id = await _create_with_enabled_thresholds(hass, entry)
+    entity = manager.get_entity("number", plant_id, "moisture_min")
+    assert entity is not None
+    with (
+        patch.object(manager, "_snapshot", replace(manager.snapshot, plants={})),
+        pytest.raises(HomeAssistantError) as info,
+    ):
+        await entity.async_set_native_value(18)
+    assert info.value.translation_key == "plant_not_found"
 
 
 async def test_revision_conflict_number_write_retries_once(

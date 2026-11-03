@@ -12,24 +12,35 @@ Writes flow through ``manager.async_set_moisture_thresholds`` under the
 mutation lock so a partial write can never leave the record in an
 inconsistent order. The write carries the current plant revision on
 the way in; if a concurrent mutation bumped the revision the write is
-retried against the fresh value once — a subsequent conflict surfaces
-as a validation error the user can act on.
+retried against the fresh value once. A second conflict, a refused value
+or a failed save is raised as a translated Home Assistant error.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.const import PERCENTAGE, EntityCategory
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
+from .const import DOMAIN
 from .entity import (
     EntityFactory,
     SmartPlantsEntity,
     async_setup_platform_lifecycle,
 )
-from .manager import SmartPlantsRevisionConflictError, SmartPlantsValidationError
+from .manager import (
+    SmartPlantsManagerUnavailableError,
+    SmartPlantsPlantNotFoundError,
+    SmartPlantsRevisionConflictError,
+    SmartPlantsValidationError,
+)
+from .models import MOISTURE_MIN_SPAN
 from .roles import EntityRole, RoleDefinition, entity_factories
+from .storage import SmartPlantsStorageError, SmartPlantsStorageFullError
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -46,6 +57,35 @@ ROLE_FACTORIES: dict[str, EntityFactory]
 ROLE_MOISTURE_MIN = "moisture_min"
 ROLE_MOISTURE_TARGET = "moisture_target"
 ROLE_MOISTURE_MAX = "moisture_max"
+
+
+def _error(key: str, **placeholders: str) -> HomeAssistantError:
+    return HomeAssistantError(
+        translation_domain=DOMAIN,
+        translation_key=key,
+        translation_placeholders=placeholders or None,
+    )
+
+
+@contextmanager
+def _write_errors() -> Iterator[None]:
+    """Translate the manager errors of a threshold write into action errors."""
+    try:
+        yield
+    except SmartPlantsValidationError as err:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="moisture_thresholds_invalid",
+            translation_placeholders={"span": str(MOISTURE_MIN_SPAN)},
+        ) from err
+    except SmartPlantsPlantNotFoundError as err:
+        raise _error("plant_not_found") from err
+    except SmartPlantsManagerUnavailableError as err:
+        raise _error("integration_not_loaded") from err
+    except SmartPlantsStorageFullError as err:
+        raise _error("storage_full") from err
+    except SmartPlantsStorageError as err:
+        raise _error("storage_failed") from err
 
 
 class SmartPlantsNumberEntity(SmartPlantsEntity, NumberEntity):
@@ -86,39 +126,34 @@ class _MoistureThresholdNumber(SmartPlantsNumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         if isinstance(value, bool) or not float(value).is_integer():
-            raise SmartPlantsValidationError(
-                "moisture thresholds must be whole percentage points"
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="moisture_threshold_whole"
             )
+        with _write_errors():
+            try:
+                await self._async_write(int(value))
+            except SmartPlantsRevisionConflictError:
+                # Read back and retry once: the record moved while the user
+                # was editing. A second conflict is reported.
+                try:
+                    await self._async_write(int(value))
+                except SmartPlantsRevisionConflictError as err:
+                    raise _error("plant_changed") from err
+
+    async def _async_write(self, value: int) -> None:
         plant = self._manager.snapshot.plants.get(self._plant_id)
         if plant is None:
-            return
+            raise SmartPlantsPlantNotFoundError(self._plant_id)
         thresholds = {
             f"moisture_{key}": current
             for key, current in plant.moisture.threshold_overrides.items()
         }
-        thresholds[self._field] = int(value)
-        try:
-            await self._manager.async_set_moisture_thresholds(
-                self._plant_id,
-                expected_revision=plant.revision,
-                **thresholds,
-            )
-        except SmartPlantsRevisionConflictError:
-            # Read-back-and-retry once: the record moved under us while
-            # the user was editing. A second conflict surfaces to HA.
-            fresh = self._manager.snapshot.plants.get(self._plant_id)
-            if fresh is None:
-                return
-            thresholds = {
-                f"moisture_{key}": current
-                for key, current in fresh.moisture.threshold_overrides.items()
-            }
-            thresholds[self._field] = int(value)
-            await self._manager.async_set_moisture_thresholds(
-                self._plant_id,
-                expected_revision=fresh.revision,
-                **thresholds,
-            )
+        thresholds[self._field] = value
+        await self._manager.async_set_moisture_thresholds(
+            self._plant_id,
+            expected_revision=plant.revision,
+            **thresholds,
+        )
 
 
 class _MoistureMinNumber(_MoistureThresholdNumber):

@@ -38,12 +38,20 @@ export interface CardHass extends CardHassData {
   locale?: HALocale;
   user?: { is_admin?: boolean };
   config?: { time_zone?: unknown };
-  callService(domain: string, service: string, data?: Record<string, unknown>, target?: Record<string, unknown>, notifyOnError?: boolean): Promise<unknown>;
+  callService(domain: string, service: string, data?: Record<string, unknown>, target?: Record<string, unknown>, notifyOnError?: boolean, returnResponse?: boolean): Promise<unknown>;
   callWS?<T>(msg: Record<string, unknown>): Promise<T>;
   fetchWithAuth?(path: string, init?: RequestInit): Promise<Response>;
 }
 
 interface CareListReply { revision: number; events: { id: string; kind: string; occurred_at: string }[] }
+interface LogCareReply { response?: { events?: { plant_id?: unknown; event_id?: unknown; kind?: unknown }[] } }
+
+// The id of the watering a log_care call created for the plant, from the action's response.
+function loggedWatering(reply: unknown, plantId: string): string | null {
+  const events = (reply as LogCareReply | null | undefined)?.response?.events;
+  const event = Array.isArray(events) ? events.find(e => e?.plant_id === plantId && e.kind === "watering") : undefined;
+  return typeof event?.event_id === "string" ? event.event_id : null;
+}
 
 // Local wall-clock time with its UTC offset, whole seconds, as care events are recorded.
 function localTimestamp(date: Date): string {
@@ -222,12 +230,14 @@ export class SmartPlantsPlantCardContent extends LitElement {
     const occurredAt = localTimestamp(new Date());
     this._busy = true;
     try {
-      // The action returns no event. For Undo, admins note the waterings that
-      // exist before logging, so the new one can be told apart afterwards.
-      const before = this._admin ? await this._wateringIds(hass, plant) : null;
-      await hass.callService(DOMAIN, "log_care", { kind: "watering", occurred_at: occurredAt }, { device_id: plant.deviceId }, false);
+      // Admins can undo, so they ask the action for the watering it created
+      // and Undo removes exactly that event.
+      const data = { kind: "watering", occurred_at: occurredAt }; const target = { device_id: plant.deviceId };
+      const undo = this._admin && !!hass.callWS;
+      const reply = undo ? await hass.callService(DOMAIN, "log_care", data, target, false, true) : await hass.callService(DOMAIN, "log_care", data, target, false);
+      const eventId = undo ? loggedWatering(reply, plant.plantId) : null;
       const message = l.t("watering.logged", { name: plant.name });
-      if (before) this._toast(message, { text: l.t("watering.undo"), action: () => void this._undo(plant, before, occurredAt) });
+      if (eventId) this._toast(message, { text: l.t("watering.undo"), action: () => void this._undo(plant, eventId) });
       else this._toast(message);
     } catch (e) {
       this._toast(errorCode(e) === "unauthorized" ? l.t("plant_card.unauthorized") : l.t("plant_card.log_failed", { name: plant.name }));
@@ -236,29 +246,15 @@ export class SmartPlantsPlantCardContent extends LitElement {
     }
   }
 
-  private async _wateringIds(hass: CardHass, plant: PlantView): Promise<Set<string> | null> {
-    if (!hass.callWS) return null;
-    try {
-      const history = await hass.callWS<CareListReply>({ type: `${DOMAIN}/care/list`, plant_id: plant.plantId });
-      return new Set(history.events.filter(e => e.kind === "watering").map(e => e.id));
-    } catch {
-      return null;
-    }
-  }
-
-  // Undo removes the watering that appeared since logging. The backend may move
-  // a slightly future time to its own clock, so the time only breaks a tie when
-  // someone else logged a watering at the same moment.
-  private async _undo(plant: PlantView, before: Set<string>, occurredAt: string): Promise<void> {
+  // Undo removes the watering this card logged. If that event is gone, it
+  // says so instead of removing another one.
+  private async _undo(plant: PlantView, eventId: string): Promise<void> {
     const hass = this.hass; const l = this._l;
     if (!hass?.callWS) return;
     try {
       const history = await hass.callWS<CareListReply>({ type: `${DOMAIN}/care/list`, plant_id: plant.plantId });
-      const at = Date.parse(occurredAt);
-      const added = history.events.filter(e => e.kind === "watering" && !before.has(e.id));
-      const event = added.sort((a, b) => Math.abs(Date.parse(a.occurred_at) - at) - Math.abs(Date.parse(b.occurred_at) - at))[0];
-      if (!event) throw new Error("not found");
-      await hass.callWS({ type: `${DOMAIN}/care/delete`, plant_id: plant.plantId, expected_revision: history.revision, event_id: event.id });
+      if (!history.events.some(e => e.id === eventId)) throw new Error("not found");
+      await hass.callWS({ type: `${DOMAIN}/care/delete`, plant_id: plant.plantId, expected_revision: history.revision, event_id: eventId });
       this._toast(l.t("watering.removed", { name: plant.name }));
     } catch {
       this._toast(l.t("plant_card.undo_failed", { name: plant.name }));

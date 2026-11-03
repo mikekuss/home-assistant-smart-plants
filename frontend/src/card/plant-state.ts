@@ -255,10 +255,10 @@ export function plantView(hass: CardHassData, deviceId: string): CardPlant {
   const hasMoistureSources = problems.every(p => p.kind !== "no_sensors");
   if (!paused && (moistureValue !== null || hasMoistureSources)) {
     const attrs = moistureState?.attributes ?? {};
-    const min = num(attrs.min); const max = num(attrs.max);
+    const min = num(attrs.min_threshold_percent); const max = num(attrs.max_threshold_percent);
     roles.moisture = {
       value: moistureValue, unit: "%", state: readingState(moistureValue, problems.find(p => p.role === "moisture" && (p.kind === "needs_water" || p.kind === "too_wet")), stale),
-      range: { min, target: num(attrs.target), max },
+      range: { min, target: num(attrs.target_threshold_percent), max },
       clear: { min: min === null ? null : min + MOISTURE_HYSTERESIS, max: max === null ? null : max - MOISTURE_HYSTERESIS },
       last_reported: null, sources: [],
     };

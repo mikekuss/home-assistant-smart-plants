@@ -5,7 +5,7 @@ import { CARD_TYPE, SmartPlantsPlantCard, defineCard } from "./loader.js";
 import { PICKER_TEXT, pickerText } from "./picker.js";
 import { en } from "../translations/en.js";
 import { de } from "../translations/de.js";
-import { DEVICE, PLANT_ID, cardHass } from "./card-test-helpers.js";
+import { DEVICE, PLANT_ID, cardHass, loggedReply } from "./card-test-helpers.js";
 import type { CardState } from "./plant-state.js";
 
 beforeAll(() => { SmartPlantsPlantCard.load = () => import("./plant-card.js"); });
@@ -278,15 +278,14 @@ describe("Watered button", () => {
     const seen = toasts(content);
     $(content, ".tonal")!.click();
     await vi.waitFor(() => expect(seen).toHaveLength(1));
-    const [domain, service, data, target, notify] = hass.calls[0]!;
-    expect([domain, service, target, notify]).toEqual(["smart_plants", "log_care", { device_id: DEVICE }, false]);
+    const [domain, service, data, target, notify, returnResponse] = hass.calls[0]!;
+    expect([domain, service, target, notify, returnResponse]).toEqual(["smart_plants", "log_care", { device_id: DEVICE }, false, true]);
     expect(data).toMatchObject({ kind: "watering" });
     expect((data as { occurred_at: string }).occurred_at).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d$/);
     expect(seen[0]).toMatchObject({ message: "Watering logged for Office Aloe", action: { text: "Undo" } });
     seen[0]!.action!.action();
     await vi.waitFor(() => expect(seen).toHaveLength(2));
     expect(hass.ws).toEqual([
-      { type: "smart_plants/care/list", plant_id: PLANT_ID },
       { type: "smart_plants/care/list", plant_id: PLANT_ID },
       { type: "smart_plants/care/delete", plant_id: PLANT_ID, expected_revision: 7, event_id: "event-1" },
     ]);
@@ -300,9 +299,10 @@ describe("Watered button", () => {
     await vi.waitFor(() => expect(seen).toHaveLength(1));
     expect(seen[0]).toEqual({ message: "Watering logged for Office Aloe", duration: 4000 });
   })
-  // A care history whose log_care action records the watering through `record`.
-  const history = (hass: ReturnType<typeof cardHass>, events: { id: string; kind: string; occurred_at: string }[], record: (submitted: string) => void) => {
-    hass.callService = async (...args: unknown[]) => { hass.calls.push(args); record((args[2] as { occurred_at: string }).occurred_at); };
+  // A care history whose log_care action records the watering through `record`,
+  // which returns the id of the event it created.
+  const history = (hass: ReturnType<typeof cardHass>, events: { id: string; kind: string; occurred_at: string }[], record: (submitted: string) => string) => {
+    hass.callService = async (...args: unknown[]) => { hass.calls.push(args); return loggedReply(record((args[2] as { occurred_at: string }).occurred_at)); };
     hass.callWS = async <T>(msg: Record<string, unknown>): Promise<T> => { hass.ws.push(msg); return (msg.type === "smart_plants/care/list" ? { revision: 3, events: events.map(e => ({ ...e })) } : {}) as T; };
   };
   const undo = async (hass: ReturnType<typeof cardHass>) => {
@@ -321,24 +321,41 @@ describe("Watered button", () => {
     history(hass, events, submitted => {
       events[0]!.occurred_at = submitted;
       events.push({ id: "mine", kind: "watering", occurred_at: new Date(Date.parse(submitted) - 3000).toISOString() });
+      return "mine";
     });
     const { seen, deleted } = await undo(hass);
     expect(deleted).toEqual(["mine"]);
     expect(seen[1]!.message).toBe("Watering removed for Office Aloe");
   });
-  it("picks the watering closest to its time when another one was logged meanwhile", async () => {
+  it("removes its own watering when another one was logged meanwhile", async () => {
     const hass = cardHass({}, { admin: true });
     const events: { id: string; kind: string; occurred_at: string }[] = [{ id: "fertilizer", kind: "fertilizing", occurred_at: "2026-09-11T12:00:00+00:00" }];
     history(hass, events, submitted => {
-      events.push({ id: "someone-else", kind: "watering", occurred_at: new Date(Date.parse(submitted) - 3_600_000).toISOString() });
       events.push({ id: "mine", kind: "watering", occurred_at: submitted });
+      events.push({ id: "someone-else", kind: "watering", occurred_at: submitted });
+      return "mine";
     });
     const { deleted } = await undo(hass);
     expect(deleted).toEqual(["mine"]);
   });
-  it("offers no Undo when the care history cannot be read", async () => {
+  it("leaves a later watering alone when its own one is gone", async () => {
     const hass = cardHass({}, { admin: true });
-    hass.callWS = async () => { throw { code: "unknown_error", message: "x" }; };
+    const events: { id: string; kind: string; occurred_at: string }[] = [];
+    history(hass, events, submitted => { events.push({ id: "mine", kind: "watering", occurred_at: submitted }); return "mine"; });
+    const content = await mount(hass);
+    const seen = toasts(content);
+    $(content, ".tonal")!.click();
+    await vi.waitFor(() => expect(seen).toHaveLength(1));
+    // Someone removes this watering and logs another one before Undo.
+    events.splice(0, events.length, { id: "someone-else", kind: "watering", occurred_at: new Date().toISOString() });
+    seen[0]!.action!.action();
+    await vi.waitFor(() => expect(seen).toHaveLength(2));
+    expect(hass.ws.filter(m => m.type === "smart_plants/care/delete")).toEqual([]);
+    expect(seen[1]!.message).toBe("Watering could not be removed for Office Aloe");
+  });
+  it("offers no Undo when the action returns no event", async () => {
+    const hass = cardHass({}, { admin: true });
+    hass.callService = async (...args: unknown[]) => { hass.calls.push(args); return { context: { id: "context" }, response: { events: [] } }; };
     const content = await mount(hass);
     const seen = toasts(content);
     $(content, ".tonal")!.click();
@@ -351,6 +368,7 @@ describe("Watered button", () => {
     const content = await mount(hass);
     $(content, ".tonal")!.click();
     await vi.waitFor(() => expect(hass.calls).toHaveLength(1));
+    expect(hass.calls[0]).toHaveLength(5);
     expect(hass.ws).toEqual([]);
   });
   it("explains a refused watering", async () => {

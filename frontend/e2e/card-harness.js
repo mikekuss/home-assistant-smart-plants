@@ -33,7 +33,7 @@ const states = {};
 const OFFICE_ALOE_PHOTO = "0000000000004000800000000000a10e";
 const set = (entity_id, value, attributes) => { states[entity_id] = state(entity_id, value, attributes); };
 // Office Aloe: healthy, four readings, watered two days ago.
-set("sensor.office_aloe_moisture", "36.0", { unit_of_measurement: "%", min: 15, target: 35, max: 60 });
+set("sensor.office_aloe_moisture", "36.0", { unit_of_measurement: "%", min_threshold_percent: 15, target_threshold_percent: 35, max_threshold_percent: 60 });
 set("binary_sensor.office_aloe_needs_water", "off", { last_watered: iso(now - 2 * day), snoozed: false, snoozed_until: null });
 set("binary_sensor.office_aloe_too_wet", "off", {});
 set("binary_sensor.office_aloe_sensor_stale", "off", { sources: 1, photo_id: OFFICE_ALOE_PHOTO, snoozed: false, snoozed_until: null });
@@ -45,7 +45,7 @@ set("sensor.office_aloe_battery", "87", { unit_of_measurement: "%" });
 set("binary_sensor.office_aloe_low_battery", "off", { reason: "ok", threshold_percent: 15 });
 // Kitchen Basil: needs water, snoozed, care due.
 const snoozed = iso(now + 2 * day);
-set("sensor.kitchen_basil_moisture", "12.0", { unit_of_measurement: "%", min: 30, target: 50, max: 70 });
+set("sensor.kitchen_basil_moisture", "12.0", { unit_of_measurement: "%", min_threshold_percent: 30, target_threshold_percent: 50, max_threshold_percent: 70 });
 set("binary_sensor.kitchen_basil_needs_water", "on", { last_watered: iso(now - 9 * day), snoozed: true, snoozed_until: snoozed });
 set("binary_sensor.kitchen_basil_too_wet", "off", { snoozed: true, snoozed_until: snoozed });
 set("binary_sensor.kitchen_basil_sensor_stale", "off", { sources: 1, photo_id: null, snoozed: true, snoozed_until: snoozed });
@@ -63,13 +63,16 @@ const hass = {
   states, entities,
   devices: Object.fromEntries(plants.map(p => [p.device, { id: p.device, name: p.name, name_by_user: null, area_id: p.area, model: p.model, identifiers: [["smart_plants", p.id]] }])),
   areas: { office: { area_id: "office", name: "Office" }, kitchen: { area_id: "kitchen", name: "Kitchen" }, balcony: { area_id: "balcony", name: "Balcony" } },
-  async callService(domain, service, data, target, notifyOnError) {
-    record.calls.push({ domain, service, data, target, notifyOnError });
+  async callService(domain, service, data, target, notifyOnError, returnResponse) {
+    record.calls.push({ domain, service, data, target, notifyOnError, returnResponse });
     if (params.has("refuse")) throw { code: "unauthorized", message: "Unauthorized" };
     const plant = plants.find(p => p.device === target.device_id);
     const sensor = states[`binary_sensor.${plant.slug}_needs_water`];
     states[sensor.entity_id] = { ...sensor, attributes: { ...sensor.attributes, last_watered: data.occurred_at } };
     update();
+    // Each logged watering becomes event-1, event-2, ... in the care history.
+    const eventId = `event-${record.calls.filter(c => c.data?.kind === "watering").length}`;
+    return returnResponse ? { context: { id: "context" }, response: { events: [{ plant_id: plant.id, event_id: eventId, kind: data.kind, occurred_at: data.occurred_at, task_id: null }] } } : undefined;
   },
   async callWS(msg) {
     record.ws.push(msg);

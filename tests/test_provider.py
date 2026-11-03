@@ -44,8 +44,10 @@ class FakeResponse:
         headers: dict[str, str] | None = None,
         *,
         malformed: bool = False,
+        stream_error: BaseException | None = None,
     ) -> None:
         self.status = status
+        self.stream_error = stream_error
         self.payload = payload
         self.headers = headers or {}
         self.malformed = malformed
@@ -62,6 +64,10 @@ class FakeResponse:
     async def iter_chunked(self, size: int) -> AsyncIterator[bytes]:
         for offset in range(0, len(self.body), size):
             yield self.body[offset : offset + size]
+            # Fail after the first chunk, as a connection that drops or
+            # stalls mid-body does.
+            if self.stream_error is not None:
+                raise self.stream_error
 
     def release(self) -> None:
         return
@@ -350,6 +356,38 @@ async def test_typed_network_errors(response: Any, error: type[Exception]) -> No
     if isinstance(raised.value, ProviderRateLimitError):
         assert raised.value.retry_after == 42
     assert "client-secret" not in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    ("stream_error", "error"),
+    [
+        (TimeoutError(), ProviderTimeoutError),
+        (aiohttp.ClientPayloadError("truncated"), ProviderOutageError),
+        (aiohttp.ServerDisconnectedError(), ProviderOutageError),
+    ],
+)
+@pytest.mark.parametrize("failing", ["token", "species"])
+async def test_body_stream_errors_are_typed(
+    stream_error: BaseException, error: type[Exception], failing: str
+) -> None:
+    broken = FakeResponse(
+        200,
+        {"access_token": "access-token", "expires_in": 86400}
+        if failing == "token"
+        else _detail(),
+        stream_error=stream_error,
+    )
+    responses = [broken] if failing == "token" else [_token(), broken]
+    client, _session = _client(responses)
+    with pytest.raises(error):
+        await client.async_get_species("aloe vera", "en")
+
+
+async def test_body_stream_cancellation_is_not_swallowed() -> None:
+    broken = FakeResponse(200, _detail(), stream_error=asyncio.CancelledError())
+    client, _session = _client([_token(), broken])
+    with pytest.raises(asyncio.CancelledError):
+        await client.async_get_species("aloe vera", "en")
 
 
 async def _manager(hass: HomeAssistant) -> SmartPlantsManager:

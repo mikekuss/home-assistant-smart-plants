@@ -57,7 +57,12 @@ from .automation_targets import (
     all_plants_entity_id,
     plant_id_of_device,
 )
-from .care import CARE_EVENT_KINDS, kind_for_task_type, minimal_care_payload
+from .care import (
+    CARE_EVENT_KINDS,
+    CareEvent,
+    kind_for_task_type,
+    minimal_care_payload,
+)
 from .care_entities import translated_task_name
 from .const import DOMAIN
 from .manager import (
@@ -84,7 +89,7 @@ from .report import (
     report_language,
 )
 from .schema_library import vol
-from .storage import SmartPlantsStorageFullError
+from .storage import SmartPlantsStorageError, SmartPlantsStorageFullError
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -302,19 +307,32 @@ async def _async_apply(
     manager: SmartPlantsManager,
     changes: list[tuple[str, str, PlantChange]],
     rejected_key: str = "care_rejected",
-) -> None:
+) -> list[tuple[str, CareEvent]]:
     """
     Apply the changes of all targets with one save.
 
     Each change is ``(plant_id, target, change)``; ``target`` names the
     target in error messages. A failed action changes nothing, so a retry
     does not repeat the targets that would otherwise have been saved.
+
+    Returns ``(plant_id, event)`` for every care event the changes added, in
+    the order of the changes.
     """
+    added: list[tuple[str, CareEvent]] = []
 
     def labelled(target: str, change: PlantChange) -> PlantChange:
         def apply(current: PlantRecord) -> PlantRecord:
             with _manager_errors(target, rejected_key):
-                return change(current)
+                updated = change(current)
+            # Each change sees the plant as the earlier changes left it, so
+            # the events that are new here are the ones this change added.
+            known = {event.id for event in current.care_events}
+            added.extend(
+                (updated.id, event)
+                for event in updated.care_events
+                if event.id not in known
+            )
+            return updated
 
         return apply
 
@@ -335,6 +353,11 @@ async def _async_apply(
         raise HomeAssistantError(
             translation_domain=DOMAIN, translation_key="storage_full"
         ) from err
+    except SmartPlantsStorageError as err:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN, translation_key="storage_failed"
+        ) from err
+    return added
 
 
 def _unique_plants(plants: Iterable[PlantRecord]) -> list[PlantRecord]:
@@ -351,7 +374,7 @@ def _device_kind(kind: str | None, note: str | None) -> str:
 
 
 @verify_domain_control(DOMAIN)
-async def _async_log_care(call: ServiceCall) -> None:
+async def _async_log_care(call: ServiceCall) -> ServiceResponse:
     hass = call.hass
     entry, manager = _loaded_runtime(hass)
     device_ids, entity_refs = _targets(call)
@@ -407,7 +430,7 @@ async def _async_log_care(call: ServiceCall) -> None:
         )
         for target in tasks
     )
-    await _async_apply(manager, changes)
+    added = await _async_apply(manager, changes)
 
     for plant, plant_kind in plant_writes:
         _LOGGER.debug(
@@ -419,6 +442,20 @@ async def _async_log_care(call: ServiceCall) -> None:
             target.task.id,
             target.plant.id,
         )
+    if not call.return_response:
+        return None
+    return {
+        "events": [
+            {
+                "plant_id": plant_id,
+                "event_id": event.id,
+                "kind": event.kind,
+                "occurred_at": event.occurred_at,
+                "task_id": event.task_id,
+            }
+            for plant_id, event in added
+        ]
+    }
 
 
 @verify_domain_control(DOMAIN)
@@ -674,7 +711,11 @@ def _with_manager_state(
 def async_setup_services(hass: HomeAssistant) -> None:
     """Register the Smart Plants actions."""
     hass.services.async_register(
-        DOMAIN, SERVICE_LOG_CARE, _async_log_care, schema=LOG_CARE_SCHEMA
+        DOMAIN,
+        SERVICE_LOG_CARE,
+        _async_log_care,
+        schema=LOG_CARE_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
         DOMAIN,

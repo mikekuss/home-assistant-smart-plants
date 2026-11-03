@@ -328,7 +328,7 @@ class OpenPlantBookProvider:
         except aiohttp.ClientError as err:
             raise ProviderOutageError("provider is unavailable") from err
         try:
-            body = await _read_bounded(response)
+            body = await _read_body(response)
             if response.status in (400, 401, 403) and (
                 not authenticated or response.status in (401, 403)
             ):
@@ -552,6 +552,19 @@ def _optional_short(value: object, field_name: str) -> str | None:
     if value is None:
         return None
     return _required_short(value, field_name)
+
+
+async def _read_body(response: Any) -> bytes:
+    """Read the response body, translating stream failures into provider errors."""
+    # The body streams after the headers arrived, so a stall or a dropped
+    # connection can still fail here. Cancellation is not an Exception and
+    # passes through.
+    try:
+        return await _read_bounded(response)
+    except TimeoutError as err:
+        raise ProviderTimeoutError("provider response timed out") from err
+    except aiohttp.ClientError as err:
+        raise ProviderOutageError("provider is unavailable") from err
 
 
 async def _read_bounded(response: Any) -> bytes:

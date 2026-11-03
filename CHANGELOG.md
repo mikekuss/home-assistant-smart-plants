@@ -12,8 +12,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   bar, readings, last watering and a **Watered** button. Users who aren't administrators can
   use it too, and every user sees the plant photo. Pick it in the card picker; it loads only when a card is on screen. See
   [Dashboard card](docs/dashboard-card.md).
-- The *Soil moisture* sensor has the attributes `min`, `target` and `max` with the moisture
-  thresholds in effect, *Needs water* has `last_watered` with the time of the last watering,
+- The *Soil moisture* sensor has the attributes `min_threshold_percent`,
+  `target_threshold_percent` and `max_threshold_percent` with the moisture thresholds in
+  effect, *Needs water* has `last_watered` with the time of the last watering,
   and *Sensor stale* has `sources` with the number of soil moisture sensors assigned and
   `photo_id` with the ID of the plant's photo. See
   [Entities](docs/entities.md#sensors).
@@ -25,6 +26,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A pinned value on any **History** chart offers **Log care at this time**, which opens the
   care form at that time for any care type. On the soil moisture chart it is **Log other
   care**, next to **Log watering at this time**. See [History](docs/getting-started.md#history).
+- `smart_plants.log_care` can return the care log entries it added, with their IDs, when you
+  give it a response variable. See
+  [Log care with actions](docs/automations.md#log-care-with-actions).
 - On a phone, the panel has a menu button at the top left that opens the Home Assistant
   sidebar. Before, the only way out of the panel was the back gesture.
 - A plant's **⋮** menu has **Notifications…**, which starts with that plant chosen. A plant
@@ -58,8 +62,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   them to people who aren't administrators. Adding, replacing and removing photos stays
   admin-only.
 
+### Removed
+
+- The WebSocket commands `smart_plants/moisture/set_sources`, `set_primary`,
+  `set_aggregation`, `set_stale_after` and `set_thresholds`. The panel configures soil
+  moisture through the `smart_plants/roles/*` commands, which cover every role.
+
 ### Fixed
 
+- **Undo** on the dashboard card removes exactly the watering it logged. Before, if that
+  watering was already deleted and someone logged another, Undo removed the other one.
+- Changing a moisture threshold number now reports a value out of order, a fractional value,
+  a plant that changed or disappeared meanwhile, or a failed save with a translated message.
+  Before, some of these showed a raw error or looked like a success.
+- Actions report a failed save with a translated message instead of a raw error.
+- A timeout or dropped connection while OpenPlantBook sends its answer is reported as a
+  connection problem. Before, setup showed an unknown error.
+- Setup no longer removes a sensor entity of a plant whose stored ID starts with
+  the ID of another plant followed by `:care_task:`. Such IDs only come from older versions.
 - A stress alert such as *Temperature stress* no longer turns off when the reading jumps
   straight from one extreme to the other, for example from too cold to too hot. It now
   reports the new direction. This applies to temperature, humidity, conductivity and soil

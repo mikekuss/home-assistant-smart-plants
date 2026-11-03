@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.manager import (
     SmartPlantsManager,
     SmartPlantsManagerUnavailableError,
+    SmartPlantsPlantNotFoundError,
+    SmartPlantsRevisionConflictError,
+    SmartPlantsValidationError,
 )
 from custom_components.smart_plants.provider import ProviderOutageError
 from custom_components.smart_plants.websocket_api import (
@@ -18,9 +21,12 @@ from custom_components.smart_plants.websocket_api import (
     ERR_REVISION_CONFLICT,
     ERR_UNKNOWN,
 )
+from homeassistant.auth.const import GROUP_ID_READ_ONLY, GROUP_ID_USER
+from homeassistant.components.websocket_api import DOMAIN as WEBSOCKET_DOMAIN
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import Unauthorized
 from homeassistant.setup import async_setup_component
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import MockConfigEntry, MockUser
 from pytest_homeassistant_custom_component.typing import (
     MockHAClientWebSocket,
     WebSocketGenerator,
@@ -133,6 +139,34 @@ async def test_list_requires_admin(
     response = await client.receive_json()
     assert response["success"] is False
     assert response["error"]["code"] == "unauthorized"
+
+
+@pytest.mark.parametrize("group", [GROUP_ID_USER, GROUP_ID_READ_ONLY])
+async def test_every_command_refuses_users_who_are_not_admins(
+    hass: HomeAssistant, group: str
+) -> None:
+    # Home Assistant validates a message against the command's schema before
+    # the handler runs, so calling each registered handler directly checks
+    # that the admin gate holds whatever the payload is.
+    await _setup(hass)
+    auth_group = await hass.auth.async_get_group(group)
+    assert auth_group is not None
+    user = MockUser(groups=[auth_group]).add_to_hass(hass)
+    assert not user.is_admin
+    handlers = {
+        command: handler
+        for command, (handler, _schema) in hass.data[WEBSOCKET_DOMAIN].items()
+        if command.startswith(f"{DOMAIN}/")
+    }
+    assert "smart_plants/plants/list" in handlers
+    assert "smart_plants/wizard/start" in handlers
+    assert len(handlers) >= 40
+    for command, handler in sorted(handlers.items()):
+        connection = MagicMock(user=user)
+        with pytest.raises(Unauthorized):
+            handler(hass, connection, {"id": 1, "type": command})
+        connection.send_result.assert_not_called()
+        connection.send_error.assert_not_called()
 
 
 async def test_create_list_update_delete_roundtrip(
@@ -532,3 +566,109 @@ async def test_synthetic_provider_websocket_search_preview_apply_flow(
     )
     applied = await client.receive_json()
     assert applied["result"]["plant"]["species"]["provider"] == "synthetic"
+
+
+_PLANT = "0123456789abcdef0123456789abcdef"
+_TASK = "fedcba9876543210fedcba9876543210"
+_EVENT = "00000000-0000-4000-8000-000000000001"
+_AT = "2026-09-11T12:00:00+00:00"
+_WRITES: tuple[tuple[str, str, dict[str, object]], ...] = (
+    ("plants/update", "async_update_plant", {"name": "Aloe"}),
+    ("plants/set_area", "async_set_plant_area", {"area_id": None}),
+    ("plants/set_rest_period", "async_set_rest_period", {"rest_period": None}),
+    ("plants/snooze", "async_snooze_plant", {"until": None}),
+    (
+        "care/add_watering",
+        "async_add_watering",
+        {"occurred_at": _AT, "note": None},
+    ),
+    (
+        "care/add",
+        "async_add_care_event",
+        {"kind": "fertilizing", "occurred_at": _AT, "payload": {}},
+    ),
+    (
+        "care/edit",
+        "async_edit_care_event",
+        {"event_id": _EVENT, "kind": "watering", "occurred_at": _AT, "payload": {}},
+    ),
+    ("care/delete", "async_delete_care_event", {"event_id": _EVENT}),
+    (
+        "care_tasks/create",
+        "async_create_care_task",
+        {
+            "task_type": "fertilize",
+            "name": None,
+            "schedule": {},
+            "instructions": None,
+            "baseline_done_on": None,
+        },
+    ),
+    ("care_tasks/update", "async_update_care_task", {"task_id": _TASK}),
+    ("care_tasks/delete", "async_delete_care_task", {"task_id": _TASK}),
+    ("care_tasks/complete", "async_complete_care_task", {"task_id": _TASK}),
+    ("care_tasks/skip", "async_skip_care_task", {"task_id": _TASK}),
+    (
+        "care_tasks/undo_skip",
+        "async_undo_skip_care_task",
+        {"task_id": _TASK, "previous_skipped_on": None},
+    ),
+    (
+        "roles/set_sources",
+        "async_set_role_sources",
+        {"role": "temperature", "sources": []},
+    ),
+    (
+        "roles/set_primary",
+        "async_set_role_primary",
+        {"role": "temperature", "primary_entity_id": None},
+    ),
+    (
+        "roles/set_aggregation",
+        "async_set_role_aggregation",
+        {"role": "temperature", "aggregation": "average"},
+    ),
+    (
+        "roles/set_stale_after",
+        "async_set_role_stale_after",
+        {"role": "temperature", "stale_after_seconds": 3600},
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("command", "method", "fields"),
+    _WRITES,
+    ids=[command for command, _method, _fields in _WRITES],
+)
+async def test_plant_write_commands_map_manager_errors(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    command: str,
+    method: str,
+    fields: dict[str, object],
+) -> None:
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    client = await hass_ws_client(hass)
+    errors: tuple[tuple[Exception, str], ...] = (
+        (SmartPlantsPlantNotFoundError(_PLANT), ERR_NOT_FOUND),
+        (SmartPlantsRevisionConflictError(_PLANT, 1, 2), ERR_REVISION_CONFLICT),
+        (SmartPlantsValidationError("bad value"), ERR_INVALID_FORMAT),
+        (SmartPlantsManagerUnavailableError(), ERR_INTEGRATION_NOT_LOADED),
+        (RuntimeError("secret detail"), ERR_UNKNOWN),
+    )
+    for error, code in errors:
+        with patch.object(manager, method, side_effect=error):
+            await client.send_json_auto_id(
+                {
+                    "type": f"{DOMAIN}/{command}",
+                    "plant_id": _PLANT,
+                    "expected_revision": 1,
+                    **fields,
+                }
+            )
+            response = await client.receive_json()
+        assert response["success"] is False, (command, code)
+        assert response["error"]["code"] == code, (command, error)
+        assert "secret detail" not in response["error"]["message"]
