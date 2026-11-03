@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-03
+
 ### Added
 
 - A **Smart Plants plant card** for dashboards shows one plant with its status, soil moisture
@@ -44,6 +46,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- Storage moves to a new format that can hold pest control care. Existing data is migrated
+  automatically on the first start, and earlier versions cannot read the migrated data. To roll
+  back, restore `.storage/smart_plants.inventory.backup`.
 - The **History** chart marks every kind of logged care, each in its own color, and the
   legend lists the kinds shown. Before, it marked only waterings on the soil moisture chart
   and fertilizing on the fertilizer level chart. Waterings still appear only on those two
@@ -604,7 +609,8 @@ First public release.
 - English and German translations for the integration's entities, setup, and repairs. The
   sidebar panel is English-only.
 
-[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.15.0...HEAD
+[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.16.0...HEAD
+[0.16.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.15.0...0.16.0
 [0.15.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.14.0...0.15.0
 [0.14.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.13.0...0.14.0
 [0.13.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.12.0...0.13.0
