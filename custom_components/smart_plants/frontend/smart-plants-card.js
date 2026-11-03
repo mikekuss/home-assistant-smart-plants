@@ -1,4 +1,4 @@
-//#region src/card/picker.ts
+// src/card/picker.ts
 var e = {
 	en: {
 		name: "Smart Plants plant card",
@@ -14,8 +14,7 @@ var e = {
 function t(t) {
 	return e[(t ?? "en").toLowerCase().split(/[-_]/)[0] ?? "en"] ?? e.en;
 }
-//#endregion
-//#region src/card/loader.ts
+// src/card/loader.ts
 var n, r = "smart-plants-plant-card", i = "smart-plants-plant-card-content", a = "smart-plants-card-full.js";
 function o(e) {
 	let t = import.meta.url, n = new URL(a, t);
@@ -114,5 +113,4 @@ d.customCards = d.customCards ?? [], d.customCards.some((e) => e.type === "smart
 	preview: !0,
 	documentationURL: "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/dashboard-card.md"
 });
-//#endregion
 export { r as CARD_TYPE, l as REGISTRY_WATCH, s as SmartPlantsPlantCard, c as defineCard };
