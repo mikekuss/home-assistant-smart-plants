@@ -688,6 +688,12 @@
     "snooze_rejected": {
       "message": "Die Stummschaltung von {target} wurde nicht gespeichert: {reason}"
     },
+    "pending_operations_full": {
+      "message": "Bei Smart Plants warten bereits {max} unvollständige Änderungen darauf, abgeschlossen zu werden. Starten Sie Home Assistant neu, um sie abzuschließen. Erscheint diese Meldung erneut, prüfen Sie das Home-Assistant-Protokoll auf Fehler von Smart Plants."
+    },
+    "plant_limit": {
+      "message": "Smart Plants verwaltet höchstens {max} Pflanzen. Löschen Sie eine Pflanze, bevor Sie eine weitere hinzufügen."
+    },
     "storage_full": {
       "message": "Der Speicher von Smart Plants ist voll. Lösche alte Einträge oder Notizen im Pflegeprotokoll und versuche es erneut."
     },

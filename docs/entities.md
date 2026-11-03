@@ -84,7 +84,7 @@ problem. The care task binary sensors are described under [Care tasks](#care-tas
 | --- | --- | --- | --- |
 | Needs water | Always | none | `last_watered` |
 | Too wet | Always | none | none |
-| Sensor stale | Always | none | `sources`, `photo_id` |
+| Sensor stale | Always | none | `sources`, `photo_id`, `input_problems` |
 | Temperature stress | First temperature source | none | `confidence`, `reason`, `cold_threshold_celsius`, `cold_clear_celsius`, `hot_threshold_celsius`, `hot_clear_celsius` |
 | Humidity stress | First humidity source | none | `confidence`, `reason`, `dry_threshold_percent`, `dry_clear_percent`, `damp_threshold_percent`, `damp_clear_percent` |
 | Low light | First illuminance source | none | `confidence`, `reason`, `sample_count`, `target_lux`, `clear_lux` |
@@ -95,6 +95,9 @@ problem. The care task binary sensors are described under [Care tasks](#care-tas
 
 Every binary sensor of a plant, including the care task ones, also has the attributes
 `snoozed` and `snoozed_until`; see [Snoozed plants](#snoozed-plants).
+
+*Low light*'s `sample_count` is the number of daytime light samples it uses. It changes
+during the day, so it is not recorded in history.
 
 The threshold attributes show the thresholds currently in effect (built-in or your override).
 The `reason` attribute explains the current state, for example `cold_stress`, `hot_stress`,
@@ -107,6 +110,13 @@ The `reason` attribute explains the current state, for example `cold_stress`, `h
 `sources` on *Sensor stale* is how many soil moisture sensors the plant has assigned. *Sensor
 stale* stays available while the plant is active, so `sources` tells a plant without soil
 moisture sensors from one whose sensor stopped reporting.
+
+`input_problems` on *Sensor stale* lists the plant's other assigned sensors that make it
+show *No recent data*, by role, for example `{"temperature": "stale"}`. The value is
+`stale`, `unavailable`, or `no_main_sensor` when several sensors of a role wait for a main
+sensor. It is empty while every other sensor reports, and follows the rules in
+[Staleness](sensors-and-health.md#staleness), so a battery sensor or a light sensor at night
+never appears in it.
 
 `photo_id` on *Sensor stale* is the ID of the plant's photo, or `null` when the plant has none.
 It changes whenever you add or replace the photo. The dashboard card uses it to load the photo

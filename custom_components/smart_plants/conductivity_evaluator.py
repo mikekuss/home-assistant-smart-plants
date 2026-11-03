@@ -262,7 +262,9 @@ def _evaluate_conductivity_stress(  # noqa: PLR0911
             high_threshold_micro_siemens_per_cm=high_threshold,
             high_clear_micro_siemens_per_cm=high_clear,
         )
-    if previous_stress == "low":
+    # Hysteresis holds only while the reading stays short of the opposite
+    # trigger; a jump straight to the other extreme falls through to it.
+    if previous_stress == "low" and computed_micro_siemens_per_cm < high_threshold:
         stress = computed_micro_siemens_per_cm < low_clear
         return ConductivityStressEvaluation(
             conductivity_stress=stress,
@@ -274,7 +276,7 @@ def _evaluate_conductivity_stress(  # noqa: PLR0911
             high_threshold_micro_siemens_per_cm=high_threshold,
             high_clear_micro_siemens_per_cm=high_clear,
         )
-    if previous_stress == "high":
+    if previous_stress == "high" and computed_micro_siemens_per_cm > low_threshold:
         stress = computed_micro_siemens_per_cm > high_clear
         return ConductivityStressEvaluation(
             conductivity_stress=stress,

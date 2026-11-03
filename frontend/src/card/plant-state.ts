@@ -56,11 +56,12 @@ export const MOISTURE_HYSTERESIS = 2;
 const UNAVAILABLE = new Set(["unavailable", "unknown"]);
 const ALERT_STATES = new Set(["on", "off"]);
 const num = (v: unknown): number | null => typeof v === "number" && Number.isFinite(v) ? v : null;
-const numState = (s: CardState | undefined): number | null => {
-  if (!s || UNAVAILABLE.has(s.state)) return null;
-  const v = Number(s.state);
-  return s.state.trim() !== "" && Number.isFinite(v) ? v : null;
+const numeric = (state: string): number | null => {
+  if (UNAVAILABLE.has(state)) return null;
+  const v = Number(state);
+  return state.trim() !== "" && Number.isFinite(v) ? v : null;
 };
+const numState = (s: CardState | undefined): number | null => s ? numeric(s.state) : null;
 
 // The plant's own entities keyed by "<domain>.<translation key>", for example
 // "sensor.moisture" or "binary_sensor.needs_water".
@@ -99,22 +100,30 @@ export interface StatusInput {
   // are assigned. null while the stale sensor is unavailable or doesn't say.
   sources: number | null;
   stress: Partial<Record<ReadingRole, { state: string; reason: string | null }>>;
+  // The `input_problems` attribute of the stale sensor: the other assigned
+  // sensors that give no usable value, by role, as the backend counts them.
+  input_problems: Partial<Record<ReadingRole, string>>;
 }
 
 export interface StatusResult { status: PlantStatus; problems: PlantProblem[] }
 
 // The plant status and its issues, most urgent first, as plant_status.py
-// derives them. The entities don't say why assigned moisture sensors give no
-// value; the card reports them as not reporting, also when several sensors
-// wait for a main sensor to be chosen (the panel names that case).
+// derives them. The entities don't say why moisture sensors give no value;
+// the card reports them as not reporting, also when they went stale or when
+// several of them wait for a main sensor to be chosen (the panel names those
+// cases). Other sensors waiting for a main sensor also show as not reporting.
 export function deriveStatus(input: StatusInput): StatusResult {
   if (input.allUnavailable) return { status: "paused", problems: [] };
   const problems: PlantProblem[] = [];
   const valueProblem = input.needs_water === "on" ? "needs_water" : input.too_wet === "on" ? "too_wet" : null;
   if (valueProblem) problems.push({ role: "moisture", kind: valueProblem });
+  let stressed = false;
   for (const signal of STRESS_SIGNALS) {
     const stress = input.stress[signal.role];
-    if (stress?.state === "on") problems.push({ role: signal.role, kind: signal.kinds[stress.reason ?? ""] ?? GENERIC_STRESS_KIND });
+    if (stress?.state === "on") {
+      problems.push({ role: signal.role, kind: signal.kinds[stress.reason ?? ""] ?? GENERIC_STRESS_KIND });
+      stressed = true;
+    }
   }
   const moistureAvailable = input.moisture !== null && !UNAVAILABLE.has(input.moisture);
   const stale = input.sensor_stale === "on";
@@ -125,15 +134,29 @@ export function deriveStatus(input: StatusInput): StatusResult {
   const verdictKnown = valueProblem !== null || (ALERT_STATES.has(input.needs_water ?? "") && ALERT_STATES.has(input.too_wet ?? ""));
   const readingProblem = !hasSources ? null : stale ? "stale" : moistureAvailable && verdictKnown ? null : "unavailable";
   if (readingProblem) problems.push({ role: "moisture", kind: readingProblem });
+  const inputProblems = inputProblemsOf(input);
+  problems.push(...inputProblems);
   if (!hasSources) problems.push({ role: "moisture", kind: "no_sensors" });
 
   let status: PlantStatus;
   if (valueProblem) status = valueProblem;
-  else if (problems.some(p => p.role !== "moisture")) status = "problem";
-  else if (readingProblem) status = "stale";
+  else if (stressed) status = "problem";
+  else if (readingProblem || inputProblems.length) status = "stale";
   else if (!hasSources) status = "no_sensors";
   else status = "healthy";
   return { status, problems };
+}
+
+// Other assigned sensors that give no usable value. The backend decides which
+// count, so a removed sensor or a light sensor that is quiet at night or early
+// in the morning is no problem here either.
+function inputProblemsOf(input: StatusInput): PlantProblem[] {
+  const found: PlantProblem[] = [];
+  for (const { role } of STRESS_SIGNALS) {
+    const kind = input.input_problems[role];
+    if (kind !== undefined) found.push({ role, kind: kind === "stale" ? "stale" : "unavailable" });
+  }
+  return found;
 }
 
 export function statusInput(hass: CardHassData, entities: Map<string, string>): StatusInput {
@@ -142,6 +165,14 @@ export function statusInput(hass: CardHassData, entities: Map<string, string>): 
   for (const signal of STRESS_SIGNALS) {
     const s = state(`binary_sensor.${signal.sensor}`);
     if (s) stress[signal.role] = { state: s.state, reason: typeof s.attributes.reason === "string" ? s.attributes.reason : null };
+  }
+  const inputProblems: StatusInput["input_problems"] = {};
+  const reported = state("binary_sensor.sensor_stale")?.attributes.input_problems;
+  if (typeof reported === "object" && reported !== null) {
+    for (const { role } of STRESS_SIGNALS) {
+      const kind = (reported as Record<string, unknown>)[role];
+      if (typeof kind === "string") inputProblems[role] = kind;
+    }
   }
   const ids = [...entities.values()];
   return {
@@ -152,6 +183,7 @@ export function statusInput(hass: CardHassData, entities: Map<string, string>): 
     sensor_stale: state("binary_sensor.sensor_stale")?.state ?? null,
     sources: num(state("binary_sensor.sensor_stale")?.attributes.sources),
     stress,
+    input_problems: inputProblems,
   };
 }
 
@@ -235,11 +267,17 @@ export function plantView(hass: CardHassData, deviceId: string): CardPlant {
     if (role === "moisture" || paused) continue;
     const reading = state(`sensor.${role}`);
     const value = numState(reading);
-    if (value === null) continue;
+    const problem = problems.find(p => p.role === role);
+    const inputProblem = problem?.kind === "stale" || problem?.kind === "unavailable";
+    // A reading without a value only shows when it is one of the plant's issues.
+    if (value === null && !inputProblem) continue;
     const signal = STRESS_SIGNALS.find(s => s.role === role);
     const unit = typeof reading?.attributes.unit_of_measurement === "string" ? reading.attributes.unit_of_measurement : "";
     const { range, clear } = rangeOf(role, signal ? state(`binary_sensor.${signal.sensor}`) : undefined, unit);
-    roles[role] = { value, unit, state: readingState(value, problems.find(p => p.role === role), false), range, clear, last_reported: null, sources: [] };
+    roles[role] = {
+      value, unit, state: readingState(value, inputProblem ? undefined : problem, problem?.kind === "stale"),
+      range, clear, last_reported: null, sources: [],
+    };
   }
 
   const needsWater = state("binary_sensor.needs_water");

@@ -244,7 +244,9 @@ def _evaluate_humidity_stress(  # noqa: PLR0911
             damp_threshold_percent=damp_threshold,
             damp_clear_percent=damp_clear,
         )
-    if previous_stress == "dry":
+    # Hysteresis holds only while the reading stays short of the opposite
+    # trigger; a jump straight to the other extreme falls through to it.
+    if previous_stress == "dry" and computed_percent < damp_threshold:
         stress = computed_percent < dry_clear
         return HumidityStressEvaluation(
             humidity_stress=stress,
@@ -256,7 +258,7 @@ def _evaluate_humidity_stress(  # noqa: PLR0911
             damp_threshold_percent=damp_threshold,
             damp_clear_percent=damp_clear,
         )
-    if previous_stress == "damp":
+    if previous_stress == "damp" and computed_percent > dry_threshold:
         stress = computed_percent > damp_clear
         return HumidityStressEvaluation(
             humidity_stress=stress,

@@ -11,6 +11,7 @@ from custom_components.smart_plants.illuminance_evaluator import (
     IlluminanceReading,
     LightSample,
     evaluate,
+    light_quiet_expected,
 )
 from custom_components.smart_plants.models import IlluminanceConfig, SensorSource
 from homeassistant.const import PERCENTAGE
@@ -280,3 +281,61 @@ def test_stale_light_sensor_at_night_is_unavailable_not_nighttime() -> None:
     # A stale sensor at night must never report the healthy "nighttime" state.
     assert result.low_light.available is False
     assert result.low_light.reason != "nighttime"
+
+
+@pytest.mark.parametrize(
+    ("hour", "minute", "expected"),
+    [
+        (7, 59, True),
+        (8, 0, True),
+        (13, 59, True),
+        (14, 0, False),
+        (17, 59, False),
+        (18, 0, True),
+        (23, 0, True),
+    ],
+)
+def test_quiet_light_sensor_expected_at_night_and_early_in_the_day(
+    hour: int, minute: int, *, expected: bool
+) -> None:
+    berlin = ZoneInfo("Europe/Berlin")
+    now = datetime(2026, 12, 1, hour, minute, tzinfo=berlin)
+    assert light_quiet_expected(now, 6 * 3600) is expected
+
+
+def test_quiet_light_sensor_never_expected_without_a_clock() -> None:
+    assert light_quiet_expected(None, 6 * 3600) is False
+
+
+def test_evaluation_reports_a_quiet_sensor_as_expected_in_the_morning() -> None:
+    # The sensor last reported at 22:00 and went stale at night. At 09:00 it
+    # still has time to report, so the plant status leaves it alone.
+    config = IlluminanceConfig(
+        sources=(SensorSource(entity_id="sensor.mock_lux"),),
+        primary_entity_id="sensor.mock_lux",
+        aggregation="primary",
+    )
+    last = datetime(2026, 12, 1, 22, tzinfo=UTC).timestamp()
+    reading = IlluminanceReading(
+        entity_id="sensor.mock_lux",
+        value="0",
+        unit_of_measurement=LIGHT_LUX,
+        last_valid_at=last,
+    )
+    morning = datetime(2026, 12, 2, 9, tzinfo=UTC)
+    early = evaluate(
+        config,
+        {"sensor.mock_lux": reading},
+        now=morning.timestamp(),
+        now_datetime=morning,
+    )
+    assert early.sensor_stale is True
+    assert early.quiet_expected is True
+    afternoon = morning.replace(hour=14)
+    late = evaluate(
+        config,
+        {"sensor.mock_lux": reading},
+        now=afternoon.timestamp(),
+        now_datetime=afternoon,
+    )
+    assert late.quiet_expected is False

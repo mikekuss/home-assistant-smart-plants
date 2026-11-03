@@ -74,10 +74,12 @@ class SourceTracker:
         *,
         is_valid: Callable[[State], bool],
         on_change: Callable[[datetime], None],
+        on_report: Callable[[datetime], None] | None = None,
     ) -> None:
         self._hass = hass
         self._is_valid = is_valid
         self._on_change = on_change
+        self._on_report = on_report
         self._sources: dict[str, _MutableTrackedSource] = {}
         self._unsub_states: Callable[[], None] | None = None
         self._unsub_reports: Callable[[], None] | None = None
@@ -289,12 +291,15 @@ class SourceTracker:
         The reported value is unchanged, so outputs only change when the
         source was stale or still inside its assignment grace. A pending
         stale deadline that is now too early reschedules itself when it
-        fires, so frequent reports stay cheap.
+        fires, so frequent reports stay cheap. A consumer that keeps a
+        history of observations passes ``on_report`` and hears about every
+        other valid report too.
         """
         entity_id = event.data["entity_id"]
         new_state = event.data["new_state"]
         now = dt_util.utcnow()
         needs_update = False
+        observed = False
         for tracked in self._sources.values():
             if tracked.entity_id != entity_id:
                 continue
@@ -315,10 +320,13 @@ class SourceTracker:
                 tracked.grace_until = None
                 needs_update = True
             needs_update = needs_update or was_stale
+            observed = True
             break
         if needs_update:
             self._schedule_deadline(now)
             self._on_change(now)
+        elif observed and self._on_report is not None:
+            self._on_report(now)
 
     @callback
     def _handle_registry(self, _event: Event) -> None:
