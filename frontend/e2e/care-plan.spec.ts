@@ -68,9 +68,9 @@ test("care task editor is accessible in every step and validates inline", async 
   await expect(dialog(page).getByRole("textbox", { name: "Name", exact: true })).toBeFocused();
   await audit(page, info, "care-task-errors");
   await dialogButton(page, "Once a year").click();
-  await dialogButton(page, "November").click();
-  await dialogButton(page, "February").click();
-  await expect(dialogButton(page, "December")).toHaveAttribute("aria-pressed", "true");
+  await dialogButton(page, "Nov").click();
+  await dialogButton(page, "Feb").click();
+  await expect(dialogButton(page, "Dec")).toHaveAttribute("aria-pressed", "true");
   await audit(page, info, "care-task-yearly");
   await dialog(page).getByRole("textbox", { name: "Name", exact: true }).fill("Mist leaves");
   await dialogButton(page, "Add task").click();
@@ -112,8 +112,8 @@ test("rest period editor sets the months and shows the rest row", async ({ page 
   await dialogButton(page, "Save").click();
   await expect(dialog(page)).toContainText("Pick the rest months.");
   await audit(page, info, "rest-editor-error");
-  await dialogButton(page, "November").click();
-  await dialogButton(page, "February").click();
+  await dialogButton(page, "Nov").click();
+  await dialogButton(page, "Feb").click();
   await expect(dialog(page).getByRole("checkbox", { name: "Fertilize", exact: true })).toBeChecked();
   await dialogButton(page, "Save").click();
   await expect(dialog(page)).toHaveCount(0);

@@ -47,11 +47,11 @@ test("admin sees the plants, opens one in the panel and undoes a watering", asyn
   const lavender = card(page, "Balcony Lavender");
   await expect(lavender).toContainText("Paused");
   await expect(lavender).toContainText("Monitoring is paused");
-  await expect(lavender.getByRole("button", { name: "Log watering for Balcony Lavender" })).toBeDisabled();
+  await expect(lavender.getByRole("button", { name: "Watered: Balcony Lavender" })).toBeDisabled();
   await expect(page.locator("smart-plants-plant-card").getByRole("alert")).toContainText("Plant not found");
   await audit(page, info, "card-admin");
 
-  await basil.getByRole("button", { name: "Log watering for Kitchen Basil" }).click();
+  await basil.getByRole("button", { name: "Watered: Kitchen Basil" }).click();
   const toast = page.locator(".toast", { hasText: "Watering logged for Kitchen Basil" });
   await expect(toast).toBeVisible();
   await expect(basil).toContainText("Watered just now");
@@ -86,7 +86,7 @@ test("other users get more-info and a toast without Undo", async ({ page }, info
   await audit(page, info, "card-user");
   await aloe.getByRole("button", { name: "Office Aloe", exact: true }).click();
   expect((await record(page)).moreInfo).toEqual(["sensor.office_aloe_moisture"]);
-  await aloe.getByRole("button", { name: "Log watering for Office Aloe" }).click();
+  await aloe.getByRole("button", { name: "Watered: Office Aloe" }).click();
   const toast = page.locator(".toast", { hasText: "Watering logged for Office Aloe" });
   await expect(toast).toBeVisible();
   await expect(toast.getByRole("button")).toHaveCount(0);
@@ -97,7 +97,7 @@ test("other users get more-info and a toast without Undo", async ({ page }, info
 
 test("a refused watering says the user may not log care", async ({ page }) => {
   await open(page, "?refuse&lang=de");
-  await card(page, "Office Aloe").getByRole("button", { name: "Gießen für Office Aloe eintragen" }).click();
+  await card(page, "Office Aloe").getByRole("button", { name: "Gegossen: Office Aloe" }).click();
   await expect(page.locator(".toast", { hasText: "Du darfst keine Pflege eintragen" })).toBeVisible();
   await expect(card(page, "Kitchen Basil")).toContainText("Braucht Wasser");
 });
@@ -211,7 +211,7 @@ test("the card survives a registry swap after the loader ran", async ({ page }, 
   await expect(aloe).toContainText("Healthy");
   await expect(aloe).toContainText("36%");
   await expect(aloe.locator("sp-moisture-bar")).toBeVisible();
-  await aloe.getByRole("button", { name: "Log watering for Office Aloe" }).click();
+  await aloe.getByRole("button", { name: "Watered: Office Aloe" }).click();
   await expect(page.locator(".toast", { hasText: "Watering logged for Office Aloe" })).toBeVisible();
   expect(await page.evaluate(() => ["sp-status-chip", "sp-moisture-bar", "sp-reading-chip", "smart-plants-plant-card-content"].filter(name => !window.customElements.get(name)))).toEqual([]);
   await audit(page, info, "card-swap");

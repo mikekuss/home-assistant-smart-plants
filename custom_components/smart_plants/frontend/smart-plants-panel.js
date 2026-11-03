@@ -2501,7 +2501,6 @@ var zn = {
 	"card.never_watered": "Noch nicht gegossen",
 	"card.watered_short_just_now": "Gerade eben",
 	"card.log_watering": "Gegossen",
-	"card.log_watering_label": "Gießen für {name} eintragen",
 	"overview.log_watering_label": "Gegossen: {name}",
 	"watering.logged": "Gießen für {name} eingetragen",
 	"watering.undo": "Rückgängig",
@@ -3653,7 +3652,6 @@ var zn = {
 	"card.never_watered": "Not watered yet",
 	"card.watered_short_just_now": "Just now",
 	"card.log_watering": "Watered",
-	"card.log_watering_label": "Log watering for {name}",
 	"overview.log_watering_label": "Watered: {name}",
 	"watering.logged": "Watering logged for {name}",
 	"watering.undo": "Undo",
@@ -7047,7 +7045,7 @@ function Cs(e) {
         <span>${t.t("care_plan.growing_only")}</span></label>
         <span class="small muted growing-hint" id="task-growing-hint">${t.t("care_plan.growing_only_hint", { months: Ya(t, l.start_month, l.end_month) })}</span></div>` : x}` : b`<div class="field-group"><span class="field-label" id="task-months-label">${t.t("care_plan.months")}</span>
         <div class="monthpick" role="group" aria-labelledby="task-months-label" aria-describedby=${a.months ? "task-months-error task-months-hint" : "task-months-hint"}>
-          ${Array.from({ length: 12 }, (e, t) => t + 1).map((n) => b`<button type="button" aria-pressed=${u.has(n) ? "true" : "false"} aria-label=${Ja(t, n)} @click=${() => e.onMonth(n)}>${Ja(t, n, "short")}</button>`)}</div>
+          ${Array.from({ length: 12 }, (e, t) => t + 1).map((n) => b`<button type="button" aria-pressed=${u.has(n) ? "true" : "false"} aria-description=${Ja(t, n)} @click=${() => e.onMonth(n)}>${Ja(t, n, "short")}</button>`)}</div>
         <span class="small muted" id="task-months-hint">${t.t("care_plan.months_hint")}</span>
         ${Ss("task-months-error", o("months"))}</div>`}
     <label>${t.t("care_plan.instructions")}<textarea rows=${i.instructions.length > gs ? 6 : 3} maxlength=${Ga} .value=${i.instructions} placeholder=${t.t("care_plan.instructions_placeholder")}
@@ -7075,7 +7073,7 @@ function ws(e) {
     <p class="small muted">${t.t("care_plan.rest_watering")}</p>
     <div class="field-group"><span class="field-label" id="rest-months-label">${t.t("care_plan.rest_months")}</span>
       <div class="monthpick" role="group" aria-labelledby="rest-months-label" aria-describedby=${e.error ? "rest-error rest-months-hint" : "rest-months-hint"}>
-        ${Array.from({ length: 12 }, (e, t) => t + 1).map((n) => b`<button type="button" aria-pressed=${a.has(n) ? "true" : "false"} aria-label=${Ja(t, n)} @click=${() => e.onMonth(n)}>${Ja(t, n, "short")}</button>`)}</div>
+        ${Array.from({ length: 12 }, (e, t) => t + 1).map((n) => b`<button type="button" aria-pressed=${a.has(n) ? "true" : "false"} aria-description=${Ja(t, n)} @click=${() => e.onMonth(n)}>${Ja(t, n, "short")}</button>`)}</div>
       <span class="small muted" id="rest-months-hint">${t.t("care_plan.months_hint")}</span>
       ${e.error ? b`<span class="error-text small" id="rest-error">${e.error}</span>` : x}</div>
     <fieldset class="rest-tasks"><legend class="field-label">${t.t("care_plan.rest_off_heading")}</legend>

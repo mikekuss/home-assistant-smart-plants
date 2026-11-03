@@ -292,7 +292,7 @@ export class SmartPlantsPlantCardContent extends LitElement {
       ${plant.careDue ? html`<p class="care"><ha-icon aria-hidden="true" icon="mdi:calendar-check-outline"></ha-icon><span>${l.t("plant_card.care_due")}</span></p>` : nothing}
       ${config.show_readings !== false ? this._renderReadings(plant, l) : nothing}
       ${config.show_watering !== false ? html`<div class="foot">${plant.lastWatered !== undefined ? this._renderWatered(l, plant.lastWatered, now) : nothing}
-        <button type="button" class="tonal" ?disabled=${paused || this._busy} aria-label=${l.t("card.log_watering_label", { name: plant.name })} @click=${() => void this._logWatering(plant)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${l.t("card.log_watering")}</button></div>` : nothing}
+        <button type="button" class="tonal" ?disabled=${paused || this._busy} aria-label=${l.t("overview.log_watering_label", { name: plant.name })} @click=${() => void this._logWatering(plant)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${l.t("card.log_watering")}</button></div>` : nothing}
     </ha-card>`;
   }
 

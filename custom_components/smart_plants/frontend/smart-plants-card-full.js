@@ -1183,7 +1183,6 @@ var Me = {
 	"card.never_watered": "Noch nicht gegossen",
 	"card.watered_short_just_now": "Gerade eben",
 	"card.log_watering": "Gegossen",
-	"card.log_watering_label": "Gießen für {name} eintragen",
 	"overview.log_watering_label": "Gegossen: {name}",
 	"watering.logged": "Gießen für {name} eingetragen",
 	"watering.undo": "Rückgängig",
@@ -2335,7 +2334,6 @@ var Me = {
 	"card.never_watered": "Not watered yet",
 	"card.watered_short_just_now": "Just now",
 	"card.log_watering": "Watered",
-	"card.log_watering_label": "Log watering for {name}",
 	"overview.log_watering_label": "Watered: {name}",
 	"watering.logged": "Watering logged for {name}",
 	"watering.undo": "Undo",
@@ -3937,7 +3935,7 @@ var Ut = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
       ${e.careDue ? A`<p class="care"><ha-icon aria-hidden="true" icon="mdi:calendar-check-outline"></ha-icon><span>${t.t("plant_card.care_due")}</span></p>` : M}
       ${n.show_readings === !1 ? M : this._renderReadings(e, t)}
       ${n.show_watering === !1 ? M : A`<div class="foot">${e.lastWatered === void 0 ? M : this._renderWatered(t, e.lastWatered, s)}
-        <button type="button" class="tonal" ?disabled=${i || this._busy} aria-label=${t.t("card.log_watering_label", { name: e.name })} @click=${() => void this._logWatering(e)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${t.t("card.log_watering")}</button></div>`}
+        <button type="button" class="tonal" ?disabled=${i || this._busy} aria-label=${t.t("overview.log_watering_label", { name: e.name })} @click=${() => void this._logWatering(e)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${t.t("card.log_watering")}</button></div>`}
     </ha-card>`;
 	}
 	_renderWatered(e, t, n) {
