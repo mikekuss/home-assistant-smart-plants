@@ -148,7 +148,7 @@ describe("card", () => {
     expect(all).toContain("21.5 °C");
     expect(all).toMatch(/Watered \d+ (days|weeks|months) ago|Watered last/);
     expect($(content, "sp-reading-chip[role='battery']") ?? content.shadowRoot!.querySelectorAll("sp-reading-chip").length).toBeTruthy();
-    expect($(content, ".tonal")!.getAttribute("aria-label")).toBe("Log watering for Office Aloe");
+    expect($(content, ".tonal")!.getAttribute("aria-label")).toBe("Watered: Office Aloe");
   });
   it("keeps a short watering time next to the sentence for narrow cards", async () => {
     const at = new Date(Date.now() - 3 * 86_400_000).toISOString();

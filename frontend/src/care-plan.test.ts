@@ -156,7 +156,7 @@ async function openCare(backend: ReturnType<typeof careBackend>) {
 }
 const carePlan = (el: SmartPlantsPanel) => el.shadowRoot!.querySelector<HTMLElement>(".care-plan")!;
 const dialog = (el: SmartPlantsPanel) => el.shadowRoot!.querySelector<HTMLDialogElement>("dialog.care-dialog");
-const dialogButton = (el: SmartPlantsPanel, name: string) => [...dialog(el)!.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === name || b.getAttribute("aria-label") === name)!;
+const dialogButton = (el: SmartPlantsPanel, name: string) => [...dialog(el)!.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === name || b.getAttribute("aria-label") === name || b.getAttribute("aria-description") === name)!;
 const menu = async (el: SmartPlantsPanel, index: number, value: string) => {
   carePlan(el).querySelectorAll("ha-dropdown.task-menu")[index]!.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value } } })); await settle(el);
 };
@@ -369,6 +369,8 @@ describe("rest period editor, header chips and overview", () => {
     expect(box("Check for pests").checked).toBe(false);
     dialogButton(el, "Save").click(); await settle(el);
     expect(dialog(el)!.textContent).toContain("Pick the rest months.");
+    const january = dialogButton(el, "Jan");
+    expect([january.hasAttribute("aria-label"), january.getAttribute("aria-description")]).toEqual([false, "January"]);
     dialogButton(el, "January").click(); await settle(el); dialogButton(el, "December").click(); await settle(el);
     dialogButton(el, "Save").click(); await settle(el);
     expect(dialog(el)!.textContent).toContain("A rest period can't cover the whole year.");

@@ -631,7 +631,6 @@ export const en = {
   "card.never_watered": "Not watered yet",
   "card.watered_short_just_now": "Just now",
   "card.log_watering": "Watered",
-  "card.log_watering_label": "Log watering for {name}",
   "overview.log_watering_label": "Watered: {name}",
 
   "watering.logged": "Watering logged for {name}",

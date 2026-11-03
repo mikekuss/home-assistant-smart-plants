@@ -101,6 +101,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   keyboard focus to that tab.
 - The **Watered** button on the overview is announced as "Watered: plant name", so voice
   control finds it by the text it shows.
+- The **Watered** button on the dashboard card is announced the same way. The month buttons in
+  the yearly care task and rest period editors are announced by the short name they show, such
+  as "Jan", with the full month name as their description. Screen readers and voice control
+  now match the visible button text.
 - The fertilizing care form shows one **Unit** field instead of two.
 - Smart Plants keeps working on future Home Assistant releases that no longer include
   voluptuous. On Home Assistant 2026.9 and later it now validates its settings, actions,

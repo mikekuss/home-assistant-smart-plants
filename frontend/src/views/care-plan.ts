@@ -365,7 +365,7 @@ function detailsStep(ctx: TaskEditorContext): TemplateResult {
         <span class="small muted growing-hint" id="task-growing-hint">${l.t("care_plan.growing_only_hint", { months: monthRange(l, rest.start_month, rest.end_month) })}</span></div>` : nothing}`
     : html`<div class="field-group"><span class="field-label" id="task-months-label">${l.t("care_plan.months")}</span>
         <div class="monthpick" role="group" aria-labelledby="task-months-label" aria-describedby=${errors.months ? "task-months-error task-months-hint" : "task-months-hint"}>
-          ${Array.from({ length: 12 }, (_, index) => index + 1).map(month => html`<button type="button" aria-pressed=${selected.has(month) ? "true" : "false"} aria-label=${monthName(l, month)} @click=${() => ctx.onMonth(month)}>${monthName(l, month, "short")}</button>`)}</div>
+          ${Array.from({ length: 12 }, (_, index) => index + 1).map(month => html`<button type="button" aria-pressed=${selected.has(month) ? "true" : "false"} aria-description=${monthName(l, month)} @click=${() => ctx.onMonth(month)}>${monthName(l, month, "short")}</button>`)}</div>
         <span class="small muted" id="task-months-hint">${l.t("care_plan.months_hint")}</span>
         ${fieldError("task-months-error", err("months"))}</div>`}
     <label>${l.t("care_plan.instructions")}<textarea rows=${draft.instructions.length > NOTE_CLAMP_CHARS ? 6 : 3} maxlength=${TASK_INSTRUCTIONS_MAX} .value=${draft.instructions} placeholder=${l.t("care_plan.instructions_placeholder")}
@@ -412,7 +412,7 @@ export function renderRestEditor(ctx: RestEditorContext): TemplateResult {
     <p class="small muted">${l.t("care_plan.rest_watering")}</p>
     <div class="field-group"><span class="field-label" id="rest-months-label">${l.t("care_plan.rest_months")}</span>
       <div class="monthpick" role="group" aria-labelledby="rest-months-label" aria-describedby=${ctx.error ? "rest-error rest-months-hint" : "rest-months-hint"}>
-        ${Array.from({ length: 12 }, (_, index) => index + 1).map(month => html`<button type="button" aria-pressed=${selected.has(month) ? "true" : "false"} aria-label=${monthName(l, month)} @click=${() => ctx.onMonth(month)}>${monthName(l, month, "short")}</button>`)}</div>
+        ${Array.from({ length: 12 }, (_, index) => index + 1).map(month => html`<button type="button" aria-pressed=${selected.has(month) ? "true" : "false"} aria-description=${monthName(l, month)} @click=${() => ctx.onMonth(month)}>${monthName(l, month, "short")}</button>`)}</div>
       <span class="small muted" id="rest-months-hint">${l.t("care_plan.months_hint")}</span>
       ${ctx.error ? html`<span class="error-text small" id="rest-error">${ctx.error}</span>` : nothing}</div>
     <fieldset class="rest-tasks"><legend class="field-label">${l.t("care_plan.rest_off_heading")}</legend>

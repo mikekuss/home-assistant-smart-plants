@@ -632,7 +632,6 @@ export const de: Catalog = {
   "card.never_watered": "Noch nicht gegossen",
   "card.watered_short_just_now": "Gerade eben",
   "card.log_watering": "Gegossen",
-  "card.log_watering_label": "Gießen für {name} eintragen",
   "overview.log_watering_label": "Gegossen: {name}",
 
   "watering.logged": "Gießen für {name} eingetragen",
