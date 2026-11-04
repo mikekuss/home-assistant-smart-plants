@@ -348,6 +348,15 @@ export const plantStyles = css`
   .rel a.li:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: -2px; }
   .rel-end { display: flex; align-items: center; gap: 2px; color: var(--sp-text-secondary); }
   .rel-more { padding: 2px 2px 6px; }
+  .rel-kind { color: var(--sp-text); }
+
+  /* Header bell and ⋮ menu: the count of notifications, and dividers between
+     groups. wa-divider draws itself where Home Assistant defines it. */
+  .header-bell { position: relative; display: inline-flex; }
+  .bell-count, .menu-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px;
+    background: color-mix(in srgb, var(--primary-color, #009ac7) 72%, #000); color: #fff; font-size: 11px; font-weight: 600; line-height: 1; }
+  .bell-count { position: absolute; top: 4px; inset-inline-end: 2px; pointer-events: none; }
+  wa-divider:not(:defined) { display: block; height: 1px; margin: 4px 0; background: var(--divider-color, #e0e0e0); }
   .pd .rel-group { margin: 0; padding: 14px 16px 4px; border-top: 1px solid var(--divider-color, #e0e0e0); font-size: 13px; font-weight: 500; line-height: 1.25; color: var(--sp-text-secondary); }
   .rel-foot { border-top: 1px solid var(--divider-color, #e0e0e0); padding-top: 12px; }
 

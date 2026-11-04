@@ -83,7 +83,7 @@ describe("Snooze all plants", () => {
     const { el } = await mount([plant("p1", "Aloe"), plant("p2", "Basil")]);
     const item = menuItem(el)!;
     expect(item.textContent).toContain("Snooze all plants…");
-    expect(item.querySelector("ha-icon")!.getAttribute("icon")).toBe("mdi:bell-sleep-outline");
+    expect(item.querySelector("ha-icon")!.getAttribute("icon")).toBe("mdi:alarm-snooze");
     const values = [...root(el).querySelectorAll("ha-dropdown-item")].map(i => i.getAttribute("value"));
     expect(values.slice(values.indexOf("notifications"), values.indexOf("integration-options") + 1)).toEqual(["notifications", "snooze-all", "integration-options"]);
     // The plant page has its own Snooze alerts… item instead.

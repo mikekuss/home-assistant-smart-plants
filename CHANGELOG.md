@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Once you have a notification, a bell in the panel header opens the **Notifications** dialog
+  and shows how many you have. The **⋮** menus show the same number next to
+  **Notifications…**, and a plant's **Automations** card marks those automations with a bell.
+  Without notifications nothing new appears. See [Notifications](docs/notifications.md#your-notifications).
+- Each notification in the **Notifications** dialog says which plants it is for. Without
+  notifications, the dialog explains what they do.
+- The screen that confirms a new plant has a **Set up notifications** button.
+
+### Changed
+
+- The **⋮** menus group their items: notifications and snooze, then the device and
+  diagnostics items, then pause and delete. Snooze has an alarm clock icon.
+- **Set up notifications** stays in a plant's **Automations** card after the plant has
+  automations.
+
 ## [0.16.0] - 2026-11-04
 
 ### Added

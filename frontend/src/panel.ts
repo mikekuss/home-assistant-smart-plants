@@ -121,6 +121,7 @@ const _EDITOR_BY_PROBLEM_ROLE: Record<string, ThresholdEditorSpec> = Object.from
 const MENU_ICON_PATH = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z";
 const ADD_ICON_PATH = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z";
 const BACK_ICON_PATH = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
+const BELL_ICON_PATH = "M21 19v1H3v-1l2-2v-6c0-3.1 2.03-5.83 5-6.71V4a2 2 0 1 1 4 0v.29c2.97.88 5 3.61 5 6.71v6l2 2Zm-7 2a2 2 0 1 1-4 0h4Z";
 const SIDEBAR_ICON_PATH = "M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z";
 // Sections of the plant page that expand and collapse.
 type Expandable = "combine" | "troubleshooting" | "other_targets" | "more_details";
@@ -137,7 +138,8 @@ import "./wizard.js";
 import "./views/notifications.js";
 import { DOCUMENTATION_URL } from "./views/overview.js";
 import type { OpenPlantDetail } from "./views/overview.js";
-import { allPlantsEntityId } from "./notifications.js";
+import { allPlantsEntityId, findNotifications } from "./notifications.js";
+import type { FoundNotification } from "./notifications.js";
 import { RELATED_LIMIT, automationDetail, capRows, relatedAutomations } from "./related-automations.js";
 import type { AutomationRow, RelatedAutomations } from "./related-automations.js";
 import type { PlantOverview } from "./overview-model.js";
@@ -264,6 +266,14 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _notificationsOpen = false;
   // Where focus goes when the Notifications dialog closes; the ⋮ menu otherwise.
   private _notificationsReturn: HTMLElement | null = null;
+  // The notification automations made here, or null until they were read. The
+  // menus, the header bell, the dialog and the Automations card share them.
+  @state() private _notifications: FoundNotification[] | null = null;
+  // The automation entity IDs they were read for, and the subscription that
+  // reads them again when Home Assistant reloads its automations.
+  private _notificationsFor: string | null = null;
+  private _notificationsRequest = 0;
+  private _notificationsUnsubscribe: (() => void) | undefined;
   @state() private _creationNotice = "";
   // Photo part of the creation notice, shown on the wizard's confirmation.
   @state() private _creationPhoto = "";
@@ -338,6 +348,7 @@ export class SmartPlantsPanel extends LitElement {
       this._watchCare(changed.get("hass") as HomeAssistantLike | undefined);
     }
     this._syncRelated();
+    this._syncNotifications();
     const dialog = this.shadowRoot?.querySelector("dialog");
     let active: Element | null | undefined = null;
     // Some DOM implementations throw when the focused element was just removed, for example by a tab switch.
@@ -425,12 +436,33 @@ export class SmartPlantsPanel extends LitElement {
     void api.subscribeRegistry(this.hass, this._ready).then(unsubscribe => {
       if (this._connection !== connection || generation !== this._subscriptionGeneration || !this.isConnected) unsubscribe(); else this._unsubscribe = unsubscribe;
     }).catch(() => { this._registryError = this._l.t("error.registry_updates"); });
+    // Saving in the automation editor reloads automations; read them again then.
+    void connection.subscribeEvents?.(() => { this._notificationsFor = null; this._syncNotifications(); }, "automation_reloaded").then(unsubscribe => {
+      if (this._connection !== connection || generation !== this._subscriptionGeneration || !this.isConnected) unsubscribe(); else this._notificationsUnsubscribe = unsubscribe;
+    }).catch(() => undefined);
+  }
+  // Reads the automations' configs once for the current set of automations,
+  // and again after Home Assistant reloads them. Rendering never reads them.
+  private _syncNotifications(): void {
+    const hass = this.hass;
+    if (!hass || this._blocked || !this.isConnected || hass.user?.is_admin === false) return;
+    const automations = Object.keys(this._states).filter(id => id.startsWith("automation.")).sort();
+    const key = automations.join(" ");
+    if (this._notificationsFor === key) return;
+    this._notificationsFor = key;
+    const request = ++this._notificationsRequest;
+    void findNotifications(hass, automations).then(found => { if (request === this._notificationsRequest) this._notifications = found; });
+  }
+  // The notifications that still have an automation; the dialog lists the same.
+  private _notificationCount(): number {
+    return (this._notifications ?? []).filter(item => this._states[item.entityId]).length;
   }
   private _unbind(): void {
     this._context++; this._formBusy = false;
     this._request++; this._providerRequest++; this._preview = null; this._blocked = true; this._clearImage(); this._clearThumbnails(); this._forgetRelated();
     this._subscriptionGeneration++;
     this._unsubscribe?.(); this._unsubscribe = undefined;
+    this._notificationsUnsubscribe?.(); this._notificationsUnsubscribe = undefined; this._notificationsRequest++; this._notificationsFor = null;
     this._connection?.removeEventListener?.("ready", this._ready); this._connection?.removeEventListener?.("disconnected", this._disconnected); this._connection = undefined;
   }
   private _clearThumbnails(): void {
@@ -2169,11 +2201,11 @@ export class SmartPlantsPanel extends LitElement {
     const links = device ? html`<div class="row"><a class="btn outline sm" href=${devicePath} @click=${(e: MouseEvent) => this._internalLink(e, devicePath)}><ha-icon aria-hidden="true" icon="mdi:devices"></ha-icon>${l.t("automations.open_device")}</a>
       <a class="btn outline sm" href=${createPath} @click=${(e: MouseEvent) => this._internalLink(e, createPath)}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("automations.create")}</a></div>` : nothing;
     const listed = related.plant.length > 0 || related.allPlants.length > 0;
+    const notify = device ? html`<div class="row"><button type="button" class="btn text sm" @click=${(e: Event) => this._openNotifications(e.currentTarget as HTMLElement)}><ha-icon aria-hidden="true" icon="mdi:bell-outline"></ha-icon>${l.t("automations.notifications")}</button></div>` : nothing;
     return html`<section class="sp-card" aria-labelledby="automations-heading"><div class="card-h"><h3 id="automations-heading">${l.t("automations.heading")}</h3></div>
       ${listed ? html`${this._renderAutomationGroup("plant", related.plant)}${this._renderAutomationGroup("allPlants", related.allPlants)}
-        <div class="card-b rel-foot"><p class="small muted">${l.t("automations.not_listed")}</p>${links}</div>`
-        : html`<div class="card-b"><p class="small muted">${l.t("automations.body")}</p>${links}
-          ${device ? html`<div class="row"><button type="button" class="btn text sm" @click=${(e: Event) => this._openNotifications(e.currentTarget as HTMLElement)}><ha-icon aria-hidden="true" icon="mdi:bell-outline"></ha-icon>${l.t("automations.notifications")}</button></div>` : nothing}</div>`}</section>`;
+        <div class="card-b rel-foot"><p class="small muted">${l.t("automations.not_listed")}</p>${links}${notify}</div>`
+        : html`<div class="card-b"><p class="small muted">${l.t("automations.body")}</p>${links}${notify}</div>`}</section>`;
   }
   private _renderAutomationGroup(group: keyof RelatedAutomations, rows: readonly AutomationRow[]) {
     if (!rows.length) return nothing;
@@ -2184,15 +2216,17 @@ export class SmartPlantsPanel extends LitElement {
       ${more ? html`<div class="rel-more"><button type="button" class="btn text sm" @click=${() => this._showAllAutomations(group, id)}>${l.t("automations.show_all", { count: rows.length })}</button></div>` : nothing}`;
   }
   // One automation: its name, when it last ran and whether it is off or
-  // unavailable. It opens in Home Assistant's editor unless it is defined in
+  // unavailable. A notification made in the Notifications dialog has a bell
+  // and says so. It opens in Home Assistant's editor unless it is defined in
   // YAML without an id.
   private _renderAutomationRow(row: AutomationRow) {
     const l = this._l; const path = row.editPath;
+    const notification = (this._notifications ?? []).some(item => item.entityId === row.entityId);
     const tone = row.status === "on" ? "tonal" : row.status === "unavailable" ? "tone-bad" : "";
     const chip = row.status === "off" ? html`<span class="cchip tone-later">${l.t("automations.off")}</span>`
       : row.status === "unavailable" ? html`<span class="cchip tone-overdue"><ha-icon aria-hidden="true" icon="mdi:alert-circle-outline"></ha-icon>${l.t("automations.unavailable")}</span>` : nothing;
-    const content = html`<span class="ic ${tone}" aria-hidden="true"><ha-icon icon="mdi:robot"></ha-icon></span>
-      <span class="li-main"><span class="li-title">${row.name}</span><span class="li-sub">${automationDetail(l, row)}</span></span>
+    const content = html`<span class="ic ${tone}" aria-hidden="true"><ha-icon icon=${notification ? "mdi:bell-outline" : "mdi:robot"}></ha-icon></span>
+      <span class="li-main"><span class="li-title">${row.name}</span><span class="li-sub">${notification ? html`<span class="rel-kind">${l.t("automations.notification")}</span> · ` : nothing}${automationDetail(l, row)}</span></span>
       <span class="rel-end">${chip}${path ? html`<ha-icon aria-hidden="true" icon="mdi:chevron-right"></ha-icon>` : nothing}</span>`;
     return html`<li>${path ? html`<a class="li" href=${path} @click=${(e: MouseEvent) => this._internalLink(e, path)}>${content}</a>` : html`<div class="li">${content}</div>`}</li>`;
   }
@@ -2307,6 +2341,13 @@ export class SmartPlantsPanel extends LitElement {
     this._wizardStarted = false;
     this._show({ kind: "detail", plantId });
   }
+  // "Set up notifications" on the confirmation: the new plant's page with the
+  // Notifications dialog open for it. Closing the dialog focuses the ⋮ menu.
+  private _notifyCreated(plantId: string): void {
+    if (this._formBusy || !this._plantById(plantId)) return;
+    this._openCreated(plantId);
+    this._openNotifications(null);
+  }
   // A finished creation notice is no longer needed once the confirmation was
   // seen; an upload in progress keeps reporting until it ends.
   private _clearCreationNotice(): void {
@@ -2370,22 +2411,31 @@ export class SmartPlantsPanel extends LitElement {
     const menuLabel = this.hass?.localize?.("ui.common.menu") || l.t("panel.menu");
     const detailPlant = this._view.kind === "detail" ? this._plantById(this._view.plantId) : undefined;
     const busy = this._formBusy || this._blocked || !!this._conflict;
+    // The count and the header bell show only once notifications exist.
+    const count = this._notificationCount();
+    const notificationsItem = html`<ha-dropdown-item value="notifications">${l.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon>${count ? html`<span slot="details" class="menu-count">${count}</span>` : nothing}</ha-dropdown-item>`;
+    const bell = count && this._view.kind !== "create" ? html`<span slot="actionItems" class="header-bell"><ha-icon-button .label=${l.tn(count, "panel.bell_one", "panel.bell_other")} .path=${BELL_ICON_PATH}
+      @click=${(e: Event) => this._openNotifications(e.currentTarget as HTMLElement)}></ha-icon-button><span class="bell-count" aria-hidden="true">${count}</span></span>` : nothing;
     return html`<main><ha-top-app-bar-fixed class="panel-appbar" .narrow=${this.narrow}>
        ${this._view.kind === "detail" ? html`<ha-icon-button slot="navigationIcon" class="back" .label=${l.t("detail.back")} .path=${BACK_ICON_PATH} @click=${() => { if (!this._formBusy) this._show({ kind: "list" }); }}></ha-icon-button>` : this._renderSidebarButton()}
        <h1 slot="title" class="page-title" tabindex="-1">${detailPlant ? detailPlant.name : "Smart Plants"}</h1>
+       ${bell}
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
          <ha-icon-button slot="trigger" .label=${menuLabel} .path=${MENU_ICON_PATH}></ha-icon-button>
          ${detailPlant ? html`
+         ${notificationsItem}
+         <ha-dropdown-item value="snooze" ?disabled=${busy || detailPlant.lifecycle_state !== "active"}>${activeSnooze(detailPlant.snoozed_until) ? l.t("snooze.menu_change") : l.t("snooze.menu")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>
+         <wa-divider role="separator"></wa-divider>
          <ha-dropdown-item value="open-device" ?disabled=${!plantDevice(detailPlant, this._devices)}>${l.t("detail.menu_open_device")}<ha-icon slot="icon" icon="mdi:open-in-new"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="download-diagnostics">${l.t("detail.menu_download")}<ha-icon slot="icon" icon="mdi:download"></ha-icon></ha-dropdown-item>
-         <ha-dropdown-item value="notifications">${l.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon></ha-dropdown-item>
-         <ha-dropdown-item value="snooze" ?disabled=${busy || detailPlant.lifecycle_state !== "active"}>${activeSnooze(detailPlant.snoozed_until) ? l.t("snooze.menu_change") : l.t("snooze.menu")}<ha-icon slot="icon" icon="mdi:bell-sleep-outline"></ha-icon></ha-dropdown-item>
+         <wa-divider role="separator"></wa-divider>
          <ha-dropdown-item value="toggle-monitoring" ?disabled=${busy}>${detailPlant.lifecycle_state === "active" ? l.t("manage.pause") : l.t("manage.resume")}<ha-icon slot="icon" .icon=${detailPlant.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="delete-plant" ?disabled=${busy}>${l.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>` : html`
          ${this._view.kind !== "list" ? html`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${l.t("panel.back_to_overview")}</ha-dropdown-item>` : nothing}
          <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${l.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${ADD_ICON_PATH}></ha-svg-icon></ha-dropdown-item>
-         ${this._view.kind === "list" ? html`<ha-dropdown-item value="notifications">${l.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon></ha-dropdown-item>` : nothing}
-         ${this._view.kind === "list" && this._activePlants().length >= 2 ? html`<ha-dropdown-item value="snooze-all" ?disabled=${this._formBusy || this._blocked}>${l.t("snooze.menu_all")}<ha-icon slot="icon" icon="mdi:bell-sleep-outline"></ha-icon></ha-dropdown-item>` : nothing}
+         ${this._view.kind === "list" ? html`<wa-divider role="separator"></wa-divider>${notificationsItem}` : nothing}
+         ${this._view.kind === "list" && this._activePlants().length >= 2 ? html`<ha-dropdown-item value="snooze-all" ?disabled=${this._formBusy || this._blocked}>${l.t("snooze.menu_all")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>` : nothing}
+         <wa-divider role="separator"></wa-divider>
          <ha-dropdown-item value="integration-options">${l.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="documentation">${l.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>`}
        </ha-dropdown>
@@ -2396,10 +2446,10 @@ export class SmartPlantsPanel extends LitElement {
         .thumbnails=${this._thumbnails} .watering=${this._watering} .timeZone=${this._timeZone()} .loading=${this._loading} .blocked=${this._blocked}
         @open-plant=${(e: CustomEvent<OpenPlantDetail>) => this._openFromOverview(e.detail)} @add-plant=${() => this._show({ kind: "create" })} @log-watering=${(e: CustomEvent<{ plantId: string }>) => void this._logWatering(e.detail.plantId)}></smart-plants-overview>
       ${this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : nothing}
-      ${this._notificationsOpen && this._view.kind !== "create" ? html`<smart-plants-notifications .hass=${this.hass} .l=${l} .plants=${this._plants} .devices=${this._devices} .entities=${this._entities} .states=${this._states} .plantId=${detailPlant?.id ?? null}
+      ${this._notificationsOpen && this._view.kind !== "create" ? html`<smart-plants-notifications .hass=${this.hass} .l=${l} .plants=${this._plants} .devices=${this._devices} .entities=${this._entities} .states=${this._states} .found=${this._notifications} .plantId=${detailPlant?.id ?? null}
         @notifications-close=${() => this._closeNotifications()}></smart-plants-notifications>` : nothing}
       ${this._dialog === "snooze_all" && this._view.kind === "list" ? this._renderSnoozeAllDialog() : nothing}
-      ${this._wizardStarted && this._capabilities ? html`<div ?hidden=${this._view.kind !== "create"}><smart-plants-wizard .hass=${this.hass} .capabilities=${this._capabilities} .areas=${this._areas} .entities=${this._entities} .devices=${this._devices} .states=${this._states} .blocked=${this._blocked} .navigationContext=${this._context} .photoStatus=${this._creationPhoto} @plant-created=${(e: CustomEvent<{ plant: PlantRecord; photo: File | null; navigationContext: number }>) => void this._created(e)} @wizard-close=${() => this._closeWizard()} @wizard-open-plant=${(e: CustomEvent<{ plantId: string }>) => this._openCreated(e.detail.plantId)} @wizard-restart=${() => this._clearCreationNotice()} @backend-unavailable=${(e: CustomEvent<string>) => { this._blocked = true; this._error = e.detail; }}></smart-plants-wizard></div>` : nothing}
+      ${this._wizardStarted && this._capabilities ? html`<div ?hidden=${this._view.kind !== "create"}><smart-plants-wizard .hass=${this.hass} .capabilities=${this._capabilities} .areas=${this._areas} .entities=${this._entities} .devices=${this._devices} .states=${this._states} .blocked=${this._blocked} .navigationContext=${this._context} .photoStatus=${this._creationPhoto} @plant-created=${(e: CustomEvent<{ plant: PlantRecord; photo: File | null; navigationContext: number }>) => void this._created(e)} @wizard-close=${() => this._closeWizard()} @wizard-open-plant=${(e: CustomEvent<{ plantId: string }>) => this._openCreated(e.detail.plantId)} @wizard-notifications=${(e: CustomEvent<{ plantId: string }>) => this._notifyCreated(e.detail.plantId)} @wizard-restart=${() => this._clearCreationNotice()} @backend-unavailable=${(e: CustomEvent<string>) => { this._blocked = true; this._error = e.detail; }}></smart-plants-wizard></div>` : nothing}
         <p role="status" aria-live="polite">${this._formBusy ? l.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
   }
 }

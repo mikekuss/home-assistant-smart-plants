@@ -5,9 +5,9 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { createLocalizer, ENGLISH } from "./localize.js";
-import { allPlantsEntityId, buildNotification, configMarker, findNotifications, notificationMarker, notifyTargets, openAutomationEditor, sha256Hex } from "./notifications.js";
+import { allPlantsEntityId, buildNotification, configMarker, coverageText, coveredDevices, findNotifications, notificationMarker, notifyTargets, openAutomationEditor, sha256Hex } from "./notifications.js";
 import type { NotificationInput } from "./notifications.js";
-import type { HAEntity, HAState, HomeAssistantLike } from "./types.js";
+import type { HADevice, HAEntity, HAState, HomeAssistantLike, PlantRecord } from "./types.js";
 
 const DE = createLocalizer({ language: "de" });
 const DEVICES = ["0123456789abcdef0123456789abcdef", "fedcba9876543210fedcba9876543210"];
@@ -181,6 +181,41 @@ describe("finding notification automations", () => {
     expect(send).toHaveBeenCalledWith({ type: "automation/config", entity_id: "automation.mock_1" });
     expect(found.map(item => item.entityId)).toEqual(["automation.mock_1", "automation.mock_5", "automation.mock_7", "automation.mock_9", "automation.mock_11", "automation.mock_13", "automation.mock_15", "automation.mock_17", "automation.mock_19"]);
     expect(await findNotifications(hass, [])).toEqual([]);
+  });
+  it("keeps the plants each notification is for", async () => {
+    const config = buildNotification(water, ENGLISH);
+    const send = vi.fn(async () => ({ config }));
+    const hass = { connection: { sendMessagePromise: send } } as unknown as HomeAssistantLike;
+    expect(await findNotifications(hass, ["automation.mock_water"])).toEqual([{ entityId: "automation.mock_water", marker: notificationMarker("needs_water", DEVICES), deviceIds: [...DEVICES].sort() }]);
+  });
+});
+
+describe("which plants a notification is for", () => {
+  const marker = (kind: "daily_report" | "needs_water", ids: string[] | null) => notificationMarker(kind, ids);
+  it("reads the targeted devices of the automations made here", () => {
+    expect(coveredDevices(buildNotification(water, ENGLISH), marker("needs_water", DEVICES))).toEqual([...DEVICES].sort());
+    const report = buildNotification({ ...daily, plantDeviceIds: [DEVICES[1]!] }, ENGLISH);
+    expect(coveredDevices(report, marker("daily_report", [DEVICES[1]!]))).toEqual([DEVICES[1]]);
+  });
+  it("treats a marker without a hash as all plants", () => {
+    expect(coveredDevices(buildNotification({ ...daily, allPlantsEntityId: "binary_sensor.smart_plants_all_plants" }, ENGLISH), marker("daily_report", null))).toBeNull();
+    expect(coveredDevices({}, "smart_plants_needs_water")).toBeNull();
+  });
+  it("follows targets edited later and the older trigger syntax", () => {
+    const id = marker("needs_water", [DEVICES[0]!]);
+    expect(coveredDevices({ triggers: [{ trigger: "smart_plants.needs_water", id, target: { device_id: [DEVICES[0], DEVICES[1]] } }] }, id)).toEqual([...DEVICES].sort());
+    expect(coveredDevices({ trigger: { platform: "smart_plants.needs_water", id, device_id: DEVICES[1] } }, id)).toEqual([DEVICES[1]]);
+    // Targets of other integrations don't count.
+    expect(coveredDevices({ triggers: [{ trigger: "time", id }], actions: [{ action: "light.turn_on", target: { device_id: "device-lamp" } }] }, id)).toEqual([]);
+  });
+  it("names the plants, all plants, or that they were removed", () => {
+    const plants = [{ id: "a", name: "Office Aloe" }, { id: "b", name: "Basil" }, { id: "c", name: "Fern" }] as PlantRecord[];
+    const devices = plants.map(p => ({ id: `device-${p.id}`, identifiers: [["smart_plants", p.id]] })) as HADevice[];
+    expect(coverageText(ENGLISH, null, plants, devices)).toBe("For all plants");
+    expect(coverageText(ENGLISH, ["device-a", "device-b"], plants, devices)).toBe("For Basil and Office Aloe");
+    expect(coverageText(DE, ["device-a", "device-b", "device-c"], plants, devices)).toBe("Für Basil, Fern und Office Aloe");
+    expect(coverageText(ENGLISH, ["device-gone"], plants, devices)).toBe("The chosen plants were removed");
+    expect(coverageText(ENGLISH, [], plants, devices)).toBe("The chosen plants were removed");
   });
 });
 

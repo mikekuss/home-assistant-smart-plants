@@ -99,10 +99,11 @@ their target range. Two buttons sit next to it:
 - **Watered** logs a watering right now, with **Undo** in the notification.
 - **Log care** opens the care form in the **Care** tab.
 
-The **⋮** menu in the top bar offers **Open device**, **Download diagnostics**,
-**Notifications…** (starting with this plant), **Snooze alerts…** (see [Going on vacation](#going-on-vacation)), **Pause monitoring** (or
-**Resume monitoring**) and **Delete plant**. The back arrow returns to
-the overview.
+The **⋮** menu in the top bar offers **Notifications…** (starting with this plant) and
+**Snooze alerts…** (see [Going on vacation](#going-on-vacation)), then **Open device** and
+**Download diagnostics**, then **Pause monitoring** (or **Resume monitoring**) and **Delete
+plant**. Once you have [notifications](notifications.md), a bell next to **⋮** opens them. The
+back arrow returns to the overview.
 
 The page has four tabs:
 
