@@ -15,6 +15,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Each notification in the **Notifications** dialog says which plants it is for. Without
   notifications, the dialog explains what they do.
 - The screen that confirms a new plant has a **Set up notifications** button.
+- A [translation guide](docs/development/translations.md) explains how to add a language to the
+  integration and the panel. The panel picks plural forms with the language's CLDR rules, so
+  catalogs can add forms such as `_few` and `_many`.
 
 ### Changed
 

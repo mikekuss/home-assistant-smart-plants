@@ -124,6 +124,8 @@ shows the panel in English. Numbers and dates in the panel use your profile's nu
 format settings, for example `10,5 °C` in German. Care-history times are shown as recorded,
 with the UTC offset they were entered with.
 
+To add a language, see [Translations](development/translations.md).
+
 ## Can I edit plants from YAML or with actions?
 
 Plants are managed in the panel. The only plant settings exposed as entities are the moisture
