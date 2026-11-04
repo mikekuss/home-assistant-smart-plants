@@ -15,7 +15,7 @@ Thanks for helping! Bug reports, ideas, translations, and pull requests are all 
 | `frontend/` | Panel source (Lit + TypeScript), unit tests, and browser/accessibility tests. |
 | `tests/` | Backend tests (`pytest-homeassistant-custom-component`). |
 | `docs/` | User documentation. |
-| `docs/development/` | Developer guides for the test containers and the local Home Assistant rig. |
+| `docs/development/` | Developer guides for the test containers, the local Home Assistant rig and translations. |
 | `dev/ha-config-seed/` | Synthetic, pre-onboarded seed for the local Home Assistant rig. |
 | `scripts/` | Helper scripts for the Docker test stack and the local rig. |
 
@@ -77,7 +77,9 @@ especially the rules for regenerating the seed.
   the Plant Monitor integration. Learning from their concepts is fine.
 - **Translations:** user-visible strings live in `custom_components/smart_plants/strings.json`,
   with translations in `translations/`. Keep `en.json` in sync with `strings.json` and update
-  `de.json` if you can. New languages are welcome.
+  `de.json` if you can. New languages are welcome; see
+  [docs/development/translations.md](docs/development/translations.md) for the files to add, plural
+  forms and the tests that check them.
 - **Tests:** add or update tests for behavior changes, both backend and frontend.
 - **Safety:** Smart Plants detects plant health but does not actuate irrigation. Changes that
   control devices need an issue and discussion first.

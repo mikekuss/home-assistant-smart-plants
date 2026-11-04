@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- A [translation guide](docs/development/translations.md) explains how to add a language to the
+  integration and the panel. The panel picks plural forms with the language's CLDR rules, so
+  catalogs can add forms such as `_few` and `_many`.
+
 ## [0.16.0] - 2026-11-04
 
 ### Added

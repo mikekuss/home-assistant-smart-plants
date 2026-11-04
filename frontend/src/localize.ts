@@ -1,8 +1,11 @@
 // Panel localization. Home Assistant does not load translation categories for
 // custom panels, so the panel ships its own catalogs and picks one from the
 // Home Assistant frontend language. English is the source catalog: its keys
-// define MessageKey, every other catalog must provide exactly those keys, and
-// any language without a catalog falls back to English.
+// define MessageKey, other catalogs may leave keys out (they fall back to the
+// English text per key) but must not add keys of their own, and any language
+// without a catalog falls back to English. The one exception is plural forms:
+// a catalog may add `_zero`, `_two`, `_few` and `_many` variants of any English
+// `_other` key for languages whose plural rules need them.
 import { de } from "./translations/de.js";
 import { en } from "./translations/en.js";
 
@@ -10,9 +13,19 @@ export type MessageKey = keyof typeof en;
 export type Catalog = Record<MessageKey, string>;
 export type MessageArgs = Record<string, string | number>;
 
+// The CLDR plural categories Intl.PluralRules can return.
+export const PLURAL_CATEGORIES = ["zero", "one", "two", "few", "many", "other"] as const;
+export type PluralCategory = typeof PLURAL_CATEGORIES[number];
+type PluralBase<K> = K extends `${infer Base}_other` ? Base : never;
+// Plural variants a catalog may define next to the English keys.
+export type PluralKey = `${PluralBase<MessageKey>}_${PluralCategory}`;
+export type LanguageCatalog = Partial<Record<MessageKey | PluralKey, string>>;
+// Catalog set passed to createLocalizer: English plus any number of languages.
+export type Catalogs = Readonly<Record<string, LanguageCatalog>> & { readonly en: Partial<Catalog> };
+
 export const LANGUAGES = ["en", "de"] as const;
 export type Language = typeof LANGUAGES[number];
-const CATALOGS: Record<Language, Partial<Catalog>> = { en, de };
+const CATALOGS: Catalogs = { en, de };
 
 // Subset of the Home Assistant frontend `hass.locale` object the panel reads.
 export interface HALocale {
@@ -24,11 +37,16 @@ export interface HALocale {
 export interface LocaleSource { language?: string; locale?: HALocale }
 
 export interface Localizer {
-  readonly language: Language;
+  // The catalog language in use, also used as the locale for Intl formatters.
+  readonly language: string;
   // Translate a key, replacing `{name}` placeholders. Numeric arguments are
   // formatted with the Home Assistant number format.
   t(key: MessageKey, args?: MessageArgs): string;
-  // Pick the singular or plural key for `count` and pass it as `{count}`.
+  // Pick the plural form for `count` and pass it as `{count}`. With keys named
+  // `<base>_one` and `<base>_other`, the CLDR category of the active language
+  // (zero, one, two, few, many, other) selects `<base>_<category>`; a missing
+  // form falls back to `<base>_other`, and a key missing from the catalog falls
+  // back to the English form for `count`.
   tn(count: number, one: MessageKey, other: MessageKey, args?: MessageArgs): string;
   number(value: number, options?: Intl.NumberFormatOptions): string;
   percent(value: number): string;
@@ -47,10 +65,12 @@ export function isMessageKey(key: string): key is MessageKey {
 
 // Map a Home Assistant or BCP 47 language tag ("de", "de-CH", "de_AT") to a
 // supported catalog, falling back to English.
-export function panelLanguage(source?: LocaleSource | null): Language {
+export function panelLanguage(source?: LocaleSource | null): Language;
+export function panelLanguage(source: LocaleSource | null | undefined, available: readonly string[]): string;
+export function panelLanguage(source?: LocaleSource | null, available: readonly string[] = LANGUAGES): string {
   const raw = source?.locale?.language || source?.language || "en";
   const base = raw.toLowerCase().split(/[-_]/)[0] ?? "en";
-  return (LANGUAGES as readonly string[]).includes(base) ? base as Language : "en";
+  return available.includes(base) ? base : "en";
 }
 
 // A syntactically valid BCP 47 tag for Intl, or undefined for the browser default.
@@ -89,8 +109,8 @@ function interpolate(template: string, args: MessageArgs | undefined, number: (v
 
 const cache = new Map<string, Localizer>();
 
-export function createLocalizer(source?: LocaleSource | null, catalogs: Record<Language, Partial<Catalog>> = CATALOGS): Localizer {
-  const language = panelLanguage(source);
+export function createLocalizer(source?: LocaleSource | null, catalogs: Catalogs = CATALOGS): Localizer {
+  const language = panelLanguage(source, Object.keys(catalogs));
   const locale = source?.locale;
   const cacheKey = catalogs === CATALOGS ? JSON.stringify([language, source?.language, locale?.language, locale?.number_format, locale?.time_format, locale?.date_format]) : null;
   const cached = cacheKey ? cache.get(cacheKey) : undefined;
@@ -108,9 +128,22 @@ export function createLocalizer(source?: LocaleSource | null, catalogs: Record<L
     if (!format) { format = new Intl.NumberFormat(locales, { maximumFractionDigits: 2, useGrouping, ...options }); numberFormats.set(key, format); }
     return format.format(value);
   };
-  const catalog = catalogs[language];
-  const t = (key: MessageKey, args?: MessageArgs): string => interpolate(catalog[key] ?? catalogs.en[key] ?? key, args, value => number(value));
+  const catalog: LanguageCatalog = catalogs[language] ?? catalogs.en;
+  const english: LanguageCatalog = catalogs.en;
+  const t = (key: MessageKey, args?: MessageArgs): string => interpolate(catalog[key] ?? english[key] ?? key, args, value => number(value));
   const plural = new Intl.PluralRules(language);
+  const englishPlural = new Intl.PluralRules("en");
+  const tn = (count: number, one: MessageKey, other: MessageKey, args?: MessageArgs): string => {
+    const all = { ...args, count };
+    const category = plural.select(count);
+    const base = other.endsWith("_other") ? other.slice(0, -"_other".length) : null;
+    // Keys outside the `<base>_one` / `<base>_other` pattern only know two forms.
+    const named = base !== null && one === `${base}_one`;
+    const own = named ? catalog[`${base}_${category}` as PluralKey] : catalog[category === "one" ? one : other];
+    const text = own ?? catalog[other];
+    if (text !== undefined) return interpolate(text, all, value => number(value));
+    return t(englishPlural.select(count) === "one" ? one : other, all);
+  };
   const dateFormat = new Intl.DateTimeFormat(dateLocales, { dateStyle: "medium", timeZone: "UTC" });
   const timeOptions: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit" };
   const h12 = hour12(locale);
@@ -121,7 +154,7 @@ export function createLocalizer(source?: LocaleSource | null, catalogs: Record<L
   const localizer: Localizer = {
     language,
     t,
-    tn: (count, one, other, args) => t(plural.select(count) === "one" ? one : other, { ...args, count }),
+    tn,
     number,
     percent: value => t("format.percent", { value }),
     date: isoDate => {
