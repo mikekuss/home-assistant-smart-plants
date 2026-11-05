@@ -85,6 +85,15 @@ def _synthetic_sensor() -> Iterator[None]:
         yield
 
 
+# Sensor roles whose entity is disabled by default never attach, so they are
+# not in the manager's entity index.
+_DISABLED_BY_DEFAULT_SENSOR_ROLES = frozenset({"last_watered"})
+
+
+def _enabled_sensor_roles() -> int:
+    return len(sensor_module.ROLE_FACTORIES) - len(_DISABLED_BY_DEFAULT_SENSOR_ROLES)
+
+
 async def _setup_entry(hass: HomeAssistant) -> MockConfigEntry:
     entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
     entry.add_to_hass(hass)
@@ -132,7 +141,7 @@ async def test_existing_plants_get_entities_at_setup(
     manager = entry.runtime_data.manager
 
     entities = manager.entities_for_plant_on_platform("sensor", seed_plant.id)
-    assert len(entities) == len(sensor_module.ROLE_FACTORIES)
+    assert len(entities) == _enabled_sensor_roles()
     # HA entity_registry has the plant-scoped entry.
     registry = er.async_get(hass)
     unique_id = f"{DOMAIN}:{seed_plant.id}:{ROLE}"
@@ -152,7 +161,7 @@ async def test_plant_created_after_setup_creates_entity_exactly_once(
     await hass.async_block_till_done()
 
     entities = manager.entities_for_plant_on_platform("sensor", plant.id)
-    assert len(entities) == len(sensor_module.ROLE_FACTORIES)
+    assert len(entities) == _enabled_sensor_roles()
     unique_id = f"{DOMAIN}:{plant.id}:{ROLE}"
     registry = er.async_get(hass)
     assert registry.async_get_entity_id("sensor", DOMAIN, unique_id) is not None
@@ -238,7 +247,7 @@ async def test_disable_marks_entity_unavailable_without_registry_delete(
 
     # Subclass hook fired exactly once.
     entities = manager.entities_for_plant_on_platform("sensor", plant.id)
-    assert len(entities) == len(sensor_module.ROLE_FACTORIES)
+    assert len(entities) == _enabled_sensor_roles()
     assert _synthetic_entity(manager, plant.id).disabled_count == 1
 
 
@@ -262,7 +271,7 @@ async def test_reenable_restores_availability_without_duplicates(
 
     # Exactly one entity, exactly one reenable hook fire.
     entities = manager.entities_for_plant_on_platform("sensor", plant.id)
-    assert len(entities) == len(sensor_module.ROLE_FACTORIES)
+    assert len(entities) == _enabled_sensor_roles()
     synthetic = _synthetic_entity(manager, plant.id)
     assert synthetic.disabled_count == 1
     assert synthetic.reenabled_count == 1
@@ -331,7 +340,7 @@ async def test_reload_preserves_registry_and_no_duplicate_entities(
     assert new_manager is not manager
 
     entities = new_manager.entities_for_plant_on_platform("sensor", plant.id)
-    assert len(entities) == len(sensor_module.ROLE_FACTORIES)
+    assert len(entities) == _enabled_sensor_roles()
     # Registry rows survive the reload with the same entity_id.
     same = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
     assert same == original_entity_id

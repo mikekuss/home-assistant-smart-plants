@@ -55,7 +55,7 @@ def _credentials(draft: dict[str, Any]) -> dict[str, Any]:
 def _production_entity_role_count() -> int:
     return sum(
         len(entity_roles(platform))
-        for platform in ("sensor", "binary_sensor", "number")
+        for platform in ("sensor", "binary_sensor", "number", "button")
     )
 
 
@@ -65,7 +65,7 @@ def _moisture_entity_role_count() -> int:
     # entities lazily once they have a source.
     return sum(
         1
-        for platform in ("sensor", "binary_sensor", "number")
+        for platform in ("sensor", "binary_sensor", "number", "button")
         for definition, _entity in entity_roles(platform)
         if definition.key == "moisture"
     )

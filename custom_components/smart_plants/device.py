@@ -60,7 +60,7 @@ def _unique_id_belongs_to_plant(
         return True
     if any(
         unique_id == f"{DOMAIN}:{plant_id}:{entity.role}"
-        for platform in ("sensor", "binary_sensor", "number")
+        for platform in ("sensor", "binary_sensor", "number", "button")
         for _definition, entity in entity_roles(platform)
     ):
         return True

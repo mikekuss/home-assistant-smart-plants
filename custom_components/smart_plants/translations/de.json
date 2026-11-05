@@ -84,6 +84,9 @@
       "co2": {
         "name": "CO2"
       },
+      "last_watered": {
+        "name": "Zuletzt gegossen"
+      },
       "care_task_fertilize_next": {
         "name": "Düngen: nächster Termin"
       },
@@ -104,6 +107,27 @@
       },
       "care_task_named_next": {
         "name": "{task_name}: nächster Termin"
+      },
+      "care_task_fertilize_last": {
+        "name": "Düngen: zuletzt erledigt"
+      },
+      "care_task_prune_last": {
+        "name": "Schneiden: zuletzt erledigt"
+      },
+      "care_task_repot_last": {
+        "name": "Umtopfen: zuletzt erledigt"
+      },
+      "care_task_pests_last": {
+        "name": "Auf Schädlinge prüfen: zuletzt erledigt"
+      },
+      "care_task_winter_protection_last": {
+        "name": "Winterschutz: zuletzt erledigt"
+      },
+      "care_task_custom_last": {
+        "name": "Pflegeaufgabe: zuletzt erledigt"
+      },
+      "care_task_named_last": {
+        "name": "{task_name}: zuletzt erledigt"
       }
     },
     "binary_sensor": {
@@ -493,6 +517,32 @@
       },
       "moisture_max": {
         "name": "Feuchte Maximum"
+      }
+    },
+    "button": {
+      "watered": {
+        "name": "Gegossen"
+      },
+      "care_task_fertilize_done": {
+        "name": "Düngen: erledigt"
+      },
+      "care_task_prune_done": {
+        "name": "Schneiden: erledigt"
+      },
+      "care_task_repot_done": {
+        "name": "Umtopfen: erledigt"
+      },
+      "care_task_pests_done": {
+        "name": "Auf Schädlinge prüfen: erledigt"
+      },
+      "care_task_winter_protection_done": {
+        "name": "Winterschutz: erledigt"
+      },
+      "care_task_custom_done": {
+        "name": "Pflegeaufgabe: erledigt"
+      },
+      "care_task_named_done": {
+        "name": "{task_name}: erledigt"
       }
     }
   },

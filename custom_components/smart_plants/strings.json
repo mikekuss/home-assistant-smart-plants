@@ -84,6 +84,9 @@
       "co2": {
         "name": "CO2"
       },
+      "last_watered": {
+        "name": "Last watered"
+      },
       "care_task_fertilize_next": {
         "name": "Fertilize next due"
       },
@@ -104,6 +107,27 @@
       },
       "care_task_named_next": {
         "name": "{task_name} next due"
+      },
+      "care_task_fertilize_last": {
+        "name": "Fertilize last done"
+      },
+      "care_task_prune_last": {
+        "name": "Prune last done"
+      },
+      "care_task_repot_last": {
+        "name": "Repot last done"
+      },
+      "care_task_pests_last": {
+        "name": "Check for pests last done"
+      },
+      "care_task_winter_protection_last": {
+        "name": "Winter protection last done"
+      },
+      "care_task_custom_last": {
+        "name": "Care task last done"
+      },
+      "care_task_named_last": {
+        "name": "{task_name} last done"
       }
     },
     "binary_sensor": {
@@ -493,6 +517,32 @@
       },
       "moisture_max": {
         "name": "Moisture maximum"
+      }
+    },
+    "button": {
+      "watered": {
+        "name": "Watered"
+      },
+      "care_task_fertilize_done": {
+        "name": "Fertilize done"
+      },
+      "care_task_prune_done": {
+        "name": "Prune done"
+      },
+      "care_task_repot_done": {
+        "name": "Repot done"
+      },
+      "care_task_pests_done": {
+        "name": "Check for pests done"
+      },
+      "care_task_winter_protection_done": {
+        "name": "Winter protection done"
+      },
+      "care_task_custom_done": {
+        "name": "Care task done"
+      },
+      "care_task_named_done": {
+        "name": "{task_name} done"
       }
     }
   },

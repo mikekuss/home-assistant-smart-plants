@@ -25,14 +25,17 @@ real IDs on the device page (**⋮ > Open device** in the panel).
 
 - **Soil moisture entities** come with every plant: *Soil moisture*, *Health score*,
   *Needs water*, *Too wet*, *Sensor stale* and the three moisture numbers.
+- **Watering entities** come with every plant: the *Last watered* sensor and the *Watered*
+  button.
 - **Other readings** get their sensor and problem sensor when you assign the first sensor.
   When you remove all sensors, the entities stay and read unavailable, so their history stays.
 - **Care task entities** exist while the task exists. *Care due* exists while the plant has a
   care task.
 - **All plants** exists once for the whole integration.
 
-All entities are enabled by default, except the moisture numbers and the *next due* sensors of
-care tasks. Deleting a plant removes its device and entities.
+All entities are enabled by default, except the moisture numbers, *Last watered*, the
+[buttons](#buttons) and the *next due* and *last done* sensors of care tasks. To use one,
+enable it on the device page. Deleting a plant removes its device and entities.
 
 ## Sensors
 
@@ -47,13 +50,16 @@ care tasks. Deleting a plant removes its device and entities.
 | Soil temperature | First soil temperature sensor | °C | temperature | |
 | CO2 | First CO₂ sensor | ppm | carbon_dioxide | |
 | Battery | First battery sensor | % | battery | |
+| Last watered | Always, disabled | | timestamp | |
 
-These sensors have the *measurement* state class, so Home Assistant keeps long-term
+The reading sensors have the *measurement* state class, so Home Assistant keeps long-term
 statistics. *Battery* is a diagnostic entity. A sensor is unavailable while its reading has no
 valid value.
 
 - The `*_threshold_percent` attributes of *Soil moisture* are the moisture limits in effect.
   Dashboards can read them without the number entities.
+- *Last watered* is the time of the last logged watering, the same as the `last_watered`
+  attribute of *Needs water*. It's unknown before the first watering.
 - On *Health score*, `configured` lists the readings with sensors (never battery),
   `contributors` the readings in the current score, `confidence` their share from 0 to 1, and
   `confidence_label` is `high` (all), `medium` (at least half), `low` (fewer than half) or
@@ -109,6 +115,22 @@ These are disabled by default. The panel doesn't need them. To change a limit fr
 automation, enable the entity on the device page and use `number.set_value`. A value that
 breaks minimum < target < maximum, at least 4 apart, fails and changes nothing.
 
+## Buttons
+
+All buttons are disabled by default. Enable one on the device page to put it on a dashboard or
+press it from an automation with `button.press`.
+
+| Entity | Created | Press |
+| --- | --- | --- |
+| Watered | Always | Logs a watering now, like **Watered** on the [dashboard card](dashboard-card.md). |
+| *Done* of a care task, for example *Fertilize done* | Per care task | Marks the task as done now, like **Mark as done** in the panel. |
+
+A press logs care the same way as the [`smart_plants.log_care`](automations.md#actions)
+action, without a note. A logged watering keeps *Needs water* off for 24 hours, see
+[Sensors and health](sensors-and-health.md). The buttons are unavailable while the plant is
+paused. When the care can't be saved, for example because the storage is full, the press
+fails with a message and nothing is logged.
+
 ## All plants
 
 `binary_sensor.smart_plants_all_plants` (*All plants*) belongs to no plant. It has the
@@ -126,6 +148,8 @@ Each care task has its own entities. Renaming the task or changing its schedule 
 | --- | --- | --- | --- |
 | The task, for example *Fertilize* | Binary sensor | Yes | `status`, `next_due`, `last_done`, `task_type` |
 | *Next due* of the task | Sensor, timestamp | No | |
+| *Last done* of the task | Sensor, timestamp | No | |
+| *Done* of the task | Button | No | |
 | Care due | Binary sensor | Yes | `due_tasks`, `resting` |
 
 The task binary sensor is named after the task type or your own name. It's on (*Due*) on the
@@ -141,6 +165,11 @@ due day and while overdue. It has no device class, because a due task is a remin
 The *Next due* sensor is midnight of the due day in Home Assistant's time zone. Date tasks have
 it, reading tasks don't. It has no state class. Enable it to use it, for example in a time
 trigger with `offset: "-48:00:00"` for two days before.
+
+The *Last done* sensor is the time of the task's last Done, or midnight of the *last done* date
+you entered for the task when that is later. It's unknown without either. Skipping doesn't count.
+Every task has it, also reading tasks. The *Done* button is described under
+[Buttons](#buttons).
 
 *Care due* is on while a task of the plant is due. `due_tasks` lists their names, and `resting`
 is `true` inside the rest period.
@@ -188,4 +217,4 @@ Assistant keeps their history.
 ## Not exposed as entities
 
 The care log, species data and photos live in the panel. Use the
-[actions](automations.md#actions) to log care from automations.
+[actions](automations.md#actions) or the [buttons](#buttons) to log care from automations.

@@ -85,8 +85,8 @@ Unavailable doesn't mean healthy.
   unavailable while the light sensor is not updating.
 
 After you log a watering, *Needs water* stays off for 24 hours from the time of the entry.
-This holds for the panel, the card and the `smart_plants.log_care` action. Other sensors and the
-health score don't change.
+This holds for the panel, the card, the *Watered* button and the `smart_plants.log_care` action.
+Other sensors and the health score don't change.
 
 ## Built-in thresholds
 

@@ -959,6 +959,21 @@ register_role(
                 "custom_components.smart_plants.binary_sensor:_factory_role",
                 "sensor_stale",
             ),
+            # Watering belongs to the moisture role, so every plant has these.
+            # Both are disabled by default.
+            EntityRole(
+                "last_watered",
+                "sensor",
+                "last_watered",
+                "custom_components.smart_plants.sensor:_factory_role",
+                "last_watered",
+            ),
+            EntityRole(
+                "watered",
+                "button",
+                "watered",
+                "custom_components.smart_plants.button:_factory_role",
+            ),
             *(
                 EntityRole(
                     threshold.entity_role,

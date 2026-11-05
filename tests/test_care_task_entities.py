@@ -476,7 +476,7 @@ async def test_reload_keeps_entities_and_unload_stops_refresh(
     assert state.state == "on"
 
     lifecycles = entry.runtime_data.platform_lifecycles
-    assert set(lifecycles) == {"sensor", "binary_sensor", "number"}
+    assert set(lifecycles) == {"sensor", "binary_sensor", "number", "button"}
     subscribers = entry.runtime_data.manager._subscribers
     assert subscribers
 

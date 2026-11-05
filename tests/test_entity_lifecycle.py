@@ -224,7 +224,7 @@ def test_helper_available() -> None:
 
 @pytest.mark.parametrize(
     "platform_name",
-    ["sensor", "binary_sensor", "number"],
+    ["sensor", "binary_sensor", "number", "button"],
 )
 def test_role_factories_have_registered_entities(platform_name: str) -> None:
     """Production platform factories match the registered role metadata."""
@@ -243,6 +243,7 @@ def test_role_factories_have_registered_entities(platform_name: str) -> None:
             "conductivity",
             "soil_temperature",
             "co2",
+            "last_watered",
         },
         "binary_sensor": {
             "needs_water",
@@ -257,5 +258,6 @@ def test_role_factories_have_registered_entities(platform_name: str) -> None:
             "conductivity_stress",
         },
         "number": {"moisture_min", "moisture_target", "moisture_max"},
+        "button": {"watered"},
     }
     assert set(module.ROLE_FACTORIES) == expected[platform_name]

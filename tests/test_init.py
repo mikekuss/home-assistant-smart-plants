@@ -330,6 +330,7 @@ async def test_partial_unload_restores_platforms_and_keeps_runtime_live(
             "sensor",
             "binary_sensor",
             "number",
+            "button",
         }
         assert (
             entry.runtime_data.platform_lifecycles["binary_sensor"]
