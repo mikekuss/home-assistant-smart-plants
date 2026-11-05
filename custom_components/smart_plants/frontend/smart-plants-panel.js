@@ -2485,7 +2485,7 @@ var zn = {
 	"overview.no_match_query": "Keine Pflanze passt zu „{query}“.",
 	"overview.show_all": "Alle Pflanzen anzeigen",
 	"overview.integration_options": "Integrationsoptionen",
-	"overview.menu_notifications": "Benachrichtigungen…",
+	"overview.menu_notifications": "Benachrichtigungen",
 	"overview.documentation": "Dokumentation",
 	"card.no_sensors": "Noch keine Sensoren zugewiesen",
 	"card.assign": "Zuweisen",
@@ -2993,6 +2993,9 @@ var zn = {
 	"snooze.all_undone": "Vorherige Stummschaltungen wiederhergestellt",
 	"snooze.undo": "Rückgängig",
 	"notifications.title": "Benachrichtigungen",
+	"notifications.add": "Benachrichtigung hinzufügen",
+	"notifications.add_title": "Neue Benachrichtigung",
+	"notifications.loading": "Benachrichtigungen werden geladen…",
 	"notifications.toggle_on_failed": "{name} konnte nicht eingeschaltet werden: {error}",
 	"notifications.toggle_off_failed": "{name} konnte nicht ausgeschaltet werden: {error}",
 	"notifications.intro": "Lass dir Nachrichten zu deinen Pflanzen schicken. Du prüfst und speicherst sie im Automatisierungseditor von Home Assistant.",
@@ -3646,7 +3649,7 @@ var zn = {
 	"overview.no_match_query": "No plant matches “{query}”.",
 	"overview.show_all": "Show all plants",
 	"overview.integration_options": "Integration options",
-	"overview.menu_notifications": "Notifications…",
+	"overview.menu_notifications": "Notifications",
 	"overview.documentation": "Documentation",
 	"card.no_sensors": "No sensors assigned yet",
 	"card.assign": "Assign",
@@ -4154,6 +4157,9 @@ var zn = {
 	"snooze.all_undone": "Previous snoozes restored",
 	"snooze.undo": "Undo",
 	"notifications.title": "Notifications",
+	"notifications.add": "Add notification",
+	"notifications.add_title": "New notification",
+	"notifications.loading": "Loading notifications…",
 	"notifications.toggle_on_failed": "{name} couldn't be turned on: {error}",
 	"notifications.toggle_off_failed": "{name} couldn't be turned off: {error}",
 	"notifications.intro": "Get a message about your plants. You review and save it in Home Assistant's automation editor.",
@@ -5994,12 +6000,11 @@ var La = o`
   .rel-more { padding: 2px 2px 6px; }
   .rel-kind { color: var(--sp-text); }
 
-  /* Header bell and ⋮ menu: the count of notifications, and dividers between
-     groups. wa-divider draws itself where Home Assistant defines it. */
-  .header-bell { position: relative; display: inline-flex; }
-  .bell-count, .menu-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px;
-    background: color-mix(in srgb, var(--primary-color, #009ac7) 72%, #000); color: #fff; font-size: 11px; font-weight: 600; line-height: 1; }
-  .bell-count { position: absolute; top: 4px; inset-inline-end: 2px; pointer-events: none; }
+  /* ⋮ menu: items stay on one line, the number of notifications is plain grey
+     text, and dividers separate groups. wa-divider draws itself where Home
+     Assistant defines it. */
+  .panel-appbar ha-dropdown-item { white-space: nowrap; }
+  .menu-count { color: var(--secondary-text-color, #727272); font-size: 14px; font-variant-numeric: tabular-nums; }
   wa-divider:not(:defined) { display: block; height: 1px; margin: 4px 0; background: var(--divider-color, #e0e0e0); }
   .pd .rel-group { margin: 0; padding: 14px 16px 4px; border-top: 1px solid var(--divider-color, #e0e0e0); font-size: 13px; font-weight: 500; line-height: 1.25; color: var(--sp-text-secondary); }
   .rel-foot { border-top: 1px solid var(--divider-color, #e0e0e0); padding-top: 12px; }
@@ -8490,7 +8495,7 @@ function wc(e, t, n) {
 	});
 }
 // src/views/notifications.ts
-var Tc, Z = class extends C {
+var Tc, Ec, Z = class extends C {
 	constructor(...e) {
 		super(...e), this.plants = [], this.devices = [], this.entities = [], this.states = {}, this.plantId = null, this._draft = {
 			kind: "daily_report",
@@ -8503,7 +8508,7 @@ var Tc, Z = class extends C {
 			plantIds: /* @__PURE__ */ new Set(),
 			target: "",
 			error: ""
-		}, this.found = null, this._toggling = /* @__PURE__ */ new Set(), this._toggleError = null;
+		}, this.found = null;
 	}
 	connectedCallback() {
 		super.connectedCallback(), this.plantId && !this.hasUpdated && (this._draft = {
@@ -8577,74 +8582,14 @@ var Tc, Z = class extends C {
 		}));
 		wc(this, i, () => s(a.t("notifications.editor_fallback"))), this._close();
 	}
-	_link(e) {
-		e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.preventDefault(), history.pushState(null, "", e.currentTarget.getAttribute("href")), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } })), this._close());
-	}
-	async _toggle(e, t) {
-		let n = t.checked, r = this.hass;
-		if (r && !this._toggling.has(e)) {
-			this._toggling = /* @__PURE__ */ new Set([...this._toggling, e]), this._toggleError = null;
-			try {
-				await r.connection.sendMessagePromise({
-					type: "call_service",
-					domain: "automation",
-					service: n ? "turn_on" : "turn_off",
-					target: { entity_id: e }
-				});
-			} catch (r) {
-				t.checked = this.states[e]?.state === "on";
-				let i = this.states[e], a = typeof i?.attributes.friendly_name == "string" && i.attributes.friendly_name ? i.attributes.friendly_name : e, o = r && typeof r == "object" && "message" in r && typeof r.message == "string" && r.message ? r.message : this.l.t("api_error.unknown");
-				this._toggleError = {
-					entityId: e,
-					message: this.l.t(n ? "notifications.toggle_on_failed" : "notifications.toggle_off_failed", {
-						name: a,
-						error: o
-					})
-				};
-			} finally {
-				let t = new Set(this._toggling);
-				t.delete(e), this._toggling = t;
-			}
-		}
-	}
-	_startSetup() {
-		let e = this.shadowRoot?.querySelector("input[name=notification-kind]:checked");
-		e?.scrollIntoView?.({ block: "nearest" }), e?.focus();
-	}
-	_renderExisting() {
-		let e = this.l;
-		if (!this.found) return S;
-		let t = this.found.map((e) => ({
-			...e,
-			state: this.states[e.entityId]
-		})).filter((e) => e.state);
-		return t.length ? x`<section class="existing" aria-labelledby="notifications-existing">
-      <h3 id="notifications-existing">${e.t("notifications.existing")}</h3>
-      <ul class="notify-list">${t.map(({ entityId: t, state: n, deviceIds: r }) => {
-			let i = typeof n.attributes.friendly_name == "string" && n.attributes.friendly_name ? n.attributes.friendly_name : t, a = n.attributes.last_triggered, o = n.attributes.id, s = typeof a == "string" && a ? e.t("notifications.last_sent", { time: Lt(e, a) }) : e.t("notifications.never_sent");
-			return x`<li>
-          <input class="switch" type="checkbox" role="switch" aria-label=${i} aria-describedby=${`sent-${t}`} .checked=${n.state === "on"} ?disabled=${this._toggling.has(t) || n.state === "unavailable"}
-            @change=${(e) => void this._toggle(t, e.target)}>
-          <span class="row-text"><span>${i}</span><span class="small muted"><span class="covers">${Sc(e, r, this.plants, this.devices)}</span> · <span id=${`sent-${t}`}>${s}</span></span></span>
-          ${typeof o == "string" && o ? x`<a href=${`/config/automation/edit/${encodeURIComponent(o)}`} @click=${(e) => this._link(e)} aria-label=${e.t("notifications.edit_label", { name: i })}>${e.t("notifications.edit")}</a>` : x`<span></span>`}
-          ${this._toggleError?.entityId === t ? x`<span class="error-text small toggle-error" role="alert">${this._toggleError.message}</span>` : S}
-        </li>`;
-		})}</ul></section>` : x`<section class="notify-empty" aria-labelledby="notifications-empty">
-      <span class="notify-empty-icon" aria-hidden="true"><ha-icon icon="mdi:bell-outline"></ha-icon></span>
-      <div class="row-text"><h3 id="notifications-empty">${e.t("notifications.empty_heading")}</h3>
-        <p class="small muted">${e.t("notifications.empty_body")}</p>
-        <div><button type="button" @click=${() => this._startSetup()}>${e.t("notifications.empty_action")}</button></div></div>
-    </section>`;
-	}
 	render() {
 		let e = this.l, t = this._draft, n = this._targets(), r = n.filter((e) => e.kind === "entity"), i = n.filter((e) => e.kind === "service"), a = n.find((e) => yc(e) === t.target) ?? n[0], o = this._choosable(), s = this._deviceIds(), c = (!s || s.length > 0) && (this.found ?? []).some((e) => e.marker === fc(t.kind, s) && this.states[e.entityId]), l = (e, t) => x`<option value=${yc(e)} ?selected=${yc(e) === yc(a)}>${t}</option>`;
 		return x`<dialog class="care-dialog notifications-dialog" aria-labelledby="notifications-title" aria-describedby="notifications-intro" @cancel=${(e) => {
 			e.preventDefault(), this._close();
 		}} @keydown=${(e) => this._trapFocus(e)}>
-      <h2 id="notifications-title" tabindex="-1">${e.t("notifications.title")}</h2>
+      <h2 id="notifications-title" tabindex="-1">${e.t("notifications.add_title")}</h2>
       <div class="dialog-body">
         <p class="muted hint" id="notifications-intro">${e.t("notifications.intro")}</p>
-        ${this._renderExisting()}
         <fieldset class="choices"><legend class="field-label">${e.t("notifications.kind")}</legend>
           <div class="preset">
             <label class="check"><input type="radio" name="notification-kind" value="daily_report" .checked=${t.kind === "daily_report"} aria-describedby="daily-help" @change=${() => this._edit({ kind: "daily_report" })}>
@@ -8692,6 +8637,86 @@ Tc = Z, Tc.styles = [
 	$s,
 	Es,
 	o`
+    .choice-text { display: flex; flex-direction: column; min-width: 0; }
+    .care-dialog h3 { margin: 4px 0 0; font-size: 1rem; }
+    .preset { display: flex; flex-direction: column; gap: 8px; }
+    .preset-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; padding-inline-start: 34px; }
+    .preset-fields .check { grid-column: 1 / -1; }
+    .preset-fields .check input, .plant-choices .check input { flex: 0 0 24px; width: 24px; height: 24px; min-height: 24px; }
+    .plant-choices { display: flex; flex-direction: column; gap: 4px; padding-inline-start: 34px; }
+    .plant-choices .check, .choices .check { margin: 4px 0; }
+    .hint { margin: 0; }
+    @media (max-width: 600px) { .preset-fields, .plant-choices { padding-inline-start: 0; } .preset-fields { grid-template-columns: 1fr; } }
+  `
+], W([w({ attribute: !1 })], Z.prototype, "hass", void 0), W([w({ attribute: !1 })], Z.prototype, "l", void 0), W([w({ attribute: !1 })], Z.prototype, "plants", void 0), W([w({ attribute: !1 })], Z.prototype, "devices", void 0), W([w({ attribute: !1 })], Z.prototype, "entities", void 0), W([w({ attribute: !1 })], Z.prototype, "states", void 0), W([w({ attribute: !1 })], Z.prototype, "plantId", void 0), W([T()], Z.prototype, "_draft", void 0), W([w({ attribute: !1 })], Z.prototype, "found", void 0);
+var Dc = class extends C {
+	constructor(...e) {
+		super(...e), this.plants = [], this.devices = [], this.states = {}, this.found = null, this._toggling = /* @__PURE__ */ new Set(), this._toggleError = null;
+	}
+	_add(e) {
+		this.dispatchEvent(new CustomEvent("notifications-add", { detail: { trigger: e } }));
+	}
+	_link(e) {
+		e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.preventDefault(), history.pushState(null, "", e.currentTarget.getAttribute("href")), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } })));
+	}
+	async _toggle(e, t) {
+		let n = t.checked, r = this.hass;
+		if (r && !this._toggling.has(e)) {
+			this._toggling = /* @__PURE__ */ new Set([...this._toggling, e]), this._toggleError = null;
+			try {
+				await r.connection.sendMessagePromise({
+					type: "call_service",
+					domain: "automation",
+					service: n ? "turn_on" : "turn_off",
+					target: { entity_id: e }
+				});
+			} catch (r) {
+				t.checked = this.states[e]?.state === "on";
+				let i = this.states[e], a = typeof i?.attributes.friendly_name == "string" && i.attributes.friendly_name ? i.attributes.friendly_name : e, o = r && typeof r == "object" && "message" in r && typeof r.message == "string" && r.message ? r.message : this.l.t("api_error.unknown");
+				this._toggleError = {
+					entityId: e,
+					message: this.l.t(n ? "notifications.toggle_on_failed" : "notifications.toggle_off_failed", {
+						name: a,
+						error: o
+					})
+				};
+			} finally {
+				let t = new Set(this._toggling);
+				t.delete(e), this._toggling = t;
+			}
+		}
+	}
+	render() {
+		let e = this.l;
+		if (!this.found) return x`<p class="muted" role="status">${e.t("notifications.loading")}</p>`;
+		let t = this.found.map((e) => ({
+			...e,
+			state: this.states[e.entityId]
+		})).filter((e) => e.state);
+		return t.length ? x`<div class="notify-page"><section class="existing" aria-labelledby="notifications-existing">
+      <h2 id="notifications-existing">${e.t("notifications.existing")}</h2>
+      <ul class="notify-list">${t.map(({ entityId: t, state: n, deviceIds: r }) => {
+			let i = typeof n.attributes.friendly_name == "string" && n.attributes.friendly_name ? n.attributes.friendly_name : t, a = n.attributes.last_triggered, o = n.attributes.id, s = typeof a == "string" && a ? e.t("notifications.last_sent", { time: Lt(e, a) }) : e.t("notifications.never_sent");
+			return x`<li>
+          <input class="switch" type="checkbox" role="switch" aria-label=${i} aria-describedby=${`sent-${t}`} .checked=${n.state === "on"} ?disabled=${this._toggling.has(t) || n.state === "unavailable"}
+            @change=${(e) => void this._toggle(t, e.target)}>
+          <span class="row-text"><span>${i}</span><span class="small muted"><span class="covers">${Sc(e, r, this.plants, this.devices)}</span> · <span id=${`sent-${t}`}>${s}</span></span></span>
+          ${typeof o == "string" && o ? x`<a href=${`/config/automation/edit/${encodeURIComponent(o)}`} @click=${(e) => this._link(e)} aria-label=${e.t("notifications.edit_label", { name: i })}>${e.t("notifications.edit")}</a>` : x`<span></span>`}
+          ${this._toggleError?.entityId === t ? x`<span class="error-text small toggle-error" role="alert">${this._toggleError.message}</span>` : S}
+        </li>`;
+		})}</ul></section>
+      <div class="actions"><button type="button" class="primary" @click=${(e) => this._add(e.currentTarget)}>${e.t("notifications.add")}</button></div></div>` : x`<div class="notify-page"><section class="notify-empty" aria-labelledby="notifications-empty">
+      <span class="notify-empty-icon" aria-hidden="true"><ha-icon icon="mdi:bell-outline"></ha-icon></span>
+      <div class="row-text"><h2 id="notifications-empty">${e.t("notifications.empty_heading")}</h2>
+        <p class="small muted">${e.t("notifications.empty_body")}</p>
+        <div><button type="button" class="primary" @click=${(e) => this._add(e.currentTarget)}>${e.t("notifications.empty_action")}</button></div></div>
+    </section></div>`;
+	}
+};
+Ec = Dc, Ec.styles = [
+	U,
+	$s,
+	o`
     .notify-list { list-style: none; padding: 0; margin: 0; border: 1px solid var(--divider-color, #ddd); border-radius: 12px; }
     .notify-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 14px; margin: 0; }
     .notify-list li + li { border-top: 1px solid var(--divider-color, #ddd); }
@@ -8723,28 +8748,22 @@ Tc = Z, Tc.styles = [
       .notify-list .switch:checked { --edge: Highlight; --thumb: Highlight; }
       .notify-list .switch:disabled { --edge: GrayText; --thumb: GrayText; opacity: 1; }
     }
-    .notify-list .row-text, .choice-text { display: flex; flex-direction: column; min-width: 0; }
+    .notify-list .row-text { display: flex; flex-direction: column; min-width: 0; }
     .existing { padding: 0; border: 0; margin: 0; background: none; }
     .notify-empty { display: flex; gap: 12px; align-items: flex-start; margin: 0; background: none; padding: 12px 14px; border: 1px solid var(--divider-color, #ddd); border-radius: 12px; }
     .notify-empty-icon { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
       background: color-mix(in srgb, var(--primary-color, #009ac7) 12%, transparent); color: var(--primary-color, #009ac7); }
-    .notify-empty h3 { margin: 0; }
+    .notify-empty h2 { margin: 0; }
     .notify-empty p { margin: 2px 0 8px; }
     .notify-list a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; }
-    .care-dialog h3 { margin: 4px 0 0; font-size: 1rem; }
-    .preset { display: flex; flex-direction: column; gap: 8px; }
-    .preset-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; padding-inline-start: 34px; }
-    .preset-fields .check { grid-column: 1 / -1; }
-    .preset-fields .check input, .plant-choices .check input { flex: 0 0 24px; width: 24px; height: 24px; min-height: 24px; }
-    .plant-choices { display: flex; flex-direction: column; gap: 4px; padding-inline-start: 34px; }
-    .plant-choices .check, .choices .check { margin: 4px 0; }
-    .hint { margin: 0; }
     .notify-list .toggle-error { grid-column: 1 / -1; }
-    @media (max-width: 600px) { .preset-fields, .plant-choices { padding-inline-start: 0; } .preset-fields { grid-template-columns: 1fr; } }
+    .notify-page { display: flex; flex-direction: column; gap: 16px; max-width: 760px; }
+    .existing h2 { margin: 0 0 8px; font-size: 1rem; font-weight: 500; }
+    .notify-page .actions { margin: 0; }
   `
-], W([w({ attribute: !1 })], Z.prototype, "hass", void 0), W([w({ attribute: !1 })], Z.prototype, "l", void 0), W([w({ attribute: !1 })], Z.prototype, "plants", void 0), W([w({ attribute: !1 })], Z.prototype, "devices", void 0), W([w({ attribute: !1 })], Z.prototype, "entities", void 0), W([w({ attribute: !1 })], Z.prototype, "states", void 0), W([w({ attribute: !1 })], Z.prototype, "plantId", void 0), W([T()], Z.prototype, "_draft", void 0), W([w({ attribute: !1 })], Z.prototype, "found", void 0), W([T()], Z.prototype, "_toggling", void 0), W([T()], Z.prototype, "_toggleError", void 0), customElements.get("smart-plants-notifications") || customElements.define("smart-plants-notifications", Z);
+], W([w({ attribute: !1 })], Dc.prototype, "hass", void 0), W([w({ attribute: !1 })], Dc.prototype, "l", void 0), W([w({ attribute: !1 })], Dc.prototype, "plants", void 0), W([w({ attribute: !1 })], Dc.prototype, "devices", void 0), W([w({ attribute: !1 })], Dc.prototype, "states", void 0), W([w({ attribute: !1 })], Dc.prototype, "found", void 0), W([T()], Dc.prototype, "_toggling", void 0), W([T()], Dc.prototype, "_toggleError", void 0), customElements.get("smart-plants-notifications-page") || customElements.define("smart-plants-notifications-page", Dc), customElements.get("smart-plants-notifications") || customElements.define("smart-plants-notifications", Z);
 // src/views/overview.ts
-var Ec, Dc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", Oc = {
+var Oc, kc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", Ac = {
 	all: {
 		label: "overview.tile_all",
 		icon: "mdi:sprout",
@@ -8770,11 +8789,11 @@ var Ec, Dc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 		icon: "mdi:calendar-check-outline",
 		tone: "var(--sp-care)"
 	}
-}, kc = {
+}, jc = {
 	attention: "overview.sort_attention",
 	name: "overview.sort_name",
 	area: "overview.sort_area"
-}, Ac = {
+}, Mc = {
 	attention: "mdi:alert-circle-outline",
 	name: "mdi:sort-alphabetical-ascending",
 	area: "mdi:texture-box"
@@ -8833,22 +8852,22 @@ var Ec, Dc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 			let t = e.detail.item.value;
 			cn.includes(t) && (this._sort = t);
 		}}>
-          <button slot="trigger" class="pill" type="button" aria-label=${e.t("overview.sort_button", { sort: e.t(kc[this._sort]) })}><ha-icon aria-hidden="true" icon="mdi:sort"></ha-icon>${e.t(kc[this._sort])}<ha-icon aria-hidden="true" icon="mdi:menu-down"></ha-icon></button>
+          <button slot="trigger" class="pill" type="button" aria-label=${e.t("overview.sort_button", { sort: e.t(jc[this._sort]) })}><ha-icon aria-hidden="true" icon="mdi:sort"></ha-icon>${e.t(jc[this._sort])}<ha-icon aria-hidden="true" icon="mdi:menu-down"></ha-icon></button>
           ${cn.map((t) => x`<ha-dropdown-item value=${t} ?checked=${this._sort === t}>
-            ${this._sort === t ? x`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : x`<ha-icon slot="icon" .icon=${Ac[t]}></ha-icon>`}${e.t(kc[t])}</ha-dropdown-item>`)}
+            ${this._sort === t ? x`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : x`<ha-icon slot="icon" .icon=${Mc[t]}></ha-icon>`}${e.t(jc[t])}</ha-dropdown-item>`)}
         </ha-dropdown>
       </div>
       <div class="countline"><p role="status">${e.t("list.count_filtered", {
 			shown: n.length,
 			total: t.length
-		})}${i ? ` · ${e.t(Oc[this._filter].label)}` : ""}</p>
+		})}${i ? ` · ${e.t(Ac[this._filter].label)}` : ""}</p>
         ${i || this._query ? x`<button type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.clear_filter")}</button>` : S}</div>
       ${n.length ? this._renderList(n) : this._renderNoResults()}
     </div>
     <button type="button" class="fab" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("panel.add_plant")}</button>`;
 	}
 	_renderTile(e, t) {
-		let n = Oc[e];
+		let n = Ac[e];
 		return x`<button type="button" class="tile ${t === 0 ? "zero" : ""}" style="--tone:${n.tone}" aria-pressed=${this._filter === e ? "true" : "false"}
       @click=${() => {
 			this._filter = this._filter === e && e !== "all" ? "all" : e;
@@ -8890,15 +8909,15 @@ var Ec, Dc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 		let e = this.l;
 		return x`<sp-empty-state icon="mdi:sprout" .heading=${e.t("overview.empty_heading")}>${e.t("overview.empty_body")}
       <button slot="actions" type="button" class="filled" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("panel.add_plant")}</button>
-      <a slot="actions" class="text-button" href=${Dc} target="_blank" rel="noopener noreferrer">${e.t("overview.how_it_works")}</a></sp-empty-state>`;
+      <a slot="actions" class="text-button" href=${kc} target="_blank" rel="noopener noreferrer">${e.t("overview.how_it_works")}</a></sp-empty-state>`;
 	}
 	_renderNoResults() {
-		let e = this.l, t = this._query.trim() ? e.t("overview.no_match_query", { query: this._query.trim() }) : e.t("overview.no_match_filter", { filter: e.t(Oc[this._filter].label) });
+		let e = this.l, t = this._query.trim() ? e.t("overview.no_match_query", { query: this._query.trim() }) : e.t("overview.no_match_filter", { filter: e.t(Ac[this._filter].label) });
 		return x`<sp-empty-state class="no-results" compact icon="mdi:magnify-remove-outline" .heading=${e.t("overview.no_match_heading")}>${t}
       <button slot="actions" type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.show_all")}</button></sp-empty-state>`;
 	}
 };
-Ec = Q, Ec.styles = [U, o`
+Oc = Q, Oc.styles = [U, o`
     /* White text on the theme's primary colour needs a slightly darker fill to reach 4.5:1. */
     :host { display: block; container-type: inline-size; --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000); }
     :host([hidden]) { display: none; }
@@ -9006,7 +9025,7 @@ Ec = Q, Ec.styles = [U, o`
 	type: Boolean,
 	reflect: !0
 })], Q.prototype, "hidden", void 0), W([T()], Q.prototype, "_filter", void 0), W([T()], Q.prototype, "_sort", void 0), W([T()], Q.prototype, "_query", void 0), customElements.get("smart-plants-overview") || customElements.define("smart-plants-overview", Q);
-function jc(e) {
+function Nc(e) {
 	let { friendly_name: t, last_triggered: n, id: r } = e.attributes;
 	return {
 		entityId: e.entity_id,
@@ -9016,29 +9035,29 @@ function jc(e) {
 		editPath: typeof r == "string" && r ? `/config/automation/edit/${encodeURIComponent(r)}` : null
 	};
 }
-function Mc(e, t, n, r) {
+function Pc(e, t, n, r) {
 	let i = (e, t) => Number(e.status !== "on") - Number(t.status !== "on") || e.name.localeCompare(t.name, r, { sensitivity: "base" }) || e.entityId.localeCompare(t.entityId), a = (e, t) => [...new Set(e)].flatMap((e) => {
 		let r = n[e];
-		return r && !t.has(e) ? [jc(r)] : [];
+		return r && !t.has(e) ? [Nc(r)] : [];
 	}).sort(i);
 	return {
 		plant: a(e, /* @__PURE__ */ new Set()),
 		allPlants: a(t, new Set(e))
 	};
 }
-function Nc(e, t) {
+function Fc(e, t) {
 	let n = !t && e.length > 5;
 	return {
 		shown: n ? e.slice(0, 5) : e,
 		more: n
 	};
 }
-function Pc(e, t, n = Date.now()) {
+function Ic(e, t, n = Date.now()) {
 	let r = t.lastTriggered ? e.t("automations.last_ran", { time: Lt(e, t.lastTriggered, Math.max(n, Date.parse(t.lastTriggered))) }) : e.t("automations.never_ran");
 	return t.editPath ? r : `${e.t("automations.yaml")} · ${r}`;
 }
 // src/panel.ts
-var Fc, Ic = Object.fromEntries([
+var Lc, Rc = Object.fromEntries([
 	{
 		problemRole: "temperature_stress",
 		configRole: "temperature",
@@ -9159,32 +9178,32 @@ var Fc, Ic = Object.fromEntries([
 		validate: (e, t) => ui(e, t),
 		seed: (e) => di(e)
 	}
-].map((e) => [e.problemRole, e])), Lc = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", Rc = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", zc = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z", Bc = "M21 19v1H3v-1l2-2v-6c0-3.1 2.03-5.83 5-6.71V4a2 2 0 1 1 4 0v.29c2.97.88 5 3.61 5 6.71v6l2 2Zm-7 2a2 2 0 1 1-4 0h4Z", Vc = "M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z", Hc = /^\/plant\/([^/]+)(?:\/(sensors))?\/?$/, Uc = {
+].map((e) => [e.problemRole, e])), zc = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", Bc = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Vc = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z", Hc = "M17.75 21.16L15 18.16L16.16 17L17.75 18.59L21.34 15L22.5 16.41L17.75 21.16M10 21H12.8C13.04 21.41 13.33 21.79 13.65 22.13C13.29 22.66 12.69 23 12 23C10.9 23 10 22.11 10 21M3 20V19L5 17V11C5 7.9 7.03 5.18 10 4.29V4C10 2.9 10.9 2 12 2C13.11 2 14 2.9 14 4V4.29C16.97 5.18 19 7.9 19 11V12.08L18 12L17 12.08V11C17 8.24 14.76 6 12 6C9.24 6 7 8.24 7 11V18H12C12 18.7 12.12 19.37 12.34 20H3Z", Uc = "M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z", Wc = /^\/plant\/([^/]+)(?:\/(sensors))?\/?$/, Gc = /^\/notifications\/?$/, Kc = {
 	fertilizing: ["product", "amount"],
 	pruning: ["part"],
 	repotting: ["container", "medium"],
 	pest_control: ["pest", "product"]
 };
-function Wc(e) {
+function qc(e) {
 	let t = -e.getTimezoneOffset();
 	return `${new Date(e.getTime() + t * 6e4).toISOString().slice(0, 19)}${t < 0 ? "-" : "+"}${String(Math.floor(Math.abs(t) / 60)).padStart(2, "0")}:${String(Math.abs(t) % 60).padStart(2, "0")}`;
 }
-var Gc = "smart_plants.history_role", Kc = "smart_plants.history_range", qc = 3e5, Jc = 400, Yc = 2e3, Xc = 1e3, Zc = (e, t) => e !== t && (e?.state !== t?.state || JSON.stringify(e?.attributes) !== JSON.stringify(t?.attributes)), Qc = (e, t) => !!e && !!t && e !== t && (e.attributes.snoozed_until ?? null) !== (t.attributes.snoozed_until ?? null);
-function $c(e) {
+var Jc = "smart_plants.history_role", Yc = "smart_plants.history_range", Xc = 3e5, Zc = 400, Qc = 2e3, $c = 1e3, el = (e, t) => e !== t && (e?.state !== t?.state || JSON.stringify(e?.attributes) !== JSON.stringify(t?.attributes)), tl = (e, t) => !!e && !!t && e !== t && (e.attributes.snoozed_until ?? null) !== (t.attributes.snoozed_until ?? null);
+function nl(e) {
 	try {
 		return localStorage.getItem(e);
 	} catch {
 		return null;
 	}
 }
-function el(e, t) {
+function rl(e, t) {
 	try {
 		localStorage.setItem(e, t);
 	} catch {}
 }
 var $ = class e extends C {
 	constructor(...e) {
-		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => Pt(e) ? e : "moisture")($c(Gc)), this._historyRange = ((e) => vn(e) ? e : "7d")($c(Kc)), this._history = null, this._careError = "", this._careLoadError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._snoozeDraft = null, this._restEditor = null, this._taskEditor = null, this._automateTaskId = null, this._carePending = /* @__PURE__ */ new Set(), this._careTaskId = null, this._wizardStarted = !1, this._notificationsOpen = !1, this._notificationsReturn = null, this._notifications = null, this._notificationsFor = null, this._notificationsRequest = 0, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._moistureSourceError = "", this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ownWriteAt = -Infinity, this._relatedFor = null, this._relatedRequest = 0, this._relatedAt = -Infinity, this._ready = () => {
+		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => Pt(e) ? e : "moisture")(nl(Jc)), this._historyRange = ((e) => vn(e) ? e : "7d")(nl(Yc)), this._history = null, this._careError = "", this._careLoadError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._snoozeDraft = null, this._restEditor = null, this._taskEditor = null, this._automateTaskId = null, this._carePending = /* @__PURE__ */ new Set(), this._careTaskId = null, this._wizardStarted = !1, this._notificationsOpen = !1, this._notificationsReturn = null, this._notifications = null, this._notificationsFor = null, this._notificationsRequest = 0, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._moistureSourceError = "", this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ownWriteAt = -Infinity, this._relatedFor = null, this._relatedRequest = 0, this._relatedAt = -Infinity, this._ready = () => {
 			this._refresh();
 		}, this._disconnected = () => {
 			this._context++, this._formBusy = !1, this._blocked = !0, this._request++, this._providerRequest++, this._preview = null, this._clearImage(), this._error = this._l.t("error.disconnected");
@@ -9226,12 +9245,12 @@ var $ = class e extends C {
 		let t = e?.states, n = this.hass?.states;
 		if (!t || !n || t === n) return;
 		let r = this._view.kind === "detail" ? `smart_plants:${this._view.plantId}:care` : null;
-		this._entities.some((e) => e.platform === "smart_plants" && (r !== null && e.unique_id.startsWith(r) && Zc(t[e.entity_id], n[e.entity_id]) || e.entity_id.startsWith("binary_sensor.") && Qc(t[e.entity_id], n[e.entity_id]))) && (this._carePending.size || this._watering.size || Date.now() - this._ownWriteAt < Yc || this._scheduleCareRefresh());
+		this._entities.some((e) => e.platform === "smart_plants" && (r !== null && e.unique_id.startsWith(r) && el(t[e.entity_id], n[e.entity_id]) || e.entity_id.startsWith("binary_sensor.") && tl(t[e.entity_id], n[e.entity_id]))) && (this._carePending.size || this._watering.size || Date.now() - this._ownWriteAt < Qc || this._scheduleCareRefresh());
 	}
 	_scheduleCareRefresh() {
 		this._careTimer === void 0 && (this._careTimer = setTimeout(() => {
 			this._careTimer = void 0, this.isConnected && (this._formBusy ? this._scheduleCareRefresh() : this._refresh(!1));
-		}, Jc));
+		}, Zc));
 	}
 	_clearCareTimer() {
 		clearTimeout(this._careTimer), this._careTimer = void 0;
@@ -9252,7 +9271,7 @@ var $ = class e extends C {
 	_scheduleRelated() {
 		this._relatedTimer === void 0 && (this._relatedTimer = setTimeout(() => {
 			this._relatedTimer = void 0, this._loadRelated();
-		}, Math.max(0, this._relatedAt + Xc - Date.now())));
+		}, Math.max(0, this._relatedAt + $c - Date.now())));
 	}
 	_loadRelated() {
 		clearTimeout(this._relatedTimer), this._relatedTimer = void 0;
@@ -9429,7 +9448,20 @@ var $ = class e extends C {
 		return this._plants.find((t) => t.id === e);
 	}
 	_applyRoute() {
-		let e = this.route?.path ?? "", t = Hc.exec(e);
+		let e = this.route?.path ?? "";
+		if (Gc.test(e)) {
+			if (e === this._routeApplied) return;
+			this._routeApplied = e, this._view.kind !== "notifications" && this._show({
+				kind: "notifications",
+				from: null
+			});
+			return;
+		}
+		if (this._routeApplied && Gc.test(this._routeApplied) && this._view.kind === "notifications") {
+			this._routeApplied = null, this._leaveNotifications();
+			return;
+		}
+		let t = Wc.exec(e);
 		if (!t) {
 			this._routeApplied = null;
 			return;
@@ -9448,7 +9480,8 @@ var $ = class e extends C {
 		}) : this._clearRoute();
 	}
 	_clearRoute() {
-		Hc.test(this.route?.path ?? "") && (history.replaceState(null, "", this.route?.prefix || "/smart-plants"), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !0 } })));
+		let e = this.route?.path ?? "";
+		(Wc.test(e) || Gc.test(e)) && (history.replaceState(null, "", this.route?.prefix || "/smart-plants"), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !0 } })));
 	}
 	_plantAreaNames() {
 		return Object.fromEntries(this._plants.map((e) => {
@@ -9493,8 +9526,8 @@ var $ = class e extends C {
 		}, this._conflict = null, this._areaReview = !1, this._preview = null, this._results = [], this._provider = "manual", this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceSaved = {}, this._pendingSourceSwitch = null, this._allSourceSensors = !1, this._sourceUnavailable = null, this._moistureSourceError = "";
 	}
 	_show(e) {
-		let t = Hc.exec(this.route?.path ?? "");
-		if (t && (e.kind !== "detail" || encodeURIComponent(e.plantId) !== t[1]) && this._clearRoute(), this._context++, this._closeDialog(), this._formBusy = !1, this._notificationsOpen = !1, this._notificationsReturn = null, this._providerRequest++, this._view = e, this._error = "", this._notice = "", this._healthError = "", this._careHistory = null, this._careError = "", this._careLoadError = "", this._forgetRelated(), this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), e.kind === "create" && (this._wizardStarted = !0), e.kind === "detail") {
+		let t = Wc.exec(this.route?.path ?? "");
+		if (t && (e.kind !== "detail" || encodeURIComponent(e.plantId) !== t[1]) && this._clearRoute(), Gc.test(this.route?.path ?? "") && e.kind !== "notifications" && this._clearRoute(), this._context++, this._closeDialog(), this._formBusy = !1, this._notificationsOpen = !1, this._notificationsReturn = null, this._providerRequest++, this._view = e, this._error = "", this._notice = "", this._healthError = "", this._careHistory = null, this._careError = "", this._careLoadError = "", this._forgetRelated(), this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), e.kind === "create" && (this._wizardStarted = !0), e.kind === "detail") {
 			this._detailSection = "overview", this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._moistureMode = null, this._careFilter = "all", this._careFormOpen = !1, this._careEditingId = null, this._careTaskId = null, this._careKind = "watering", this._careFields = {};
 			let t = /* @__PURE__ */ new Date();
 			this._careDate = (/* @__PURE__ */ new Date(t.getTime() - t.getTimezoneOffset() * 6e4)).toISOString().slice(0, 16), this._careNote = "";
@@ -9521,11 +9554,24 @@ var $ = class e extends C {
 		this._syncImage(), this._syncThumbnails(), this.updateComplete.then(() => this.shadowRoot?.querySelector("h1")?.focus());
 	}
 	_handleMenuAction(e) {
-		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "notifications" && this._openNotifications(null), e.detail.item.value === "snooze-all" && this._openSnoozeAll(), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(Dc, "_blank", "noopener,noreferrer");
+		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "notifications" && this._openNotificationsPage(), e.detail.item.value === "snooze-all" && this._openSnoozeAll(), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(kc, "_blank", "noopener,noreferrer");
 		let t = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0;
 		if (!t) return;
 		let n = B(t, this._devices);
 		e.detail.item.value === "open-device" && n && this._navigate(`/config/devices/device/${encodeURIComponent(n.id)}`), e.detail.item.value === "download-diagnostics" && this._downloadDiagnostics(t), e.detail.item.value === "toggle-monitoring" && this._toggleMonitoring(t), e.detail.item.value === "snooze" && this._openSnooze(t), e.detail.item.value === "delete-plant" && this._openDialog("delete", this.shadowRoot?.querySelector(".panel-appbar ha-dropdown [slot=trigger]") ?? null);
+	}
+	_openNotificationsPage() {
+		this._formBusy || (this._show({
+			kind: "notifications",
+			from: this._view.kind === "detail" ? this._view.plantId : null
+		}), this._navigate(`${this.route?.prefix || "/smart-plants"}/notifications`));
+	}
+	_leaveNotifications() {
+		let e = this._view.kind === "notifications" ? this._view.from : null;
+		this._show(e && this._plantById(e) ? {
+			kind: "detail",
+			plantId: e
+		} : { kind: "list" });
 	}
 	_openNotifications(e) {
 		this._notificationsReturn = e, this._notificationsOpen = !0;
@@ -9619,7 +9665,7 @@ var $ = class e extends C {
 		let n = this.hass, r = this._l;
 		this._setWatering(e, !0), this._error = "", this._request++;
 		try {
-			let i = await this._withRevision(e, (t) => F.addWatering(n, e, t, Wc(/* @__PURE__ */ new Date()), null));
+			let i = await this._withRevision(e, (t) => F.addWatering(n, e, t, qc(/* @__PURE__ */ new Date()), null));
 			this._adopt(i.plant), this._followQuickWrite(i.plant);
 			let a = this._overview[e];
 			a && (this._overview = {
@@ -9713,7 +9759,7 @@ var $ = class e extends C {
 		let n = this._historyTarget(t);
 		if (!n) return;
 		let { key: r, entityId: i, role: a } = n, o = this._history?.key === r;
-		if (o && !e && Date.now() - this._historyLoadedAt < qc) return;
+		if (o && !e && Date.now() - this._historyLoadedAt < Xc) return;
 		let s = ++this._historyRequest;
 		this._historyLoadedAt = Date.now(), o && this._history?.status === "ready" || (this._history = {
 			key: r,
@@ -9754,10 +9800,10 @@ var $ = class e extends C {
 			now: Date.now(),
 			onLogCare: this._blocked ? null : (e, n) => this._logCareAt(e ?? (t.role === "moisture" ? "fertilizing" : "watering"), n, e === null),
 			onRole: (e) => {
-				this._historyRole = e, el(Gc, e);
+				this._historyRole = e, rl(Jc, e);
 			},
 			onRange: (e) => {
-				this._historyRange = e, el(Kc, e);
+				this._historyRange = e, rl(Yc, e);
 			},
 			onOpen: () => {
 				this.dispatchEvent(new CustomEvent("hass-more-info", {
@@ -9831,7 +9877,7 @@ var $ = class e extends C {
 			this._careError = this._l.t("care.error_note_text");
 			return;
 		}
-		if ((Uc[this._careKind] ?? []).some((e) => (r[e] ?? "").length > 120)) {
+		if ((Kc[this._careKind] ?? []).some((e) => (r[e] ?? "").length > 120)) {
 			this._careError = this._l.t("care.error_details_length");
 			return;
 		}
@@ -9897,7 +9943,7 @@ var $ = class e extends C {
 		}}>${_a.map((e) => x`<option value=${e} ?selected=${e === this._careKind}>${i(e)}</option>`)}</select></label>`}
         ${h ? x`<p class="small care-note"><ha-icon aria-hidden="true" .icon=${"mdi:check-circle-outline"}></ha-icon><span>${t.t("care_plan.form_also_marks", { name: J(t, h) })}</span></p>` : S}
         <label>${t.t("care.when")}<input type="datetime-local" .value=${this._careDate} @input=${(e) => this._careDate = e.target.value}></label>
-        ${[...Uc[this._careKind] ?? [], ...this._careKind === "note" ? ["text"] : []].map((e) => x`<label>${r(e)}<input aria-label=${r(e)} type=${e === "amount" ? "number" : "text"} maxlength=${e === "text" ? 1e3 : 120} .value=${this._careFields[e] ?? ""} @input=${(t) => this._careFields = {
+        ${[...Kc[this._careKind] ?? [], ...this._careKind === "note" ? ["text"] : []].map((e) => x`<label>${r(e)}<input aria-label=${r(e)} type=${e === "amount" ? "number" : "text"} maxlength=${e === "text" ? 1e3 : 120} .value=${this._careFields[e] ?? ""} @input=${(t) => this._careFields = {
 			...this._careFields,
 			[e]: t.target.value
 		}}></label>`)}
@@ -10088,7 +10134,7 @@ var $ = class e extends C {
 			}
 		}
 		if (c && l && u) {
-			let e = Ic[c];
+			let e = Rc[c];
 			if (e) {
 				let n = e.seed(this._persistedRoleOverrides(e, t)), r = { ...n };
 				for (let t of e.keys) l[t] !== u[t] && (r[t] = l[t]);
@@ -10557,7 +10603,7 @@ var $ = class e extends C {
 		return e === "on" ? t.t("section.advanced_diagnostics_status_problem") : e === "off" ? t.t("section.advanced_diagnostics_status_ok") : e === "unavailable" ? t.t("section.advanced_diagnostics_status_unavailable") : t.t("section.advanced_diagnostics_status_not_configured");
 	}
 	_renderOtherTargets(e) {
-		let t = this._l, n = pi(e, this._entities, this._states, t).filter((e) => e.status !== "not_configured" && Ic[e.role]), r = this._pendingThresholdSwitch, i = this._thresholdRole ? Ic[this._thresholdRole] : null, a = i ? t.t(`problem_phrase.${i.problemRole}`) : "", o = r ? t.t(`problem_phrase.${r.spec.problemRole}`) : "";
+		let t = this._l, n = pi(e, this._entities, this._states, t).filter((e) => e.status !== "not_configured" && Rc[e.role]), r = this._pendingThresholdSwitch, i = this._thresholdRole ? Rc[this._thresholdRole] : null, a = i ? t.t(`problem_phrase.${i.problemRole}`) : "", o = r ? t.t(`problem_phrase.${r.spec.problemRole}`) : "";
 		return x`<p class="small muted">${t.t("other_targets.intro")}</p>
       ${r ? x`<p class="notice threshold-switch-alert" role="alert">${t.t("section.advanced_diagnostics_switch_prompt", {
 			current: a,
@@ -10569,7 +10615,7 @@ var $ = class e extends C {
 		}}>${t.t("section.advanced_diagnostics_switch_keep")}</button>
       </p>` : S}
       ${n.length ? x`<dl class="other-targets">${n.map((n) => {
-			let r = Ic[n.role], i = fi(e, n.role, this._entities, this._states, t), a = this._thresholdRole === n.role && this._thresholdEdits !== null, o = this._thresholdSaved[n.role];
+			let r = Rc[n.role], i = fi(e, n.role, this._entities, this._states, t), a = this._thresholdRole === n.role && this._thresholdEdits !== null, o = this._thresholdSaved[n.role];
 			return x`<dt>${n.label}</dt><dd>${i.length ? x`<ul class="thresholds" aria-label=${t.t("section.effective_thresholds_label", { label: n.label })}>${i.map((e) => x`<li><span class="threshold-label">${e.label}</span>: <span class="threshold-value">${e.value === null ? "—" : `${t.number(e.value)} ${e.unit}`}</span></li>`)}</ul>` : S}
           <button class="threshold-toggle btn outline sm" type="button" aria-expanded=${a ? "true" : "false"} aria-controls=${`${n.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(r, e)}>${a ? t.t("section.advanced_diagnostics_cancel_edit") : t.t("section.advanced_diagnostics_edit_thresholds")}</button>${a ? this._renderThresholdEditor(r, e) : S}${o && !a ? x`<p class="notice" role="status">${o}</p>` : S}</dd>`;
 		})}</dl>` : x`<p>${t.t("other_targets.none")}</p>`}`;
@@ -11223,7 +11269,7 @@ var $ = class e extends C {
       </div></div>`;
 	}
 	_renderAutomations(e) {
-		let t = this._l, n = Mc(this._related, this._relatedAllPlants, this._states, t.language), r = e ? `/config/automation/edit/new?add_automation_element=trigger&target_device_id=${encodeURIComponent(e.id)}` : "", i = e ? `/config/devices/device/${encodeURIComponent(e.id)}` : "", a = e ? x`<div class="row"><a class="btn outline sm" href=${i} @click=${(e) => this._internalLink(e, i)}><ha-icon aria-hidden="true" icon="mdi:devices"></ha-icon>${t.t("automations.open_device")}</a>
+		let t = this._l, n = Pc(this._related, this._relatedAllPlants, this._states, t.language), r = e ? `/config/automation/edit/new?add_automation_element=trigger&target_device_id=${encodeURIComponent(e.id)}` : "", i = e ? `/config/devices/device/${encodeURIComponent(e.id)}` : "", a = e ? x`<div class="row"><a class="btn outline sm" href=${i} @click=${(e) => this._internalLink(e, i)}><ha-icon aria-hidden="true" icon="mdi:devices"></ha-icon>${t.t("automations.open_device")}</a>
       <a class="btn outline sm" href=${r} @click=${(e) => this._internalLink(e, r)}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("automations.create")}</a></div>` : S, o = n.plant.length > 0 || n.allPlants.length > 0, s = e ? x`<div class="row"><button type="button" class="btn text sm" @click=${(e) => this._openNotifications(e.currentTarget)}><ha-icon aria-hidden="true" icon="mdi:bell-outline"></ha-icon>${t.t("automations.notifications")}</button></div>` : S;
 		return x`<section class="sp-card" aria-labelledby="automations-heading"><div class="card-h"><h3 id="automations-heading">${t.t("automations.heading")}</h3></div>
       ${o ? x`${this._renderAutomationGroup("plant", n.plant)}${this._renderAutomationGroup("allPlants", n.allPlants)}
@@ -11231,14 +11277,14 @@ var $ = class e extends C {
 	}
 	_renderAutomationGroup(e, t) {
 		if (!t.length) return S;
-		let n = this._l, { shown: r, more: i } = Nc(t, this._relatedExpanded.has(e)), a = e === "plant" ? "automations-plant" : "automations-all-plants";
+		let n = this._l, { shown: r, more: i } = Fc(t, this._relatedExpanded.has(e)), a = e === "plant" ? "automations-plant" : "automations-all-plants";
 		return x`${e === "allPlants" ? x`<h4 class="rel-group" id="automations-all-plants-heading">${n.t("automations.all_plants")}</h4>` : S}
       <ul class="list rel" id=${a} tabindex="-1" aria-labelledby=${e === "plant" ? "automations-heading" : "automations-all-plants-heading"}>${r.map((e) => this._renderAutomationRow(e))}</ul>
       ${i ? x`<div class="rel-more"><button type="button" class="btn text sm" @click=${() => this._showAllAutomations(e, a)}>${n.t("automations.show_all", { count: t.length })}</button></div>` : S}`;
 	}
 	_renderAutomationRow(e) {
 		let t = this._l, n = e.editPath, r = (this._notifications ?? []).some((t) => t.entityId === e.entityId), i = e.status === "on" ? "tonal" : e.status === "unavailable" ? "tone-bad" : "", a = e.status === "off" ? x`<span class="cchip tone-later">${t.t("automations.off")}</span>` : e.status === "unavailable" ? x`<span class="cchip tone-overdue"><ha-icon aria-hidden="true" icon="mdi:alert-circle-outline"></ha-icon>${t.t("automations.unavailable")}</span>` : S, o = x`<span class="ic ${i}" aria-hidden="true"><ha-icon icon=${r ? "mdi:bell-outline" : "mdi:robot"}></ha-icon></span>
-      <span class="li-main"><span class="li-title">${e.name}</span><span class="li-sub">${r ? x`<span class="rel-kind">${t.t("automations.notification")}</span> · ` : S}${Pc(t, e)}</span></span>
+      <span class="li-main"><span class="li-title">${e.name}</span><span class="li-sub">${r ? x`<span class="rel-kind">${t.t("automations.notification")}</span> · ` : S}${Ic(t, e)}</span></span>
       <span class="rel-end">${a}${n ? x`<ha-icon aria-hidden="true" icon="mdi:chevron-right"></ha-icon>` : S}</span>`;
 		return x`<li>${n ? x`<a class="li" href=${n} @click=${(e) => this._internalLink(e, n)}>${o}</a>` : x`<div class="li">${o}</div>`}</li>`;
 	}
@@ -11407,7 +11453,7 @@ var $ = class e extends C {
 		window.location.reload();
 	}
 	_renderSidebarButton() {
-		return q("ha-menu-button") ? x`<ha-menu-button slot="navigationIcon" .hass=${this.hass} .narrow=${this.narrow}></ha-menu-button>` : !this.narrow && this.hass?.dockedSidebar !== "always_hidden" ? S : x`<ha-icon-button slot="navigationIcon" class="sidebar-toggle" .label=${this.hass?.localize?.("ui.sidebar.sidebar_toggle") || this._l.t("panel.sidebar")} .path=${Vc} @click=${() => this.dispatchEvent(new CustomEvent("hass-toggle-menu", {
+		return q("ha-menu-button") ? x`<ha-menu-button slot="navigationIcon" .hass=${this.hass} .narrow=${this.narrow}></ha-menu-button>` : !this.narrow && this.hass?.dockedSidebar !== "always_hidden" ? S : x`<ha-icon-button slot="navigationIcon" class="sidebar-toggle" .label=${this.hass?.localize?.("ui.sidebar.sidebar_toggle") || this._l.t("panel.sidebar")} .path=${Uc} @click=${() => this.dispatchEvent(new CustomEvent("hass-toggle-menu", {
 			bubbles: !0,
 			composed: !0
 		}))}></ha-icon-button>`;
@@ -11415,16 +11461,16 @@ var $ = class e extends C {
 	render() {
 		let e = this._l;
 		if (this.hass?.user?.is_admin === !1) return x`<main><div class="panel-content"><p role="alert">${e.t("panel.admin_required")}</p></div></main>`;
-		let t = this.hass?.localize?.("ui.common.menu") || e.t("panel.menu"), n = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0, r = this._formBusy || this._blocked || !!this._conflict, i = this._notificationCount(), a = x`<ha-dropdown-item value="notifications">${e.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon>${i ? x`<span slot="details" class="menu-count">${i}</span>` : S}</ha-dropdown-item>`, o = i && this._view.kind !== "create" ? x`<span slot="actionItems" class="header-bell"><ha-icon-button .label=${e.tn(i, "panel.bell_one", "panel.bell_other")} .path=${Bc}
-      @click=${(e) => this._openNotifications(e.currentTarget)}></ha-icon-button><span class="bell-count" aria-hidden="true">${i}</span></span>` : S;
+		let t = this.hass?.localize?.("ui.common.menu") || e.t("panel.menu"), n = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0, r = this._formBusy || this._blocked || !!this._conflict, i = this._notificationCount(), a = x`<ha-dropdown-item value="notifications">${e.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon>${i ? x`<span slot="details" class="menu-count">${i}</span>` : S}</ha-dropdown-item>`, o = i && this._view.kind !== "create" && this._view.kind !== "notifications" ? x`<ha-icon-button slot="actionItems" class="header-bell" .label=${e.tn(i, "panel.bell_one", "panel.bell_other")} .path=${Hc}
+      @click=${() => this._openNotificationsPage()}></ha-icon-button>` : S;
 		return x`<main><ha-top-app-bar-fixed class="panel-appbar" .narrow=${this.narrow}>
-       ${this._view.kind === "detail" ? x`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${zc} @click=${() => {
+       ${this._view.kind === "detail" ? x`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Vc} @click=${() => {
 			this._formBusy || this._show({ kind: "list" });
-		}}></ha-icon-button>` : this._renderSidebarButton()}
-       <h1 slot="title" class="page-title" tabindex="-1">${n ? n.name : "Smart Plants"}</h1>
+		}}></ha-icon-button>` : this._view.kind === "notifications" ? x`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Vc} @click=${() => this._leaveNotifications()}></ha-icon-button>` : this._renderSidebarButton()}
+       <h1 slot="title" class="page-title" tabindex="-1">${n ? n.name : this._view.kind === "notifications" ? e.t("notifications.title") : "Smart Plants"}</h1>
        ${o}
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
-         <ha-icon-button slot="trigger" .label=${t} .path=${Lc}></ha-icon-button>
+         <ha-icon-button slot="trigger" .label=${t} .path=${zc}></ha-icon-button>
          ${n ? x`
          ${a}
          <ha-dropdown-item value="snooze" ?disabled=${r || n.lifecycle_state !== "active"}>${Ys(n.snoozed_until) ? e.t("snooze.menu_change") : e.t("snooze.menu")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>
@@ -11435,7 +11481,7 @@ var $ = class e extends C {
          <ha-dropdown-item value="toggle-monitoring" ?disabled=${r}>${n.lifecycle_state === "active" ? e.t("manage.pause") : e.t("manage.resume")}<ha-icon slot="icon" .icon=${n.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="delete-plant" ?disabled=${r}>${e.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>` : x`
          ${this._view.kind === "list" ? S : x`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${e.t("panel.back_to_overview")}</ha-dropdown-item>`}
-         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${Rc}></ha-svg-icon></ha-dropdown-item>
+         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${Bc}></ha-svg-icon></ha-dropdown-item>
          ${this._view.kind === "list" ? x`<wa-divider role="separator"></wa-divider>${a}` : S}
          ${this._view.kind === "list" && this._activePlants().length >= 2 ? x`<ha-dropdown-item value="snooze-all" ?disabled=${this._formBusy || this._blocked}>${e.t("snooze.menu_all")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>` : S}
          <wa-divider role="separator"></wa-divider>
@@ -11454,6 +11500,8 @@ var $ = class e extends C {
         .thumbnails=${this._thumbnails} .watering=${this._watering} .timeZone=${this._timeZone()} .loading=${this._loading} .blocked=${this._blocked}
         @open-plant=${(e) => this._openFromOverview(e.detail)} @add-plant=${() => this._show({ kind: "create" })} @log-watering=${(e) => void this._logWatering(e.detail.plantId)}></smart-plants-overview>
       ${this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : S}
+      ${this._view.kind === "notifications" ? x`<smart-plants-notifications-page .hass=${this.hass} .l=${e} .plants=${this._plants} .devices=${this._devices} .states=${this._states} .found=${this._notifications}
+        @notifications-add=${(e) => this._openNotifications(e.detail.trigger)}></smart-plants-notifications-page>` : S}
       ${this._notificationsOpen && this._view.kind !== "create" ? x`<smart-plants-notifications .hass=${this.hass} .l=${e} .plants=${this._plants} .devices=${this._devices} .entities=${this._entities} .states=${this._states} .found=${this._notifications} .plantId=${n?.id ?? null}
         @notifications-close=${() => this._closeNotifications()}></smart-plants-notifications>` : S}
       ${this._dialog === "snooze_all" && this._view.kind === "list" ? this._renderSnoozeAllDialog() : S}
@@ -11463,12 +11511,12 @@ var $ = class e extends C {
         <p role="status" aria-live="polite">${this._formBusy ? e.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
 	}
 };
-Fc = $, Fc.styles = [
+Lc = $, Lc.styles = [
 	U,
 	$s,
 	La,
 	Es
-], Fc.bundleVersion = Rs(import.meta.url), W([w({ attribute: !1 })], $.prototype, "hass", void 0), W([w({ attribute: !1 })], $.prototype, "panel", void 0), W([w({
+], Lc.bundleVersion = Rs(import.meta.url), W([w({ attribute: !1 })], $.prototype, "hass", void 0), W([w({ attribute: !1 })], $.prototype, "panel", void 0), W([w({
 	type: Boolean,
 	reflect: !0
 })], $.prototype, "narrow", void 0), W([w({ attribute: !1 })], $.prototype, "route", void 0), W([T()], $.prototype, "_plants", void 0), W([T()], $.prototype, "_loading", void 0), W([T()], $.prototype, "_error", void 0), W([T()], $.prototype, "_notice", void 0), W([T()], $.prototype, "_view", void 0), W([T()], $.prototype, "_detailSection", void 0), W([T()], $.prototype, "_formBusy", void 0), W([T()], $.prototype, "_capabilities", void 0), W([T()], $.prototype, "_updateAvailable", void 0), W([T()], $.prototype, "_blocked", void 0), W([T()], $.prototype, "_areas", void 0), W([T()], $.prototype, "_entities", void 0), W([T()], $.prototype, "_devices", void 0), W([T()], $.prototype, "_states", void 0), W([T()], $.prototype, "_evaluations", void 0), W([T()], $.prototype, "_health", void 0), W([T()], $.prototype, "_healthError", void 0), W([T()], $.prototype, "_careHistory", void 0), W([T()], $.prototype, "_historyRole", void 0), W([T()], $.prototype, "_historyRange", void 0), W([T()], $.prototype, "_history", void 0), W([T()], $.prototype, "_careError", void 0), W([T()], $.prototype, "_careLoadError", void 0), W([T()], $.prototype, "_careDate", void 0), W([T()], $.prototype, "_careNote", void 0), W([T()], $.prototype, "_careKind", void 0), W([T()], $.prototype, "_careFields", void 0), W([T()], $.prototype, "_careEditingId", void 0), W([T()], $.prototype, "_registryError", void 0), W([T()], $.prototype, "_areaReview", void 0), W([T()], $.prototype, "_overview", void 0), W([T()], $.prototype, "_overviewError", void 0), W([T()], $.prototype, "_thumbnails", void 0), W([T()], $.prototype, "_watering", void 0), W([T()], $.prototype, "_edits", void 0), W([T()], $.prototype, "_conflict", void 0), W([T()], $.prototype, "_allSensors", void 0), W([T()], $.prototype, "_preview", void 0), W([T()], $.prototype, "_provider", void 0), W([T()], $.prototype, "_query", void 0), W([T()], $.prototype, "_results", void 0), W([T()], $.prototype, "_related", void 0), W([T()], $.prototype, "_relatedAllPlants", void 0), W([T()], $.prototype, "_relatedExpanded", void 0), W([T()], $.prototype, "_imageUrl", void 0), W([T()], $.prototype, "_imageLoading", void 0), W([T()], $.prototype, "_imageError", void 0), W([T()], $.prototype, "_dialog", void 0), W([T()], $.prototype, "_snoozeDraft", void 0), W([T()], $.prototype, "_restEditor", void 0), W([T()], $.prototype, "_taskEditor", void 0), W([T()], $.prototype, "_automateTaskId", void 0), W([T()], $.prototype, "_carePending", void 0), W([T()], $.prototype, "_careTaskId", void 0), W([T()], $.prototype, "_wizardStarted", void 0), W([T()], $.prototype, "_notificationsOpen", void 0), W([T()], $.prototype, "_notifications", void 0), W([T()], $.prototype, "_creationNotice", void 0), W([T()], $.prototype, "_creationPhoto", void 0), W([T()], $.prototype, "_createdPlantId", void 0), W([T()], $.prototype, "_thresholdRole", void 0), W([T()], $.prototype, "_thresholdEdits", void 0), W([T()], $.prototype, "_thresholdBaseline", void 0), W([T()], $.prototype, "_thresholdError", void 0), W([T()], $.prototype, "_thresholdSaved", void 0), W([T()], $.prototype, "_pendingThresholdSwitch", void 0), W([T()], $.prototype, "_sourceRole", void 0), W([T()], $.prototype, "_sourceEdits", void 0), W([T()], $.prototype, "_sourceBaseline", void 0), W([T()], $.prototype, "_sourceError", void 0), W([T()], $.prototype, "_sourceUnavailable", void 0), W([T()], $.prototype, "_sourceSaved", void 0), W([T()], $.prototype, "_pendingSourceSwitch", void 0), W([T()], $.prototype, "_sourceMode", void 0), W([T()], $.prototype, "_moistureMode", void 0), W([T()], $.prototype, "_moistureSourceError", void 0), W([T()], $.prototype, "_expanded", void 0), W([T()], $.prototype, "_settingsOpen", void 0), W([T()], $.prototype, "_careFilter", void 0), W([T()], $.prototype, "_careFormOpen", void 0), W([T()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);

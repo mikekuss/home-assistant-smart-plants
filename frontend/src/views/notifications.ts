@@ -1,6 +1,7 @@
-// The "Notifications…" dialog. It lists the notification automations made
-// here, which the panel finds and passes in, and opens Home Assistant's
-// automation editor prefilled with one preset; the user saves it there.
+// The Notifications page and the dialog that sets up a new notification. The
+// page lists the notification automations made here, which the panel finds and
+// passes in. The dialog opens Home Assistant's automation editor prefilled with
+// one preset; the user saves it there.
 import { LitElement, css, html, nothing } from "lit";
 import { property, state } from "lit/decorators.js";
 import type { Localizer } from "../localize.js";
@@ -18,45 +19,7 @@ interface Draft { kind: NotificationKind; time: string; delayMinutes: number; qu
 
 export class SmartPlantsNotifications extends LitElement {
   static styles = [themeFallbacks, styles, carePlanStyles, css`
-    .notify-list { list-style: none; padding: 0; margin: 0; border: 1px solid var(--divider-color, #ddd); border-radius: 12px; }
-    .notify-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 14px; margin: 0; }
-    .notify-list li + li { border-top: 1px solid var(--divider-color, #ddd); }
-    /* A native checkbox drawn like Home Assistant's own switch: a track with a
-       thumb that slides to the end when on. It uses the same theme colours, so
-       it follows light and dark themes. The input stays native so its label,
-       description, Space key and focus ring work as for any checkbox. */
-    .notify-list .switch {
-      --track: var(--ha-switch-background-color, var(--ha-color-fill-disabled-quiet-resting, var(--secondary-background-color, #f3f3f3)));
-      --edge: var(--ha-switch-border-color, var(--ha-color-border-neutral-normal, #989898));
-      --thumb: var(--ha-switch-thumb-background-color, var(--ha-color-on-neutral-normal, #5e5e5e));
-      appearance: none; -webkit-appearance: none; box-sizing: border-box; flex: none;
-      width: 48px; height: 24px; min-height: 24px; margin: 0; border: 1px solid var(--edge); border-radius: 12px; cursor: pointer;
-      background: radial-gradient(circle closest-side, var(--thumb) 8.5px, transparent 9px) no-repeat 0 50% / 22px 22px, var(--track);
-      transition: background-position 150ms ease, background-color 150ms ease, border-color 150ms ease;
-    }
-    .notify-list .switch:checked {
-      --track: var(--ha-switch-checked-background-color, var(--ha-color-fill-primary-normal-resting, #dff3fc));
-      --edge: var(--ha-switch-checked-border-color, var(--ha-color-border-primary-loud, var(--primary-color, #009ac7)));
-      --thumb: var(--ha-switch-checked-thumb-background-color, var(--ha-color-on-primary-normal, var(--primary-color, #009ac7)));
-      background-position: 100% 50%, 0 0;
-    }
-    .notify-list .switch:dir(rtl) { background-position: 100% 50%, 0 0; }
-    .notify-list .switch:checked:dir(rtl) { background-position: 0 50%, 0 0; }
-    .notify-list .switch:disabled { opacity: var(--ha-switch-disabled-opacity, 0.3); cursor: not-allowed; }
-    @media (prefers-reduced-motion: reduce) { .notify-list .switch { transition: none; } }
-    @media (forced-colors: active) {
-      .notify-list .switch { forced-color-adjust: none; --track: Canvas; --edge: CanvasText; --thumb: CanvasText; }
-      .notify-list .switch:checked { --edge: Highlight; --thumb: Highlight; }
-      .notify-list .switch:disabled { --edge: GrayText; --thumb: GrayText; opacity: 1; }
-    }
-    .notify-list .row-text, .choice-text { display: flex; flex-direction: column; min-width: 0; }
-    .existing { padding: 0; border: 0; margin: 0; background: none; }
-    .notify-empty { display: flex; gap: 12px; align-items: flex-start; margin: 0; background: none; padding: 12px 14px; border: 1px solid var(--divider-color, #ddd); border-radius: 12px; }
-    .notify-empty-icon { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
-      background: color-mix(in srgb, var(--primary-color, #009ac7) 12%, transparent); color: var(--primary-color, #009ac7); }
-    .notify-empty h3 { margin: 0; }
-    .notify-empty p { margin: 2px 0 8px; }
-    .notify-list a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; }
+    .choice-text { display: flex; flex-direction: column; min-width: 0; }
     .care-dialog h3 { margin: 4px 0 0; font-size: 1rem; }
     .preset { display: flex; flex-direction: column; gap: 8px; }
     .preset-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; padding-inline-start: 34px; }
@@ -65,7 +28,6 @@ export class SmartPlantsNotifications extends LitElement {
     .plant-choices { display: flex; flex-direction: column; gap: 4px; padding-inline-start: 34px; }
     .plant-choices .check, .choices .check { margin: 4px 0; }
     .hint { margin: 0; }
-    .notify-list .toggle-error { grid-column: 1 / -1; }
     @media (max-width: 600px) { .preset-fields, .plant-choices { padding-inline-start: 0; } .preset-fields { grid-template-columns: 1fr; } }
   `];
   @property({ attribute: false }) public hass?: NotifyHass;
@@ -79,9 +41,6 @@ export class SmartPlantsNotifications extends LitElement {
   @state() private _draft: Draft = { kind: "daily_report", time: "08:00", delayMinutes: 30, quiet: false, quietFrom: "22:00", quietTo: "07:00", allPlants: true, plantIds: new Set(), target: "", error: "" };
   // The notification automations the panel found, or null while it looks.
   @property({ attribute: false }) public found: FoundNotification[] | null = null;
-  @state() private _toggling: ReadonlySet<string> = new Set();
-  // The last failed on/off switch and why, shown under its row.
-  @state() private _toggleError: { entityId: string; message: string } | null = null;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -139,59 +98,6 @@ export class SmartPlantsNotifications extends LitElement {
     openAutomationEditor(this, config, () => toast(l.t("notifications.editor_fallback")));
     this._close();
   }
-  // Home Assistant's own client-side navigation for a plain click; the dialog
-  // closes because the panel is left.
-  private _link(event: MouseEvent): void {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    event.preventDefault();
-    history.pushState(null, "", (event.currentTarget as HTMLAnchorElement).getAttribute("href"));
-    window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
-    this._close();
-  }
-  private async _toggle(entityId: string, input: HTMLInputElement): Promise<void> {
-    const on = input.checked;
-    const hass = this.hass; if (!hass || this._toggling.has(entityId)) return;
-    this._toggling = new Set([...this._toggling, entityId]); this._toggleError = null;
-    try { await hass.connection.sendMessagePromise({ type: "call_service", domain: "automation", service: on ? "turn_on" : "turn_off", target: { entity_id: entityId } }); }
-    catch (e) {
-      // The switch goes back to the automation's state; the row says why.
-      input.checked = this.states[entityId]?.state === "on";
-      const state = this.states[entityId]; const name = typeof state?.attributes.friendly_name === "string" && state.attributes.friendly_name ? state.attributes.friendly_name : entityId;
-      const reason = e && typeof e === "object" && "message" in e && typeof e.message === "string" && e.message ? e.message : this.l.t("api_error.unknown");
-      this._toggleError = { entityId, message: this.l.t(on ? "notifications.toggle_on_failed" : "notifications.toggle_off_failed", { name, error: reason }) };
-    }
-    finally { const next = new Set(this._toggling); next.delete(entityId); this._toggling = next; }
-  }
-  // "Set one up" in the empty state moves to the first choice of the form below.
-  private _startSetup(): void {
-    const first = this.shadowRoot?.querySelector<HTMLInputElement>("input[name=notification-kind]:checked");
-    first?.scrollIntoView?.({ block: "nearest" }); first?.focus();
-  }
-  private _renderExisting() {
-    const l = this.l;
-    if (!this.found) return nothing;
-    const rows = this.found.map(item => ({ ...item, state: this.states[item.entityId] })).filter(item => item.state);
-    if (!rows.length) return html`<section class="notify-empty" aria-labelledby="notifications-empty">
-      <span class="notify-empty-icon" aria-hidden="true"><ha-icon icon="mdi:bell-outline"></ha-icon></span>
-      <div class="row-text"><h3 id="notifications-empty">${l.t("notifications.empty_heading")}</h3>
-        <p class="small muted">${l.t("notifications.empty_body")}</p>
-        <div><button type="button" @click=${() => this._startSetup()}>${l.t("notifications.empty_action")}</button></div></div>
-    </section>`;
-    return html`<section class="existing" aria-labelledby="notifications-existing">
-      <h3 id="notifications-existing">${l.t("notifications.existing")}</h3>
-      <ul class="notify-list">${rows.map(({ entityId, state, deviceIds }) => {
-        const name = typeof state!.attributes.friendly_name === "string" && state!.attributes.friendly_name ? state!.attributes.friendly_name : entityId;
-        const last = state!.attributes.last_triggered; const id = state!.attributes.id;
-        const sent = typeof last === "string" && last ? l.t("notifications.last_sent", { time: relativeTime(l, last) }) : l.t("notifications.never_sent");
-        return html`<li>
-          <input class="switch" type="checkbox" role="switch" aria-label=${name} aria-describedby=${`sent-${entityId}`} .checked=${state!.state === "on"} ?disabled=${this._toggling.has(entityId) || state!.state === "unavailable"}
-            @change=${(e: Event) => void this._toggle(entityId, e.target as HTMLInputElement)}>
-          <span class="row-text"><span>${name}</span><span class="small muted"><span class="covers">${coverageText(l, deviceIds, this.plants, this.devices)}</span> · <span id=${`sent-${entityId}`}>${sent}</span></span></span>
-          ${typeof id === "string" && id ? html`<a href=${`/config/automation/edit/${encodeURIComponent(id)}`} @click=${(e: MouseEvent) => this._link(e)} aria-label=${l.t("notifications.edit_label", { name })}>${l.t("notifications.edit")}</a>` : html`<span></span>`}
-          ${this._toggleError?.entityId === entityId ? html`<span class="error-text small toggle-error" role="alert">${this._toggleError.message}</span>` : nothing}
-        </li>`;
-      })}</ul></section>`;
-  }
   protected render() {
     const l = this.l; const draft = this._draft;
     const targets = this._targets();
@@ -202,10 +108,9 @@ export class SmartPlantsNotifications extends LitElement {
     const exists = (!deviceIds || deviceIds.length > 0) && (this.found ?? []).some(item => item.marker === notificationMarker(draft.kind, deviceIds) && this.states[item.entityId]);
     const option = (target: NotifyTarget, label: string) => html`<option value=${targetValue(target)} ?selected=${targetValue(target) === targetValue(selected)}>${label}</option>`;
     return html`<dialog class="care-dialog notifications-dialog" aria-labelledby="notifications-title" aria-describedby="notifications-intro" @cancel=${(e: Event) => { e.preventDefault(); this._close(); }} @keydown=${(e: KeyboardEvent) => this._trapFocus(e)}>
-      <h2 id="notifications-title" tabindex="-1">${l.t("notifications.title")}</h2>
+      <h2 id="notifications-title" tabindex="-1">${l.t("notifications.add_title")}</h2>
       <div class="dialog-body">
         <p class="muted hint" id="notifications-intro">${l.t("notifications.intro")}</p>
-        ${this._renderExisting()}
         <fieldset class="choices"><legend class="field-label">${l.t("notifications.kind")}</legend>
           <div class="preset">
             <label class="check"><input type="radio" name="notification-kind" value="daily_report" .checked=${draft.kind === "daily_report"} aria-describedby="daily-help" @change=${() => this._edit({ kind: "daily_report" })}>
@@ -245,5 +150,117 @@ export class SmartPlantsNotifications extends LitElement {
       </div></dialog>`;
   }
 }
+// The Notifications page: the notification automations made here, each with
+// an on/off switch, its plants, when it last sent a message and Edit. "Add
+// notification" asks the panel for the setup dialog.
+export class SmartPlantsNotificationsPage extends LitElement {
+  static styles = [themeFallbacks, styles, css`
+    .notify-list { list-style: none; padding: 0; margin: 0; border: 1px solid var(--divider-color, #ddd); border-radius: 12px; }
+    .notify-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 14px; margin: 0; }
+    .notify-list li + li { border-top: 1px solid var(--divider-color, #ddd); }
+    /* A native checkbox drawn like Home Assistant's own switch: a track with a
+       thumb that slides to the end when on. It uses the same theme colours, so
+       it follows light and dark themes. The input stays native so its label,
+       description, Space key and focus ring work as for any checkbox. */
+    .notify-list .switch {
+      --track: var(--ha-switch-background-color, var(--ha-color-fill-disabled-quiet-resting, var(--secondary-background-color, #f3f3f3)));
+      --edge: var(--ha-switch-border-color, var(--ha-color-border-neutral-normal, #989898));
+      --thumb: var(--ha-switch-thumb-background-color, var(--ha-color-on-neutral-normal, #5e5e5e));
+      appearance: none; -webkit-appearance: none; box-sizing: border-box; flex: none;
+      width: 48px; height: 24px; min-height: 24px; margin: 0; border: 1px solid var(--edge); border-radius: 12px; cursor: pointer;
+      background: radial-gradient(circle closest-side, var(--thumb) 8.5px, transparent 9px) no-repeat 0 50% / 22px 22px, var(--track);
+      transition: background-position 150ms ease, background-color 150ms ease, border-color 150ms ease;
+    }
+    .notify-list .switch:checked {
+      --track: var(--ha-switch-checked-background-color, var(--ha-color-fill-primary-normal-resting, #dff3fc));
+      --edge: var(--ha-switch-checked-border-color, var(--ha-color-border-primary-loud, var(--primary-color, #009ac7)));
+      --thumb: var(--ha-switch-checked-thumb-background-color, var(--ha-color-on-primary-normal, var(--primary-color, #009ac7)));
+      background-position: 100% 50%, 0 0;
+    }
+    .notify-list .switch:dir(rtl) { background-position: 100% 50%, 0 0; }
+    .notify-list .switch:checked:dir(rtl) { background-position: 0 50%, 0 0; }
+    .notify-list .switch:disabled { opacity: var(--ha-switch-disabled-opacity, 0.3); cursor: not-allowed; }
+    @media (prefers-reduced-motion: reduce) { .notify-list .switch { transition: none; } }
+    @media (forced-colors: active) {
+      .notify-list .switch { forced-color-adjust: none; --track: Canvas; --edge: CanvasText; --thumb: CanvasText; }
+      .notify-list .switch:checked { --edge: Highlight; --thumb: Highlight; }
+      .notify-list .switch:disabled { --edge: GrayText; --thumb: GrayText; opacity: 1; }
+    }
+    .notify-list .row-text { display: flex; flex-direction: column; min-width: 0; }
+    .existing { padding: 0; border: 0; margin: 0; background: none; }
+    .notify-empty { display: flex; gap: 12px; align-items: flex-start; margin: 0; background: none; padding: 12px 14px; border: 1px solid var(--divider-color, #ddd); border-radius: 12px; }
+    .notify-empty-icon { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+      background: color-mix(in srgb, var(--primary-color, #009ac7) 12%, transparent); color: var(--primary-color, #009ac7); }
+    .notify-empty h2 { margin: 0; }
+    .notify-empty p { margin: 2px 0 8px; }
+    .notify-list a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; }
+    .notify-list .toggle-error { grid-column: 1 / -1; }
+    .notify-page { display: flex; flex-direction: column; gap: 16px; max-width: 760px; }
+    .existing h2 { margin: 0 0 8px; font-size: 1rem; font-weight: 500; }
+    .notify-page .actions { margin: 0; }
+  `];
+  @property({ attribute: false }) public hass?: HomeAssistantLike;
+  @property({ attribute: false }) public l!: Localizer;
+  @property({ attribute: false }) public plants: PlantRecord[] = [];
+  @property({ attribute: false }) public devices: HADevice[] = [];
+  @property({ attribute: false }) public states: Record<string, HAState> = {};
+  // The notification automations the panel found, or null while it looks.
+  @property({ attribute: false }) public found: FoundNotification[] | null = null;
+  @state() private _toggling: ReadonlySet<string> = new Set();
+  // The last failed on/off switch and why, shown under its row.
+  @state() private _toggleError: { entityId: string; message: string } | null = null;
+
+  private _add(button: HTMLElement): void {
+    this.dispatchEvent(new CustomEvent("notifications-add", { detail: { trigger: button } }));
+  }
+  // Home Assistant's own client-side navigation for a plain click.
+  private _link(event: MouseEvent): void {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    history.pushState(null, "", (event.currentTarget as HTMLAnchorElement).getAttribute("href"));
+    window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
+  }
+  private async _toggle(entityId: string, input: HTMLInputElement): Promise<void> {
+    const on = input.checked;
+    const hass = this.hass; if (!hass || this._toggling.has(entityId)) return;
+    this._toggling = new Set([...this._toggling, entityId]); this._toggleError = null;
+    try { await hass.connection.sendMessagePromise({ type: "call_service", domain: "automation", service: on ? "turn_on" : "turn_off", target: { entity_id: entityId } }); }
+    catch (e) {
+      // The switch goes back to the automation's state; the row says why.
+      input.checked = this.states[entityId]?.state === "on";
+      const state = this.states[entityId]; const name = typeof state?.attributes.friendly_name === "string" && state.attributes.friendly_name ? state.attributes.friendly_name : entityId;
+      const reason = e && typeof e === "object" && "message" in e && typeof e.message === "string" && e.message ? e.message : this.l.t("api_error.unknown");
+      this._toggleError = { entityId, message: this.l.t(on ? "notifications.toggle_on_failed" : "notifications.toggle_off_failed", { name, error: reason }) };
+    }
+    finally { const next = new Set(this._toggling); next.delete(entityId); this._toggling = next; }
+  }
+  protected render() {
+    const l = this.l;
+    if (!this.found) return html`<p class="muted" role="status">${l.t("notifications.loading")}</p>`;
+    const rows = this.found.map(item => ({ ...item, state: this.states[item.entityId] })).filter(item => item.state);
+    if (!rows.length) return html`<div class="notify-page"><section class="notify-empty" aria-labelledby="notifications-empty">
+      <span class="notify-empty-icon" aria-hidden="true"><ha-icon icon="mdi:bell-outline"></ha-icon></span>
+      <div class="row-text"><h2 id="notifications-empty">${l.t("notifications.empty_heading")}</h2>
+        <p class="small muted">${l.t("notifications.empty_body")}</p>
+        <div><button type="button" class="primary" @click=${(e: Event) => this._add(e.currentTarget as HTMLElement)}>${l.t("notifications.empty_action")}</button></div></div>
+    </section></div>`;
+    return html`<div class="notify-page"><section class="existing" aria-labelledby="notifications-existing">
+      <h2 id="notifications-existing">${l.t("notifications.existing")}</h2>
+      <ul class="notify-list">${rows.map(({ entityId, state, deviceIds }) => {
+        const name = typeof state!.attributes.friendly_name === "string" && state!.attributes.friendly_name ? state!.attributes.friendly_name : entityId;
+        const last = state!.attributes.last_triggered; const id = state!.attributes.id;
+        const sent = typeof last === "string" && last ? l.t("notifications.last_sent", { time: relativeTime(l, last) }) : l.t("notifications.never_sent");
+        return html`<li>
+          <input class="switch" type="checkbox" role="switch" aria-label=${name} aria-describedby=${`sent-${entityId}`} .checked=${state!.state === "on"} ?disabled=${this._toggling.has(entityId) || state!.state === "unavailable"}
+            @change=${(e: Event) => void this._toggle(entityId, e.target as HTMLInputElement)}>
+          <span class="row-text"><span>${name}</span><span class="small muted"><span class="covers">${coverageText(l, deviceIds, this.plants, this.devices)}</span> · <span id=${`sent-${entityId}`}>${sent}</span></span></span>
+          ${typeof id === "string" && id ? html`<a href=${`/config/automation/edit/${encodeURIComponent(id)}`} @click=${(e: MouseEvent) => this._link(e)} aria-label=${l.t("notifications.edit_label", { name })}>${l.t("notifications.edit")}</a>` : html`<span></span>`}
+          ${this._toggleError?.entityId === entityId ? html`<span class="error-text small toggle-error" role="alert">${this._toggleError.message}</span>` : nothing}
+        </li>`;
+      })}</ul></section>
+      <div class="actions"><button type="button" class="primary" @click=${(e: Event) => this._add(e.currentTarget as HTMLElement)}>${l.t("notifications.add")}</button></div></div>`;
+  }
+}
+if (!customElements.get("smart-plants-notifications-page")) customElements.define("smart-plants-notifications-page", SmartPlantsNotificationsPage);
 if (!customElements.get("smart-plants-notifications")) customElements.define("smart-plants-notifications", SmartPlantsNotifications);
-declare global { interface HTMLElementTagNameMap { "smart-plants-notifications": SmartPlantsNotifications } }
+declare global { interface HTMLElementTagNameMap { "smart-plants-notifications": SmartPlantsNotifications; "smart-plants-notifications-page": SmartPlantsNotificationsPage } }

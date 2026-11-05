@@ -24,7 +24,7 @@ Each plant shows one status, the most urgent first: *Needs water*, *Too wet*, a 
 such as *Too little light*, *No recent data*, *No main sensor*, *No moisture sensor* (or
 *No sensors*), then *Healthy*. A paused plant shows *Paused*.
 
-The **⋮** menu has **Add plant**, **Notifications…**, **Snooze all plants…** and links to the
+The **⋮** menu has **Add plant**, **Notifications**, **Snooze all plants…** and links to the
 integration options and this documentation.
 
 ## Add a plant
@@ -71,7 +71,7 @@ The page has four tabs:
 - **Care.** The care log and the care plan, see [Care](care.md).
 - **Settings.** Name, area, photo, species, targets, more details, pause and delete.
 
-The **⋮** menu in the top bar has **Notifications…**, **Snooze alerts…**, **Open device**,
+The **⋮** menu in the top bar has **Notifications**, **Snooze alerts…**, **Open device**,
 **Download diagnostics**, **Pause monitoring** and **Delete plant**.
 
 ### Read the history chart

@@ -577,7 +577,7 @@ if (!customElements.get("ha-top-app-bar-fixed")) {
 if (!customElements.get("ha-dropdown")) {
   customElements.define("ha-dropdown", class extends HTMLElement {
     constructor() {
-      super(); this.attachShadow({ mode: "open" }).innerHTML = `<style>:host{position:relative}.menu[hidden]{display:none}.menu{position:absolute;right:0;top:48px;z-index:5;min-width:180px;background:white;box-shadow:0 2px 8px #0003;border-radius:8px}</style><slot name="trigger"></slot><div class="menu" role="menu" hidden><slot></slot></div>`;
+      super(); this.attachShadow({ mode: "open" }).innerHTML = `<style>:host{position:relative}.menu[hidden]{display:none}.menu{position:absolute;right:0;top:48px;z-index:5;min-width:180px;width:max-content;background:white;box-shadow:0 2px 8px #0003;border-radius:8px}</style><slot name="trigger"></slot><div class="menu" role="menu" hidden><slot></slot></div>`;
       this.shadowRoot.addEventListener("keydown", (event) => { if (event.key === "Escape") this.closeMenu(); });
       // Like HA's dropdown, any element in the trigger slot opens the menu.
       this.shadowRoot.querySelector("slot[name=trigger]").addEventListener("click", () => this.toggleMenu());
@@ -749,6 +749,11 @@ document.documentElement.lang = language;
 const timeZone = params.get("tz");
 panel.hass = { auth: { accessToken: "playwright-token" }, connection, language, ...(params.has("notifications") ? { services: { notify: { send_message: {}, notify: {}, mobile_app_mock_phone: {} } } } : {}), locale: { language, number_format: "language", time_format: "language", date_format: "language" }, user: { is_admin: true, name: "Synthetic browser admin" }, ...(timeZone ? { config: { time_zone: timeZone } } : {}) };
 panel.panel = { title: "Smart Plants", url_path: "smart-plants" };
+// Home Assistant hands the panel the part of the address after its URL as
+// `route` whenever the address changes under the panel.
+const syncRoute = () => { panel.route = { prefix: "/smart-plants", path: location.pathname.startsWith("/smart-plants/") ? location.pathname.slice("/smart-plants".length) : "" }; };
+window.addEventListener("location-changed", syncRoute);
+window.addEventListener("popstate", syncRoute);
 // Home Assistant marks a panel narrow below 870 pixels and hides its sidebar there.
 const narrow = window.matchMedia("(max-width: 870px)");
 panel.narrow = narrow.matches;

@@ -2,17 +2,19 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { writeFile } from "node:fs/promises";
 
-// The overview's Notifications dialog in the packaged artifact with synthetic
-// data: it lists the notification automations made here and hands one preset
-// to Home Assistant's automation editor. Driven by keyboard only.
+// The Notifications page and its setup dialog in the packaged artifact with
+// synthetic data: the page lists the notification automations made here, and
+// the dialog hands one preset to Home Assistant's automation editor. Driven by
+// keyboard only.
 interface NotificationsHarness { messages: Array<Record<string, unknown>>; unexpected: string[]; editorRequests: Array<{ data: Record<string, unknown> }> }
 type HarnessWindow = { __smartPlantsHarness: NotificationsHarness };
 
 const url = "/frontend/e2e/harness.html";
-// A menu item by its text; Notifications… may end with how many exist.
+// A menu item by its text; Notifications may end with how many exist.
 const escapeRe = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const menuItem = (page: Page, name: string) => page.getByRole("menuitem", { name: new RegExp(`^${escapeRe(name)}( \\d+)?$`) });
-const bell = (page: Page) => page.locator("smart-plants-panel .header-bell ha-icon-button");
+const bell = (page: Page) => page.locator("smart-plants-panel ha-icon-button.header-bell");
+const notificationsPage = (page: Page) => page.locator("smart-plants-panel smart-plants-notifications-page");
 const dialog = (page: Page) => page.locator("smart-plants-panel smart-plants-notifications dialog");
 const harness = (page: Page) => page.evaluate(() => (window as unknown as HarnessWindow).__smartPlantsHarness);
 
@@ -25,10 +27,16 @@ async function audit(page: Page, info: TestInfo, name: string) {
   expect(result.violations, `${name}: ${JSON.stringify(result.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })))}`).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${name}: no horizontal scroll`).toBe(true);
 }
-async function openDialog(page: Page, menu: string, item: string) {
+async function openPage(page: Page, menu: string, item: string) {
   await page.getByRole("button", { name: menu, exact: true }).focus();
   await page.keyboard.press("Enter");
   await menuItem(page, item).focus(); await page.keyboard.press("Enter");
+  await expect(notificationsPage(page)).toBeVisible();
+}
+async function openDialog(page: Page, menu: string, item: string, add = "Add notification") {
+  await openPage(page, menu, item);
+  await notificationsPage(page).getByRole("button", { name: add, exact: true }).focus();
+  await page.keyboard.press("Enter");
   await expect(dialog(page)).toBeVisible();
 }
 // Tab until the focused element matches, failing after a full cycle.
@@ -57,17 +65,24 @@ test("adds a menu item and a bell to the overview and opens the editor with a pr
   await page.getByRole("button", { name: "Menu", exact: true }).click();
   // The seed has two active plants, so Snooze all plants… shows as well.
   await expect(page.getByRole("menuitem")).toHaveCount(5);
-  for (const item of ["Add plant", "Notifications…", "Snooze all plants…", "Integration options", "Documentation"]) await expect(menuItem(page, item)).toBeVisible();
-  await expect(menuItem(page, "Notifications…")).toHaveAccessibleName("Notifications… 1");
+  for (const item of ["Add plant", "Notifications", "Snooze all plants…", "Integration options", "Documentation"]) await expect(menuItem(page, item)).toBeVisible();
+  await expect(menuItem(page, "Notifications")).toHaveAccessibleName("Notifications 1");
+  // The item and its number stay on one line.
+  const count = page.locator("smart-plants-panel .menu-count");
+  const [countBox, labelBox] = await Promise.all([count.boundingBox(), menuItem(page, "Notifications").boundingBox()]);
+  expect(countBox!.height).toBeLessThan(labelBox!.height);
+  expect(labelBox!.height).toBeLessThan(56);
+  expect(await menuItem(page, "Notifications").evaluate(e => getComputedStyle(e).whiteSpace)).toBe("nowrap");
   await page.keyboard.press("Escape");
-  await expect(page.locator("smart-plants-panel smart-plants-notifications")).toHaveCount(0);
-  // The panel reads each automation once; opening the dialog reads nothing more.
+  await expect(notificationsPage(page)).toHaveCount(0);
+  // The panel reads each automation once; opening the page reads nothing more.
   const reads = async () => (await harness(page)).messages.filter(m => m.type === "automation/config").length;
   await expect.poll(reads).toBe(2);
 
-  await openDialog(page, "Menu", "Notifications…");
-  await expect(dialog(page).getByRole("heading", { name: "Notifications", exact: true })).toBeFocused();
-  const existing = dialog(page).getByRole("region", { name: "Your notifications" });
+  await openPage(page, "Menu", "Notifications");
+  await expect(page.getByRole("heading", { name: "Notifications", level: 1 })).toBeFocused();
+  expect(new URL(page.url()).pathname).toBe("/smart-plants/notifications");
+  const existing = notificationsPage(page).getByRole("region", { name: "Your notifications" });
   await expect(existing.getByRole("listitem")).toHaveCount(1);
   await expect(existing).toContainText("Smart Plants: daily plant report");
   await expect(existing).toContainText("Last sent");
@@ -82,11 +97,7 @@ test("adds a menu item and a bell to the overview and opens the editor with a pr
   expect(switchBox.x + switchBox.width).toBeLessThanOrEqual(nameBox.x);
   expect(nameBox.x + nameBox.width).toBeLessThanOrEqual(editBox.x);
   for (const box of [nameBox, editBox]) expect(Math.abs(box.y + box.height / 2 - (switchBox.y + switchBox.height / 2))).toBeLessThan(box.height);
-  await expect(dialog(page).getByRole("radio", { name: /^Daily plant report/ })).toBeChecked();
-  await expect(dialog(page).getByRole("status")).toHaveText("You already have this notification.");
-  await expect(dialog(page).getByRole("combobox", { name: "Send to" })).toHaveValue("entity:notify.mock_chat");
-  expect(await reads()).toBe(2);
-  await audit(page, info, "notifications-daily");
+  await audit(page, info, "notifications-page");
 
   // Turn the existing notification off from its switch.
   await tabTo(page, /^Smart Plants: daily plant report$/);
@@ -94,6 +105,15 @@ test("adds a menu item and a bell to the overview and opens the editor with a pr
   await expect.poll(async () => (await harness(page)).messages.filter(m => m.type === "call_service")).toEqual([{ type: "call_service", domain: "automation", service: "turn_off", target: { entity_id: "automation.mock_daily_report" } }]);
   await expect(toggle).not.toBeChecked();
   await expect(toggle).toBeEnabled();
+
+  await tabTo(page, /^Add notification$/);
+  await page.keyboard.press("Enter");
+  await expect(dialog(page).getByRole("heading", { name: "New notification", exact: true })).toBeFocused();
+  await expect(dialog(page).getByRole("radio", { name: /^Daily plant report/ })).toBeChecked();
+  await expect(dialog(page).getByRole("status")).toHaveText("You already have this notification.");
+  await expect(dialog(page).getByRole("combobox", { name: "Send to" })).toHaveValue("entity:notify.mock_chat");
+  expect(await reads()).toBe(2);
+  await audit(page, info, "notifications-daily");
 
   // Switch to the needs-water preset with the arrow keys and turn on quiet hours.
   await tabTo(page, /^Daily plant report/);
@@ -134,12 +154,12 @@ test("offers notifications only on the overview, not while adding a plant", asyn
   await page.getByRole("button", { name: "Menu", exact: true }).click();
   await expect(menuItem(page, "Back to overview")).toBeVisible();
   await expect(menuItem(page, "Integration options")).toBeVisible();
-  await expect(menuItem(page, "Notifications…")).toHaveCount(0);
+  await expect(menuItem(page, "Notifications")).toHaveCount(0);
 });
 
-test("keeps focus in the dialog, closes with Escape and returns focus to the menu", async ({ page }) => {
+test("keeps focus in the dialog, closes with Escape and returns focus to Add notification", async ({ page }) => {
   await page.goto(`${url}?seed&notifications`);
-  await openDialog(page, "Menu", "Notifications…");
+  await openDialog(page, "Menu", "Notifications");
   // A full Tab cycle stays inside the dialog.
   for (let i = 0; i < 25; i++) {
     await page.keyboard.press("Tab");
@@ -148,12 +168,12 @@ test("keeps focus in the dialog, closes with Escape and returns focus to the men
   }
   await page.keyboard.press("Escape");
   await expect(page.locator("smart-plants-panel smart-plants-notifications")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeFocused();
+  await expect(notificationsPage(page).getByRole("button", { name: "Add notification", exact: true })).toBeFocused();
 });
 
 test("chooses plants and asks for at least one", async ({ page }) => {
   await page.goto(`${url}?seed&notifications`);
-  await openDialog(page, "Menu", "Notifications…");
+  await openDialog(page, "Menu", "Notifications");
   await tabTo(page, /^All plants$/);
   await page.keyboard.press("ArrowDown");
   await expect(dialog(page).getByRole("radio", { name: "Choose plants" })).toBeChecked();
@@ -170,11 +190,15 @@ test("chooses plants and asks for at least one", async ({ page }) => {
   expect((requests[0]!.data.conditions as Array<Record<string, unknown>>)[0]!.target).toEqual({ device_id: [expect.any(String)] });
 });
 
-test("German dialog", async ({ page }, info) => {
+test("German page and dialog", async ({ page }, info) => {
   await page.goto(`${url}?seed&notifications&lang=de`);
-  await openDialog(page, "Menü", "Benachrichtigungen…");
-  await expect(dialog(page).getByRole("heading", { name: "Benachrichtigungen", exact: true })).toBeFocused();
-  await expect(dialog(page).getByRole("region", { name: "Deine Benachrichtigungen" })).toContainText("Zuletzt gesendet");
+  await expect(page.getByRole("button", { name: "Benachrichtigungen, 1 eingerichtet", exact: true })).toBeVisible();
+  await openPage(page, "Menü", "Benachrichtigungen");
+  await expect(page.getByRole("heading", { name: "Benachrichtigungen", level: 1 })).toBeFocused();
+  await expect(notificationsPage(page).getByRole("region", { name: "Deine Benachrichtigungen" })).toContainText("Zuletzt gesendet");
+  await audit(page, info, "notifications-german-page");
+  await notificationsPage(page).getByRole("button", { name: "Benachrichtigung hinzufügen", exact: true }).click();
+  await expect(dialog(page).getByRole("heading", { name: "Neue Benachrichtigung", exact: true })).toBeFocused();
   await expect(dialog(page).getByRole("radio", { name: /^Täglicher Pflanzenbericht/ })).toBeChecked();
   await expect(dialog(page).getByRole("button", { name: "Im Automatisierungseditor öffnen" })).toBeVisible();
   await audit(page, info, "notifications-german");
@@ -186,43 +210,47 @@ test("German dialog", async ({ page }, info) => {
   await audit(page, info, "notifications-german-water");
 });
 
-test("shows no bell and no count without notifications, and explains them in the dialog", async ({ page }, info) => {
+test("shows no bell and no count without notifications, and explains them on the page", async ({ page }, info) => {
   await page.goto(`${url}?seed`);
   await expect(page.getByRole("heading", { name: "Smart Plants", exact: true })).toBeVisible();
   await expect(bell(page)).toHaveCount(0);
   await page.getByRole("button", { name: "Menu", exact: true }).click();
-  await expect(menuItem(page, "Notifications…")).toHaveAccessibleName("Notifications…");
-  await menuItem(page, "Notifications…").click();
-  await expect(dialog(page)).toBeVisible();
-  const empty = dialog(page).getByRole("region", { name: "No notifications yet" });
+  await expect(menuItem(page, "Notifications")).toHaveAccessibleName("Notifications");
+  await menuItem(page, "Notifications").click();
+  await expect(notificationsPage(page)).toBeVisible();
+  const empty = notificationsPage(page).getByRole("region", { name: "No notifications yet" });
   await expect(empty).toContainText("a daily report or a message as soon as a plant needs water");
-  await expect(dialog(page).getByRole("region", { name: "Your notifications" })).toHaveCount(0);
+  await expect(notificationsPage(page).getByRole("region", { name: "Your notifications" })).toHaveCount(0);
   await audit(page, info, "notifications-empty");
   await empty.getByRole("button", { name: "Set one up" }).click();
-  await expect(dialog(page).getByRole("radio", { name: /^Daily plant report/ })).toBeFocused();
+  await expect(dialog(page).getByRole("radio", { name: /^Daily plant report/ })).toBeChecked();
   await page.keyboard.press("Escape");
+  await expect(empty.getByRole("button", { name: "Set one up" })).toBeFocused();
   await expect(bell(page)).toHaveCount(0);
 });
 
-test("shows a bell with the count that opens the dialog, with the plants each one is for", async ({ page }, info) => {
+test("shows a bell without a count that opens the page, with the plants each one is for", async ({ page }, info) => {
   await page.goto(`${url}?seed&notifications&notifyplant`);
   const button = page.getByRole("button", { name: "Notifications, 2 set up", exact: true });
   await expect(button).toBeVisible();
-  await expect(page.locator("smart-plants-panel .header-bell .bell-count")).toHaveText("2");
+  await expect(page.locator("smart-plants-panel .bell-count")).toHaveCount(0);
   // The bell sits before the ⋮ menu and stays inside the header at phone width.
   const [bellBox, menuBox] = await Promise.all([button.boundingBox(), page.getByRole("button", { name: "Menu", exact: true }).boundingBox()]);
   expect(bellBox!.x + bellBox!.width).toBeLessThanOrEqual(menuBox!.x + 1);
   expect(bellBox!.x).toBeGreaterThanOrEqual(0);
   await button.focus(); await page.keyboard.press("Enter");
-  await expect(dialog(page)).toBeVisible();
-  const existing = dialog(page).getByRole("region", { name: "Your notifications" });
+  await expect(notificationsPage(page)).toBeVisible();
+  const existing = notificationsPage(page).getByRole("region", { name: "Your notifications" });
   await expect(existing.getByRole("listitem")).toHaveCount(2);
   await expect(existing.getByRole("listitem").filter({ hasText: "Smart Plants: daily plant report" })).toContainText("For all plants");
   await expect(existing.getByRole("listitem").filter({ hasText: "Office Aloe needs water" })).toContainText("For Office Aloe");
+  // The page has no bell of its own; Back in the browser returns to the overview.
+  await expect(bell(page)).toHaveCount(0);
   await audit(page, info, "notifications-bell");
-  await page.keyboard.press("Escape");
-  await expect(dialog(page)).toHaveCount(0);
-  await expect(button).toBeFocused();
+  await page.goBack();
+  await expect(notificationsPage(page)).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Smart Plants", exact: true })).toBeVisible();
+  await expect(button).toBeVisible();
   // The plant page has the bell too, but not the add-plant wizard.
   await page.getByRole("button", { name: "Menu", exact: true }).click();
   await menuItem(page, "Add plant").click();
@@ -237,7 +265,7 @@ test("groups the plant menu and marks notifications in the Automations card", as
   const items = await page.locator("smart-plants-panel .panel-appbar ha-dropdown").evaluate(menu => [...menu.children].filter(n => n.slot !== "trigger").map(n => n.getAttribute("value") ?? n.localName));
   expect(items).toEqual(["notifications", "snooze", "wa-divider", "open-device", "download-diagnostics", "wa-divider", "toggle-monitoring", "delete-plant"]);
   await expect(page.getByRole("separator")).toHaveCount(2);
-  await expect(menuItem(page, "Notifications…")).toHaveAccessibleName("Notifications… 2");
+  await expect(menuItem(page, "Notifications")).toHaveAccessibleName("Notifications 2");
   await page.keyboard.press("Escape");
   const card = page.locator("section[aria-labelledby=automations-heading]");
   const marked = card.getByRole("link", { name: /^Smart Plants: plant needs water/ });
