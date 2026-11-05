@@ -45,6 +45,7 @@ async def test_panel_registered_on_load_and_removed_on_unload(
 
     panel = _panels(hass)[PANEL_URL_PATH]
     assert getattr(panel, "require_admin", False) is True
+    assert panel.sidebar_icon == "smart-plants:logo"
     assert panel.config is not None
     manifest_path = Path(panel_module.__file__).parent / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -146,3 +147,15 @@ def test_card_url_versions_both_card_files() -> None:
         f"/smart_plants_static/smart-plants-card.js?v={manifest['version']}-{digest}"
     )
     assert expected == CARD_MODULE_URL
+
+
+def test_sidebar_icon_is_in_the_card_module() -> None:
+    # The sidebar shows the panel icon only when the always-loaded card module
+    # registers the same prefix and name.
+    bundle = (
+        Path(panel_module.__file__).parent / "frontend" / "smart-plants-card.js"
+    ).read_text(encoding="utf-8")
+    prefix, name = panel_module.PANEL_ICON.split(":")
+    assert f'"{prefix}"' in bundle
+    assert f'"{name}"' in bundle
+    assert "customIcons" in bundle

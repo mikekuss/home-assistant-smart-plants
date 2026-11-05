@@ -26,6 +26,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- Smart Plants has a new icon: a sprout with a star on a green tile. It replaces the old
+  image on the integrations page, the device pages and in HACS, and reads on light and dark
+  themes. The sidebar shows a matching sprout with a star instead of the standard sprout.
 - The **⋮** menus group their items: notifications and snooze, then the device and
   diagnostics items, then pause and delete. Snooze has an alarm clock icon.
 - **Set up notifications** stays in a plant's **Automations** card after the plant has
