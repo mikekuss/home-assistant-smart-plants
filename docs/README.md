@@ -1,38 +1,28 @@
 # Smart Plants documentation
 
-Smart Plants is a Home Assistant custom integration that manages your plants as long-lived
-devices. You assign the sensors you already have, and Smart Plants provides plant-level
-sensors, problem indicators, and a health score for your dashboards and automations.
+## Use Smart Plants
 
-## Start here
-
-- [Installation](installation.md): install with HACS or manually, set up the integration,
-  options, updates, uninstalling, and backup and restore.
-- [Getting started](getting-started.md): the sidebar panel, creating your first plant,
-  assigning sensors, thresholds, logging care, care reminders (including frost warnings from
-  the forecast), photos, snoozing while you're away, and managing plants.
+- [Installation](installation.md): install, options, updates, backup and removal
+- [Getting started](getting-started.md): the panel, your first plant, sensors and thresholds
+- [Care](care.md): care log, care reminders and rest periods
+- [Notifications](notifications.md): ready-made notifications from the panel
+- [Dashboard card](dashboard-card.md): a plant on any dashboard
+- [OpenPlantBook](openplantbook.md): optional species data
 
 ## Reference
 
-- [Sensors and plant health](sensors-and-health.md): supported sensor roles and units,
-  combining several sensors, sensors that stop updating, problem indicators, built-in
-  thresholds, the health score, and what happens when a sensor disappears.
-- [Entities](entities.md): every entity a plant provides, when it's created, and its
-  attributes.
-- [Dashboard card](dashboard-card.md): the plant card for any dashboard, its options, the
-  **Watered** button, and what users who aren't administrators see.
-- [OpenPlantBook](openplantbook.md): the optional species provider, with credentials, search,
-  reviewed apply, and what is stored.
+- [Sensors and health](sensors-and-health.md): roles, units, thresholds and the health score
+- [Entities](entities.md): every entity and attribute
+- [Automations](automations.md): triggers, conditions, actions and examples
 
-## Using Smart Plants
+## Help
 
-- [Automations](automations.md): notification examples, actions for logging care and
-  snoozing, and a safe irrigation pattern.
-- [Troubleshooting](troubleshooting.md): diagnostics, debug logging, common issues, and
-  how to report a bug.
-- [FAQ](faq.md): short answers to common questions.
+- [Troubleshooting](troubleshooting.md)
+- [FAQ](faq.md)
+- [GitHub issues](https://github.com/mikekuss/home-assistant-smart-plants/issues)
 
-## Getting help
+## Development
 
-Report bugs and request features in the
-[GitHub issue tracker](https://github.com/mikekuss/home-assistant-smart-plants/issues).
+- [Contributing](../CONTRIBUTING.md)
+- [Local Home Assistant rig](development/local-ha-testing.md)
+- [Translations](development/translations.md)

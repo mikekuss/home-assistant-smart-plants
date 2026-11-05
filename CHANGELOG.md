@@ -25,6 +25,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   diagnostics items, then pause and delete. Snooze has an alarm clock icon.
 - **Set up notifications** stays in a plant's **Automations** card after the plant has
   automations.
+- The documentation is shorter and checked against the current code. Install steps cover the
+  Marketplace in Home Assistant 2026.11, care has its own [Care](docs/care.md) page, and the
+  local testing guide moved into [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## [0.16.0] - 2026-11-04
 
