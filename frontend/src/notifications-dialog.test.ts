@@ -20,8 +20,9 @@ const CONFIGS: Record<string, unknown> = {
 
 afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); history.replaceState(null, "", "/"); });
 
-async function mount(options: { states?: Record<string, HAState>; services?: Record<string, Record<string, unknown>>; language?: string; entities?: unknown[]; callService?: () => Promise<unknown> } = {}) {
+async function mount(options: { states?: Record<string, HAState>; services?: Record<string, Record<string, unknown>>; language?: string; entities?: unknown[]; callService?: () => Promise<unknown>; related?: string[] } = {}) {
   const h = harness([sample, office], msg => {
+    if (msg.type === "search/related" && options.related) return { automation: options.related };
     if (msg.type === "config/entity_registry/list" && options.entities) return options.entities;
     if (msg.type === "automation/config") return { config: CONFIGS[String(msg.entity_id)] ?? {} };
     if (msg.type === "call_service") return options.callService?.() ?? {};
@@ -38,6 +39,15 @@ async function mount(options: { states?: Record<string, HAState>; services?: Rec
   return { el, h, subscriptions, unsubscribe };
 }
 const root = (el: SmartPlantsPanel) => el.shadowRoot!;
+// A menu item's own text, without the count in its details slot.
+const itemLabel = (item: Element) => [...item.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join("").trim();
+const menuItem = (el: SmartPlantsPanel) => root(el).querySelector('ha-dropdown-item[value="notifications"]')!;
+const bell = (el: SmartPlantsPanel) => root(el).querySelector<HTMLElement>(".header-bell ha-icon-button");
+async function openPlant(el: SmartPlantsPanel, name: string) {
+  const card = el.shadowRoot!.querySelector("smart-plants-overview")!;
+  [...card.shadowRoot!.querySelectorAll<HTMLElement>("button, a, [role=button]")].find(b => b.textContent?.includes(name))!.click();
+  await settle(el);
+}
 const dialogElement = (el: SmartPlantsPanel) => root(el).querySelector("smart-plants-notifications");
 const dialog = (el: SmartPlantsPanel) => dialogElement(el)?.shadowRoot?.querySelector<HTMLDialogElement>("dialog") ?? null;
 async function openDialog(el: SmartPlantsPanel) {
@@ -66,8 +76,64 @@ describe("notifications dialog", () => {
     const items = [...root(el).querySelectorAll("ha-dropdown-item")].map(item => item.getAttribute("value"));
     // Snooze all plants… shows too: the fixture has two active plants.
     expect(items).toEqual(["add-plant", "notifications", "snooze-all", "integration-options", "documentation"]);
-    expect(root(el).querySelector('ha-dropdown-item[value="notifications"]')!.textContent?.trim()).toBe("Notifications…");
+    expect(itemLabel(menuItem(el))).toBe("Notifications…");
     expect(dialogElement(el)).toBeNull();
+  });
+  it("groups the overview menu and shows how many notifications exist", async () => {
+    const { el } = await mount();
+    const menu = root(el).querySelector(".panel-appbar ha-dropdown")!;
+    const order = [...menu.children].filter(child => child.slot !== "trigger").map(child => child.getAttribute("value") ?? child.tagName.toLowerCase());
+    expect(order).toEqual(["add-plant", "wa-divider", "notifications", "snooze-all", "wa-divider", "integration-options", "documentation"]);
+    const count = menuItem(el).querySelector(".menu-count")!;
+    expect(count.getAttribute("slot")).toBe("details");
+    expect(count.textContent).toBe("2");
+  });
+  it("shows no count and no bell without notifications", async () => {
+    const { el } = await mount({ states: { "automation.lights": STATES["automation.lights"]! } });
+    expect(menuItem(el).querySelector(".menu-count")).toBeNull();
+    expect(bell(el)).toBeNull();
+  });
+  it("shows a bell in the header that opens the dialog and gets focus back", async () => {
+    const { el } = await mount();
+    const button = bell(el)!;
+    expect((button as unknown as { label: string }).label).toBe("Notifications, 2 set up");
+    expect(root(el).querySelector(".header-bell .bell-count")!.textContent).toBe("2");
+    button.click(); await settle(el); await settle(dialogElement(el)!);
+    expect(dialog(el)!.open).toBe(true);
+    buttonNamed(el, "Cancel").click(); await settle(el);
+    expect(root(el).activeElement).toBe(button);
+  });
+  it("hides the bell once the last notification is gone", async () => {
+    const { el, h } = await mount();
+    expect(bell(el)).not.toBeNull();
+    const { "automation.daily": _daily, "automation.yaml_water": _water, ...rest } = STATES;
+    h.hass = { ...h.hass, states: rest }; el.hass = h.hass; await settle(el);
+    expect(bell(el)).toBeNull();
+  });
+  it("shows what notifications do and offers one when there are none", async () => {
+    const { el } = await mount({ states: { "automation.lights": STATES["automation.lights"]! } });
+    await openDialog(el);
+    expect(inside(el, ".existing")).toBeNull();
+    const empty = inside(el, ".notify-empty")!;
+    expect(empty.querySelector("h3")!.textContent).toBe("No notifications yet");
+    expect(empty.textContent).toContain("a daily report or a message as soon as a plant needs water");
+    buttonNamed(el, "Set one up").click();
+    expect(dialogElement(el)!.shadowRoot!.activeElement).toBe(inside(el, 'input[name=notification-kind][value="daily_report"]'));
+  });
+  it("shows which plants each notification is for", async () => {
+    const water = notificationMarker("needs_water", ["device-plant-2"]);
+    const gone = notificationMarker("daily_report", ["device-removed"]);
+    const states = { ...STATES,
+      "automation.office": state("automation.office", "on", { friendly_name: "Office water", id: "17300000000002" }),
+      "automation.gone": state("automation.gone", "on", { friendly_name: "Old report", id: "17300000000003" }) };
+    CONFIGS["automation.office"] = { triggers: [{ trigger: "smart_plants.needs_water", id: water, target: { device_id: ["device-plant-2"] } }] };
+    CONFIGS["automation.gone"] = { triggers: [{ trigger: "time", at: "08:00:00", id: gone }], conditions: [{ condition: "smart_plants.needs_attention", target: { device_id: ["device-removed"] } }] };
+    try {
+      const { el } = await mount({ states });
+      await openDialog(el);
+      const covers = Object.fromEntries(all(el, ".notify-list li").map(row => [row.querySelector(".row-text span")!.textContent, row.querySelector(".covers")!.textContent]));
+      expect(covers).toEqual({ "Smart Plants: daily plant report": "For all plants", "Plant water (YAML)": "For all plants", "Office water": "For Office Aloe", "Old report": "The chosen plants were removed" });
+    } finally { delete CONFIGS["automation.office"]; delete CONFIGS["automation.gone"]; }
   });
   it("opens with the daily report, all plants and the first notify entity chosen", async () => {
     const { el } = await mount();
@@ -140,18 +206,25 @@ describe("notifications dialog", () => {
     const switches = all<HTMLInputElement>(el, ".notify-list input.switch");
     expect(switches.map(s => s.disabled)).toEqual([false, true]);
   });
-  it("reads the automations again after a reload and stops listening when closed", async () => {
+  it("reads the automations once, again after a reload, and stops listening when the panel goes", async () => {
     const { el, h, subscriptions, unsubscribe } = await mount();
+    const reads = () => h.calls.filter(call => call.type === "automation/config").length;
+    const before = reads();
+    expect(before).toBe(3);
+    // Opening the dialog and rendering again use what the panel already read.
     await openDialog(el);
-    const before = h.calls.filter(call => call.type === "automation/config").length;
+    el.requestUpdate(); await settle(el);
+    expect(reads()).toBe(before);
     subscriptions.get("automation_reloaded")!();
-    await settle(dialogElement(el)!);
-    expect(h.calls.filter(call => call.type === "automation/config").length).toBe(before * 2);
+    await settle(el); await settle(dialogElement(el)!);
+    expect(reads()).toBe(before * 2);
     buttonNamed(el, "Cancel").click();
     await settle(el);
     expect(dialogElement(el)).toBeNull();
-    expect(unsubscribe).toHaveBeenCalled();
     expect(root(el).activeElement).toBe(root(el).querySelector(".panel-appbar ha-dropdown [slot=trigger]"));
+    expect(unsubscribe).not.toHaveBeenCalled();
+    el.remove();
+    expect(unsubscribe).toHaveBeenCalled();
   });
   it("lets exactly one preset be chosen and shows its own fields", async () => {
     const { el } = await mount();
@@ -249,7 +322,7 @@ describe("notifications dialog", () => {
   });
   it("shows German texts", async () => {
     const { el } = await mount({ language: "de" });
-    expect(root(el).querySelector('ha-dropdown-item[value="notifications"]')!.textContent?.trim()).toBe("Benachrichtigungen…");
+    expect(itemLabel(menuItem(el))).toBe("Benachrichtigungen…");
     await openDialog(el);
     expect(inside(el, "h2")!.textContent).toBe("Benachrichtigungen");
     expect(dialog(el)!.textContent).toContain("Täglicher Pflanzenbericht");
@@ -264,7 +337,11 @@ describe("notifications from the plant page", () => {
     const card = el.shadowRoot!.querySelector("smart-plants-overview")!;
     [...card.shadowRoot!.querySelectorAll<HTMLElement>("button, a, [role=button]")].find(b => b.textContent?.includes("Office Aloe"))!.click();
     await settle(el);
-    expect(root(el).querySelector('ha-dropdown-item[value="notifications"]')!.textContent?.trim()).toBe("Notifications…");
+    expect(itemLabel(menuItem(el))).toBe("Notifications…");
+    const menu = root(el).querySelector(".panel-appbar ha-dropdown")!;
+    const order = [...menu.children].filter(child => child.slot !== "trigger").map(child => child.getAttribute("value") ?? child.tagName.toLowerCase());
+    expect(order).toEqual(["notifications", "snooze", "wa-divider", "open-device", "download-diagnostics", "wa-divider", "toggle-monitoring", "delete-plant"]);
+    expect(menu.querySelector('[value="snooze"] ha-icon')!.getAttribute("icon")).toBe("mdi:alarm-snooze");
     await openDialog(el);
     expect(inside<HTMLInputElement>(el, 'input[name=notification-plants][value="choose"]')!.checked).toBe(true);
     expect(all<HTMLInputElement>(el, ".plant-choices input").map(input => input.checked)).toEqual([false, true]);
@@ -284,6 +361,30 @@ describe("notifications from the plant page", () => {
     expect(all<HTMLInputElement>(el, ".plant-choices input").map(input => input.checked)).toEqual([false, true]);
     buttonNamed(el, "Cancel").click(); await settle(el);
     expect(root(el).activeElement).toBe(offer);
+  });
+
+  it("keeps Set up notifications next to listed automations and marks the notifications", async () => {
+    const { el } = await mount({ related: ["automation.daily", "automation.lights"] });
+    await openPlant(el, "Office Aloe");
+    await settle(el); await settle(el);
+    const card = root(el).querySelector("section[aria-labelledby=automations-heading]")!;
+    const rows = [...card.querySelectorAll(".rel li")];
+    expect(rows.map(row => row.querySelector(".li-title")!.textContent)).toEqual(["Lights", "Smart Plants: daily plant report"]);
+    expect(rows.map(row => row.querySelector(".ic ha-icon")!.getAttribute("icon"))).toEqual(["mdi:robot", "mdi:bell-outline"]);
+    expect(rows[1]!.querySelector(".li-sub")!.textContent).toMatch(/^Notification · Last ran/);
+    expect(rows[0]!.querySelector(".rel-kind")).toBeNull();
+    expect([...card.querySelectorAll("button")].some(b => b.textContent?.trim() === "Set up notifications")).toBe(true);
+  });
+
+  it("opens the new plant with the dialog from the wizard's confirmation", async () => {
+    const { el } = await mount();
+    root(el).querySelector("smart-plants-overview")!.dispatchEvent(new CustomEvent("add-plant"));
+    await settle(el);
+    root(el).querySelector("smart-plants-wizard")!.dispatchEvent(new CustomEvent("wizard-notifications", { detail: { plantId: office.id }, bubbles: true, composed: true }));
+    await settle(el); await settle(dialogElement(el)!); await settle(dialogElement(el)!);
+    expect(root(el).querySelector("h1")!.textContent).toBe("Office Aloe");
+    expect(dialog(el)!.open).toBe(true);
+    expect(all<HTMLInputElement>(el, ".plant-choices input").map(input => input.checked)).toEqual([false, true]);
   });
 
   it("says when a switch could not be changed and shows the automation's state again", async () => {

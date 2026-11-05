@@ -78,9 +78,13 @@ describe("three-step creation wizard", () => {
     expect(created).toHaveBeenCalledOnce();
     expect(text(el)).toContain(`${sample.name} is ready`);
     expect(text(el)).toContain("The plant is now a device in Home Assistant.");
-    expect(text(el)).toContain("To get a notification when it needs water, open the plant and choose Notifications in its ⋮ menu.");
+    expect(text(el)).toContain("Get a message when it needs water, or a daily report for all your plants.");
     expect(root(el).activeElement?.tagName).toBe("H2");
     expect(text(el)).not.toContain(draft.draft_token);
+    // The notification setup is a real button that names the new plant.
+    const notify = vi.fn(); el.addEventListener("wizard-notifications", notify);
+    button(root(el), "Set up notifications").click();
+    expect(notify.mock.calls[0]![0].detail).toEqual({ plantId: sample.id });
   });
 
   it("accepts an area known to Home Assistant's own area list while the registry request is unavailable", async () => {

@@ -1,11 +1,11 @@
-// The "Notifications…" dialog of the plants overview. It lists the
-// notification automations made here and opens Home Assistant's automation
-// editor prefilled with one preset; the user saves it there.
+// The "Notifications…" dialog. It lists the notification automations made
+// here, which the panel finds and passes in, and opens Home Assistant's
+// automation editor prefilled with one preset; the user saves it there.
 import { LitElement, css, html, nothing } from "lit";
 import { property, state } from "lit/decorators.js";
 import type { Localizer } from "../localize.js";
 import { plantDevice } from "../model.js";
-import { DELAY_CHOICES, allPlantsEntityId, buildNotification, delayText, findNotifications, notificationMarker, notifyTargets, openAutomationEditor, targetValue } from "../notifications.js";
+import { DELAY_CHOICES, allPlantsEntityId, buildNotification, coverageText, delayText, notificationMarker, notifyTargets, openAutomationEditor, targetValue } from "../notifications.js";
 import type { FoundNotification, NotificationKind, NotifyTarget } from "../notifications.js";
 import { relativeTime } from "../status.js";
 import { styles } from "../styles.js";
@@ -51,6 +51,11 @@ export class SmartPlantsNotifications extends LitElement {
     }
     .notify-list .row-text, .choice-text { display: flex; flex-direction: column; min-width: 0; }
     .existing { padding: 0; border: 0; margin: 0; background: none; }
+    .notify-empty { display: flex; gap: 12px; align-items: flex-start; margin: 0; background: none; padding: 12px 14px; border: 1px solid var(--divider-color, #ddd); border-radius: 12px; }
+    .notify-empty-icon { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+      background: color-mix(in srgb, var(--primary-color, #009ac7) 12%, transparent); color: var(--primary-color, #009ac7); }
+    .notify-empty h3 { margin: 0; }
+    .notify-empty p { margin: 2px 0 8px; }
     .notify-list a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; }
     .care-dialog h3 { margin: 4px 0 0; font-size: 1rem; }
     .preset { display: flex; flex-direction: column; gap: 8px; }
@@ -72,26 +77,15 @@ export class SmartPlantsNotifications extends LitElement {
   // Opened from a plant page: the new notification starts with that plant chosen.
   @property({ attribute: false }) public plantId: string | null = null;
   @state() private _draft: Draft = { kind: "daily_report", time: "08:00", delayMinutes: 30, quiet: false, quietFrom: "22:00", quietTo: "07:00", allPlants: true, plantIds: new Set(), target: "", error: "" };
-  @state() private _found: FoundNotification[] = [];
+  // The notification automations the panel found, or null while it looks.
+  @property({ attribute: false }) public found: FoundNotification[] | null = null;
   @state() private _toggling: ReadonlySet<string> = new Set();
   // The last failed on/off switch and why, shown under its row.
   @state() private _toggleError: { entityId: string; message: string } | null = null;
-  private _request = 0;
-  private _unsubscribe: (() => void) | null = null;
 
   connectedCallback(): void {
     super.connectedCallback();
     if (this.plantId && !this.hasUpdated) this._draft = { ...this._draft, allPlants: false, plantIds: new Set([this.plantId]) };
-    void this._load();
-    const hass = this.hass;
-    // Saving in the automation editor reloads automations; read them again then.
-    void hass?.connection.subscribeEvents?.(() => void this._load(), "automation_reloaded")
-      .then(unsubscribe => { if (this.isConnected && this.hass === hass) this._unsubscribe = unsubscribe; else unsubscribe(); })
-      .catch(() => undefined);
-  }
-  disconnectedCallback(): void {
-    super.disconnectedCallback();
-    this._request++; this._unsubscribe?.(); this._unsubscribe = null;
   }
   protected firstUpdated(): void {
     const dialog = this.shadowRoot?.querySelector("dialog");
@@ -106,13 +100,6 @@ export class SmartPlantsNotifications extends LitElement {
     const send = this.shadowRoot?.querySelector<HTMLSelectElement>("#send-to");
     const targets = this._targets();
     if (send) send.value = targetValue(targets.find(item => targetValue(item) === this._draft.target) ?? targets[0]!);
-  }
-  private async _load(): Promise<void> {
-    const hass = this.hass; if (!hass) return;
-    const request = ++this._request;
-    const automations = Object.keys(this.states).filter(id => id.startsWith("automation.")).sort();
-    const found = await findNotifications(hass, automations);
-    if (request === this._request) this._found = found;
   }
   private _close(): void {
     this.shadowRoot?.querySelector("dialog")?.close();
@@ -175,20 +162,31 @@ export class SmartPlantsNotifications extends LitElement {
     }
     finally { const next = new Set(this._toggling); next.delete(entityId); this._toggling = next; }
   }
+  // "Set one up" in the empty state moves to the first choice of the form below.
+  private _startSetup(): void {
+    const first = this.shadowRoot?.querySelector<HTMLInputElement>("input[name=notification-kind]:checked");
+    first?.scrollIntoView?.({ block: "nearest" }); first?.focus();
+  }
   private _renderExisting() {
     const l = this.l;
-    const rows = this._found.map(item => ({ ...item, state: this.states[item.entityId] })).filter(item => item.state);
-    if (!rows.length) return nothing;
+    if (!this.found) return nothing;
+    const rows = this.found.map(item => ({ ...item, state: this.states[item.entityId] })).filter(item => item.state);
+    if (!rows.length) return html`<section class="notify-empty" aria-labelledby="notifications-empty">
+      <span class="notify-empty-icon" aria-hidden="true"><ha-icon icon="mdi:bell-outline"></ha-icon></span>
+      <div class="row-text"><h3 id="notifications-empty">${l.t("notifications.empty_heading")}</h3>
+        <p class="small muted">${l.t("notifications.empty_body")}</p>
+        <div><button type="button" @click=${() => this._startSetup()}>${l.t("notifications.empty_action")}</button></div></div>
+    </section>`;
     return html`<section class="existing" aria-labelledby="notifications-existing">
       <h3 id="notifications-existing">${l.t("notifications.existing")}</h3>
-      <ul class="notify-list">${rows.map(({ entityId, state }) => {
+      <ul class="notify-list">${rows.map(({ entityId, state, deviceIds }) => {
         const name = typeof state!.attributes.friendly_name === "string" && state!.attributes.friendly_name ? state!.attributes.friendly_name : entityId;
         const last = state!.attributes.last_triggered; const id = state!.attributes.id;
         const sent = typeof last === "string" && last ? l.t("notifications.last_sent", { time: relativeTime(l, last) }) : l.t("notifications.never_sent");
         return html`<li>
           <input class="switch" type="checkbox" role="switch" aria-label=${name} aria-describedby=${`sent-${entityId}`} .checked=${state!.state === "on"} ?disabled=${this._toggling.has(entityId) || state!.state === "unavailable"}
             @change=${(e: Event) => void this._toggle(entityId, e.target as HTMLInputElement)}>
-          <span class="row-text"><span>${name}</span><span class="small muted" id=${`sent-${entityId}`}>${sent}</span></span>
+          <span class="row-text"><span>${name}</span><span class="small muted"><span class="covers">${coverageText(l, deviceIds, this.plants, this.devices)}</span> · <span id=${`sent-${entityId}`}>${sent}</span></span></span>
           ${typeof id === "string" && id ? html`<a href=${`/config/automation/edit/${encodeURIComponent(id)}`} @click=${(e: MouseEvent) => this._link(e)} aria-label=${l.t("notifications.edit_label", { name })}>${l.t("notifications.edit")}</a>` : html`<span></span>`}
           ${this._toggleError?.entityId === entityId ? html`<span class="error-text small toggle-error" role="alert">${this._toggleError.message}</span>` : nothing}
         </li>`;
@@ -201,7 +199,7 @@ export class SmartPlantsNotifications extends LitElement {
     const selected = targets.find(item => targetValue(item) === draft.target) ?? targets[0]!;
     const plants = this._choosable();
     const deviceIds = this._deviceIds();
-    const exists = (!deviceIds || deviceIds.length > 0) && this._found.some(item => item.marker === notificationMarker(draft.kind, deviceIds) && this.states[item.entityId]);
+    const exists = (!deviceIds || deviceIds.length > 0) && (this.found ?? []).some(item => item.marker === notificationMarker(draft.kind, deviceIds) && this.states[item.entityId]);
     const option = (target: NotifyTarget, label: string) => html`<option value=${targetValue(target)} ?selected=${targetValue(target) === targetValue(selected)}>${label}</option>`;
     return html`<dialog class="care-dialog notifications-dialog" aria-labelledby="notifications-title" aria-describedby="notifications-intro" @cancel=${(e: Event) => { e.preventDefault(); this._close(); }} @keydown=${(e: KeyboardEvent) => this._trapFocus(e)}>
       <h2 id="notifications-title" tabindex="-1">${l.t("notifications.title")}</h2>

@@ -9,7 +9,10 @@ interface NotificationsHarness { messages: Array<Record<string, unknown>>; unexp
 type HarnessWindow = { __smartPlantsHarness: NotificationsHarness };
 
 const url = "/frontend/e2e/harness.html";
-const menuItem = (page: Page, name: string) => page.getByRole("menuitem", { name, exact: true });
+// A menu item by its text; Notifications… may end with how many exist.
+const escapeRe = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const menuItem = (page: Page, name: string) => page.getByRole("menuitem", { name: new RegExp(`^${escapeRe(name)}( \\d+)?$`) });
+const bell = (page: Page) => page.locator("smart-plants-panel .header-bell ha-icon-button");
 const dialog = (page: Page) => page.locator("smart-plants-panel smart-plants-notifications dialog");
 const harness = (page: Page) => page.evaluate(() => (window as unknown as HarnessWindow).__smartPlantsHarness);
 
@@ -48,16 +51,19 @@ test.beforeEach(async ({ page }, info) => {
 });
 test.afterEach(async ({ page }) => { expect(await page.evaluate(() => (window as unknown as { __smartPlantsHarness?: NotificationsHarness }).__smartPlantsHarness?.unexpected ?? [])).toEqual([]); });
 
-test("adds only a menu item to the overview and opens the editor with a preset", async ({ page }, info) => {
+test("adds a menu item and a bell to the overview and opens the editor with a preset", async ({ page }, info) => {
   await page.goto(`${url}?seed&notifications`);
   await expect(page.getByRole("heading", { name: "Smart Plants", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Menu", exact: true }).click();
   // The seed has two active plants, so Snooze all plants… shows as well.
   await expect(page.getByRole("menuitem")).toHaveCount(5);
   for (const item of ["Add plant", "Notifications…", "Snooze all plants…", "Integration options", "Documentation"]) await expect(menuItem(page, item)).toBeVisible();
+  await expect(menuItem(page, "Notifications…")).toHaveAccessibleName("Notifications… 1");
   await page.keyboard.press("Escape");
   await expect(page.locator("smart-plants-panel smart-plants-notifications")).toHaveCount(0);
-  expect((await harness(page)).messages.filter(m => m.type === "automation/config")).toEqual([]);
+  // The panel reads each automation once; opening the dialog reads nothing more.
+  const reads = async () => (await harness(page)).messages.filter(m => m.type === "automation/config").length;
+  await expect.poll(reads).toBe(2);
 
   await openDialog(page, "Menu", "Notifications…");
   await expect(dialog(page).getByRole("heading", { name: "Notifications", exact: true })).toBeFocused();
@@ -79,6 +85,7 @@ test("adds only a menu item to the overview and opens the editor with a preset",
   await expect(dialog(page).getByRole("radio", { name: /^Daily plant report/ })).toBeChecked();
   await expect(dialog(page).getByRole("status")).toHaveText("You already have this notification.");
   await expect(dialog(page).getByRole("combobox", { name: "Send to" })).toHaveValue("entity:notify.mock_chat");
+  expect(await reads()).toBe(2);
   await audit(page, info, "notifications-daily");
 
   // Turn the existing notification off from its switch.
@@ -177,4 +184,82 @@ test("German dialog", async ({ page }, info) => {
   await page.keyboard.press("Space");
   await expect(dialog(page).getByLabel("Bis", { exact: true })).toHaveValue("07:00");
   await audit(page, info, "notifications-german-water");
+});
+
+test("shows no bell and no count without notifications, and explains them in the dialog", async ({ page }, info) => {
+  await page.goto(`${url}?seed`);
+  await expect(page.getByRole("heading", { name: "Smart Plants", exact: true })).toBeVisible();
+  await expect(bell(page)).toHaveCount(0);
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await expect(menuItem(page, "Notifications…")).toHaveAccessibleName("Notifications…");
+  await menuItem(page, "Notifications…").click();
+  await expect(dialog(page)).toBeVisible();
+  const empty = dialog(page).getByRole("region", { name: "No notifications yet" });
+  await expect(empty).toContainText("a daily report or a message as soon as a plant needs water");
+  await expect(dialog(page).getByRole("region", { name: "Your notifications" })).toHaveCount(0);
+  await audit(page, info, "notifications-empty");
+  await empty.getByRole("button", { name: "Set one up" }).click();
+  await expect(dialog(page).getByRole("radio", { name: /^Daily plant report/ })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(bell(page)).toHaveCount(0);
+});
+
+test("shows a bell with the count that opens the dialog, with the plants each one is for", async ({ page }, info) => {
+  await page.goto(`${url}?seed&notifications&notifyplant`);
+  const button = page.getByRole("button", { name: "Notifications, 2 set up", exact: true });
+  await expect(button).toBeVisible();
+  await expect(page.locator("smart-plants-panel .header-bell .bell-count")).toHaveText("2");
+  // The bell sits before the ⋮ menu and stays inside the header at phone width.
+  const [bellBox, menuBox] = await Promise.all([button.boundingBox(), page.getByRole("button", { name: "Menu", exact: true }).boundingBox()]);
+  expect(bellBox!.x + bellBox!.width).toBeLessThanOrEqual(menuBox!.x + 1);
+  expect(bellBox!.x).toBeGreaterThanOrEqual(0);
+  await button.focus(); await page.keyboard.press("Enter");
+  await expect(dialog(page)).toBeVisible();
+  const existing = dialog(page).getByRole("region", { name: "Your notifications" });
+  await expect(existing.getByRole("listitem")).toHaveCount(2);
+  await expect(existing.getByRole("listitem").filter({ hasText: "Smart Plants: daily plant report" })).toContainText("For all plants");
+  await expect(existing.getByRole("listitem").filter({ hasText: "Office Aloe needs water" })).toContainText("For Office Aloe");
+  await audit(page, info, "notifications-bell");
+  await page.keyboard.press("Escape");
+  await expect(dialog(page)).toHaveCount(0);
+  await expect(button).toBeFocused();
+  // The plant page has the bell too, but not the add-plant wizard.
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await menuItem(page, "Add plant").click();
+  await expect(bell(page)).toHaveCount(0);
+});
+
+test("groups the plant menu and marks notifications in the Automations card", async ({ page }, info) => {
+  await page.goto(`${url}?seed&notifications&automations`);
+  await page.locator("smart-plants-overview").getByRole("button", { name: /Office Aloe/ }).first().click();
+  await expect(page.getByRole("heading", { name: "Office Aloe", level: 1 })).toBeVisible();
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  const items = await page.locator("smart-plants-panel .panel-appbar ha-dropdown").evaluate(menu => [...menu.children].filter(n => n.slot !== "trigger").map(n => n.getAttribute("value") ?? n.localName));
+  expect(items).toEqual(["notifications", "snooze", "wa-divider", "open-device", "download-diagnostics", "wa-divider", "toggle-monitoring", "delete-plant"]);
+  await expect(page.getByRole("separator")).toHaveCount(2);
+  await expect(menuItem(page, "Notifications…")).toHaveAccessibleName("Notifications… 2");
+  await page.keyboard.press("Escape");
+  const card = page.locator("section[aria-labelledby=automations-heading]");
+  const marked = card.getByRole("link", { name: /^Smart Plants: plant needs water/ });
+  await expect(marked.locator(".li-sub")).toHaveText(/^Notification · /);
+  await expect(marked.locator(".ic ha-icon")).toHaveAttribute("icon", "mdi:bell-outline");
+  await expect(card.getByRole("link", { name: /^Grow light on dark days/ }).locator(".rel-kind")).toHaveCount(0);
+  await expect(card.getByRole("button", { name: "Set up notifications" })).toBeVisible();
+  await audit(page, info, "notifications-plant-page");
+});
+
+test("opens the notification setup from the wizard's confirmation", async ({ page }) => {
+  await page.goto(`${url}?seed`);
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  await menuItem(page, "Add plant").click();
+  await page.getByLabel("Plant name").fill("Kitchen Fern");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByRole("button", { name: "Skip for now", exact: true }).click();
+  await page.getByRole("button", { name: "Create plant", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Kitchen Fern is ready" })).toBeVisible();
+  await page.getByRole("button", { name: "Set up notifications", exact: true }).click();
+  await expect(dialog(page)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Kitchen Fern", level: 1 })).toBeVisible();
+  await expect(dialog(page).getByRole("radio", { name: "Choose plants" })).toBeChecked();
+  await expect(dialog(page).getByRole("checkbox", { name: "Kitchen Fern" })).toBeChecked();
 });

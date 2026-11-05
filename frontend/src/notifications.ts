@@ -2,7 +2,7 @@
 // prefilled, lists the places a message can go, and finds the automations made
 // this way. Nothing here saves an automation; the user does that in the editor.
 import type { Localizer } from "./localize.js";
-import type { HAEntity, HAState, HomeAssistantLike } from "./types.js";
+import type { HADevice, HAEntity, HAState, HomeAssistantLike, PlantRecord } from "./types.js";
 
 export type NotificationKind = "daily_report" | "needs_water";
 export type NotifyTarget =
@@ -152,7 +152,12 @@ export function targetValue(target: NotifyTarget): string {
   return target.kind === "entity" ? `entity:${target.entityId}` : target.kind === "service" ? `service:${target.service}` : "persistent";
 }
 
-export interface FoundNotification { entityId: string; marker: string }
+export interface FoundNotification {
+  entityId: string;
+  marker: string;
+  // The plant devices it is for, or null for all plants.
+  deviceIds: string[] | null;
+}
 // The marker of an automation config made here, from any of its trigger ids.
 export function configMarker(config: unknown): string | null {
   if (!config || typeof config !== "object") return null;
@@ -164,6 +169,39 @@ export function configMarker(config: unknown): string | null {
   }
   return null;
 }
+// The plant devices an automation made here is for. A marker without a hash
+// is for all plants. Otherwise the hash can't be turned back into plants, so
+// the device ids come from the first Smart Plants trigger, condition or action
+// that targets devices; they also follow later edits in the editor. An empty
+// list means none was found.
+export function coveredDevices(config: unknown, marker: string): string[] | null {
+  if (!/_[0-9a-f]{8}$/.test(marker)) return null;
+  const record = config && typeof config === "object" ? config as Record<string, unknown> : {};
+  const list = (value: unknown): unknown[] => Array.isArray(value) ? value : value ? [value] : [];
+  const ids = (value: unknown): string[] => list(value).filter((id): id is string => typeof id === "string" && id !== "");
+  for (const [plural, singular] of [["triggers", "trigger"], ["conditions", "condition"], ["actions", "action"]] as const) {
+    for (const item of list(record[plural] ?? record[singular])) {
+      if (!item || typeof item !== "object") continue;
+      const step = item as Record<string, unknown>;
+      const kind = step.trigger ?? step.platform ?? step.condition ?? step.action ?? step.service;
+      if (typeof kind !== "string" || !kind.startsWith("smart_plants")) continue;
+      const target = step.target && typeof step.target === "object" ? (step.target as Record<string, unknown>).device_id : undefined;
+      const found = [...new Set([...ids(target), ...ids(step.device_id)])];
+      if (found.length) return found.sort();
+    }
+  }
+  return [];
+}
+
+// The plants a notification is for, as a short line for its row.
+export function coverageText(l: Localizer, deviceIds: string[] | null, plants: readonly PlantRecord[], devices: readonly HADevice[]): string {
+  if (!deviceIds) return l.t("notifications.covers_all");
+  const names = plants.filter(plant => devices.some(device => deviceIds.includes(device.id) && device.identifiers.some(([domain, id]) => domain === "smart_plants" && id === plant.id)))
+    .map(plant => plant.name).sort((a, b) => a.localeCompare(b, l.language));
+  if (!names.length) return l.t("notifications.covers_none");
+  return l.t("notifications.covers", { plants: new Intl.ListFormat(l.language, { type: "conjunction" }).format(names) });
+}
+
 // Reads every automation's config, a few at a time, and keeps the ones made here.
 // An automation that can't be read (removed meanwhile, YAML errors) is skipped.
 export async function findNotifications(hass: HomeAssistantLike, entityIds: string[], concurrency = 8): Promise<FoundNotification[]> {
@@ -175,7 +213,7 @@ export async function findNotifications(hass: HomeAssistantLike, entityIds: stri
       try {
         const result = await hass.connection.sendMessagePromise<{ config?: unknown }>({ type: "automation/config", entity_id: entityId });
         const marker = configMarker(result?.config);
-        if (marker) found[index] = { entityId, marker };
+        if (marker) found[index] = { entityId, marker, deviceIds: coveredDevices(result?.config, marker) };
       } catch { /* skipped */ }
     }
   };

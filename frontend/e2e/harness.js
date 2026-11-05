@@ -284,6 +284,11 @@ if (params.has("notifications")) {
     "automation.mock_daily_report": { triggers: [{ trigger: "time", at: "08:00:00", id: "smart_plants_daily_report" }] },
     "automation.mock_porch_light": { triggers: [{ trigger: "sun", event: "sunset" }] },
   };
+  // A needs-water notification for the first plant only, opted in separately.
+  if (params.has("notifyplant")) {
+    state.states.push({ entity_id: "automation.mock_office_water", state: "on", attributes: { friendly_name: "Office Aloe needs water", id: "1761000000002", last_triggered: null }, last_updated: now });
+    state.automationConfigs["automation.mock_office_water"] = { triggers: [{ trigger: "smart_plants.needs_water", id: "smart_plants_needs_water_0a1b2c3d", target: { device_id: [state.devices[0].id] }, options: { behavior: "each" } }] };
+  }
   // The integration's All plants entity, which notifications target for all plants.
   state.entities.push({ id: uuid(7990), entity_id: "binary_sensor.smart_plants_all_plants", device_id: null, unique_id: "smart_plants:all_plants", platform: "smart_plants" });
 }
@@ -309,6 +314,8 @@ if (params.has("automations")) {
   );
   state.related.device[`device-${p.id}`] = ["water_reminder", "grow_light", "holiday_check", "morning_summary", "low_battery", "mist", "watering_helper"].map(id => `automation.mock_${id}`);
   state.related.entity["binary_sensor.smart_plants_all_plants"] = ["automation.mock_needs_water", "automation.mock_water_reminder"];
+  // The all-plants one was made in the Notifications dialog.
+  state.automationConfigs["automation.mock_needs_water"] = { triggers: [{ trigger: "smart_plants.needs_water", id: "smart_plants_needs_water", target: { entity_id: ["binary_sensor.smart_plants_all_plants"] } }] };
   if (!state.entities.some(e => e.unique_id === "smart_plants:all_plants")) state.entities.push({ id: uuid(7991), entity_id: "binary_sensor.smart_plants_all_plants", device_id: null, unique_id: "smart_plants:all_plants", platform: "smart_plants" });
 }
 // Home Assistant's root element opens its automation editor for this event.
@@ -584,14 +591,14 @@ if (!customElements.get("ha-icon-button")) {
   customElements.define("ha-icon-button", class extends HTMLElement {
     set label(value) { this._label = value; this.render(); }
     get label() { return this._label; }
-    set path(value) { this._path = value; }
+    set path(value) { this._path = value; this.render(); }
     // Like Home Assistant's element, focusing it focuses its button.
     focus(options) { this.shadowRoot?.querySelector("button")?.focus(options); }
     connectedCallback() { this.render(); }
     constructor() { super(); this.attachShadow({ mode: "open" }); }
     render() {
       if (!this.shadowRoot) return;
-      this.shadowRoot.innerHTML = `<button type="button" aria-label="${this._label ?? "Menu"}" style="width:44px;height:44px;border:0;border-radius:50%;background:transparent;cursor:pointer"><svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/></svg></button><style>button:focus-visible{outline:3px solid #03a9f4;outline-offset:2px}</style>`;
+      this.shadowRoot.innerHTML = `<button type="button" aria-label="${this._label ?? "Menu"}" style="width:44px;height:44px;border:0;border-radius:50%;background:transparent;cursor:pointer"><svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24">${this._path ? `<path d="${this._path}" fill="currentColor"/>` : `<circle cx="12" cy="5" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="19" r="2" fill="currentColor"/>`}</svg></button><style>button:focus-visible{outline:3px solid #03a9f4;outline-offset:2px}</style>`;
     }
   });
 }
@@ -607,7 +614,7 @@ if (!customElements.get("ha-dropdown-item")) {
     constructor() { super(); this.attachShadow({ mode: "open" }); }
     render() {
       if (!this.shadowRoot) return;
-      this.shadowRoot.innerHTML = `<button role="menuitem" type="button" ${this.disabled ? "disabled" : ""} style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:0;background:transparent;text-align:left"><slot></slot></button>`;
+      this.shadowRoot.innerHTML = `<button role="menuitem" type="button" ${this.disabled ? "disabled" : ""} style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:0;background:transparent;text-align:left"><slot name="icon"></slot><slot></slot><span style="margin-inline-start:auto"><slot name="details"></slot></span></button>`;
       this.shadowRoot.querySelector("button").addEventListener("click", () => {
         this.dispatchEvent(new CustomEvent("wa-select", { bubbles: true, composed: true, detail: { item: this } }));
         this.closest("ha-dropdown")?.closeMenu();

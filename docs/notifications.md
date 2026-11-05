@@ -13,8 +13,8 @@ conditions and the `smart_plants.get_report` action described in
 
 1. Open **Smart Plants** in the sidebar.
 2. On the plants overview or a plant's page, open **⋮ → Notifications…**. From a plant's page,
-   the notification starts with that plant chosen. A plant with no automations also offers
-   **Set up notifications** in its **Automations** card.
+   the notification starts with that plant chosen. A plant's **Automations** card also has
+   **Set up notifications**, and so does the screen that confirms a new plant.
 3. Choose one of the two notifications, the plants, and where to send the message.
 4. Select **Open in automation editor**. Home Assistant's editor opens with the automation
    filled in.
@@ -72,12 +72,31 @@ The list shows, in this order:
 
 ## Your notifications
 
+Until you set one up, the dialog starts with a short note on what notifications do. **Set one
+up** moves to the first choice of the form.
+
 When you have at least one notification set up this way, the dialog lists it under **Your
 notifications** with:
 
 - a switch that turns the automation on or off,
+- the plants it is for, or *For all plants*,
 - when it last sent a message,
 - **Edit**, which opens it in the automation editor.
+
+The plants come from the devices that the automation's Smart Plants trigger or condition
+targets, so they follow your edits in the automation editor. A notification whose plants were
+all deleted says so.
+
+With at least one notification, the panel also shows it in these places:
+
+- A bell in the panel header, next to **⋮**, with the number of notifications. It opens the
+  dialog. Without notifications there is no bell.
+- The number next to **Notifications…** in the **⋮** menus.
+- In a plant's **Automations** card, a bell icon and *Notification* on the rows of those
+  automations.
+
+The panel reads your automations once when it opens and again whenever Home Assistant reloads
+them, for example after you save in the automation editor.
 
 To delete one, use **Settings → Automations & scenes** in Home Assistant. If you pick the same
 notification and plants again, the dialog says that you already have it. You can still create
