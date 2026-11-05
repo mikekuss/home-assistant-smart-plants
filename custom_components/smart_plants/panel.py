@@ -34,7 +34,9 @@ _LOGGER = logging.getLogger(__name__)
 
 PANEL_URL_PATH = "smart-plants"
 PANEL_TITLE = "Smart Plants"
-PANEL_ICON = "mdi:sprout"
+# The card module (CARD_MODULE_URL), which every frontend session loads, adds
+# this icon set to window.customIcons (frontend/src/card/sidebar-icon.ts).
+PANEL_ICON = "smart-plants:logo"
 PANEL_WEBCOMPONENT = "smart-plants-panel"
 
 _STATIC_URL_PREFIX = "/smart_plants_static"
