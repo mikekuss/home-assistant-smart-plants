@@ -23,6 +23,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A [translation guide](docs/development/translations.md) explains how to add a language to the
   integration and the panel. The panel picks plural forms with the language's CLDR rules, so
   catalogs can add forms such as `_few` and `_many`.
+- Optional entities for logging and showing care: a *Watered* button and a *Last watered*
+  sensor for every plant, and a *Done* button and a *Last done* sensor for every care task. All
+  of them are disabled by default, so nothing changes until you enable one on the device page.
+  See [Entities](docs/entities.md#buttons).
 
 ### Changed
 

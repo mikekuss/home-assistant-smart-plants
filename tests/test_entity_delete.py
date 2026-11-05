@@ -35,7 +35,7 @@ ROLE = "test_moisture"
 def _production_entity_role_count() -> int:
     return sum(
         len(entity_roles(platform))
-        for platform in ("sensor", "binary_sensor", "number")
+        for platform in ("sensor", "binary_sensor", "number", "button")
     )
 
 

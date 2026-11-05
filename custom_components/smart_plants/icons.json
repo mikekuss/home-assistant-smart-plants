@@ -27,6 +27,9 @@
       }
     },
     "sensor": {
+      "last_watered": {
+        "default": "mdi:watering-can-outline"
+      },
       "care_task_fertilize_next": {
         "default": "mdi:flask-outline"
       },
@@ -43,6 +46,47 @@
         "default": "mdi:snowflake"
       },
       "care_task_custom_next": {
+        "default": "mdi:checkbox-marked-circle-outline"
+      },
+      "care_task_fertilize_last": {
+        "default": "mdi:flask-outline"
+      },
+      "care_task_prune_last": {
+        "default": "mdi:content-cut"
+      },
+      "care_task_repot_last": {
+        "default": "mdi:pot-mix-outline"
+      },
+      "care_task_pests_last": {
+        "default": "mdi:bug-outline"
+      },
+      "care_task_winter_protection_last": {
+        "default": "mdi:snowflake"
+      },
+      "care_task_custom_last": {
+        "default": "mdi:checkbox-marked-circle-outline"
+      }
+    },
+    "button": {
+      "watered": {
+        "default": "mdi:watering-can"
+      },
+      "care_task_fertilize_done": {
+        "default": "mdi:flask-outline"
+      },
+      "care_task_prune_done": {
+        "default": "mdi:content-cut"
+      },
+      "care_task_repot_done": {
+        "default": "mdi:pot-mix-outline"
+      },
+      "care_task_pests_done": {
+        "default": "mdi:bug-outline"
+      },
+      "care_task_winter_protection_done": {
+        "default": "mdi:snowflake"
+      },
+      "care_task_custom_done": {
         "default": "mdi:checkbox-marked-circle-outline"
       }
     }

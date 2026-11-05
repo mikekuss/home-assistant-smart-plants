@@ -11,8 +11,12 @@ evaluation cannot produce a valid computed percent; they never emit a
 synthetic healthy value.
 
 Each care task with a date schedule also gets a "next due" timestamp sensor,
-managed by ``CareEntityLifecycle`` and disabled by default. Reading care
-tasks have no due date and therefore no such sensor.
+and every care task a "last done" timestamp sensor, both managed by
+``CareEntityLifecycle`` and disabled by default. Reading care tasks have no
+due date and therefore no "next due" sensor.
+
+Every plant has a "last watered" timestamp sensor, disabled by default. It
+reads the newest watering in the care history.
 """
 
 from __future__ import annotations
@@ -30,11 +34,15 @@ from homeassistant.const import (
     UnitOfConductivity,
     UnitOfTemperature,
 )
+from homeassistant.util import dt as dt_util
 
+from .care import care_summary
 from .care_entities import (
+    TASK_SUFFIX_LAST,
     TASK_SUFFIX_NEXT,
     CareEntityLifecycle,
     compute_task_state,
+    last_done_timestamp,
     next_due_timestamp,
     task_role,
     task_translation_key,
@@ -79,11 +87,14 @@ ROLE_BATTERY = "battery"
 ROLE_CONDUCTIVITY = "conductivity"
 ROLE_SOIL_TEMPERATURE = "soil_temperature"
 ROLE_CO2 = "co2"
+ROLE_LAST_WATERED = "last_watered"
 
-# Name of a "next due" sensor whose task has its own name. The translated
+# Names of care task sensors whose task has its own name. The translated
 # pattern is used once the platform translations are loaded.
 _NAMED_NEXT_DUE_KEY: Final = "care_task_named_next"
 _NAMED_NEXT_DUE_DEFAULT: Final = "{task_name} next due"
+_NAMED_LAST_DONE_KEY: Final = "care_task_named_last"
+_NAMED_LAST_DONE_DEFAULT: Final = "{task_name} last done"
 
 
 class SmartPlantsSensorEntity(SmartPlantsEntity, SensorEntity):
@@ -728,11 +739,32 @@ class _Co2Sensor(SmartPlantsSensorEntity):
         return int(result.computed_ppm)
 
 
-class _CareTaskNextDueSensor(SmartPlantsSensorEntity):
-    """Local midnight of the day a care task is next due."""
+class _LastWateredSensor(SmartPlantsSensorEntity):
+    """When the plant was last watered, from its care history."""
 
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_entity_registry_enabled_default = False
+
+    def __init__(self, manager: SmartPlantsManager, plant_id: str) -> None:
+        super().__init__(manager, plant_id, ROLE_LAST_WATERED, ROLE_LAST_WATERED)
+
+    @property
+    def native_value(self) -> datetime | None:
+        plant = self._manager.snapshot.plants.get(self._plant_id)
+        if plant is None:
+            return None
+        last = care_summary(plant.care_events)["last_watered_at"]
+        return None if last is None else dt_util.parse_datetime(last)
+
+
+class _CareTaskSensor(SmartPlantsSensorEntity):
+    """A timestamp sensor of one care task, named after the task."""
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_registry_enabled_default = False
+    _suffix: str
+    _named_key: str
+    _named_default: str
 
     def __init__(
         self, manager: SmartPlantsManager, plant_id: str, task: CareTask
@@ -740,8 +772,8 @@ class _CareTaskNextDueSensor(SmartPlantsSensorEntity):
         super().__init__(
             manager,
             plant_id,
-            task_role(task.id, TASK_SUFFIX_NEXT),
-            f"{task_translation_key(task.type)}_next",
+            task_role(task.id, self._suffix),
+            f"{task_translation_key(task.type)}_{self._suffix}",
         )
         self._task_id = task.id
         self._sync_name(task)
@@ -763,9 +795,9 @@ class _CareTaskNextDueSensor(SmartPlantsSensorEntity):
         pattern = None
         if platform_data is not None:
             pattern = platform_data.platform_translations.get(
-                f"component.{DOMAIN}.entity.{PLATFORM}.{_NAMED_NEXT_DUE_KEY}.name"
+                f"component.{DOMAIN}.entity.{PLATFORM}.{self._named_key}.name"
             )
-        self._attr_name = (pattern or _NAMED_NEXT_DUE_DEFAULT).replace(
+        self._attr_name = (pattern or self._named_default).replace(
             "{task_name}", task.name
         )
 
@@ -794,12 +826,35 @@ class _CareTaskNextDueSensor(SmartPlantsSensorEntity):
     def available(self) -> bool:
         return super().available and self._task() is not None
 
+
+class _CareTaskNextDueSensor(_CareTaskSensor):
+    """Local midnight of the day a care task is next due."""
+
+    _suffix = TASK_SUFFIX_NEXT
+    _named_key = _NAMED_NEXT_DUE_KEY
+    _named_default = _NAMED_NEXT_DUE_DEFAULT
+
     @property
     def native_value(self) -> datetime | None:
         current = self._task()
         if current is None:
             return None
         return next_due_timestamp(compute_task_state(self._manager, *current).next_due)
+
+
+class _CareTaskLastDoneSensor(_CareTaskSensor):
+    """When a care task was last done."""
+
+    _suffix = TASK_SUFFIX_LAST
+    _named_key = _NAMED_LAST_DONE_KEY
+    _named_default = _NAMED_LAST_DONE_DEFAULT
+
+    @property
+    def native_value(self) -> datetime | None:
+        current = self._task()
+        if current is None:
+            return None
+        return last_done_timestamp(current[1])
 
 
 def _factory_moisture(
@@ -854,6 +909,12 @@ def _factory_co2(manager: SmartPlantsManager, plant: PlantRecord) -> SmartPlants
     return _Co2Sensor(manager, plant.id)
 
 
+def _factory_last_watered(
+    manager: SmartPlantsManager, plant: PlantRecord
+) -> SmartPlantsEntity:
+    return _LastWateredSensor(manager, plant.id)
+
+
 def _factory_role(
     manager: SmartPlantsManager,
     plant: PlantRecord,
@@ -870,6 +931,7 @@ def _factory_role(
         "computed_conductivity": _factory_conductivity,
         "computed_soil_temperature_celsius": _factory_soil_temperature,
         "computed_co2_ppm": _factory_co2,
+        "last_watered": _factory_last_watered,
     }
     return factories[entity.result_attribute or ""](manager, plant)
 
@@ -883,6 +945,12 @@ def _factory_care_task_next(
     manager: SmartPlantsManager, plant: PlantRecord, task: CareTask
 ) -> SmartPlantsEntity:
     return _CareTaskNextDueSensor(manager, plant.id, task)
+
+
+def _factory_care_task_last(
+    manager: SmartPlantsManager, plant: PlantRecord, task: CareTask
+) -> SmartPlantsEntity:
+    return _CareTaskLastDoneSensor(manager, plant.id, task)
 
 
 async def async_setup_entry(
@@ -901,7 +969,10 @@ async def async_setup_entry(
         hass,
         entry.runtime_data.manager,
         PLATFORM,
-        {TASK_SUFFIX_NEXT: _factory_care_task_next},
+        {
+            TASK_SUFFIX_NEXT: _factory_care_task_next,
+            TASK_SUFFIX_LAST: _factory_care_task_last,
+        },
         {},
         async_add_entities,
     )

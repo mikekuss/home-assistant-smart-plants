@@ -7,9 +7,9 @@ than by a fixed role table. Each platform that exposes care entities builds
 one ``CareEntityLifecycle`` with:
 
 - task factories, called once per care task (the per-task "due" binary
-  sensor and the "next due" sensor). Reading care tasks have no date, so
-  they get no "next due" sensor; switching a task to or from the reading
-  kind removes or recreates it;
+  sensor, the "next due" and "last done" sensors and the "done" button).
+  Reading care tasks have no date, so they get no "next due" sensor;
+  switching a task to or from the reading kind removes or recreates it;
 - plant factories, called once per plant that has at least one task (the
   plant-wide "care due" binary sensor).
 
@@ -62,6 +62,8 @@ ROLE_CARE_DUE: Final = "care_due"
 TASK_ROLE_PREFIX: Final = "care_task:"
 TASK_SUFFIX_DUE: Final = "due"
 TASK_SUFFIX_NEXT: Final = "next"
+TASK_SUFFIX_LAST: Final = "last"
+TASK_SUFFIX_DONE: Final = "done"
 
 # English names used when the platform translations are not loaded yet, for
 # example in attribute values computed before the entity joined a platform.
@@ -154,6 +156,28 @@ def last_done_date(task: CareTask) -> date | None:
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=dt_util.UTC)
     return dt_util.as_local(moment).date()
+
+
+def last_done_timestamp(task: CareTask) -> datetime | None:
+    """
+    Return when the task was last done, or ``None`` if it never was.
+
+    The latest Done in the care history counts with its time. The "last
+    done" date entered with the task counts as local midnight of that day,
+    the same way the schedule counts it as a Done.
+    """
+    candidates: list[datetime] = []
+    if task.last_done_at is not None and (
+        moment := dt_util.parse_datetime(task.last_done_at)
+    ):
+        candidates.append(
+            moment if moment.tzinfo is not None else moment.replace(tzinfo=dt_util.UTC)
+        )
+    if task.baseline_done_on is not None:
+        candidates.append(
+            dt_util.start_of_local_day(date.fromisoformat(task.baseline_done_on))
+        )
+    return max(candidates, default=None)
 
 
 def next_due_timestamp(next_due: date | None) -> datetime | None:
