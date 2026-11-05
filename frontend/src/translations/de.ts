@@ -624,7 +624,7 @@ export const de: Catalog = {
   "overview.no_match_query": "Keine Pflanze passt zu „{query}“.",
   "overview.show_all": "Alle Pflanzen anzeigen",
   "overview.integration_options": "Integrationsoptionen",
-  "overview.menu_notifications": "Benachrichtigungen…",
+  "overview.menu_notifications": "Benachrichtigungen",
   "overview.documentation": "Dokumentation",
 
   "card.no_sensors": "Noch keine Sensoren zugewiesen",
@@ -1138,6 +1138,9 @@ export const de: Catalog = {
   "snooze.undo": "Rückgängig",
 
   "notifications.title": "Benachrichtigungen",
+  "notifications.add": "Benachrichtigung hinzufügen",
+  "notifications.add_title": "Neue Benachrichtigung",
+  "notifications.loading": "Benachrichtigungen werden geladen…",
   "notifications.toggle_on_failed": "{name} konnte nicht eingeschaltet werden: {error}",
   "notifications.toggle_off_failed": "{name} konnte nicht ausgeschaltet werden: {error}",
   "notifications.intro": "Lass dir Nachrichten zu deinen Pflanzen schicken. Du prüfst und speicherst sie im Automatisierungseditor von Home Assistant.",

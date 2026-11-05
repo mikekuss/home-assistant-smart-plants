@@ -8,12 +8,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
-- Once you have a notification, a bell in the panel header opens the **Notifications** dialog
-  and shows how many you have. The **⋮** menus show the same number next to
-  **Notifications…**, and a plant's **Automations** card marks those automations with a bell.
-  Without notifications nothing new appears. See [Notifications](docs/notifications.md#your-notifications).
-- Each notification in the **Notifications** dialog says which plants it is for. Without
-  notifications, the dialog explains what they do.
+- Notifications have their own page in the panel, at `/smart-plants/notifications`. It lists
+  your notifications with a switch, their plants, when they last sent a message and **Edit**,
+  and **Add notification** opens the setup. Open it with **⋮ > Notifications**. Without
+  notifications, the page explains what they do. See
+  [Notifications](docs/notifications.md#your-notifications).
+- Once you have a notification, a bell with a check mark in the panel header opens the
+  **Notifications** page. The bell shows no number, so it doesn't look like unread messages;
+  the **⋮** menus show how many you have next to **Notifications**, and a plant's
+  **Automations** card marks those automations with a bell. Without notifications nothing new
+  appears.
+- Each notification on the **Notifications** page says which plants it is for.
 - The screen that confirms a new plant has a **Set up notifications** button.
 - A [translation guide](docs/development/translations.md) explains how to add a language to the
   integration and the panel. The panel picks plural forms with the language's CLDR rules, so

@@ -623,7 +623,7 @@ export const en = {
   "overview.no_match_query": "No plant matches “{query}”.",
   "overview.show_all": "Show all plants",
   "overview.integration_options": "Integration options",
-  "overview.menu_notifications": "Notifications…",
+  "overview.menu_notifications": "Notifications",
   "overview.documentation": "Documentation",
 
   "card.no_sensors": "No sensors assigned yet",
@@ -1137,6 +1137,9 @@ export const en = {
   "snooze.undo": "Undo",
 
   "notifications.title": "Notifications",
+  "notifications.add": "Add notification",
+  "notifications.add_title": "New notification",
+  "notifications.loading": "Loading notifications…",
   "notifications.toggle_on_failed": "{name} couldn't be turned on: {error}",
   "notifications.toggle_off_failed": "{name} couldn't be turned off: {error}",
   "notifications.intro": "Get a message about your plants. You review and save it in Home Assistant's automation editor.",

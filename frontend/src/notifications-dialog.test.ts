@@ -42,7 +42,7 @@ const root = (el: SmartPlantsPanel) => el.shadowRoot!;
 // A menu item's own text, without the count in its details slot.
 const itemLabel = (item: Element) => [...item.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join("").trim();
 const menuItem = (el: SmartPlantsPanel) => root(el).querySelector('ha-dropdown-item[value="notifications"]')!;
-const bell = (el: SmartPlantsPanel) => root(el).querySelector<HTMLElement>(".header-bell ha-icon-button");
+const bell = (el: SmartPlantsPanel) => root(el).querySelector<HTMLElement>("ha-icon-button.header-bell");
 async function openPlant(el: SmartPlantsPanel, name: string) {
   const card = el.shadowRoot!.querySelector("smart-plants-overview")!;
   [...card.shadowRoot!.querySelectorAll<HTMLElement>("button, a, [role=button]")].find(b => b.textContent?.includes(name))!.click();
@@ -50,8 +50,17 @@ async function openPlant(el: SmartPlantsPanel, name: string) {
 }
 const dialogElement = (el: SmartPlantsPanel) => root(el).querySelector("smart-plants-notifications");
 const dialog = (el: SmartPlantsPanel) => dialogElement(el)?.shadowRoot?.querySelector<HTMLDialogElement>("dialog") ?? null;
-async function openDialog(el: SmartPlantsPanel) {
+const pageElement = (el: SmartPlantsPanel) => root(el).querySelector("smart-plants-notifications-page");
+const onPage = <T extends Element = HTMLElement>(el: SmartPlantsPanel, selector: string) => [...pageElement(el)!.shadowRoot!.querySelectorAll<T>(selector)];
+const pageButton = (el: SmartPlantsPanel, name: string) => onPage<HTMLButtonElement>(el, "button").find(b => b.textContent?.trim() === name)!;
+async function openPage(el: SmartPlantsPanel) {
   root(el).querySelector(".panel-appbar ha-dropdown")!.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value: "notifications" } } }));
+  await settle(el); await settle(pageElement(el)!);
+}
+// The setup dialog opens from the page's Add notification button.
+async function openDialog(el: SmartPlantsPanel) {
+  await openPage(el);
+  (pageButton(el, "Add notification") ?? pageButton(el, "Set one up")).click();
   await settle(el); await settle(dialogElement(el)!); await settle(dialogElement(el)!);
 }
 const inside = <T extends Element = HTMLElement>(el: SmartPlantsPanel, selector: string) => dialog(el)!.querySelector<T>(selector);
@@ -61,7 +70,7 @@ async function change(el: SmartPlantsPanel, input: HTMLInputElement | HTMLSelect
   if (input instanceof HTMLInputElement && (input.type === "radio" || input.type === "checkbox")) input.checked = value === undefined ? !input.checked : value === "on";
   else if (value !== undefined) input.value = value;
   input.dispatchEvent(new Event("change", { bubbles: true }));
-  await settle(dialogElement(el)!);
+  await settle(dialogElement(el) ?? pageElement(el)!);
 }
 function captureEditor() {
   const opened: CustomEvent[] = [];
@@ -70,14 +79,15 @@ function captureEditor() {
   return { opened, stop: () => window.removeEventListener("hass-automation-editor", handler) };
 }
 
-describe("notifications dialog", () => {
+describe("notifications page and dialog", () => {
   it("adds one item to the overview menu", async () => {
     const { el } = await mount();
     const items = [...root(el).querySelectorAll("ha-dropdown-item")].map(item => item.getAttribute("value"));
     // Snooze all plants… shows too: the fixture has two active plants.
     expect(items).toEqual(["add-plant", "notifications", "snooze-all", "integration-options", "documentation"]);
-    expect(itemLabel(menuItem(el))).toBe("Notifications…");
+    expect(itemLabel(menuItem(el))).toBe("Notifications");
     expect(dialogElement(el)).toBeNull();
+    expect(pageElement(el)).toBeNull();
   });
   it("groups the overview menu and shows how many notifications exist", async () => {
     const { el } = await mount();
@@ -93,15 +103,37 @@ describe("notifications dialog", () => {
     expect(menuItem(el).querySelector(".menu-count")).toBeNull();
     expect(bell(el)).toBeNull();
   });
-  it("shows a bell in the header that opens the dialog and gets focus back", async () => {
+  it("shows a bell without a count that opens the Notifications page", async () => {
     const { el } = await mount();
     const button = bell(el)!;
     expect((button as unknown as { label: string }).label).toBe("Notifications, 2 set up");
-    expect(root(el).querySelector(".header-bell .bell-count")!.textContent).toBe("2");
-    button.click(); await settle(el); await settle(dialogElement(el)!);
-    expect(dialog(el)!.open).toBe(true);
-    buttonNamed(el, "Cancel").click(); await settle(el);
-    expect(root(el).activeElement).toBe(button);
+    expect((button as unknown as { path: string }).path).toMatch(/^M17\.75 21\.16/);
+    expect(root(el).querySelector(".bell-count")).toBeNull();
+    button.click(); await settle(el); await settle(pageElement(el)!);
+    expect(root(el).querySelector("h1")!.textContent).toBe("Notifications");
+    expect(location.pathname).toBe("/smart-plants/notifications");
+    // Home Assistant hands the new address back as the route.
+    el.route = { prefix: "/smart-plants", path: "/notifications" }; await settle(el);
+    expect(root(el).querySelector("h1")!.textContent).toBe("Notifications");
+    expect(dialogElement(el)).toBeNull();
+    // On the page itself the bell and the overview step aside.
+    expect(bell(el)).toBeNull();
+    expect(root(el).querySelector("smart-plants-overview")!.hidden).toBe(true);
+    root(el).querySelector<HTMLElement>(".panel-appbar .back")!.click(); await settle(el);
+    expect(pageElement(el)).toBeNull();
+    expect(root(el).querySelector("smart-plants-overview")!.hidden).toBe(false);
+    expect(location.pathname).toBe("/smart-plants");
+  });
+  it("opens the Notifications page from its link and leaves it with Back in the browser", async () => {
+    const { el } = await mount();
+    el.route = { prefix: "/smart-plants", path: "/notifications" };
+    await settle(el); await settle(pageElement(el)!);
+    expect(root(el).querySelector("h1")!.textContent).toBe("Notifications");
+    expect(onPage(el, ".notify-list li")).toHaveLength(2);
+    el.route = { prefix: "/smart-plants", path: "" };
+    await settle(el);
+    expect(pageElement(el)).toBeNull();
+    expect(root(el).querySelector("smart-plants-overview")!.hidden).toBe(false);
   });
   it("hides the bell once the last notification is gone", async () => {
     const { el, h } = await mount();
@@ -112,13 +144,16 @@ describe("notifications dialog", () => {
   });
   it("shows what notifications do and offers one when there are none", async () => {
     const { el } = await mount({ states: { "automation.lights": STATES["automation.lights"]! } });
-    await openDialog(el);
-    expect(inside(el, ".existing")).toBeNull();
-    const empty = inside(el, ".notify-empty")!;
-    expect(empty.querySelector("h3")!.textContent).toBe("No notifications yet");
+    await openPage(el);
+    expect(onPage(el, ".existing")).toHaveLength(0);
+    const empty = onPage(el, ".notify-empty")[0]!;
+    expect(empty.querySelector("h2")!.textContent).toBe("No notifications yet");
     expect(empty.textContent).toContain("a daily report or a message as soon as a plant needs water");
-    buttonNamed(el, "Set one up").click();
-    expect(dialogElement(el)!.shadowRoot!.activeElement).toBe(inside(el, 'input[name=notification-kind][value="daily_report"]'));
+    const offer = pageButton(el, "Set one up");
+    offer.click(); await settle(el); await settle(dialogElement(el)!); await settle(dialogElement(el)!);
+    expect(dialog(el)!.open).toBe(true);
+    buttonNamed(el, "Cancel").click(); await settle(el);
+    expect(pageElement(el)!.shadowRoot!.activeElement).toBe(offer);
   });
   it("shows which plants each notification is for", async () => {
     const water = notificationMarker("needs_water", ["device-plant-2"]);
@@ -130,8 +165,8 @@ describe("notifications dialog", () => {
     CONFIGS["automation.gone"] = { triggers: [{ trigger: "time", at: "08:00:00", id: gone }], conditions: [{ condition: "smart_plants.needs_attention", target: { device_id: ["device-removed"] } }] };
     try {
       const { el } = await mount({ states });
-      await openDialog(el);
-      const covers = Object.fromEntries(all(el, ".notify-list li").map(row => [row.querySelector(".row-text span")!.textContent, row.querySelector(".covers")!.textContent]));
+      await openPage(el);
+      const covers = Object.fromEntries(onPage(el, ".notify-list li").map(row => [row.querySelector(".row-text span")!.textContent, row.querySelector(".covers")!.textContent]));
       expect(covers).toEqual({ "Smart Plants: daily plant report": "For all plants", "Plant water (YAML)": "For all plants", "Office water": "For Office Aloe", "Old report": "The chosen plants were removed" });
     } finally { delete CONFIGS["automation.office"]; delete CONFIGS["automation.gone"]; }
   });
@@ -140,7 +175,8 @@ describe("notifications dialog", () => {
     await openDialog(el);
     expect(dialog(el)!.open).toBe(true);
     expect(dialogElement(el)!.shadowRoot!.activeElement?.id).toBe("notifications-title");
-    expect(inside(el, "h2")!.textContent).toBe("Notifications");
+    expect(inside(el, "h2")!.textContent).toBe("New notification");
+    expect(inside(el, ".notify-list")).toBeNull();
     expect(inside<HTMLInputElement>(el, 'input[name=notification-kind][value="daily_report"]')!.checked).toBe(true);
     expect(inside<HTMLInputElement>(el, "#daily-time")!.value).toBe("08:00");
     expect(inside(el, "#water-delay")).toBeNull();
@@ -156,14 +192,13 @@ describe("notifications dialog", () => {
     const send = inside<HTMLSelectElement>(el, "#send-to")!;
     expect(send.value).toBe("persistent");
     expect(send.querySelectorAll("optgroup")).toHaveLength(0);
-    expect(inside(el, ".existing")).toBeNull();
   });
   it("lists the notification automations made here with on/off, last sent and Edit", async () => {
     const { el, h } = await mount();
-    await openDialog(el);
+    await openPage(el);
     const reads = h.calls.filter(call => call.type === "automation/config").map(call => call.entity_id).sort();
     expect(reads).toEqual(["automation.daily", "automation.lights", "automation.yaml_water"]);
-    const rows = all(el, ".notify-list li");
+    const rows = onPage(el, ".notify-list li");
     expect(rows.map(row => row.querySelector(".row-text span")!.textContent)).toEqual(["Smart Plants: daily plant report", "Plant water (YAML)"]);
     expect(rows[0]!.textContent).toMatch(/Last sent/);
     expect(rows[1]!.textContent).toContain("Not sent yet");
@@ -182,12 +217,12 @@ describe("notifications dialog", () => {
   it("draws each on/off control as a native switch, disabled while it toggles", async () => {
     let finish!: () => void;
     const { el, h } = await mount({ callService: () => new Promise(resolve => { finish = () => resolve({}); }) });
-    await openDialog(el);
-    const [daily, yaml] = all(el, ".notify-list li").map(row => row.querySelector<HTMLInputElement>("input.switch")!);
+    await openPage(el);
+    const [daily, yaml] = onPage(el, ".notify-list li").map(row => row.querySelector<HTMLInputElement>("input.switch")!);
     expect(daily!.type).toBe("checkbox");
     expect(daily!.getAttribute("role")).toBe("switch");
     expect(daily!.getAttribute("aria-label")).toBe("Smart Plants: daily plant report");
-    const described = dialogElement(el)!.shadowRoot!.getElementById(daily!.getAttribute("aria-describedby")!);
+    const described = pageElement(el)!.shadowRoot!.getElementById(daily!.getAttribute("aria-describedby")!);
     expect(described!.textContent).toMatch(/^Last sent/);
     expect(daily!.disabled).toBe(false);
     await change(el, daily!, "off");
@@ -197,13 +232,13 @@ describe("notifications dialog", () => {
     daily!.dispatchEvent(new Event("change", { bubbles: true }));
     expect(h.calls.filter(call => call.type === "call_service")).toHaveLength(1);
     finish();
-    await settle(dialogElement(el)!);
+    await settle(pageElement(el)!);
     expect(daily!.disabled).toBe(false);
   });
   it("disables the switch of an unavailable automation", async () => {
     const { el } = await mount({ states: { ...STATES, "automation.yaml_water": state("automation.yaml_water", "unavailable", { friendly_name: "Plant water (YAML)" }) } });
-    await openDialog(el);
-    const switches = all<HTMLInputElement>(el, ".notify-list input.switch");
+    await openPage(el);
+    const switches = onPage<HTMLInputElement>(el, ".notify-list input.switch");
     expect(switches.map(s => s.disabled)).toEqual([false, true]);
   });
   it("reads the automations once, again after a reload, and stops listening when the panel goes", async () => {
@@ -221,7 +256,7 @@ describe("notifications dialog", () => {
     buttonNamed(el, "Cancel").click();
     await settle(el);
     expect(dialogElement(el)).toBeNull();
-    expect(root(el).activeElement).toBe(root(el).querySelector(".panel-appbar ha-dropdown [slot=trigger]"));
+    expect(pageElement(el)!.shadowRoot!.activeElement).toBe(pageButton(el, "Add notification"));
     expect(unsubscribe).not.toHaveBeenCalled();
     el.remove();
     expect(unsubscribe).toHaveBeenCalled();
@@ -322,32 +357,33 @@ describe("notifications dialog", () => {
   });
   it("shows German texts", async () => {
     const { el } = await mount({ language: "de" });
-    expect(itemLabel(menuItem(el))).toBe("Benachrichtigungen…");
-    await openDialog(el);
-    expect(inside(el, "h2")!.textContent).toBe("Benachrichtigungen");
+    expect(itemLabel(menuItem(el))).toBe("Benachrichtigungen");
+    expect((bell(el) as unknown as { label: string }).label).toBe("Benachrichtigungen, 2 eingerichtet");
+    await openPage(el);
+    expect(root(el).querySelector("h1")!.textContent).toBe("Benachrichtigungen");
+    expect(pageElement(el)!.shadowRoot!.textContent).toContain("Deine Benachrichtigungen");
+    expect(pageButton(el, "Benachrichtigung hinzufügen")).toBeDefined();
+    pageButton(el, "Benachrichtigung hinzufügen").click();
+    await settle(el); await settle(dialogElement(el)!); await settle(dialogElement(el)!);
+    expect(inside(el, "h2")!.textContent).toBe("Neue Benachrichtigung");
     expect(dialog(el)!.textContent).toContain("Täglicher Pflanzenbericht");
-    expect(dialog(el)!.textContent).toContain("Deine Benachrichtigungen");
     expect(buttonNamed(el, "Im Automatisierungseditor öffnen")).toBeDefined();
   });
 });
 
 describe("notifications from the plant page", () => {
-  it("opens from the plant page menu with that plant chosen", async () => {
+  it("opens the Notifications page from the plant page menu and goes back to the plant", async () => {
     const { el } = await mount();
-    const card = el.shadowRoot!.querySelector("smart-plants-overview")!;
-    [...card.shadowRoot!.querySelectorAll<HTMLElement>("button, a, [role=button]")].find(b => b.textContent?.includes("Office Aloe"))!.click();
-    await settle(el);
-    expect(itemLabel(menuItem(el))).toBe("Notifications…");
+    await openPlant(el, "Office Aloe");
+    expect(itemLabel(menuItem(el))).toBe("Notifications");
     const menu = root(el).querySelector(".panel-appbar ha-dropdown")!;
     const order = [...menu.children].filter(child => child.slot !== "trigger").map(child => child.getAttribute("value") ?? child.tagName.toLowerCase());
     expect(order).toEqual(["notifications", "snooze", "wa-divider", "open-device", "download-diagnostics", "wa-divider", "toggle-monitoring", "delete-plant"]);
     expect(menu.querySelector('[value="snooze"] ha-icon')!.getAttribute("icon")).toBe("mdi:alarm-snooze");
-    await openDialog(el);
-    expect(inside<HTMLInputElement>(el, 'input[name=notification-plants][value="choose"]')!.checked).toBe(true);
-    expect(all<HTMLInputElement>(el, ".plant-choices input").map(input => input.checked)).toEqual([false, true]);
-    buttonNamed(el, "Cancel").click(); await settle(el);
-    expect(dialogElement(el)).toBeNull();
-    expect(root(el).activeElement).toBe(root(el).querySelector(".panel-appbar ha-dropdown [slot=trigger]"));
+    await openPage(el);
+    expect(root(el).querySelector("h1")!.textContent).toBe("Notifications");
+    root(el).querySelector<HTMLElement>(".panel-appbar .back")!.click(); await settle(el);
+    expect(root(el).querySelector("h1")!.textContent).toBe("Office Aloe");
   });
 
   it("offers notifications in the Automations card while the plant has none", async () => {
@@ -389,12 +425,12 @@ describe("notifications from the plant page", () => {
 
   it("says when a switch could not be changed and shows the automation's state again", async () => {
     const { el } = await mount({ callService: () => Promise.reject({ code: "home_assistant_error", message: "Automation is busy." }) });
-    await openDialog(el);
-    const daily = all(el, ".notify-list li")[0]!.querySelector<HTMLInputElement>("input.switch")!;
+    await openPage(el);
+    const daily = onPage(el, ".notify-list li")[0]!.querySelector<HTMLInputElement>("input.switch")!;
     await change(el, daily, "off");
-    await settle(dialogElement(el)!);
+    await settle(pageElement(el)!);
     expect(daily.checked).toBe(true);
-    const error = all(el, ".notify-list li")[0]!.querySelector("[role=alert]");
+    const error = onPage(el, ".notify-list li")[0]!.querySelector("[role=alert]");
     expect(error?.textContent).toBe("Smart Plants: daily plant report couldn't be turned off: Automation is busy.");
   });
 });
