@@ -5,6 +5,7 @@
 // only once a card is on screen or the card editor opens. Without a card on
 // any dashboard this module only defines the element and the picker entry,
 // and it adds the sidebar icon of the Smart Plants panel.
+import { fadeIn } from "../components/motion.js";
 import { pickerText } from "./picker.js";
 import { registerSidebarIcon } from "./sidebar-icon.js";
 
@@ -69,6 +70,12 @@ export class SmartPlantsPlantCard extends HTMLElement {
     if (!config || typeof config !== "object") throw new Error("Invalid configuration");
     this._config = { ...config };
     this._content?.setConfig(this._config);
+    this._syncPlaceholder();
+  }
+
+  private _syncPlaceholder(): void {
+    const placeholder = this.shadowRoot?.querySelector<HTMLElement>(".placeholder");
+    if (placeholder) placeholder.style.minHeight = `${this.placeholderHeight()}px`;
   }
 
   // Masonry view: one unit is 50 pixels. In a column about 400 pixels wide the
@@ -85,14 +92,33 @@ export class SmartPlantsPlantCard extends HTMLElement {
     return { columns: 6, min_columns: 6, rows: "auto" };
   }
 
+  // Until the content module is there the card holds about the height of a
+  // card with these parts, so the cards below it do not jump when it loads.
+  placeholderHeight(): number {
+    const config = this._config;
+    return 170 + (config?.show_readings !== false ? 130 : 0) + (config?.show_watering !== false ? 70 : 0);
+  }
+
   connectedCallback(): void {
     if (!this.shadowRoot) {
       const root = this.attachShadow({ mode: "open" });
       const style = document.createElement("style");
       style.textContent = `:host { display: block; height: 100%; } ${CONTENT_ELEMENT} { display: block; height: 100%; }`
-        + " .error { display: block; padding: 16px; color: var(--error-color, #db4437); }";
+        + " .error { display: block; padding: 16px; color: var(--error-color, #db4437); }"
+        + " .placeholder { box-sizing: border-box; background: var(--ha-card-background, var(--card-background-color, #fff)); border-radius: var(--ha-card-border-radius, 12px);"
+        + " border: var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--divider-color, #e0e0e0)); animation: sp-pulse 1.4s ease-in-out infinite alternate; }"
+        + " @keyframes sp-pulse { from { opacity: 1; } to { opacity: .6; } }"
+        + " @media (prefers-reduced-motion: reduce) { .placeholder { animation: none; } }";
       root.append(style);
     }
+    const root = this.shadowRoot!;
+    if (!this._content && !root.querySelector(".placeholder, .error")) {
+      const placeholder = document.createElement("div");
+      placeholder.className = "placeholder";
+      placeholder.setAttribute("aria-hidden", "true");
+      root.append(placeholder);
+    }
+    this._syncPlaceholder();
     this._loadContent();
   }
 
@@ -110,7 +136,9 @@ export class SmartPlantsPlantCard extends HTMLElement {
       content.hass = this._hass;
       this._content = content;
       this.shadowRoot.querySelector(".error")?.remove();
+      this.shadowRoot.querySelector(".placeholder")?.remove();
       this.shadowRoot.append(content);
+      fadeIn(content);
     }).catch(() => {
       // For example the server restarted. Say so and try again later. The
       // cards share the import, so several cards still load it once.
@@ -122,6 +150,7 @@ export class SmartPlantsPlantCard extends HTMLElement {
 
   private _showError(): void {
     const root = this.shadowRoot!;
+    root.querySelector(".placeholder")?.remove();
     let error = root.querySelector<HTMLElement>(".error");
     if (!error) {
       error = document.createElement("ha-card");

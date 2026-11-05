@@ -9,7 +9,8 @@ import type { Localizer, MessageKey } from "./localize.js";
 import { CO2_STRESS_BUILTIN_DEFAULTS, CO2_STRESS_KEYS, CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, CONDUCTIVITY_STRESS_KEYS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_KEYS, LOW_BATTERY_STRESS_BUILTIN_DEFAULTS, LOW_BATTERY_STRESS_KEYS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_KEYS, SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, SOIL_TEMPERATURE_STRESS_KEYS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_KEYS, builtin, canonicalMoisture, co2StressInput, conductivityStressInput, confidenceGloss, confidenceLabel, contributorLabel, effectiveThresholds, humidityStressInput, keys, lowBatteryInput, lowLightInput, manualSpecies, missingMainSensor, moistureInput, moistureRole, plantDevice, problemBinaries, resolveSource, roleSourceConfig, roleSourceInput, roleSourceSpec, ROLE_SOURCE_SPECS, canonicalRoleSources, validateRoleSources, soilTemperatureStressInput, speciesCommonName, tags, temperatureStressInput, validateCo2StressOverrides, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowBatteryOverrides, validateLowLightOverrides, validateMoisture, validateSoilTemperatureStressOverrides, validateTaxonomy, validateTemperatureStressOverrides } from "./model.js";
 import type { ProblemBinaryRole, SourceRole } from "./model.js";
 import "./components/index.js";
-import { themeFallbacks } from "./components/shared-styles.js";
+import { fadeIn } from "./components/motion.js";
+import { skeletonStyles, themeFallbacks } from "./components/shared-styles.js";
 import { isDefined } from "./ha-elements.js";
 import { chipText } from "./overview-model.js";
 import { READING_ROLES, ROLE_META, formatValue, isReadingRole, readingLabel, relativeTime } from "./status.js";
@@ -17,7 +18,7 @@ import type { ReadingRole } from "./status.js";
 import { RANGE_SPECS, isHistoryRange } from "./history-model.js";
 import type { HistoryPoint, HistoryRange } from "./history-model.js";
 import { CARE_ICONS, CARE_KINDS, DETAIL_SECTIONS, SECTION_LABELS, careDetails, expander, formatDuration, friendlyName, headerReason, readingPhrase, plantStyles, readingsInOrder, renderHistoryCard, renderKeyReadings, renderReadingRow, reportedAt } from "./views/plant.js";
-import type { DetailSection, HistoryStatus } from "./views/plant.js";
+import type { DetailSection, HistoryStale, HistoryStatus } from "./views/plant.js";
 import { TASK_KINDS, careOnlyChange, draftFromTask, dueTasks, localDate, matchingTask, mergeTaskChanges, pickMonth, presetDraft, restDraft, restTaskChanges, suggestionDraft, summaryName, taskChip, taskEntityUniqueIds, taskName, validateDraft, validateRest } from "./care-plan.js";
 import type { RestDraft, TaskDraft } from "./care-plan.js";
 import { carePlanStyles, renderAutomate, renderCarePlan, renderRestEditor, renderTaskEditor, taskEditorTitle } from "./views/care-plan.js";
@@ -190,7 +191,7 @@ function stored(key: string): string | null { try { return localStorage.getItem(
 function store(key: string, value: string): void { try { localStorage.setItem(key, value); } catch { /* not persisted */ } }
 
 export class SmartPlantsPanel extends LitElement {
-  static styles = [themeFallbacks, styles, plantStyles, carePlanStyles];
+  static styles = [themeFallbacks, skeletonStyles, styles, plantStyles, carePlanStyles];
   // The bundle this document is running, taken from the URL it was loaded from.
   static bundleVersion: string | null = loadedBundleVersion(import.meta.url);
   @property({ attribute: false }) public hass?: HomeAssistantLike;
@@ -221,7 +222,9 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _historyRole: ReadingRole = (role => isReadingRole(role) ? role : "moisture")(stored(HISTORY_ROLE_KEY));
   @state() private _historyRange: HistoryRange = (range => isHistoryRange(range) ? range : "7d")(stored(HISTORY_RANGE_KEY));
   // Recorded values of one plant sensor for one time range, keyed by both.
-  @state() private _history: { key: string; status: HistoryStatus; points: HistoryPoint[] } | null = null;
+  // `stale` is the chart of the previous range of the same sensor, shown dimmed
+  // while the new range loads so the card keeps its height.
+  @state() private _history: { key: string; status: HistoryStatus; points: HistoryPoint[]; stale?: HistoryStale } | null = null;
   @state() private _careError = "";
   // A failed care history read, shown with a retry where the history would be.
   @state() private _careLoadError = "";
@@ -235,6 +238,9 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _overview: Record<string, PlantOverview> = {};
   // Kept apart from `_error` so a failed status read never blocks an edit.
   @state() private _overviewError = "";
+  // Until the first status read is answered the overview shows placeholders,
+  // not cards that would claim "0 need water" and then grow and reorder.
+  @state() private _statusRead = false;
   @state() private _thumbnails: Record<string, string> = {};
   @state() private _watering: ReadonlySet<string> = new Set();
   @state() private _edits: Edits | null = null;
@@ -352,11 +358,21 @@ export class SmartPlantsPanel extends LitElement {
     }
     this._syncRelated();
     this._syncNotifications();
+    this._fadeLoaded(changed);
     const dialog = this.shadowRoot?.querySelector("dialog");
     let active: Element | null | undefined = null;
     // Some DOM implementations throw when the focused element was just removed, for example by a tab switch.
     try { active = this.shadowRoot?.activeElement; } catch { active = null; }
     if (dialog?.open && (!active || !dialog.contains(active) || active.matches(":disabled"))) dialog.querySelector<HTMLElement>("button")?.focus();
+  }
+  // The chart and the care history fade in once when they replace their
+  // placeholders; a refresh of content already shown does not animate.
+  private _fadeLoaded(changed: PropertyValues): void {
+    if (changed.has("_history")) {
+      const before = changed.get("_history") as { key: string; status: HistoryStatus; stale?: HistoryStale } | null | undefined;
+      if (before?.status === "loading" && !before.stale && this._history?.status === "ready" && this._history.key === before.key) fadeIn(this.shadowRoot?.querySelector(".history-plot"));
+    }
+    if (changed.has("_careHistory") && changed.get("_careHistory") === null && this._careHistory) this.shadowRoot?.querySelectorAll(".care-content").forEach(element => fadeIn(element));
   }
   connectedCallback(): void {
     super.connectedCallback();
@@ -551,6 +567,10 @@ export class SmartPlantsPanel extends LitElement {
         if (!latest) { this._context++; this._formBusy = false; this._closeDialog(); this._base = null; this._conflict = null; this._edits = null; this._notice = this._l.t("notice.deleted_elsewhere"); void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("h1")?.focus()); }
       }
       this._syncImage();
+      // Status and readings come from the backend in one call; the panel never
+      // reconstructs hysteresis or grace from state timestamps. The read starts
+      // together with the registry reads, so the overview needs one round trip less.
+      const overviewRead = api.overview(hass).then(entries => ({ entries, error: null }), (error: unknown) => ({ entries: null, error }));
       try {
         const [areas, entities, devices, states] = await Promise.all([api.areas(hass), api.entities(hass), api.devices(hass), api.states(hass)]);
         if (request !== this._request) return;
@@ -565,12 +585,12 @@ export class SmartPlantsPanel extends LitElement {
           }
         }
       } catch (e) { if (request === this._request) this._registryError = this._friendly(e); }
-      // Status and readings come from the backend in one call; the panel never
-      // reconstructs hysteresis or grace from state timestamps.
-      try {
-        const overview = await api.overview(hass);
-        if (request === this._request) { this._overview = Object.fromEntries(overview.map(entry => [entry.plant_id, entry])); this._overviewError = ""; }
-      } catch (e) { if (request === this._request) { this._overview = {}; this._overviewError = this._friendly(e); } }
+      const status = await overviewRead;
+      if (request === this._request) {
+        if (status.entries) { this._overview = Object.fromEntries(status.entries.map(entry => [entry.plant_id, entry])); this._overviewError = ""; }
+        else { this._overview = {}; this._overviewError = this._friendly(status.error); }
+        this._statusRead = true;
+      }
       if (request === this._request) this._syncThumbnails();
       if (this._view.kind === "detail") {
         const targetId = this._view.plantId;
@@ -592,7 +612,7 @@ export class SmartPlantsPanel extends LitElement {
           if (request === this._request) { const next = { ...this._health }; delete next[targetId]; this._health = next; this._healthError = this._friendly(e); }
         }
       }
-    } catch (e) { if (request === this._request) { this._error = this._friendly(e); this._blocked = true; this._clearImage(); } }
+    } catch (e) { if (request === this._request) { this._error = this._friendly(e); this._blocked = true; this._statusRead = true; this._clearImage(); } }
     finally { if (request === this._request) this._loading = false; }
   }
   private _friendly(e: unknown): string {
@@ -822,7 +842,9 @@ export class SmartPlantsPanel extends LitElement {
   // While the care history is missing: loading, or the failed read with a retry.
   private _renderCareMissing(plantId: string) {
     const l = this._l;
-    if (!this._careLoadError) return html`<p class="card-b muted" role="status">${l.t("care.loading")}</p>`;
+    // Two rows in the shape of care entries hold the place of the list.
+    if (!this._careLoadError) return html`<div class="care-skeleton" aria-busy="true"><p class="sr-only" role="status">${l.t("care.loading")}</p>
+      <ul class="list" aria-hidden="true">${[0, 1].map(() => html`<li class="li"><span class="sk round sk-ic"></span><span class="li-main"><span class="sk line sk-title"></span><span class="sk line sk-meta"></span></span><span></span></li>`)}</ul></div>`;
     return html`<div class="card-b load-error" role="alert"><span>${l.t("care.load_failed", { error: this._careLoadError })}</span>
       <button type="button" class="btn text sm" @click=${(e: Event) => this._retryCare(plantId, e.currentTarget as HTMLElement)}>${l.t("history.retry")}</button></div>`;
   }
@@ -871,7 +893,14 @@ export class SmartPlantsPanel extends LitElement {
     if (sameKey && !force && Date.now() - this._historyLoadedAt < HISTORY_REFRESH_MS) return;
     const request = ++this._historyRequest; this._historyLoadedAt = Date.now();
     // A refresh keeps the drawn chart until the new values arrive.
-    if (!sameKey || this._history?.status !== "ready") this._history = { key, status: "loading", points: [] };
+    if (!sameKey || this._history?.status !== "ready") {
+      const previous = this._history;
+      const previousRange = previous?.key.slice(previous.key.lastIndexOf("|") + 1) as HistoryRange | undefined;
+      const stale = previous && !sameKey && previous.key.startsWith(`${entityId}|`) && previousRange
+        ? previous.status === "ready" ? previous.points.length ? { range: previousRange, points: previous.points } : undefined : previous.stale
+        : undefined;
+      this._history = { key, status: "loading", points: [], ...(stale ? { stale } : {}) };
+    }
     const spec = RANGE_SPECS[this._historyRange];
     const units = role === "temperature" || role === "soil_temperature" ? { temperature: "°C" } : undefined;
     void api.statistics(this.hass, entityId, new Date(Date.now() - spec.spanMs), spec.period, units).then(points => {
@@ -889,7 +918,7 @@ export class SmartPlantsPanel extends LitElement {
     const care = (this._careHistory?.events ?? []).map(event => ({ t: Date.parse(event.occurred_at), kind: event.kind })).filter(event => Number.isFinite(event.t));
     const lastWatered = o?.last_watered_at ? Date.parse(o.last_watered_at) : NaN;
     return renderHistoryCard(l, {
-      roles: target.roles, role: target.role, range: this._historyRange, status: data?.status ?? "loading", points: data?.points ?? [],
+      roles: target.roles, role: target.role, range: this._historyRange, status: data?.status ?? "loading", points: data?.points ?? [], stale: data?.stale,
       reading: o?.roles[target.role], care,
       lastWatered: Number.isFinite(lastWatered) ? lastWatered : null, now: Date.now(),
       // Other care starts on fertilizing next to the watering button, so the
@@ -1034,7 +1063,7 @@ export class SmartPlantsPanel extends LitElement {
         ${showFilters ? html`<div class="row" role="group" aria-label=${l.t("care.filter_label")}>${filters.map(([kind, label]) => html`<button type="button" class="fchip" aria-pressed=${careFilter === kind ? "true" : "false"} @click=${() => { this._careFilter = kind; }}>${label}</button>`)}</div>` : nothing}
         <p class="small muted" role="status">${l.tn(history.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${history.summary.last_watered_local_date ? l.t("care.last_watered", { date: l.date(history.summary.last_watered_local_date) }) : l.t("care.never_watered")}</p>
       </div>` : nothing}
-      ${!history ? this._renderCareMissing(plant.id) : !history.events.length ? html`<p class="card-b muted">${l.t("care.empty")}</p>` : !events.length ? html`<p class="card-b muted">${l.t("care.filter_empty")}</p>`
+      <div class="care-content">${!history ? this._renderCareMissing(plant.id) : !history.events.length ? html`<p class="card-b muted">${l.t("care.empty")}</p>` : !events.length ? html`<p class="card-b muted">${l.t("care.filter_empty")}</p>`
         : html`<ul class="list" aria-label=${l.t("care.events_label")}>${events.map(event => {
           const extra = careDetails(l, event, fieldLabel);
           const when = l.recordedDateTime(event.occurred_at);
@@ -1045,7 +1074,7 @@ export class SmartPlantsPanel extends LitElement {
               <ha-dropdown-item value="edit" ?disabled=${busy}>${l.t("care.edit_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>
               <ha-dropdown-item value="delete" ?disabled=${busy}>${l.t("care.delete_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>
             </ha-dropdown></li>`;
-        })}</ul>`}</section>
+        })}</ul>`}</div></section>
       ${planFirst ? nothing : carePlan}`;
   }
   private _edit(part: Partial<Edits>): void { if (this._edits) this._edits = { ...this._edits, ...part }; }
@@ -2193,9 +2222,9 @@ export class SmartPlantsPanel extends LitElement {
         ${this._renderHistory(plant)}
         <section class="sp-card" aria-labelledby="recent-heading"><div class="card-h"><h3 id="recent-heading">${l.t("recent.heading")}</h3>
           ${history?.events.length ? html`<button type="button" class="btn text sm" @click=${() => this._openSection("care")}>${l.t("recent.show_all")}</button>` : nothing}</div>
-          ${!history ? this._renderCareMissing(plant.id) : recent.length ? html`<ul class="list">${recent.map(event => html`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${CARE_ICONS[event.kind]}></ha-icon></span>
+          <div class="care-content">${!history ? this._renderCareMissing(plant.id) : recent.length ? html`<ul class="list">${recent.map(event => html`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${CARE_ICONS[event.kind]}></ha-icon></span>
             <span class="li-main"><span class="li-title">${l.t(`care_done.${event.kind}`)}</span><span class="li-sub">${l.date(event.local_date)}</span></span><span></span></li>`)}</ul>`
-            : html`<div class="card-b"><div class="empty-box"><span>${l.t("care.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._openCareForm()}>${l.t("detail.log_care")}</button></div></div>`}
+            : html`<div class="card-b"><div class="empty-box"><span>${l.t("care.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._openCareForm()}>${l.t("detail.log_care")}</button></div></div>`}</div>
         </section>
       </div>
       <div class="stack">
@@ -2470,7 +2499,7 @@ export class SmartPlantsPanel extends LitElement {
       ${this._creationNotice && this._view.kind !== "create" ? html`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && !(this._view.kind === "detail" && this._view.plantId === this._createdPlantId) ? html`<button ?disabled=${this._formBusy} @click=${() => { if (this._createdPlantId) this._show({ kind: "detail", plantId: this._createdPlantId }); }}>${l.t("panel.open_created")}</button>` : nothing}` : nothing}
       ${this._view.kind === "list" && this._overviewError ? this._renderStatusError() : nothing}
       <smart-plants-overview ?hidden=${this._view.kind !== "list"} .l=${l} .plants=${this._plants} .overview=${this._overview} .areaNames=${this._plantAreaNames()}
-        .thumbnails=${this._thumbnails} .watering=${this._watering} .timeZone=${this._timeZone()} .loading=${this._loading} .blocked=${this._blocked}
+        .thumbnails=${this._thumbnails} .watering=${this._watering} .timeZone=${this._timeZone()} .loading=${this._loading} .pending=${!this._statusRead} .blocked=${this._blocked}
         @open-plant=${(e: CustomEvent<OpenPlantDetail>) => this._openFromOverview(e.detail)} @add-plant=${() => this._show({ kind: "create" })} @log-watering=${(e: CustomEvent<{ plantId: string }>) => void this._logWatering(e.detail.plantId)}></smart-plants-overview>
       ${this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : nothing}
       ${this._view.kind === "notifications" ? html`<smart-plants-notifications-page .hass=${this.hass} .l=${l} .plants=${this._plants} .devices=${this._devices} .states=${this._states} .found=${this._notifications}

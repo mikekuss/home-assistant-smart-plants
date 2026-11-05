@@ -1,7 +1,8 @@
 import { LitElement, css, html, nothing } from "lit";
 import { property, state } from "lit/decorators.js";
 import "../components/index.js";
-import { themeFallbacks } from "../components/shared-styles.js";
+import { fadeIn } from "../components/motion.js";
+import { skeletonStyles, themeFallbacks } from "../components/shared-styles.js";
 import { ENGLISH } from "../localize.js";
 import type { Localizer, MessageKey } from "../localize.js";
 import { OVERVIEW_FILTERS, OVERVIEW_SORTS, cardReason, chipText, groupByArea, matchesFilter, matchesSearch, secondaryReadings, sortItems, wateredText } from "../overview-model.js";
@@ -31,7 +32,7 @@ export interface OpenPlantDetail { plantId: string; section?: "sensors" }
 // per plant. It only renders; the panel owns data loading and mutations and
 // listens for `open-plant`, `add-plant` and `log-watering`.
 export class SmartPlantsOverview extends LitElement {
-  static styles = [themeFallbacks, css`
+  static styles = [themeFallbacks, skeletonStyles, css`
     /* White text on the theme's primary colour needs a slightly darker fill to reach 4.5:1. */
     :host { display: block; container-type: inline-size; --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000); }
     :host([hidden]) { display: none; }
@@ -109,7 +110,21 @@ export class SmartPlantsOverview extends LitElement {
     .filled:disabled { opacity: .5; cursor: default; }
     a.text-button { text-decoration: none; display: inline-flex; align-items: center; }
     .no-results { background: var(--ha-card-background, var(--sp-card)); border: 1px solid var(--divider-color, #e0e0e0); border-radius: var(--ha-card-border-radius, 12px); }
-    .loading { color: var(--sp-text-secondary); }
+    /* Placeholders sized like a tile, the count line and a card with one reading. */
+    .tile.sk-tile { cursor: default; }
+    .sk-ico { width: 40px; height: 40px; flex: none; }
+    .sk-tile .txt { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .sk-num { width: 28px; height: 18px; }
+    .sk-lbl { width: 70%; }
+    .sk-count { width: 110px; height: 12px; margin: 3px 0; }
+    .sk-avatar { width: 56px; height: 56px; border-radius: 12px; flex: none; }
+    .sk-name { width: 55%; height: 16px; margin: 2px 0 4px; }
+    .sk-sub { width: 38%; }
+    .sk-chip { width: 96px; height: 28px; border-radius: 14px; }
+    .sk-reason { width: 72%; }
+    .sk-bar { height: 52px; border-radius: 8px; }
+    .sk-last { width: 42%; }
+    .sk-button { width: 96px; height: 32px; border-radius: 16px; flex: none; }
 
     .fab { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 3;
       display: inline-flex; align-items: center; gap: 10px; height: 56px; padding: 0 22px 0 18px; border: 0; border-radius: 28px; cursor: pointer; font-size: 15px; font-weight: 500;
@@ -128,7 +143,10 @@ export class SmartPlantsOverview extends LitElement {
       .summary, .summary.five { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px; }
       .summary::-webkit-scrollbar { display: none; }
       .tile { flex: none; gap: 6px; height: 36px; padding: 0 12px 0 6px; border-radius: 18px; }
-      .tile .ico { width: 26px; height: 26px; }
+      .tile .ico, .sk-ico { width: 26px; height: 26px; }
+      .sk-tile { width: 112px; }
+      .sk-tile .txt { flex-direction: row; align-items: center; }
+      .sk-num { width: 14px; height: 12px; }
       .tile .ico ha-icon { --mdc-icon-size: 16px; }
       .tile .txt { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
       .tile .num { display: inline; font-size: 14px; line-height: 1; }
@@ -144,6 +162,8 @@ export class SmartPlantsOverview extends LitElement {
   @property({ attribute: false }) public thumbnails: Record<string, string> = {};
   @property({ attribute: false }) public watering: ReadonlySet<string> = new Set();
   @property({ type: Boolean }) public loading = false;
+  // The first status read is still open: placeholders instead of cards.
+  @property({ type: Boolean }) public pending = false;
   @property({ type: Boolean }) public blocked = false;
   @property({ attribute: false }) public now: number | undefined = undefined;
   // Home Assistant's time zone, for the day a snooze ends.
@@ -179,15 +199,12 @@ export class SmartPlantsOverview extends LitElement {
   protected render() {
     const l = this.l;
     if (this.hidden) return nothing;
-    if (this.loading && !this.plants.length) return html`<p class="loading" role="status">${l.t("list.loading")}</p>`;
-    if (!this.plants.length) return this._renderEmpty();
-    const items = this._items();
-    const shown = items.filter(item => matchesFilter(this._filter, item.status, item.careDue, item.snoozed) && matchesSearch(item, this._query));
-    // The Care due tile appears only while some plant that is not snoozed has a task due.
-    const filters = OVERVIEW_FILTERS.filter(filter => filter !== "care" || items.some(item => matchesFilter("care", item.status, item.careDue, item.snoozed)) || this._filter === "care");
-    const filtered = this._filter !== "all";
-    return html`<div class="content">
-      <div class="summary ${filters.length === 5 ? "five" : ""}" role="group" aria-label=${l.t("overview.filter_label")}>${filters.map(filter => this._renderTile(filter, items.filter(item => matchesFilter(filter, item.status, item.careDue, item.snoozed)).length))}</div>
+    const skeleton = this._skeleton();
+    if (!skeleton && !this.plants.length) return this._renderEmpty();
+    // The search and sort bar stays the same element while the placeholders
+    // are replaced, so typing into it during the first load keeps its focus.
+    return html`<div class="content" aria-busy=${skeleton ? "true" : nothing}>
+      ${skeleton ? this._renderSkeletonTop() : this._renderSummary()}
       <div class="listbar">
         <label class="search"><ha-icon aria-hidden="true" icon="mdi:magnify"></ha-icon>
           <input type="search" .value=${this._query} placeholder=${l.t("overview.search")} aria-label=${l.t("overview.search")} @input=${(e: Event) => { this._query = (e.target as HTMLInputElement).value; }}></label>
@@ -197,11 +214,53 @@ export class SmartPlantsOverview extends LitElement {
             ${this._sort === sort ? html`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : html`<ha-icon slot="icon" .icon=${SORT_ICONS[sort]}></ha-icon>`}${l.t(SORT_LABELS[sort])}</ha-dropdown-item>`)}
         </ha-dropdown>
       </div>
-      <div class="countline"><p role="status">${l.t("list.count_filtered", { shown: shown.length, total: items.length })}${filtered ? ` · ${l.t(TILES[this._filter].label)}` : ""}</p>
-        ${filtered || this._query ? html`<button type="button" class="text-button" @click=${() => this._clear()}>${l.t("overview.clear_filter")}</button>` : nothing}</div>
-      ${shown.length ? this._renderList(shown) : this._renderNoResults()}
+      ${skeleton ? this._renderSkeletonList() : this._renderResults()}
     </div>
     <button type="button" class="fab" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("panel.add_plant")}</button>`;
+  }
+
+  private _skeleton(): boolean { return this.pending || (this.loading && !this.plants.length); }
+
+  private _wasSkeleton = false;
+  protected override updated(): void {
+    const skeleton = !this.hidden && this._skeleton();
+    // Content that replaces the placeholders fades in once; later renders
+    // (the regular refresh, filtering, sorting) never animate.
+    if (this._wasSkeleton && !skeleton && !this.hidden) this.renderRoot.querySelectorAll(".summary, .countline, .grid, .group-heading, .no-results").forEach(element => fadeIn(element));
+    this._wasSkeleton = skeleton;
+  }
+
+  private _renderSummary() {
+    const items = this._items();
+    // The Care due tile appears only while some plant that is not snoozed has a task due.
+    const filters = OVERVIEW_FILTERS.filter(filter => filter !== "care" || items.some(item => matchesFilter("care", item.status, item.careDue, item.snoozed)) || this._filter === "care");
+    return html`<div class="summary ${filters.length === 5 ? "five" : ""}" role="group" aria-label=${this.l.t("overview.filter_label")}>${filters.map(filter => this._renderTile(filter, items.filter(item => matchesFilter(filter, item.status, item.careDue, item.snoozed)).length))}</div>`;
+  }
+
+  private _renderResults() {
+    const l = this.l;
+    const items = this._items();
+    const shown = items.filter(item => matchesFilter(this._filter, item.status, item.careDue, item.snoozed) && matchesSearch(item, this._query));
+    const filtered = this._filter !== "all";
+    return html`<div class="countline"><p role="status">${l.t("list.count_filtered", { shown: shown.length, total: items.length })}${filtered ? ` · ${l.t(TILES[this._filter].label)}` : ""}</p>
+        ${filtered || this._query ? html`<button type="button" class="text-button" @click=${() => this._clear()}>${l.t("overview.clear_filter")}</button>` : nothing}</div>
+      ${shown.length ? this._renderList(shown) : this._renderNoResults()}`;
+  }
+
+  private _renderSkeletonTop() {
+    return html`<div class="summary" aria-hidden="true">${[0, 1, 2, 3].map(() => html`<div class="tile sk-tile"><span class="sk round sk-ico"></span><span class="txt"><span class="sk sk-num"></span><span class="sk line sk-lbl"></span></span></div>`)}</div>`;
+  }
+
+  // One placeholder card per plant once the list is known, three before.
+  private _renderSkeletonList() {
+    const count = this.plants.length || 3;
+    return html`<div class="countline"><p class="sr-only" role="status">${this.l.t("list.loading")}</p><span class="sk sk-count" aria-hidden="true"></span></div>
+      <ul class="grid" aria-hidden="true">${Array.from({ length: count }, () => html`<li><div class="card">
+        <div class="head"><span class="sk sk-avatar"></span><span class="title"><span class="sk sk-name"></span><span class="sk line sk-sub"></span></span></div>
+        <div class="status"><span class="sk sk-chip"></span><span class="sk line sk-reason"></span></div>
+        <div class="readings"><span class="sk sk-bar"></span></div>
+        <div class="foot"><span class="sk line sk-last"></span><span class="sk sk-button"></span></div>
+      </div></li>`)}</ul>`;
   }
 
   private _renderTile(filter: OverviewFilter, count: number) {

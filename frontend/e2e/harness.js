@@ -252,6 +252,8 @@ function overviewOf(p) {
   };
 }
 const params = new URLSearchParams(location.search);
+// `?hold=type,type` holds the first reply of these message types until state.release(type).
+for (const key of params.get("hold")?.split(",").filter(Boolean) ?? []) state.holdNext[key] = true;
 if (params.has("seed") || params.has("diagnostics")) state.seed();
 if (params.has("diagnostics")) state.seedDiagnostics();
 if (params.has("history")) state.seedHistory();
@@ -340,7 +342,9 @@ const connection = {
     state.messages.push(copy(message));
     if (state.failures[message.type]) reject(state.failures[message.type]);
     if (Object.hasOwn(state.malformed, message.type)) return copy(state.malformed[message.type]);
-    return viewResult(await respond(message));
+    // Any message type can be held, for loading states; some types are also
+    // held inside respond() after their reply was computed.
+    return viewResult(await hold(message.type, await respond(message)));
   },
 };
 // Storage-shaped responses; sendMessagePromise applies the PlantView defaults.

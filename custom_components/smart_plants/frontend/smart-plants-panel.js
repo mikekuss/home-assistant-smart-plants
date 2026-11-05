@@ -5379,6 +5379,14 @@ function $i(e) {
 		default: return "var(--sp-disabled)";
 	}
 }
+var ea = o`
+  .sk { display: block; background: color-mix(in srgb, var(--primary-text-color, #212121) 8%, transparent); border-radius: 6px;
+    animation: sp-pulse 1.4s ease-in-out infinite alternate; }
+  .sk.line { height: 12px; }
+  .sk.round { border-radius: 50%; }
+  @keyframes sp-pulse { from { opacity: 1; } to { opacity: .55; } }
+  @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+`;
 // \0@oxc-project+runtime@0.156.0/helpers/esm/decorate.js
 function W(e, t, n, r) {
 	var i = arguments.length, a = i < 3 ? t : r === null ? r = Object.getOwnPropertyDescriptor(t, n) : r, o;
@@ -5387,7 +5395,7 @@ function W(e, t, n, r) {
 	return i > 3 && a && Object.defineProperty(t, n, a), a;
 }
 // src/components/sp-status-chip.ts
-var ea, ta = class extends C {
+var ta, na = class extends C {
 	constructor(...e) {
 		super(...e), this.status = "healthy", this.label = "", this.more = 0, this.l = L;
 	}
@@ -5400,7 +5408,7 @@ var ea, ta = class extends C {
 		return x`<span class="chip" part="chip"><ha-icon aria-hidden="true" .icon=${e.icon}></ha-icon><span class="label">${t}</span>${this.more > 0 ? x`<span aria-hidden="true">${this.l.t("plant_status.more", { count: this.more })}</span><span class="sr-only">${this.l.t("plant_status.more_label", { count: this.more })}</span>` : S}</span>`;
 	}
 };
-ea = ta, ea.styles = [
+ta = na, ta.styles = [
 	U,
 	Qi,
 	o`
@@ -5415,9 +5423,9 @@ ea = ta, ea.styles = [
     ha-icon { --mdc-icon-size: 17px; flex: none; }
     .label { overflow-wrap: anywhere; hyphens: auto; }
   `
-], W([w({ reflect: !0 })], ta.prototype, "status", void 0), W([w()], ta.prototype, "label", void 0), W([w({ type: Number })], ta.prototype, "more", void 0), W([w({ attribute: !1 })], ta.prototype, "l", void 0), customElements.get("sp-status-chip") || customElements.define("sp-status-chip", ta);
+], W([w({ reflect: !0 })], na.prototype, "status", void 0), W([w()], na.prototype, "label", void 0), W([w({ type: Number })], na.prototype, "more", void 0), W([w({ attribute: !1 })], na.prototype, "l", void 0), customElements.get("sp-status-chip") || customElements.define("sp-status-chip", na);
 // src/components/sp-moisture-bar.ts
-var na, ra = (e) => Math.min(100, Math.max(0, e)), ia = class extends C {
+var ra, ia = (e) => Math.min(100, Math.max(0, e)), aa = class extends C {
 	constructor(...e) {
 		super(...e), this.value = null, this.range = null, this.state = "ok", this.lastReported = null, this.now = void 0, this.l = L;
 	}
@@ -5431,20 +5439,20 @@ var na, ra = (e) => Math.min(100, Math.max(0, e)), ia = class extends C {
 		let e = this.l, t = this.range, n = this.value, r = Ft(e, "moisture", t, "%"), i = n === null ? "—" : M(e, n, "%"), a = n === null ? e.t("moisture_bar.label_no_value") : r ? e.t("moisture_bar.label", {
 			value: i,
 			range: r
-		}) : e.t("moisture_bar.label_no_range", { value: i }), o = this._hasRange(), s = o ? ra(t.min) : 0, c = o ? ra(t.max) : 0, l = t?.target ?? null, u = this.state === "stale" && this.lastReported;
+		}) : e.t("moisture_bar.label_no_range", { value: i }), o = this._hasRange(), s = o ? ia(t.min) : 0, c = o ? ia(t.max) : 0, l = t?.target ?? null, u = this.state === "stale" && this.lastReported;
 		return x`
       <div class="top"><span class="name"><ha-icon aria-hidden="true" .icon=${A.moisture.icon}></ha-icon>${j(e, "moisture")}</span>
         <span class="value ${this.state}" aria-hidden="true">${i}</span></div>
       <div class="track" role="img" aria-label=${a}>
         ${o ? x`<div class="band" style="left:${s}%;width:${Math.max(0, c - s)}%"></div>` : S}
-        ${l === null ? S : x`<div class="tick" style="left:${ra(l)}%"></div>`}
+        ${l === null ? S : x`<div class="tick" style="left:${ia(l)}%"></div>`}
         ${n === null ? S : x`<div class="dot ${this.state}" style="left:${Math.min(98, Math.max(2, n))}%"></div>`}
       </div>
       <div class="scale" aria-hidden="true"><span class="end">${e.t("moisture_bar.dry")}</span>${r ? x`<span>${e.t("moisture_bar.target", { range: r })}</span>` : S}<span class="end">${e.t("moisture_bar.wet")}</span></div>
       ${u ? x`<div class="age"><ha-icon aria-hidden="true" icon="mdi:clock-outline"></ha-icon>${e.t("moisture_bar.last_update", { age: Lt(e, this.lastReported, this.now) })}</div>` : S}`;
 	}
 };
-na = ia, na.styles = [U, o`
+ra = aa, ra.styles = [U, o`
     :host { display: block; font-size: 13px; color: var(--sp-text); }
     .top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; column-gap: 8px; }
     .name { display: inline-flex; align-items: center; gap: 4px; color: var(--sp-text-secondary); }
@@ -5471,9 +5479,9 @@ na = ia, na.styles = [U, o`
     }
     .age { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
     .age ha-icon { --mdc-icon-size: 15px; }
-  `], W([w({ type: Number })], ia.prototype, "value", void 0), W([w({ attribute: !1 })], ia.prototype, "range", void 0), W([w({ reflect: !0 })], ia.prototype, "state", void 0), W([w({ attribute: !1 })], ia.prototype, "lastReported", void 0), W([w({ attribute: !1 })], ia.prototype, "now", void 0), W([w({ attribute: !1 })], ia.prototype, "l", void 0), customElements.get("sp-moisture-bar") || customElements.define("sp-moisture-bar", ia);
+  `], W([w({ type: Number })], aa.prototype, "value", void 0), W([w({ attribute: !1 })], aa.prototype, "range", void 0), W([w({ reflect: !0 })], aa.prototype, "state", void 0), W([w({ attribute: !1 })], aa.prototype, "lastReported", void 0), W([w({ attribute: !1 })], aa.prototype, "now", void 0), W([w({ attribute: !1 })], aa.prototype, "l", void 0), customElements.get("sp-moisture-bar") || customElements.define("sp-moisture-bar", aa);
 // src/components/sp-reading-chip.ts
-var aa, oa = class extends C {
+var oa, sa = class extends C {
 	constructor(...e) {
 		super(...e), this.role = "temperature", this.value = null, this.unit = "", this.state = "ok", this.range = null, this.l = L;
 	}
@@ -5487,7 +5495,7 @@ var aa, oa = class extends C {
     </span>`;
 	}
 };
-aa = oa, aa.styles = [
+oa = sa, oa.styles = [
 	U,
 	Qi,
 	o`
@@ -5505,20 +5513,33 @@ aa = oa, aa.styles = [
     :host([state="low"]) ha-icon, :host([state="high"]) ha-icon { color: inherit; }
     :host([state="stale"]) .chip, :host([state="unavailable"]) .chip { opacity: .6; }
   `
-], W([w()], oa.prototype, "role", void 0), W([w({ type: Number })], oa.prototype, "value", void 0), W([w()], oa.prototype, "unit", void 0), W([w({ reflect: !0 })], oa.prototype, "state", void 0), W([w({ attribute: !1 })], oa.prototype, "range", void 0), W([w({ attribute: !1 })], oa.prototype, "l", void 0), customElements.get("sp-reading-chip") || customElements.define("sp-reading-chip", oa);
+], W([w()], sa.prototype, "role", void 0), W([w({ type: Number })], sa.prototype, "value", void 0), W([w()], sa.prototype, "unit", void 0), W([w({ reflect: !0 })], sa.prototype, "state", void 0), W([w({ attribute: !1 })], sa.prototype, "range", void 0), W([w({ attribute: !1 })], sa.prototype, "l", void 0), customElements.get("sp-reading-chip") || customElements.define("sp-reading-chip", sa);
+function ca() {
+	return typeof window.matchMedia == "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+function la(e, t = 180) {
+	e && typeof e.animate == "function" && !ca() && e.animate([{ opacity: 0 }, { opacity: 1 }], {
+		duration: t,
+		easing: "ease-out"
+	});
+}
 // src/components/sp-plant-avatar.ts
-var sa, ca = class extends C {
+var ua, da = /* @__PURE__ */ new Set(), fa = class extends C {
 	constructor(...e) {
 		super(...e), this.src = null, this.name = "", this.size = "small", this.l = L;
 	}
 	render() {
-		return x`<div class="tile" part="tile">${this.src ? x`<img src=${this.src} alt=${this.l.t("photo.alt", { name: this.name })} @error=${() => this.dispatchEvent(new CustomEvent("photo-error", {
+		return x`<div class="tile" part="tile">${this.src ? x`<img src=${this.src} alt=${this.l.t("photo.alt", { name: this.name })} @load=${(e) => this._loaded(e.currentTarget)} @error=${() => this.dispatchEvent(new CustomEvent("photo-error", {
 			bubbles: !0,
 			composed: !0
 		}))}>` : x`<ha-icon aria-hidden="true" icon="mdi:sprout"></ha-icon>`}</div>`;
 	}
+	_loaded(e) {
+		let t = e.getAttribute("src");
+		t && !da.has(t) && (da.add(t), la(e, 150));
+	}
 };
-sa = ca, sa.styles = [U, o`
+ua = fa, ua.styles = [U, o`
     :host { --sp-avatar-size: 56px; --sp-avatar-radius: 12px; display: inline-block; flex: none; width: var(--sp-avatar-size); height: var(--sp-avatar-size); max-width: 100%; }
     :host([size="large"]) { --sp-avatar-size: 132px; --sp-avatar-radius: 16px; }
     @media (max-width: 600px) { :host([size="large"]) { --sp-avatar-size: 76px; --sp-avatar-radius: 12px; } }
@@ -5526,9 +5547,9 @@ sa = ca, sa.styles = [U, o`
       background: color-mix(in srgb, var(--sp-primary) 12%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); }
     img { width: 100%; height: 100%; object-fit: cover; display: block; }
     ha-icon { --mdc-icon-size: calc(var(--sp-avatar-size) * .54); }
-  `], W([w({ attribute: !1 })], ca.prototype, "src", void 0), W([w()], ca.prototype, "name", void 0), W([w({ reflect: !0 })], ca.prototype, "size", void 0), W([w({ attribute: !1 })], ca.prototype, "l", void 0), customElements.get("sp-plant-avatar") || customElements.define("sp-plant-avatar", ca);
+  `], W([w({ attribute: !1 })], fa.prototype, "src", void 0), W([w()], fa.prototype, "name", void 0), W([w({ reflect: !0 })], fa.prototype, "size", void 0), W([w({ attribute: !1 })], fa.prototype, "l", void 0), customElements.get("sp-plant-avatar") || customElements.define("sp-plant-avatar", fa);
 // src/components/sp-empty-state.ts
-var la, ua = class extends C {
+var pa, ma = class extends C {
 	constructor(...e) {
 		super(...e), this.icon = "mdi:sprout", this.heading = "", this.compact = !1;
 	}
@@ -5537,7 +5558,7 @@ var la, ua = class extends C {
       <h2>${this.heading}</h2><div class="text"><slot></slot></div><div class="actions"><slot name="actions"></slot></div>`;
 	}
 };
-la = ua, la.styles = [U, o`
+pa = ma, pa.styles = [U, o`
     :host { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 48px 20px; color: var(--sp-text); }
     .art { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center;
       background: color-mix(in srgb, var(--sp-primary) 12%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); }
@@ -5549,12 +5570,12 @@ la = ua, la.styles = [U, o`
     :host([compact]) h2 { font-size: 18px; }
     .text { max-width: 44ch; color: var(--sp-text-secondary); }
     .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
-  `], W([w()], ua.prototype, "icon", void 0), W([w()], ua.prototype, "heading", void 0), W([w({
+  `], W([w()], ma.prototype, "icon", void 0), W([w()], ma.prototype, "heading", void 0), W([w({
 	type: Boolean,
 	reflect: !0
-})], ua.prototype, "compact", void 0), customElements.get("sp-empty-state") || customElements.define("sp-empty-state", ua);
+})], ma.prototype, "compact", void 0), customElements.get("sp-empty-state") || customElements.define("sp-empty-state", ma);
 // src/components/sp-history-chart.ts
-var da, fa = 200, G = {
+var ha, ga = 200, G = {
 	top: 10,
 	right: 12,
 	bottom: 24,
@@ -5615,7 +5636,7 @@ var da, fa = 200, G = {
 		}));
 	}
 	render() {
-		let e = this.l, t = this.points, n = Math.max(this._width, 240), r = n - G.left - G.right, i = fa - G.bottom, a = this.band, o = wn(t, [
+		let e = this.l, t = this.points, n = Math.max(this._width, 240), r = n - G.left - G.right, i = ga - G.bottom, a = this.band, o = wn(t, [
 			a?.min,
 			a?.max,
 			a?.target
@@ -5629,7 +5650,7 @@ var da, fa = 200, G = {
 		}, oe = this._pinned && y ? this.actions : [];
 		return x`
       <div class="plot" @keydown=${ae}>
-        <svg viewBox="0 0 ${n} ${fa}" role="img" aria-label=${this.summary}
+        <svg viewBox="0 0 ${n} ${ga}" role="img" aria-label=${this.summary}
           @pointermove=${b} @pointerdown=${ie} @pointerleave=${() => {
 			this._pinned || (this._active = null);
 		}}>
@@ -5668,14 +5689,14 @@ var da, fa = 200, G = {
       </div>`;
 	}
 };
-da = K, da.styles = [
+ha = K, ha.styles = [
 	U,
 	Qi,
 	o`
     :host { display: block; color: var(--sp-text); }
     .plot { position: relative; border-radius: 4px; }
     .plot:focus-within { outline: 2px solid var(--sp-primary); outline-offset: 2px; }
-    svg { display: block; width: 100%; height: ${fa}px; touch-action: pan-y; }
+    svg { display: block; width: 100%; height: ${ga}px; touch-action: pan-y; }
     text { font-size: 11px; fill: var(--sp-text-secondary); font-variant-numeric: tabular-nums; }
     .grid { stroke: color-mix(in srgb, var(--sp-text) 12%, transparent); stroke-width: 1; }
     .band { fill: color-mix(in srgb, var(--sp-success) 14%, transparent); }
@@ -5700,7 +5721,7 @@ da = K, da.styles = [
   `
 ], W([w({ attribute: !1 })], K.prototype, "points", void 0), W([w({ attribute: !1 })], K.prototype, "start", void 0), W([w({ attribute: !1 })], K.prototype, "end", void 0), W([w({ attribute: !1 })], K.prototype, "periodMs", void 0), W([w()], K.prototype, "unit", void 0), W([w({ attribute: !1 })], K.prototype, "band", void 0), W([w({ attribute: !1 })], K.prototype, "markers", void 0), W([w({ attribute: !1 })], K.prototype, "markerGroups", void 0), W([w()], K.prototype, "summary", void 0), W([w()], K.prototype, "bandLabel", void 0), W([w({ attribute: !1 })], K.prototype, "actions", void 0), W([w({ attribute: !1 })], K.prototype, "l", void 0), W([T()], K.prototype, "_width", void 0), W([T()], K.prototype, "_active", void 0), W([T()], K.prototype, "_pinned", void 0), customElements.get("sp-history-chart") || customElements.define("sp-history-chart", K);
 // src/components/sp-snooze-chip.ts
-var pa, ma = class extends C {
+var _a, va = class extends C {
 	constructor(...e) {
 		super(...e), this.label = "";
 	}
@@ -5708,7 +5729,7 @@ var pa, ma = class extends C {
 		return x`<span class="chip" part="chip"><ha-icon aria-hidden="true" icon="mdi:bell-sleep-outline"></ha-icon><span class="label">${this.label}</span></span>`;
 	}
 };
-pa = ma, pa.styles = [U, o`
+_a = va, _a.styles = [U, o`
     :host { display: inline-flex; max-width: 100%; }
     .chip {
       display: inline-flex; align-items: center; gap: 5px; min-height: 26px; max-width: 100%;
@@ -5718,30 +5739,30 @@ pa = ma, pa.styles = [U, o`
     }
     ha-icon { --mdc-icon-size: 17px; flex: none; }
     .label { overflow-wrap: anywhere; hyphens: auto; }
-  `], W([w()], ma.prototype, "label", void 0), customElements.get("sp-snooze-chip") || customElements.define("sp-snooze-chip", ma);
+  `], W([w()], va.prototype, "label", void 0), customElements.get("sp-snooze-chip") || customElements.define("sp-snooze-chip", va);
 // src/ha-elements.ts
 function q(e, t = customElements) {
 	return t.get(e) !== void 0;
 }
 // src/views/plant.ts
-var ha = [
+var ya = [
 	"overview",
 	"sensors",
 	"care",
 	"settings"
-], ga = {
+], ba = {
 	overview: "detail.tab_overview",
 	sensors: "detail.tab_sensors",
 	care: "detail.tab_care",
 	settings: "detail.tab_settings"
-}, _a = [
+}, xa = [
 	"watering",
 	"fertilizing",
 	"pruning",
 	"repotting",
 	"pest_control",
 	"note"
-], va = {
+], Sa = {
 	watering: "mdi:water",
 	fertilizing: "mdi:flask-outline",
 	pruning: "mdi:content-cut",
@@ -5749,7 +5770,7 @@ var ha = [
 	pest_control: "mdi:spray-bottle",
 	note: "mdi:note-text-outline",
 	task: "mdi:clipboard-check-outline"
-}, ya = [..._a, "task"], ba = {
+}, Ca = [...xa, "task"], wa = {
 	watering: "var(--sp-info)",
 	fertilizing: "var(--amber-color, #c99000)",
 	pruning: "var(--teal-color, #009688)",
@@ -5758,27 +5779,27 @@ var ha = [
 	note: "var(--sp-text-secondary)",
 	task: "var(--sp-care)"
 };
-function xa(e, t, n) {
+function Ta(e, t, n) {
 	let r = t[n], i = r?.attributes.friendly_name;
 	if (typeof i == "string" && i.trim()) return i;
 	if (!r) return e.t("sensor.missing");
 	let a = n.split(".").slice(1).join(".").replaceAll("_", " ");
 	return a ? a.charAt(0).toLocaleUpperCase() + a.slice(1) : n;
 }
-function Sa(e) {
+function Ea(e) {
 	return typeof e.last_reported == "string" && Number.isFinite(Date.parse(e.last_reported)) ? e.last_reported : e.last_updated;
 }
-function Ca(e, t) {
+function Da(e, t) {
 	let n = j(e, t);
 	return e.language !== "en" || /^.[A-Z₀-₉]/.test(n) ? n : n.charAt(0).toLocaleLowerCase() + n.slice(1);
 }
-function wa(e) {
+function Oa(e) {
 	return e ? Object.keys(A).filter((t) => e.roles[t]).map((t) => [t, e.roles[t]]) : [];
 }
-function Ta(e, t) {
+function ka(e, t) {
 	return t.state === "stale" || t.state === "unavailable" ? "off" : t.state === "low" ? e === "moisture" ? "water" : "bad" : t.state === "high" ? e === "moisture" ? "wet" : "bad" : "ok";
 }
-function Ea(e, t, n) {
+function Aa(e, t, n) {
 	switch (t.state) {
 		case "ok": return e.t("reading_state.ok");
 		case "low": return e.t("reading_state.low");
@@ -5787,29 +5808,29 @@ function Ea(e, t, n) {
 		case "unavailable": return e.t("reading_state.unavailable");
 	}
 }
-function Da(e, t) {
+function ja(e, t) {
 	return t.value === null ? "—" : M(e, t.value, t.unit);
 }
-function Oa(e, t, n) {
+function Ma(e, t, n) {
 	return t.status === "paused" ? e.t("detail.reason_paused") : t.status === "healthy" || !t.problems.length ? e.t("detail.reason_healthy") : t.problems.map((r) => tn(e, t, r, n)).join(" · ");
 }
-function ka(e, t, n) {
-	let r = wa(t).slice(0, 4);
+function Na(e, t, n) {
+	let r = Oa(t).slice(0, 4);
 	return r.length ? x`<ul class="keyreads" aria-label=${e.t("detail.key_readings")}>${r.map(([t, r]) => {
-		let i = Ta(t, r), a = Ft(e, t, r.range, r.unit), o = r.state === "stale" && r.last_reported ? e.t("moisture_bar.last_update", { age: Lt(e, r.last_reported, n) }) : a, s = i === "water" || i === "wet" || i === "bad";
+		let i = ka(t, r), a = Ft(e, t, r.range, r.unit), o = r.state === "stale" && r.last_reported ? e.t("moisture_bar.last_update", { age: Lt(e, r.last_reported, n) }) : a, s = i === "water" || i === "wet" || i === "bad";
 		return x`<li class="kr"><span class="kr-label"><ha-icon aria-hidden="true" .icon=${A[t].icon}></ha-icon>${j(e, t)}</span>
-      <span class="kr-value tone-${i}">${Da(e, r)}${s ? x`<span class="sr-only">, ${Ea(e, r, n)}</span>` : S}</span>
+      <span class="kr-value tone-${i}">${ja(e, r)}${s ? x`<span class="sr-only">, ${Aa(e, r, n)}</span>` : S}</span>
       ${o ? x`<span class="kr-range">${o}</span>` : S}</li>`;
 	})}</ul>` : S;
 }
-function Aa(e, t, n, r, i) {
-	let a = Ta(t, n), o = n.sources.map((t) => xa(e, r, t)).join(", "), s = Ft(e, t, n.range, n.unit);
+function Pa(e, t, n, r, i) {
+	let a = ka(t, n), o = n.sources.map((t) => Ta(e, r, t)).join(", "), s = Ft(e, t, n.range, n.unit);
 	return x`<li class="li"><span class="ic tone-${a}" aria-hidden="true"><ha-icon .icon=${A[t].icon}></ha-icon></span>
     <span class="li-main"><span class="li-title">${j(e, t)}</span>
-      <span class="li-sub">${o ? x`${o} · ` : S}<span class="state tone-${a}">${Ea(e, n, i)}</span></span></span>
-    <span class="li-end"><span class="li-value">${Da(e, n)}</span>${s ? x`<span class="li-sub">${s}</span>` : S}</span></li>`;
+      <span class="li-sub">${o ? x`${o} · ` : S}<span class="state tone-${a}">${Aa(e, n, i)}</span></span></span>
+    <span class="li-end"><span class="li-value">${ja(e, n)}</span>${s ? x`<span class="li-sub">${s}</span>` : S}</span></li>`;
 }
-var ja = {
+var Fa = {
 	moisture: "%",
 	temperature: "°C",
 	humidity: "%",
@@ -5818,52 +5839,54 @@ var ja = {
 	soil_temperature: "°C",
 	co2: "ppm",
 	battery: "%"
-}, Ma = {
+}, Ia = {
 	"24h": "history.range_24h",
 	"7d": "history.range_7d",
 	"30d": "history.range_30d",
 	"1y": "history.range_1y"
 };
-function Na(e, t) {
-	let { role: n, range: r, reading: i } = t, a = _n[r], o = i?.unit || ja[n], s = i && i.state !== "stale" && i.state !== "unavailable" ? i.value : null, c = t.status === "ready" ? xn(t.points, s, t.now) : [], l = Pn(n, i?.range), u = Ft(e, n, i?.range, o), d = n === "moisture" && c.length ? An(c, {
-		periodMs: a.periodMs,
+function La(e, t) {
+	let { role: n, range: r, reading: i } = t, a = t.status === "loading" ? t.stale : void 0, o = _n[a ? a.range : r], s = i?.unit || Fa[n], c = i && i.state !== "stale" && i.state !== "unavailable" ? i.value : null, l = t.status === "ready" ? xn(t.points, c, t.now) : a ? xn(a.points, c, t.now) : [], u = Pn(n, i?.range), d = Ft(e, n, i?.range, s), f = n === "moisture" && l.length ? An(l, {
+		periodMs: o.periodMs,
 		wateredAt: t.lastWatered,
-		min: l.min
-	}) : null, f = d ? jn(e, d, l.min) : null, p = ya.filter((e) => e !== "watering" || n === "moisture" || n === "conductivity").map((t) => ({
+		min: u.min
+	}) : null, p = f ? jn(e, f, u.min) : null, m = Ca.filter((e) => e !== "watering" || n === "moisture" || n === "conductivity").map((t) => ({
 		key: t,
 		label: e.t(`history.legend_${t}`),
-		color: ba[t]
-	})), m = t.care.map((e) => ({
+		color: wa[t]
+	})), h = t.care.map((e) => ({
 		t: e.t,
 		group: e.kind
-	})), h = t.onLogCare ? [...n === "moisture" ? [{
+	})), g = t.onLogCare ? [...n === "moisture" ? [{
 		key: "watering",
 		label: e.t("history.log_watering_at")
 	}] : [], {
 		key: "care",
 		label: e.t(n === "moisture" ? "history.log_other_care_at" : "history.log_care_at")
-	}] : [], g = t.status === "loading" ? e.t("history.loading") : t.status === "unavailable" ? e.t("history.unavailable") : t.status === "ready" && !c.length ? e.t("history.empty") : "";
+	}] : [], _ = t.status === "loading" ? "" : t.status === "unavailable" ? e.t("history.unavailable") : t.status === "ready" && !l.length ? e.t("history.empty") : "";
 	return x`<section class="sp-card history-card" aria-labelledby="history-heading"><div class="card-h"><h3 id="history-heading">${e.t("history.heading")}</h3>
       ${t.status === "unavailable" ? S : x`<button type="button" class="btn text sm" @click=${t.onOpen}>${e.t("history.open_native")}</button>`}</div>
     <div class="card-b">
       <div class="history-bar">
         ${t.roles.length > 1 ? x`<div class="row" role="group" aria-label=${e.t("history.role_label")}>${t.roles.map((r) => x`<button type="button" class="fchip" aria-pressed=${r === n ? "true" : "false"} @click=${() => t.onRole(r)}>${j(e, r)}</button>`)}</div>` : S}
         <span class="spacer"></span>
-        <div class="seg" role="group" aria-label=${e.t("history.range_label")}>${mn.map((n) => x`<button type="button" aria-pressed=${n === r ? "true" : "false"} @click=${() => t.onRange(n)}>${e.t(Ma[n])}</button>`)}</div>
+        <div class="seg" role="group" aria-label=${e.t("history.range_label")}>${mn.map((n) => x`<button type="button" aria-pressed=${n === r ? "true" : "false"} @click=${() => t.onRange(n)}>${e.t(Ia[n])}</button>`)}</div>
       </div>
-      ${t.status === "error" ? x`<div class="row"><span class="error-text" role="alert">${e.t("history.error")}</span><button type="button" class="btn text sm" @click=${t.onRetry}>${e.t("history.retry")}</button></div>` : g ? x`<p class="muted history-message" role="status">${g}</p>` : x`<sp-history-chart .points=${c} .start=${t.now - a.spanMs} .end=${t.now} .periodMs=${a.periodMs} .unit=${o} .band=${l} .markers=${m} .markerGroups=${p}
-            .summary=${Nn(e, j(e, n), r, c, o)} .bandLabel=${u ? e.t("history.legend_target", { range: u }) : ""}
-            .actions=${h} @point-action=${(e) => t.onLogCare?.(e.detail.key === "watering" ? "watering" : null, e.detail.t)} .l=${e}></sp-history-chart>`}
-      ${f ? x`<p class="small history-rate"><strong>${f.rate}</strong>${f.forecast ? x` <span class="muted">${f.forecast}</span>` : S}</p>` : S}
+      ${t.status === "error" ? x`<div class="row"><span class="error-text" role="alert">${e.t("history.error")}</span><button type="button" class="btn text sm" @click=${t.onRetry}>${e.t("history.retry")}</button></div>` : _ ? x`<p class="muted history-message" role="status">${_}</p>` : t.status === "loading" && !a ? x`<div class="history-skeleton" aria-busy="true"><p class="sr-only" role="status">${e.t("history.loading")}</p>
+            <span class="sk sk-plot" aria-hidden="true"></span><span class="sk line sk-legend" aria-hidden="true"></span></div>
+          ${n === "moisture" ? x`<div class="history-skeleton-rate" aria-hidden="true"><span class="sk line"></span></div>` : S}` : x`<div class="history-plot ${a ? "stale" : ""}" aria-busy=${a ? "true" : "false"}>${a ? x`<p class="sr-only" role="status">${e.t("history.loading")}</p>` : S}<sp-history-chart .points=${l} .start=${t.now - o.spanMs} .end=${t.now} .periodMs=${o.periodMs} .unit=${s} .band=${u} .markers=${h} .markerGroups=${m}
+            .summary=${Nn(e, j(e, n), r, l, s)} .bandLabel=${d ? e.t("history.legend_target", { range: d }) : ""}
+            .actions=${a ? [] : g} @point-action=${(e) => t.onLogCare?.(e.detail.key === "watering" ? "watering" : null, e.detail.t)} .l=${e}></sp-history-chart></div>`}
+      ${p ? x`<p class="small history-rate"><strong>${p.rate}</strong>${p.forecast ? x` <span class="muted">${p.forecast}</span>` : S}</p>` : S}
     </div></section>`;
 }
-function Pa(e, t) {
+function Ra(e, t) {
 	return t >= 3600 && t % 3600 == 0 ? e.t("duration.hours", { count: t / 3600 }) : t >= 60 && t % 60 == 0 ? e.t("duration.minutes", { count: t / 60 }) : e.t("duration.seconds", { count: t });
 }
-function Fa(e, t, n) {
+function za(e, t, n) {
 	return Object.entries(t.payload).filter(([, e]) => e !== null && e !== "").map(([t, r]) => `${n(t)}: ${typeof r == "number" && t === "amount" ? e.number(r) : String(r)}`);
 }
-function Ia(e) {
+function Ba(e) {
 	let { key: t, icon: n, header: r, secondary: i, open: a, native: o, toggle: s, content: c } = e;
 	return o ? x`<ha-expansion-panel class="expander" data-section=${t} outlined .header=${r} .secondary=${i} .expanded=${a}
       @expanded-changed=${(e) => {
@@ -5877,7 +5900,7 @@ function Ia(e) {
     <summary><ha-icon aria-hidden="true" .icon=${n}></ha-icon><span class="summary-text"><span class="summary-title">${r}</span><span class="summary-sub">${i}</span></span></summary>
     <div class="expander-body">${c()}</div></details>`;
 }
-var La = o`
+var Va = o`
   .pd { container: plant / inline-size; display: flex; flex-direction: column; gap: 16px; padding-bottom: 32px; --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000); }
   .pd .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .pd ha-icon { --mdc-icon-size: 20px; flex: none; }
@@ -6054,6 +6077,20 @@ var La = o`
   .pd .seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--sp-primary) 14%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); font-weight: 500; }
   .pd .seg button:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: -2px; }
   .history-message { min-height: 120px; display: grid; place-items: center; text-align: center; }
+  /* The placeholder takes the chart's height: the plot, its readout row and one legend line. */
+  .history-skeleton { display: flex; flex-direction: column; }
+  .history-skeleton .sk-plot { height: 200px; border-radius: 4px; }
+  .history-skeleton .sk-legend { width: 60%; margin: 35px 0 5px; }
+  /* Soil moisture adds the drying rate below the chart. */
+  .history-skeleton-rate { height: 39px; padding-top: 4px; box-sizing: border-box; }
+  .history-skeleton-rate .sk { width: 50%; }
+  .care-skeleton .sk-ic { width: 40px; height: 40px; }
+  .care-skeleton .li-main { gap: 6px; }
+  .care-skeleton .sk-title { width: 45%; height: 14px; }
+  .care-skeleton .sk-meta { width: 30%; }
+  .history-plot { transition: opacity 150ms ease-out; }
+  .history-plot.stale { opacity: .5; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { .history-plot { transition: none; } }
   .history-rate strong { font-weight: 500; }
 
   ha-alert { display: block; }
@@ -6061,6 +6098,9 @@ var La = o`
   .alert-title { font-weight: 500; }
 
   @container plant (max-width: 700px) {
+    /* The legend and the drying rate wrap to more lines on narrow pages. */
+    .history-skeleton .sk-legend { margin-bottom: 25px; }
+    .history-skeleton-rate { height: 78px; }
     .hero { grid-template-columns: auto minmax(0, 1fr); gap: 14px; padding: 14px; }
     .hero-name { font-size: 21px; }
     .hero-actions { grid-column: 1 / -1; flex-direction: row; }
@@ -6080,28 +6120,28 @@ var La = o`
     dl.sensors, dl.other-targets { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }
     dl.sensors dd, dl.other-targets dd { margin-bottom: 10px; }
   }
-`, Ra = [
+`, Ha = [
 	"fertilize",
 	"prune",
 	"repot",
 	"pests",
 	"winter_protection",
 	"custom"
-], za = {
+], Ua = {
 	fertilize: "mdi:flask-outline",
 	prune: "mdi:content-cut",
 	repot: "mdi:pot-mix-outline",
 	pests: "mdi:bug-outline",
 	winter_protection: "mdi:snowflake",
 	custom: "mdi:checkbox-marked-circle-outline"
-}, Ba = {
+}, Wa = {
 	fertilize: "fertilizing",
 	prune: "pruning",
 	repot: "repotting",
 	pests: "task",
 	winter_protection: "task",
 	custom: "task"
-}, Va = {
+}, Ga = {
 	temperature: "°C",
 	soil_temperature: "°C",
 	humidity: "%",
@@ -6109,16 +6149,16 @@ var La = o`
 	illuminance: "lx",
 	conductivity: "µS/cm",
 	co2: "ppm"
-}, Ha = Object.keys(Va), Ua = [
+}, Ka = Object.keys(Ga), qa = [
 	24,
 	48,
 	72
-], Wa = [
+], Ja = [
 	"days",
 	"weeks",
 	"months",
 	"years"
-], Ga = 4e3, Ka = {
+], Ya = 4e3, Xa = {
 	fertilize: {
 		kind: "interval",
 		every: 4,
@@ -6158,23 +6198,23 @@ var La = o`
 function J(e, t) {
 	return t.name ?? e.t(`care_task_type.${t.type}`);
 }
-function qa(e, t) {
+function Za(e, t) {
 	let n = [];
 	for (let r = e;; r = r % 12 + 1) if (n.push(r), r === t || n.length === 12) return n;
 }
-function Ja(e, t, n = "long") {
+function Qa(e, t, n = "long") {
 	return new Intl.DateTimeFormat(e.language, {
 		month: n,
 		timeZone: "UTC"
 	}).format(Date.UTC(2e3, t - 1, 1));
 }
-function Ya(e, t, n, r = "long") {
-	return t === n ? Ja(e, t, r) : e.t("care_plan.month_range", {
-		start: Ja(e, t, r),
-		end: Ja(e, n, r)
+function $a(e, t, n, r = "long") {
+	return t === n ? Qa(e, t, r) : e.t("care_plan.month_range", {
+		start: Qa(e, t, r),
+		end: Qa(e, n, r)
 	});
 }
-function Xa(e, t, n) {
+function eo(e, t, n) {
 	let [r, i, a] = t.split("-").map(Number);
 	if (!r || !i || !a) return t;
 	let o = t.slice(0, 4) === n.slice(0, 4);
@@ -6185,51 +6225,51 @@ function Xa(e, t, n) {
 		timeZone: "UTC"
 	}).format(Date.UTC(r, i - 1, a));
 }
-function Za(e, t, n, r) {
+function to(e, t, n, r) {
 	if (t.kind === "reading") return e.t("care_plan.schedule_reading", {
-		rule: Qa(e, t),
-		source: eo(e, t.source, r)
+		rule: no(e, t),
+		source: io(e, t.source, r)
 	});
-	if (t.kind === "yearly") return e.t("care_plan.schedule_yearly", { months: Ya(e, t.start_month, t.end_month) });
+	if (t.kind === "yearly") return e.t("care_plan.schedule_yearly", { months: $a(e, t.start_month, t.end_month) });
 	let i = e.tn(t.every, `care_plan.every_${t.unit}_one`, `care_plan.every_${t.unit}_other`);
 	return t.growing_season_only && n ? e.t("care_plan.schedule_growing_only", { every: i }) : i;
 }
-function Qa(e, t) {
+function no(e, t) {
 	let n = Y(e, t.value, t.unit);
 	if (!("forecast" in t.source)) return e.t(`care_plan.condition_${t.condition}`, { value: n });
 	let { reading: r, hours: i } = t.source.forecast, a = e.t(`care_plan.forecast_rule_${r}_${t.condition}`, { value: n });
-	return i === 24 ? a : `${a} · ${to(e, i)}`;
+	return i === 24 ? a : `${a} · ${ao(e, i)}`;
 }
-function $a(e) {
-	return Object.hasOwn(Va, e);
+function ro(e) {
+	return Object.hasOwn(Ga, e);
 }
 function Y(e, t, n) {
 	return M(e, t, n ?? "");
 }
-function eo(e, t, n) {
-	if ("role" in t) return $a(t.role) ? j(e, t.role) : t.role;
+function io(e, t, n) {
+	if ("role" in t) return ro(t.role) ? j(e, t.role) : t.role;
 	let r = "forecast" in t ? t.forecast.entity_id : t.entity_id, i = n?.[r]?.attributes.friendly_name;
 	return typeof i == "string" && i.trim() ? i : r;
 }
-function to(e, t) {
+function ao(e, t) {
 	return e.t(t === 72 ? "care_plan.forecast_window_72" : t === 48 ? "care_plan.forecast_window_48" : "care_plan.forecast_window_24");
 }
-function no(e) {
+function oo(e) {
 	let t = e?.attributes.supported_features;
 	return !!e && e.entity_id.startsWith("weather.") && typeof t == "number" && Number.isInteger(t) && !!(t & 7);
 }
-function ro(e, t) {
-	let n = (n) => eo(e, { entity_id: n.entity_id }, t);
-	return Object.values(t ?? {}).filter(no).sort((e, t) => n(e).localeCompare(n(t)) || e.entity_id.localeCompare(t.entity_id));
+function so(e, t) {
+	let n = (n) => io(e, { entity_id: n.entity_id }, t);
+	return Object.values(t ?? {}).filter(oo).sort((e, t) => n(e).localeCompare(n(t)) || e.entity_id.localeCompare(t.entity_id));
 }
-function io(e, t) {
+function co(e, t) {
 	let n = t?.[e]?.attributes.temperature_unit;
-	return typeof n == "string" && lo.has(n) ? n : null;
+	return typeof n == "string" && mo.has(n) ? n : null;
 }
-function ao(e, t) {
+function lo(e, t) {
 	return e.mode === "reading" && !e.role && !e.entityId && !!e.forecast && !!e.weatherEntityId && !!t && Object.keys(t).length > 0 && !t[e.weatherEntityId];
 }
-function oo(e, t, n, r) {
+function uo(e, t, n, r) {
 	let i = e.care_tasks?.find((e) => e.id === n)?.schedule, a = t?.care.find((e) => e.task_id === n);
 	if (i?.kind !== "reading" || !("forecast" in i.source) || !a || a.reading === null) return null;
 	let o = i.source.forecast;
@@ -6238,12 +6278,12 @@ function oo(e, t, n, r) {
 		unit: a.unit ?? i.unit
 	};
 }
-function so(e, t, n) {
+function fo(e, t, n) {
 	if (t.kind !== "reading" || !("forecast" in t.source) || !e.forecast_until) return null;
 	let r = Date.parse(e.forecast_until);
 	return Number.isFinite(r) && r < n + (t.source.forecast.hours - 1) * 36e5 ? e.forecast_until : null;
 }
-function co(e, t, n) {
+function po(e, t, n) {
 	let r = {
 		weekday: "short",
 		hour: "numeric",
@@ -6259,37 +6299,37 @@ function co(e, t, n) {
 	}
 	return e.t("care_plan.forecast_short", { time: i.format(Date.parse(t)) });
 }
-var lo = /* @__PURE__ */ new Set([
+var mo = /* @__PURE__ */ new Set([
 	"°C",
 	"°F",
 	"K"
 ]);
-function uo(e, t) {
+function ho(e, t) {
 	return e ? "role" in e ? e.role === "temperature" || e.role === "soil_temperature" : "forecast" in e || t?.[e.entity_id]?.attributes.device_class === "temperature" : !1;
 }
-function fo(e, t) {
+function go(e, t) {
 	let n = t === "°C" ? e : t === "°F" ? e * 9 / 5 + 32 : t === "K" ? e + 273.15 : null;
 	return n === null ? null : Math.round(n * 10) / 10;
 }
-function po(e) {
+function _o(e) {
 	let t = e.species?.snapshot, n = t?.provider === "openplantbook" ? t.min_temperature : null;
 	return typeof n == "number" && Number.isFinite(n) ? n : null;
 }
-function mo(e, t, n) {
-	let r = po(e), i = zo(t);
-	return r === null || t.mode !== "reading" || t.condition !== "below" || !uo(i, n) || i && "forecast" in i && i.forecast.reading !== "low" ? null : fo(r, t.readingUnit ?? "°C");
+function vo(e, t, n) {
+	let r = _o(e), i = Uo(t);
+	return r === null || t.mode !== "reading" || t.condition !== "below" || !ho(i, n) || i && "forecast" in i && i.forecast.reading !== "low" ? null : go(r, t.readingUnit ?? "°C");
 }
-function ho(e) {
+function yo(e) {
 	let t = e.roles;
-	return Ha.filter((e) => {
+	return Ka.filter((e) => {
 		let n = t?.[e];
 		return Array.isArray(n?.sources) && n.sources.length > 0;
 	});
 }
-function go(e) {
+function bo(e) {
 	return !!e && e.entity_id.startsWith("sensor.") && e.state.trim() !== "" && Number.isFinite(Number(e.state));
 }
-function _o(e, t, n, r) {
+function xo(e, t, n, r) {
 	let i = t && "forecast" in t ? t.forecast : null, a = {
 		role: t && "role" in t ? t.role : null,
 		entityId: t && "entity_id" in t ? t.entity_id : null,
@@ -6298,16 +6338,16 @@ function _o(e, t, n, r) {
 		readingUnit: n
 	};
 	i && (a.forecastHours = i.hours);
-	let o = po(r), s = o === null ? null : fo(o, e.readingUnit ?? "°C"), c = o === null ? null : fo(o, n);
-	return s !== null && c !== null && s !== c && Ro(e.value) === s && (a.value = String(c)), a;
+	let o = _o(r), s = o === null ? null : go(o, e.readingUnit ?? "°C"), c = o === null ? null : go(o, n);
+	return s !== null && c !== null && s !== c && Ho(e.value) === s && (a.value = String(c)), a;
 }
-function vo(e, t) {
-	if ("role" in e) return $a(e.role) ? Va[e.role] : null;
-	if ("forecast" in e) return io(e.forecast.entity_id, t);
+function So(e, t) {
+	if ("role" in e) return ro(e.role) ? Ga[e.role] : null;
+	if ("forecast" in e) return co(e.forecast.entity_id, t);
 	let n = t?.[e.entity_id]?.attributes.unit_of_measurement;
 	return typeof n == "string" && n ? n : null;
 }
-function yo(e, t, n) {
+function Co(e, t, n) {
 	let r;
 	try {
 		r = new Intl.DateTimeFormat(e.language, {
@@ -6323,7 +6363,7 @@ function yo(e, t, n) {
 	}
 	return r.format(t);
 }
-function bo(e, t, n, r, i, a) {
+function wo(e, t, n, r, i, a) {
 	let o = "forecast" in n.source, s = t.reading === null ? null : Y(e, t.reading, t.unit ?? n.unit), c = s !== null && o ? e.t("care_plan.forecast_value", { value: s }) : s;
 	switch (t.status) {
 		case "due":
@@ -6333,12 +6373,12 @@ function bo(e, t, n, r, i, a) {
 			text: c ? e.t("care_plan.reading_due", { reading: c }) : e.t("care_plan.due_now")
 		};
 		case "waiting": {
-			let t = n.reset_value ?? n.value, o = t === n.value && lo.has(n.unit ?? "") ? e.t(n.condition === "below" ? "care_plan.reading_still_cold" : "care_plan.reading_still_warm") : e.t(n.condition === "below" ? "care_plan.reading_until_above" : "care_plan.reading_until_below", { value: Y(e, t, n.unit) }), s = i ? So(i, a) : null;
+			let t = n.reset_value ?? n.value, o = t === n.value && mo.has(n.unit ?? "") ? e.t(n.condition === "below" ? "care_plan.reading_still_cold" : "care_plan.reading_still_warm") : e.t(n.condition === "below" ? "care_plan.reading_until_above" : "care_plan.reading_until_below", { value: Y(e, t, n.unit) }), s = i ? Eo(i, a) : null;
 			return {
 				tone: "done",
 				icon: "mdi:check",
 				text: s ? e.t("care_plan.reading_done_on", {
-					date: Xa(e, s, r),
+					date: eo(e, s, r),
 					until: o
 				}) : e.t("care_plan.reading_waiting", { until: o })
 			};
@@ -6357,8 +6397,8 @@ function bo(e, t, n, r, i, a) {
 					icon: "mdi:timer-sand",
 					text: e.t(n.condition === "below" ? "care_plan.reading_below_since" : "care_plan.reading_above_since", {
 						value: t,
-						since: yo(e, r - n.for_minutes * 6e4, a),
-						time: yo(e, r, a)
+						since: Co(e, r - n.for_minutes * 6e4, a),
+						time: Co(e, r, a)
 					})
 				};
 			}
@@ -6370,9 +6410,9 @@ function bo(e, t, n, r, i, a) {
 		}
 	}
 }
-function xo(e, t, n, r, i = {}) {
-	if (n.kind === "reading") return bo(e, t, n, r, i.lastDoneAt ?? null, i.timeZone);
-	let a = (t) => t ? Xa(e, t, r) : "";
+function To(e, t, n, r, i = {}) {
+	if (n.kind === "reading") return wo(e, t, n, r, i.lastDoneAt ?? null, i.timeZone);
+	let a = (t) => t ? eo(e, t, r) : "";
 	switch (t.status) {
 		case "overdue": return {
 			tone: "overdue",
@@ -6442,7 +6482,7 @@ function xo(e, t, n, r, i = {}) {
 		}
 	}
 }
-function So(e, t) {
+function Eo(e, t) {
 	let n = Date.parse(e);
 	if (!Number.isFinite(n)) return null;
 	let r;
@@ -6463,17 +6503,17 @@ function So(e, t) {
 	let i = Object.fromEntries(r.formatToParts(n).map((e) => [e.type, e.value]));
 	return `${i.year}-${i.month}-${i.day}`;
 }
-function Co(e, t) {
-	let n = e.last_done_at ? So(e.last_done_at, t) : null, r = e.baseline_done_on;
+function Do(e, t) {
+	let n = e.last_done_at ? Eo(e.last_done_at, t) : null, r = e.baseline_done_on;
 	return n ? r ? n > r ? n : r : n : r;
 }
-function wo(e, t) {
-	if (t !== "task") return e.find((e) => Ba[e.type] === t);
+function Oo(e, t) {
+	if (t !== "task") return e.find((e) => Wa[e.type] === t);
 }
-function To(e) {
+function ko(e) {
 	return new Set(e.filter((e) => e.type !== "custom").map((e) => e.type));
 }
-var Eo = {
+var Ao = {
 	mode: "interval",
 	every: "4",
 	unit: "weeks",
@@ -6491,22 +6531,22 @@ var Eo = {
 	forHours: "",
 	resetValue: ""
 };
-function Do(e) {
+function jo(e) {
 	switch (e.kind) {
 		case "interval": return {
-			...Eo,
+			...Ao,
 			every: String(e.every),
 			unit: e.unit,
 			growingSeasonOnly: e.growing_season_only
 		};
 		case "yearly": return {
-			...Eo,
+			...Ao,
 			mode: "yearly",
 			startMonth: e.start_month,
 			endMonth: e.end_month
 		};
 		case "reading": return {
-			...Eo,
+			...Ao,
 			mode: "reading",
 			role: "role" in e.source ? e.source.role : null,
 			entityId: "entity_id" in e.source ? e.source.entity_id : null,
@@ -6523,13 +6563,13 @@ function Do(e) {
 		};
 	}
 }
-function Oo(e, t, n, r) {
+function Mo(e, t, n, r) {
 	let i = {
 		type: e,
 		name: "",
 		instructions: "",
 		lastDone: "",
-		...Do(Ka[e])
+		...jo(Xa[e])
 	};
 	if (e !== "winter_protection") return i;
 	let a = {
@@ -6537,68 +6577,68 @@ function Oo(e, t, n, r) {
 		mode: "reading",
 		condition: "below"
 	};
-	if (t && ho(t).includes("temperature")) return {
+	if (t && yo(t).includes("temperature")) return {
 		...a,
 		role: "temperature",
-		readingUnit: Va.temperature
+		readingUnit: Ga.temperature
 	};
-	let o = r ? ro(r, n)[0] : void 0;
+	let o = r ? so(r, n)[0] : void 0;
 	return o ? {
 		...a,
 		forecast: "low",
 		weatherEntityId: o.entity_id,
-		readingUnit: io(o.entity_id, n)
+		readingUnit: co(o.entity_id, n)
 	} : a;
 }
-function ko(e, t, n) {
-	let r = Oo("winter_protection", e, t, n);
+function No(e, t, n) {
+	let r = Mo("winter_protection", e, t, n);
 	return !r.role && !r.weatherEntityId;
 }
-function Ao(e, t, n) {
-	let r = po(e);
+function Po(e, t, n) {
+	let r = _o(e);
 	if (r === null) return null;
-	let i = Oo("winter_protection", e, t, n);
+	let i = Mo("winter_protection", e, t, n);
 	return {
 		...i,
-		value: String(fo(r, i.readingUnit ?? "°C"))
+		value: String(go(r, i.readingUnit ?? "°C"))
 	};
 }
-var jo = {
+var Fo = {
 	fertilize: "fertilization",
 	prune: "pruning",
 	repot: "soil"
-}, Mo = ["fertilize", "prune"];
-function No(e, t) {
-	let n = e.species?.snapshot, r = jo[t];
+}, Io = ["fertilize", "prune"];
+function Lo(e, t) {
+	let n = e.species?.snapshot, r = Fo[t];
 	if (!n || n.provider !== "openplantbook" || !r) return null;
 	let i = n.care_text[r]?.trim();
-	return i ? i.slice(0, Ga) : null;
+	return i ? i.slice(0, Ya) : null;
 }
-function Po(e) {
-	return Mo.flatMap((t) => {
-		let n = No(e, t);
+function Ro(e) {
+	return Io.flatMap((t) => {
+		let n = Lo(e, t);
 		return n ? [{
 			type: t,
 			text: n
 		}] : [];
 	});
 }
-function Fo(e, t, n, r, i) {
+function zo(e, t, n, r, i) {
 	return {
-		...Oo(e, n, r, i),
+		...Mo(e, n, r, i),
 		instructions: t
 	};
 }
-function Io(e) {
+function Bo(e) {
 	return {
 		type: e.type,
 		name: e.name ?? "",
 		instructions: e.instructions ?? "",
 		lastDone: e.baseline_done_on ?? "",
-		...Do(e.schedule)
+		...jo(e.schedule)
 	};
 }
-function Lo(e, t, n) {
+function Vo(e, t, n) {
 	return e !== null && t !== null && e === t && n !== e ? {
 		startMonth: e,
 		endMonth: n
@@ -6607,51 +6647,51 @@ function Lo(e, t, n) {
 		endMonth: n
 	};
 }
-function Ro(e) {
+function Ho(e) {
 	let t = e.trim().replace(",", ".");
 	if (!/^[-+]?(\d+(\.\d{0,3})?|\.\d{1,3})$/.test(t)) return null;
 	let n = Number(t);
 	return Number.isFinite(n) ? n : null;
 }
-function zo(e) {
+function Uo(e) {
 	return e.role ? { role: e.role } : e.entityId ? { entity_id: e.entityId } : e.forecast && e.weatherEntityId ? { forecast: {
 		entity_id: e.weatherEntityId,
 		reading: e.forecast,
 		hours: e.forecastHours
 	} } : null;
 }
-function Bo(e) {
-	let t = zo(e);
+function Wo(e) {
+	let t = Uo(e);
 	return !!t && "forecast" in t;
 }
-function Vo(e) {
+function Go(e) {
 	let t = e.trim().replace(",", ".");
 	if (!t) return 0;
 	if (!/^\d+(\.\d+)?$/.test(t)) return null;
 	let n = Number(t) * 60, r = Math.round(n);
 	return Math.abs(n - r) > 1e-9 || r > 4320 ? null : r;
 }
-function Ho(e, t) {
-	let n = {}, r = Bo(e);
-	zo(e) ? ao(e, t) ? n.source = "care_plan.error_weather_missing" : r && !lo.has(e.readingUnit ?? "") && (n.source = "care_plan.error_weather_unit") : n.source = "care_plan.error_source";
-	let i = Ro(e.value);
-	if (i === null && (n.value = "care_plan.error_value"), !r && Vo(e.forHours) === null && (n.forHours = "care_plan.error_for_hours"), e.resetValue.trim()) {
-		let t = Ro(e.resetValue);
+function Ko(e, t) {
+	let n = {}, r = Wo(e);
+	Uo(e) ? lo(e, t) ? n.source = "care_plan.error_weather_missing" : r && !mo.has(e.readingUnit ?? "") && (n.source = "care_plan.error_weather_unit") : n.source = "care_plan.error_source";
+	let i = Ho(e.value);
+	if (i === null && (n.value = "care_plan.error_value"), !r && Go(e.forHours) === null && (n.forHours = "care_plan.error_for_hours"), e.resetValue.trim()) {
+		let t = Ho(e.resetValue);
 		t === null ? n.resetValue = "care_plan.error_value" : i !== null && (e.condition === "below" ? t < i : t > i) && (n.resetValue = e.condition === "below" ? "care_plan.error_reset_below" : "care_plan.error_reset_above");
 	}
 	return n;
 }
-function Uo(e, t) {
+function qo(e, t) {
 	if (e.mode === "reading") {
-		let n = zo(e), r = Ro(e.value), i = Bo(e) ? 0 : Vo(e.forHours);
-		return !n || r === null || i === null || Object.keys(Ho(e, t)).length ? null : {
+		let n = Uo(e), r = Ho(e.value), i = Wo(e) ? 0 : Go(e.forHours);
+		return !n || r === null || i === null || Object.keys(Ko(e, t)).length ? null : {
 			kind: "reading",
 			source: n,
 			condition: e.condition,
 			value: r,
 			unit: e.readingUnit,
 			for_minutes: i,
-			reset_value: e.resetValue.trim() ? Ro(e.resetValue) : null
+			reset_value: e.resetValue.trim() ? Ho(e.resetValue) : null
 		};
 	}
 	if (e.mode === "yearly") return e.startMonth !== null && e.endMonth !== null ? {
@@ -6667,11 +6707,11 @@ function Uo(e, t) {
 		growing_season_only: e.growingSeasonOnly
 	};
 }
-function Wo(e, t, n) {
+function Jo(e, t, n) {
 	let r = {}, i = e.name.trim();
 	e.type === "custom" && !i ? r.name = "care_plan.error_name_required" : i.length > 60 && (r.name = "care_plan.error_name_length");
-	let a = Uo(e, n);
-	e.mode === "reading" ? Object.assign(r, Ho(e, n)) : a || (r[e.mode === "yearly" ? "months" : "every"] = e.mode === "yearly" ? "care_plan.error_months" : "care_plan.error_every");
+	let a = qo(e, n);
+	e.mode === "reading" ? Object.assign(r, Ko(e, n)) : a || (r[e.mode === "yearly" ? "months" : "every"] = e.mode === "yearly" ? "care_plan.error_months" : "care_plan.error_every");
 	let o = e.instructions.trim();
 	o.length > 4e3 && (r.instructions = "care_plan.error_instructions_length");
 	let s = e.mode === "reading" ? "" : e.lastDone.trim();
@@ -6689,15 +6729,15 @@ function Wo(e, t, n) {
 		errors: null
 	};
 }
-function Go(e) {
+function Yo(e) {
 	return JSON.stringify(e, (e, t) => t && typeof t == "object" && !Array.isArray(t) ? Object.fromEntries(Object.entries(t).sort(([e], [t]) => e.localeCompare(t))) : t);
 }
-function Ko(e, t) {
+function Xo(e, t) {
 	let n = {};
-	return t.name !== e.name && (n.name = t.name), Go(t.schedule) !== Go(e.schedule) && (n.schedule = t.schedule), t.instructions !== e.instructions && (n.instructions = t.instructions), t.baseline_done_on !== e.baseline_done_on && (n.baseline_done_on = t.baseline_done_on), n;
+	return t.name !== e.name && (n.name = t.name), Yo(t.schedule) !== Yo(e.schedule) && (n.schedule = t.schedule), t.instructions !== e.instructions && (n.instructions = t.instructions), t.baseline_done_on !== e.baseline_done_on && (n.baseline_done_on = t.baseline_done_on), n;
 }
-function qo(e, t, n) {
-	let r = Ko(e, n), i = Ko(t, n), a = Ko(e, {
+function Zo(e, t, n) {
+	let r = Xo(e, n), i = Xo(t, n), a = Xo(e, {
 		task_type: t.type,
 		name: t.name,
 		schedule: t.schedule,
@@ -6710,76 +6750,76 @@ function qo(e, t, n) {
 		overlaps: s
 	};
 }
-function Jo(e, t, n, r) {
-	if (t.mode === "reading") return Yo(e, t, r);
-	let i = Uo(t);
-	return i ? Za(e, i, n) : e.t(t.mode === "yearly" ? "care_plan.summary_pick_months" : "care_plan.summary_enter_interval");
+function Qo(e, t, n, r) {
+	if (t.mode === "reading") return $o(e, t, r);
+	let i = qo(t);
+	return i ? to(e, i, n) : e.t(t.mode === "yearly" ? "care_plan.summary_pick_months" : "care_plan.summary_enter_interval");
 }
-function Yo(e, t, n) {
-	let r = zo(t);
+function $o(e, t, n) {
+	let r = Uo(t);
 	if (!r) return e.t("care_plan.summary_pick_source");
-	let i = "role" in r && $a(r.role) ? e.t(`care_plan.subject_${r.role}`) : "forecast" in r ? e.t(`care_plan.subject_forecast_${r.forecast.reading}`, { window: Xo(e, r.forecast.hours) }) : eo(e, r, n), a = Ro(t.value), o = t.condition === "below";
+	let i = "role" in r && ro(r.role) ? e.t(`care_plan.subject_${r.role}`) : "forecast" in r ? e.t(`care_plan.subject_forecast_${r.forecast.reading}`, { window: es(e, r.forecast.hours) }) : io(e, r, n), a = Ho(t.value), o = t.condition === "below";
 	if (a === null) return e.t(o ? "care_plan.summary_below_enter" : "care_plan.summary_above_enter", { subject: i });
 	let s = [e.t(o ? "care_plan.summary_below" : "care_plan.summary_above", {
 		subject: i,
 		value: Y(e, a, t.readingUnit)
-	})], c = "forecast" in r ? 0 : Vo(t.forHours);
+	})], c = "forecast" in r ? 0 : Go(t.forHours);
 	c && s.push(e.tn(c / 60, "care_plan.summary_for_hours_one", "care_plan.summary_for_hours_other"));
-	let l = t.resetValue.trim() ? Ro(t.resetValue) : null;
+	let l = t.resetValue.trim() ? Ho(t.resetValue) : null;
 	return l !== null && l !== a && s.push(e.t(o ? "care_plan.summary_again_above" : "care_plan.summary_again_below", { value: Y(e, l, t.readingUnit) })), s.join(" · ");
 }
-function Xo(e, t) {
+function es(e, t) {
 	return e.t(t === 72 ? "care_plan.forecast_window_long_72" : t === 48 ? "care_plan.forecast_window_long_48" : "care_plan.forecast_window_long_24");
 }
-var Zo = /* @__PURE__ */ new Set([
+var ts = /* @__PURE__ */ new Set([
 	"revision",
 	"care_events",
 	"care_tasks",
 	"rest_period",
 	"snoozed_until"
 ]);
-function Qo(e, t) {
-	return [.../* @__PURE__ */ new Set([...Object.keys(e), ...Object.keys(t)])].every((n) => Zo.has(n) || JSON.stringify(e[n]) === JSON.stringify(t[n]));
+function ns(e, t) {
+	return [.../* @__PURE__ */ new Set([...Object.keys(e), ...Object.keys(t)])].every((n) => ts.has(n) || JSON.stringify(e[n]) === JSON.stringify(t[n]));
 }
-function $o(e, t) {
+function rs(e, t) {
 	return {
 		due: `smart_plants:${e}:care_task:${t}:due`,
 		next: `smart_plants:${e}:care_task:${t}:next`,
 		careDue: `smart_plants:${e}:care_due`
 	};
 }
-function es(e, t) {
+function is(e, t) {
 	return t.name ?? e.t(`care_task_type.${t.type}`);
 }
-function ts(e) {
+function as(e) {
 	return e?.care.filter((e) => e.is_due) ?? [];
 }
-function ns(e, t, n = 2) {
-	let r = t.slice(0, n).map((t) => es(e, t)).join(", ");
+function os(e, t, n = 2) {
+	let r = t.slice(0, n).map((t) => is(e, t)).join(", ");
 	return t.length > n ? e.t("care_plan.line_more", {
 		names: r,
 		count: t.length - n
 	}) : r;
 }
-function rs(e, t) {
-	return !!e && qa(e.start_month, e.end_month).includes(t);
+function ss(e, t) {
+	return !!e && Za(e.start_month, e.end_month).includes(t);
 }
-function is(e, t) {
+function cs(e, t) {
 	let n = Number(t.slice(0, 4)), r = Number(t.slice(5, 7)), i = e.end_month % 12 + 1;
 	return `${i > r ? n : n + 1}-${String(i).padStart(2, "0")}-01`;
 }
-function as(e) {
+function ls(e) {
 	return e.filter((e) => e.schedule.kind === "interval" && e.schedule.growing_season_only);
 }
-function os(e, t, n, r) {
-	let i = rs(t, Number(r.slice(5, 7))), a = as(n).length;
+function us(e, t, n, r) {
+	let i = ss(t, Number(r.slice(5, 7))), a = ls(n).length;
 	return {
 		resting: i,
-		season: i ? e.t("care_plan.resting_until", { date: Xa(e, is(t, r), r) }) : e.t("care_plan.growing_season"),
+		season: i ? e.t("care_plan.resting_until", { date: eo(e, cs(t, r), r) }) : e.t("care_plan.growing_season"),
 		tasks: a === 0 ? e.t("care_plan.rest_all_running") : i ? e.tn(a, "care_plan.rest_tasks_off_now_one", "care_plan.rest_tasks_off_now_other") : e.tn(a, "care_plan.rest_tasks_off_one", "care_plan.rest_tasks_off_other")
 	};
 }
-function ss(e, t) {
+function ds(e, t) {
 	let n = t.filter((e) => e.schedule.kind === "interval").filter((t) => t.schedule.kind === "interval" && (t.schedule.growing_season_only || !e && t.type === "fertilize"));
 	return {
 		startMonth: e?.start_month ?? null,
@@ -6787,11 +6827,11 @@ function ss(e, t) {
 		off: new Set(n.map((e) => e.id))
 	};
 }
-function cs(e) {
+function fs(e) {
 	return e.startMonth === null || e.endMonth === null ? {
 		rest: null,
 		error: "care_plan.rest_error_months"
-	} : qa(e.startMonth, e.endMonth).length === 12 ? {
+	} : Za(e.startMonth, e.endMonth).length === 12 ? {
 		rest: null,
 		error: "care_plan.rest_error_whole_year"
 	} : {
@@ -6802,7 +6842,7 @@ function cs(e) {
 		error: null
 	};
 }
-function ls(e, t) {
+function ps(e, t) {
 	return e.flatMap((e) => e.schedule.kind === "interval" && e.schedule.growing_season_only !== t.has(e.id) ? [{
 		task: e,
 		schedule: {
@@ -6812,7 +6852,7 @@ function ls(e, t) {
 	}] : []);
 }
 // src/views/care-plan.ts
-function us(e) {
+function ms(e) {
 	let { l: t, plant: n } = e, r = n.care_tasks ?? [], i = r.length >= 20;
 	return x`<section class="sp-card care-plan" aria-labelledby="care-plan-heading">
     <div class="card-h"><h3 id="care-plan-heading">${t.t("care_plan.heading")}</h3>
@@ -6823,28 +6863,28 @@ function us(e) {
           <button slot="trigger" type="button" class="icon-btn" ?disabled=${e.disabled} aria-label=${t.t("care_plan.plan_menu")}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
           <ha-dropdown-item value="rest" ?disabled=${e.disabled}>${t.t(n.rest_period ? "care_plan.rest_edit" : "care_plan.rest_set")}<ha-icon slot="icon" icon="mdi:weather-night"></ha-icon></ha-dropdown-item>
         </ha-dropdown></span></div>
-    ${n.rest_period ? ds(e, n.rest_period) : S}
-    ${r.length ? x`<ul class="list task-list" aria-label=${t.t("care_plan.tasks_label")}>${r.map((t) => fs(e, t))}</ul>` : x`<div class="card-b"><div class="empty-box"><span>${t.t("care_plan.empty")}</span>
+    ${n.rest_period ? hs(e, n.rest_period) : S}
+    ${r.length ? x`<ul class="list task-list" aria-label=${t.t("care_plan.tasks_label")}>${r.map((t) => gs(e, t))}</ul>` : x`<div class="card-b"><div class="empty-box"><span>${t.t("care_plan.empty")}</span>
           <button type="button" class="btn tonal sm" ?disabled=${e.disabled} @click=${e.onAdd}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("care_plan.add_task")}</button></div>
-          ${Po(n).length || po(n) !== null ? x`<p class="small muted care-note"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${t.t("care_plan.empty_suggestions")}</span></p>` : S}</div>`}
+          ${Ro(n).length || _o(n) !== null ? x`<p class="small muted care-note"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${t.t("care_plan.empty_suggestions")}</span></p>` : S}</div>`}
   </section>`;
 }
-function ds(e, t) {
-	let { l: n } = e, r = Number(e.today.slice(5, 7)), i = os(n, t, e.plant.care_tasks ?? [], e.today), a = Ya(n, t.start_month, t.end_month, "short");
+function hs(e, t) {
+	let { l: n } = e, r = Number(e.today.slice(5, 7)), i = us(n, t, e.plant.care_tasks ?? [], e.today), a = $a(n, t.start_month, t.end_month, "short");
 	return x`<div class="restline">
     <ha-icon aria-hidden="true" icon="mdi:weather-night"></ha-icon>
     <div class="restline-main"><div class="restline-top"><span class="restline-title">${n.t("care_plan.rest_period")}</span>
-        <span class="months" role="img" aria-label=${n.t("care_plan.rest_months_label", { months: Ya(n, t.start_month, t.end_month) })}>${Array.from({ length: 12 }, (e, t) => t + 1).map((e) => x`<i class="${rs(t, e) ? "on" : ""} ${e === r ? "now" : ""}">${Ja(n, e, "narrow")}</i>`)}</span>
+        <span class="months" role="img" aria-label=${n.t("care_plan.rest_months_label", { months: $a(n, t.start_month, t.end_month) })}>${Array.from({ length: 12 }, (e, t) => t + 1).map((e) => x`<i class="${ss(t, e) ? "on" : ""} ${e === r ? "now" : ""}">${Qa(n, e, "narrow")}</i>`)}</span>
         <span aria-hidden="true">${a}</span></div>
       <div class="restline-text"><b>${i.season}</b> · ${i.tasks}</div></div>
     <button type="button" class="btn text sm" ?disabled=${e.disabled} aria-label=${n.t("care_plan.rest_edit")} @click=${e.onRest}>${n.t("care_plan.edit")}</button>
   </div>`;
 }
-function fs(e, t) {
-	let { l: n } = e, r = J(n, t), i = e.overview?.care.find((e) => e.task_id === t.id), a = i ? xo(n, i, t.schedule, e.today, {
+function gs(e, t) {
+	let { l: n } = e, r = J(n, t), i = e.overview?.care.find((e) => e.task_id === t.id), a = i ? To(n, i, t.schedule, e.today, {
 		lastDoneAt: t.last_done_at,
 		timeZone: e.timeZone
-	}) : null, o = Co(t, e.timeZone), s = i ? so(i, t.schedule, Date.now()) : null, c = e.disabled || e.pending.has(t.id), l = [
+	}) : null, o = Do(t, e.timeZone), s = i ? fo(i, t.schedule, Date.now()) : null, c = e.disabled || e.pending.has(t.id), l = [
 		[
 			"mark_done",
 			"care_plan.menu_mark_done",
@@ -6872,9 +6912,9 @@ function fs(e, t) {
 		]
 	];
 	return x`<li class="li task">
-    <span class="ic tonal" aria-hidden="true"><ha-icon .icon=${za[t.type]}></ha-icon></span>
+    <span class="ic tonal" aria-hidden="true"><ha-icon .icon=${Ua[t.type]}></ha-icon></span>
     <span class="li-main"><span class="li-title">${r}</span>
-      <span class="li-sub">${Za(n, t.schedule, e.plant.rest_period ?? null, e.states)} · ${o ? n.t("care_plan.last_done", { date: Xa(n, o, e.today) }) : n.t("care_plan.never_done")}${s ? x`<br>${co(n, s, e.timeZone)}` : S}</span></span>
+      <span class="li-sub">${to(n, t.schedule, e.plant.rest_period ?? null, e.states)} · ${o ? n.t("care_plan.last_done", { date: eo(n, o, e.today) }) : n.t("care_plan.never_done")}${s ? x`<br>${po(n, s, e.timeZone)}` : S}</span></span>
     <span class="task-side">${a ? x`<span class="cchip tone-${a.tone}"><ha-icon aria-hidden="true" .icon=${a.icon}></ha-icon><span>${a.text}</span></span>` : S}
       ${i?.is_due ? x`<button type="button" class="btn tonal sm" ?disabled=${c} aria-label=${n.t("care_plan.done_label", { name: r })} @click=${() => e.onDone(t)}><ha-icon aria-hidden="true" icon="mdi:check"></ha-icon>${n.t("care_plan.done")}</button>` : S}</span>
     <ha-dropdown class="task-menu" @wa-select=${(n) => e.onAction(t, n.detail.item.value)}>
@@ -6883,19 +6923,19 @@ function fs(e, t) {
     </ha-dropdown>
   </li>`;
 }
-function ps(e, t) {
+function _s(e, t) {
 	return e.t(t.taskId ? "care_plan.edit_title" : "care_plan.add_title");
 }
-function ms(e) {
-	return e.state.step === 1 ? hs(e) : Cs(e);
+function vs(e) {
+	return e.state.step === 1 ? ys(e) : Ds(e);
 }
-function hs(e) {
-	let { l: t, plant: n } = e, r = To(n.care_tasks ?? []), i = Po(n), a = po(n), o = a === null ? null : Ao(n, e.states, t), s = n.species?.snapshot.latin_name ?? n.species?.snapshot.common_name ?? "";
+function ys(e) {
+	let { l: t, plant: n } = e, r = ko(n.care_tasks ?? []), i = Ro(n), a = _o(n), o = a === null ? null : Po(n, e.states, t), s = n.species?.snapshot.latin_name ?? n.species?.snapshot.common_name ?? "";
 	return x`<p class="muted">${t.t("care_plan.add_intro")}</p>
     ${i.length || o ? x`<section class="suggestions" aria-labelledby="suggestions-heading">
       <h4 id="suggestions-heading"><ha-icon aria-hidden="true" icon="mdi:auto-fix"></ha-icon><span>${t.t("care_plan.suggestions_for")} <i>${s}</i></span></h4>
       ${i.map(({ type: n, text: i }) => {
-		let a = t.t(`care_task_type.${n}`), o = i.length > gs, s = e.state.expanded === n;
+		let a = t.t(`care_task_type.${n}`), o = i.length > bs, s = e.state.expanded === n;
 		return x`<div class="suggestion">
           <div class="suggestion-main"><span class="suggestion-source"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon>${t.t("care_plan.suggestion_source", { topic: t.t(n === "fertilize" ? "care_plan.note_fertilization" : "care_plan.note_pruning") })}</span>
             <q class=${o && !s ? "clamped" : ""} id="suggestion-${n}">${i}</q>
@@ -6909,21 +6949,21 @@ function hs(e) {
           ${r.has("winter_protection") ? x`<span class="small muted">${t.t("care_plan.preset_exists")}</span>` : x`<button type="button" class="btn tonal sm" ?disabled=${e.busy} @click=${() => e.onDraft(o)}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("care_plan.suggestion_add_winter")}</button>`}
         </div>` : S}</section>
       <span class="field-label">${t.t("care_plan.from_scratch")}</span>` : S}
-    <div class="presets" role="list">${Ra.map((i) => {
-		let a = r.has(i), o = !a && i === "winter_protection" && ko(n, e.states, t), s = a ? t.t("care_plan.preset_exists") : i === "custom" ? t.t("care_plan.preset_custom") : i === "winter_protection" ? t.t("care_plan.preset_winter") : Za(t, xs(Oo(i)), n.rest_period ?? null);
+    <div class="presets" role="list">${Ha.map((i) => {
+		let a = r.has(i), o = !a && i === "winter_protection" && No(n, e.states, t), s = a ? t.t("care_plan.preset_exists") : i === "custom" ? t.t("care_plan.preset_custom") : i === "winter_protection" ? t.t("care_plan.preset_winter") : to(t, Ts(Mo(i)), n.rest_period ?? null);
 		return x`<div role="listitem"><button type="button" class="preset" ?disabled=${a || e.busy} @click=${() => e.onPreset(i)}>
-        <span class="ic tonal" aria-hidden="true"><ha-icon .icon=${za[i]}></ha-icon></span>
+        <span class="ic tonal" aria-hidden="true"><ha-icon .icon=${Ua[i]}></ha-icon></span>
         <span class="preset-text"><span class="preset-name">${t.t(`care_task_type.${i}`)}</span><span class="preset-d">${s}</span>
           ${o ? x`<span class="preset-hint">${t.t("care_plan.preset_winter_needs_source")}</span>` : S}</span></button></div>`;
 	})}</div>
     <div class="actions dialog-actions"><span class="spacer"></span><button type="button" @click=${e.onCancel}>${t.t("common.cancel")}</button></div>`;
 }
-var gs = 160;
-function _s(e, t) {
-	let { l: n, plant: r, state: i } = e, a = i.draft, o = i.errors, s = e.states, c = ho(r);
-	a.role && $a(a.role) && !c.includes(a.role) && c.push(a.role);
-	let l = Bo(a) ? a.forecast : null, u = !a.role && !l && (!!a.entityId || !!i.otherSensor), d = a.role ? `role:${a.role}` : l ? `forecast:${l}` : u ? "other" : "", f = ro(n, s), p = f.length > 0 || !!l, m = ao(a, s), h = a.forecastHours, g = (t) => {
-		let o = n.t(`care_plan.forecast_row_${t}`, { window: to(n, h) }), s = a.weatherEntityId ? oo(r, e.overview, i.taskId, {
+var bs = 160;
+function xs(e, t) {
+	let { l: n, plant: r, state: i } = e, a = i.draft, o = i.errors, s = e.states, c = yo(r);
+	a.role && ro(a.role) && !c.includes(a.role) && c.push(a.role);
+	let l = Wo(a) ? a.forecast : null, u = !a.role && !l && (!!a.entityId || !!i.otherSensor), d = a.role ? `role:${a.role}` : l ? `forecast:${l}` : u ? "other" : "", f = so(n, s), p = f.length > 0 || !!l, m = lo(a, s), h = a.forecastHours, g = (t) => {
+		let o = n.t(`care_plan.forecast_row_${t}`, { window: ao(n, h) }), s = a.weatherEntityId ? uo(r, e.overview, i.taskId, {
 			entity_id: a.weatherEntityId,
 			reading: t,
 			hours: h
@@ -6932,21 +6972,21 @@ function _s(e, t) {
 			role: o,
 			value: Y(n, s.value, s.unit)
 		}) : o;
-	}, _ = f.some((e) => e.entity_id === a.weatherEntityId), ee = f.length === 1 && (_ || !l) ? n.t("care_plan.reading_group_forecast_entity", { name: eo(n, { entity_id: f[0].entity_id }, s) }) : n.t("care_plan.reading_group_forecast"), te = (t, n) => {
-		n && (e.onEditor({ otherSensor: !1 }), e.onChange(_o(a, { forecast: {
+	}, _ = f.some((e) => e.entity_id === a.weatherEntityId), ee = f.length === 1 && (_ || !l) ? n.t("care_plan.reading_group_forecast_entity", { name: io(n, { entity_id: f[0].entity_id }, s) }) : n.t("care_plan.reading_group_forecast"), te = (t, n) => {
+		n && (e.onEditor({ otherSensor: !1 }), e.onChange(xo(a, { forecast: {
 			entity_id: n,
 			reading: t,
 			hours: h
-		} }, io(n, s), r)));
+		} }, co(n, s), r)));
 	}, v = (t) => {
 		let r = e.overview?.roles[t]?.value;
 		return typeof r == "number" ? n.t("care_plan.reading_role_value", {
 			role: j(n, t),
-			value: Y(n, r, Va[t])
+			value: Y(n, r, Ga[t])
 		}) : j(n, t);
 	}, ne = (t) => {
 		if (t === "other") {
-			e.onEditor({ otherSensor: !0 }), e.onChange(_o(a, null, null, r));
+			e.onEditor({ otherSensor: !0 }), e.onChange(xo(a, null, null, r));
 			return;
 		}
 		if (t === "forecast:low" || t === "forecast:high") {
@@ -6955,18 +6995,18 @@ function _s(e, t) {
 			return;
 		}
 		let n = t.slice(5);
-		$a(n) && (e.onEditor({ otherSensor: !1 }), e.onChange(_o(a, { role: n }, Va[n], r)));
+		ro(n) && (e.onEditor({ otherSensor: !1 }), e.onChange(xo(a, { role: n }, Ga[n], r)));
 	}, y = (t) => {
-		t && e.onChange(_o(a, { entity_id: t }, vo({ entity_id: t }, s), r));
-	}, re = a.readingUnit ?? "", b = mo(r, a, s), ie = Ro(a.value);
+		t && e.onChange(xo(a, { entity_id: t }, So({ entity_id: t }, s), r));
+	}, re = a.readingUnit ?? "", b = vo(r, a, s), ie = Ho(a.value);
 	return x`<label>${n.t("care_plan.reading")}<select aria-invalid=${o.source ? "true" : "false"} aria-describedby=${o.source ? "task-source-error" : S} @change=${(e) => ne(e.target.value)}>
       <option value="" disabled ?selected=${d === ""}>${n.t("care_plan.reading_choose")}</option>
       ${c.length ? x`<optgroup label=${n.t("care_plan.reading_group_plant")}>${c.map((e) => x`<option value="role:${e}" ?selected=${d === `role:${e}`}>${v(e)}</option>`)}</optgroup>` : S}
       <optgroup label=${n.t("care_plan.reading_group_other")}><option value="other" ?selected=${d === "other"}>${n.t("care_plan.reading_other")}</option></optgroup>
       ${p ? x`<optgroup label=${ee}>${["low", "high"].map((e) => x`<option value="forecast:${e}" ?selected=${d === `forecast:${e}`}>${g(e)}</option>`)}</optgroup>` : S}</select></label>
-    ${u ? ys(e, y) : S}
-    ${l && (f.length > 1 || !_) ? vs(e, f, m, (e) => te(l, e)) : S}
-    ${o.source === "care_plan.error_weather_missing" ? S : Ss("task-source-error", t("source"))}
+    ${u ? Cs(e, y) : S}
+    ${l && (f.length > 1 || !_) ? Ss(e, f, m, (e) => te(l, e)) : S}
+    ${o.source === "care_plan.error_weather_missing" ? S : Es("task-source-error", t("source"))}
     <div class="grid2">
       <label>${n.t("care_plan.due_when")}<select @change=${(t) => e.onChange({ condition: t.target.value === "above" ? "above" : "below" })}>
         <option value="below" ?selected=${a.condition === "below"}>${n.t("care_plan.below")}</option>
@@ -6974,41 +7014,41 @@ function _s(e, t) {
       <label>${n.t("care_plan.value")}<span class="suffix-field"><input type="text" inputmode="decimal" required .value=${a.value} placeholder=${n.t("care_plan.value_placeholder")}
           aria-invalid=${o.value ? "true" : "false"} aria-describedby=${o.value ? "task-value-error" : S}
           @input=${(t) => e.onChange({ value: t.target.value })}>${re ? x`<span class="suffix">${re}</span>` : S}</span></label></div>
-    ${Ss("task-value-error", t("value"))}
+    ${Es("task-value-error", t("value"))}
     ${b === null ? S : ie === b ? x`<div class="note-hint small"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${n.t("care_plan.min_temp_applied")}</span></div>` : x`<div class="note-hint small"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${n.t("care_plan.min_temp_hint", { value: Y(n, b, a.readingUnit ?? "°C") })}</span>
           <button type="button" class="btn text sm" ?disabled=${e.busy} aria-label=${n.t("care_plan.min_temp_use_label", { value: Y(n, b, a.readingUnit ?? "°C") })} @click=${() => e.onChange({ value: String(b) })}>${n.t("care_plan.min_temp_use")}</button></div>`}`;
 }
-function vs(e, t, n, r) {
+function Ss(e, t, n, r) {
 	let { l: i } = e, a = e.state.draft, o = e.states, s = a.weatherEntityId, c = !!s && t.some((e) => e.entity_id === s);
 	return x`<label>${i.t("care_plan.weather_entity")}<select aria-invalid=${n ? "true" : "false"} aria-describedby=${n ? "task-weather-error" : S} @change=${(e) => r(e.target.value)}>
-      ${s && !c ? x`<option value="" disabled selected>${n ? s : eo(i, { entity_id: s }, o)}</option>` : S}
-      ${t.map((e) => x`<option value=${e.entity_id} ?selected=${e.entity_id === s}>${eo(i, { entity_id: e.entity_id }, o)}</option>`)}</select></label>
-    ${n ? Ss("task-weather-error", i.t("care_plan.error_weather_missing")) : S}`;
+      ${s && !c ? x`<option value="" disabled selected>${n ? s : io(i, { entity_id: s }, o)}</option>` : S}
+      ${t.map((e) => x`<option value=${e.entity_id} ?selected=${e.entity_id === s}>${io(i, { entity_id: e.entity_id }, o)}</option>`)}</select></label>
+    ${n ? Es("task-weather-error", i.t("care_plan.error_weather_missing")) : S}`;
 }
-function ys(e, t) {
-	let { l: n } = e, r = e.state.draft, i = e.states, a = r.entityId ? x`<span class="small muted chosen-sensor">${eo(n, { entity_id: r.entityId }, i)} · <code>${r.entityId}</code></span>` : S;
+function Cs(e, t) {
+	let { l: n } = e, r = e.state.draft, i = e.states, a = r.entityId ? x`<span class="small muted chosen-sensor">${io(n, { entity_id: r.entityId }, i)} · <code>${r.entityId}</code></span>` : S;
 	if (q("ha-entity-picker") && e.hass) return x`<ha-entity-picker .hass=${e.hass} .label=${n.t("care_plan.reading_sensor")} .placeholder=${n.t("wizard.search_sensors")} .value=${r.entityId ?? ""} .includeDomains=${["sensor"]}
-      .entityFilter=${(e) => go(e)} @value-changed=${(e) => t(e.detail.value ?? "")}></ha-entity-picker>${a}`;
-	let o = Object.values(i ?? {}).filter(go).sort((e, t) => eo(n, { entity_id: e.entity_id }, i).localeCompare(eo(n, { entity_id: t.entity_id }, i)));
+      .entityFilter=${(e) => bo(e)} @value-changed=${(e) => t(e.detail.value ?? "")}></ha-entity-picker>${a}`;
+	let o = Object.values(i ?? {}).filter(bo).sort((e, t) => io(n, { entity_id: e.entity_id }, i).localeCompare(io(n, { entity_id: t.entity_id }, i)));
 	return x`<label>${n.t("care_plan.reading_sensor")}<select @change=${(e) => t(e.target.value)}>
     <option value="" disabled ?selected=${!r.entityId}>${o.length ? n.t("care_plan.reading_choose") : n.t("care_plan.reading_no_sensors")}</option>
-    ${o.map((e) => x`<option value=${e.entity_id} ?selected=${e.entity_id === r.entityId}>${eo(n, { entity_id: e.entity_id }, i)}</option>`)}</select></label>`;
+    ${o.map((e) => x`<option value=${e.entity_id} ?selected=${e.entity_id === r.entityId}>${io(n, { entity_id: e.entity_id }, i)}</option>`)}</select></label>`;
 }
-function bs(e, t) {
-	let { l: n } = e, r = e.state.draft, i = e.state.errors, a = r.readingUnit ?? "", o = (e, t, n) => t ? `${e} ${n}` : e, s = Bo(r);
+function ws(e, t) {
+	let { l: n } = e, r = e.state.draft, i = e.state.errors, a = r.readingUnit ?? "", o = (e, t, n) => t ? `${e} ${n}` : e, s = Wo(r);
 	return x`<div id="task-more"><div class="grid2">
       ${s ? x`<label>${n.t("care_plan.look_ahead")}<select aria-describedby="task-ahead-hint" @change=${(t) => e.onChange({ forecastHours: Number(t.target.value) })}>
-          ${Ua.map((e) => x`<option value=${e} ?selected=${r.forecastHours === e}>${n.t(`care_plan.look_ahead_${e}`)}</option>`)}</select></label>` : x`<label>${n.t("care_plan.for_hours")}<span class="suffix-field"><input type="number" inputmode="decimal" min="0" max=${72} step="any" .value=${r.forHours}
+          ${qa.map((e) => x`<option value=${e} ?selected=${r.forecastHours === e}>${n.t(`care_plan.look_ahead_${e}`)}</option>`)}</select></label>` : x`<label>${n.t("care_plan.for_hours")}<span class="suffix-field"><input type="number" inputmode="decimal" min="0" max=${72} step="any" .value=${r.forHours}
           aria-invalid=${i.forHours ? "true" : "false"} aria-describedby=${o("task-for-hint", !!i.forHours, "task-for-error")}
           @input=${(t) => e.onChange({ forHours: t.target.value })}><span class="suffix">${n.t("care_plan.hours")}</span></span></label>`}
       <label>${n.t(r.condition === "below" ? "care_plan.reset_after_above" : "care_plan.reset_after_below")}<span class="suffix-field"><input type="text" inputmode="decimal" .value=${r.resetValue} placeholder=${r.value.trim()}
           aria-invalid=${i.resetValue ? "true" : "false"} aria-describedby=${o("task-reset-hint", !!i.resetValue, "task-reset-error")}
           @input=${(t) => e.onChange({ resetValue: t.target.value })}>${a ? x`<span class="suffix">${a}</span>` : S}</span></label></div>
-    ${s ? S : Ss("task-for-error", t("forHours"))}${Ss("task-reset-error", t("resetValue"))}
+    ${s ? S : Es("task-for-error", t("forHours"))}${Es("task-reset-error", t("resetValue"))}
     ${s ? x`<span class="small muted" id="task-ahead-hint">${n.t("care_plan.look_ahead_hint")}</span>` : x`<span class="small muted" id="task-for-hint">${n.t("care_plan.for_hours_hint")}</span>`}
     <span class="small muted" id="task-reset-hint">${n.t("care_plan.reset_hint")}</span></div>`;
 }
-function xs(e) {
+function Ts(e) {
 	return e.mode === "yearly" ? {
 		kind: "yearly",
 		start_month: e.startMonth ?? 1,
@@ -7020,80 +7060,80 @@ function xs(e) {
 		growing_season_only: e.growingSeasonOnly
 	};
 }
-function Ss(e, t) {
+function Es(e, t) {
 	return t ? x`<span class="error-text small" id=${e}>${t}</span>` : S;
 }
-function Cs(e) {
+function Ds(e) {
 	let { l: t, plant: n, state: r } = e, i = r.draft, a = r.errors, o = (e) => {
 		let n = a[e];
 		return n ? t.t(n) : void 0;
-	}, s = t.t(`care_task_type.${i.type}`), c = i.type === "custom", l = n.rest_period ?? null, u = i.startMonth !== null && i.endMonth !== null ? new Set(qa(i.startMonth, i.endMonth)) : /* @__PURE__ */ new Set(), d = (e) => e.target.value, f = No(n, i.type), p = i.mode === "reading", m = r.moreOpen || !!a.lastDone || !!a.forHours || !!a.resetValue;
+	}, s = t.t(`care_task_type.${i.type}`), c = i.type === "custom", l = n.rest_period ?? null, u = i.startMonth !== null && i.endMonth !== null ? new Set(Za(i.startMonth, i.endMonth)) : /* @__PURE__ */ new Set(), d = (e) => e.target.value, f = Lo(n, i.type), p = i.mode === "reading", m = r.moreOpen || !!a.lastDone || !!a.forHours || !!a.resetValue;
 	return x`${r.error ? x`<p class="error" role="alert">${r.error}</p>` : S}
-    <div class="task-summary"><ha-icon aria-hidden="true" .icon=${za[i.type]}></ha-icon>
-      <span><span class="summary-name">${i.name.trim() || s}</span> · ${Jo(t, i, l, e.states)}</span></div>
+    <div class="task-summary"><ha-icon aria-hidden="true" .icon=${Ua[i.type]}></ha-icon>
+      <span><span class="summary-name">${i.name.trim() || s}</span> · ${Qo(t, i, l, e.states)}</span></div>
     <label>${c ? t.t("care_plan.name") : t.t("care_plan.name_optional")}
       <input type="text" maxlength=${60} .value=${i.name} placeholder=${c ? "" : s} ?required=${c}
         aria-invalid=${a.name ? "true" : "false"} aria-describedby=${a.name ? "task-name-error" : S}
         @input=${(t) => e.onChange({ name: d(t) })}></label>
-    ${Ss("task-name-error", o("name"))}
+    ${Es("task-name-error", o("name"))}
     <div class="field-group"><span class="field-label" id="task-mode-label">${t.t("care_plan.when_due")}</span>
       <div class="seg" role="group" aria-labelledby="task-mode-label">
         <button type="button" aria-pressed=${i.mode === "interval" ? "true" : "false"} @click=${() => e.onChange({ mode: "interval" })}>${t.t("care_plan.mode_interval")}</button>
         <button type="button" aria-pressed=${i.mode === "yearly" ? "true" : "false"} @click=${() => e.onChange({ mode: "yearly" })}>${t.t("care_plan.mode_yearly")}</button>
         <button type="button" aria-pressed=${p ? "true" : "false"} @click=${() => e.onChange({ mode: "reading" })}>${t.t("care_plan.mode_reading")}</button></div></div>
-    ${p ? _s(e, o) : i.mode === "interval" ? x`<div class="grid2">
+    ${p ? xs(e, o) : i.mode === "interval" ? x`<div class="grid2">
         <label>${t.t("care_plan.every")}<input type="number" inputmode="numeric" min="1" max="999" step="1" .value=${i.every}
           aria-invalid=${a.every ? "true" : "false"} aria-describedby=${a.every ? "task-every-error" : S}
           @input=${(t) => e.onChange({ every: d(t) })}></label>
         <label>${t.t("care_plan.unit")}<select .value=${i.unit} @change=${(t) => e.onChange({ unit: t.target.value })}>
-          ${Wa.map((e) => x`<option value=${e} ?selected=${e === i.unit}>${t.t(`care_plan.unit_${e}`)}</option>`)}</select></label></div>
-      ${Ss("task-every-error", o("every"))}
+          ${Ja.map((e) => x`<option value=${e} ?selected=${e === i.unit}>${t.t(`care_plan.unit_${e}`)}</option>`)}</select></label></div>
+      ${Es("task-every-error", o("every"))}
       ${l ? x`<div><label class="check"><input type="checkbox" aria-describedby="task-growing-hint" .checked=${i.growingSeasonOnly} @change=${(t) => e.onChange({ growingSeasonOnly: t.target.checked })}>
         <span>${t.t("care_plan.growing_only")}</span></label>
-        <span class="small muted growing-hint" id="task-growing-hint">${t.t("care_plan.growing_only_hint", { months: Ya(t, l.start_month, l.end_month) })}</span></div>` : S}` : x`<div class="field-group"><span class="field-label" id="task-months-label">${t.t("care_plan.months")}</span>
+        <span class="small muted growing-hint" id="task-growing-hint">${t.t("care_plan.growing_only_hint", { months: $a(t, l.start_month, l.end_month) })}</span></div>` : S}` : x`<div class="field-group"><span class="field-label" id="task-months-label">${t.t("care_plan.months")}</span>
         <div class="monthpick" role="group" aria-labelledby="task-months-label" aria-describedby=${a.months ? "task-months-error task-months-hint" : "task-months-hint"}>
-          ${Array.from({ length: 12 }, (e, t) => t + 1).map((n) => x`<button type="button" aria-pressed=${u.has(n) ? "true" : "false"} aria-description=${Ja(t, n)} @click=${() => e.onMonth(n)}>${Ja(t, n, "short")}</button>`)}</div>
+          ${Array.from({ length: 12 }, (e, t) => t + 1).map((n) => x`<button type="button" aria-pressed=${u.has(n) ? "true" : "false"} aria-description=${Qa(t, n)} @click=${() => e.onMonth(n)}>${Qa(t, n, "short")}</button>`)}</div>
         <span class="small muted" id="task-months-hint">${t.t("care_plan.months_hint")}</span>
-        ${Ss("task-months-error", o("months"))}</div>`}
-    <label>${t.t("care_plan.instructions")}<textarea rows=${i.instructions.length > gs ? 6 : 3} maxlength=${Ga} .value=${i.instructions} placeholder=${t.t("care_plan.instructions_placeholder")}
+        ${Es("task-months-error", o("months"))}</div>`}
+    <label>${t.t("care_plan.instructions")}<textarea rows=${i.instructions.length > bs ? 6 : 3} maxlength=${Ya} .value=${i.instructions} placeholder=${t.t("care_plan.instructions_placeholder")}
       aria-invalid=${a.instructions ? "true" : "false"} aria-describedby=${a.instructions ? "task-instructions-error" : S}
       @input=${(t) => e.onChange({ instructions: t.target.value })}></textarea></label>
-    ${Ss("task-instructions-error", o("instructions"))}
+    ${Es("task-instructions-error", o("instructions"))}
     ${f && !i.instructions.trim() ? x`<div class="note-hint small"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${t.t("care_plan.note_hint")}</span>
         <button type="button" class="btn text sm" ?disabled=${e.busy} @click=${() => e.onChange({ instructions: f })}>${t.t("care_plan.note_use")}</button></div>` : f && i.instructions === f ? x`<div class="note-hint small"><ha-icon aria-hidden="true" icon="mdi:book-open-variant"></ha-icon><span>${t.t("care_plan.note_applied")}</span></div>` : S}
     <div class="more-options">
       <button type="button" class="btn text sm" aria-expanded=${m ? "true" : "false"} aria-controls="task-more" @click=${e.onToggleMore}>
-        <ha-icon aria-hidden="true" icon=${m ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>${t.t("care_plan.more_options")}${p && !m ? x`<span class="more-hint">&nbsp;· ${t.t(Bo(i) ? "care_plan.more_options_forecast" : "care_plan.more_options_reading")}</span>` : S}</button>
-      ${m && p ? bs(e, o) : m ? x`<div id="task-more"><label>${t.t("care_plan.last_done_field")}
+        <ha-icon aria-hidden="true" icon=${m ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon>${t.t("care_plan.more_options")}${p && !m ? x`<span class="more-hint">&nbsp;· ${t.t(Wo(i) ? "care_plan.more_options_forecast" : "care_plan.more_options_reading")}</span>` : S}</button>
+      ${m && p ? ws(e, o) : m ? x`<div id="task-more"><label>${t.t("care_plan.last_done_field")}
         <input type="date" max=${e.today} .value=${i.lastDone} aria-invalid=${a.lastDone ? "true" : "false"} aria-describedby="task-last-done-hint${a.lastDone ? " task-last-done-error" : ""}"
           @input=${(t) => e.onChange({ lastDone: d(t) })}></label>
-        <span class="small muted" id="task-last-done-hint">${t.t("care_plan.last_done_hint")}</span>${Ss("task-last-done-error", o("lastDone"))}</div>` : S}
+        <span class="small muted" id="task-last-done-hint">${t.t("care_plan.last_done_hint")}</span>${Es("task-last-done-error", o("lastDone"))}</div>` : S}
     </div>
     <div class="actions dialog-actions">
       ${r.taskId ? x`<button type="button" class="danger-text" ?disabled=${e.busy} @click=${e.onDelete}>${t.t("care_plan.delete")}</button><span class="spacer"></span>` : x`<button type="button" ?disabled=${e.busy} @click=${e.onBack}>${t.t("care_plan.back")}</button><span class="spacer"></span>`}
       <button type="button" ?disabled=${e.busy} @click=${e.onCancel}>${t.t("common.cancel")}</button>
-      <button type="button" class="primary" ?disabled=${e.busy || ao(i, e.states)} @click=${e.onSave}>${t.t(r.taskId ? "care_plan.save" : "care_plan.add_task")}</button></div>`;
+      <button type="button" class="primary" ?disabled=${e.busy || lo(i, e.states)} @click=${e.onSave}>${t.t(r.taskId ? "care_plan.save" : "care_plan.add_task")}</button></div>`;
 }
-function ws(e) {
-	let { l: t, plant: n, draft: r } = e, i = (n.care_tasks ?? []).filter((e) => e.schedule.kind === "interval"), a = r.startMonth !== null && r.endMonth !== null ? new Set(qa(r.startMonth, r.endMonth)) : /* @__PURE__ */ new Set();
+function Os(e) {
+	let { l: t, plant: n, draft: r } = e, i = (n.care_tasks ?? []).filter((e) => e.schedule.kind === "interval"), a = r.startMonth !== null && r.endMonth !== null ? new Set(Za(r.startMonth, r.endMonth)) : /* @__PURE__ */ new Set();
 	return x`<p class="muted">${t.t("care_plan.rest_intro")}</p>
     <p class="small muted">${t.t("care_plan.rest_watering")}</p>
     <div class="field-group"><span class="field-label" id="rest-months-label">${t.t("care_plan.rest_months")}</span>
       <div class="monthpick" role="group" aria-labelledby="rest-months-label" aria-describedby=${e.error ? "rest-error rest-months-hint" : "rest-months-hint"}>
-        ${Array.from({ length: 12 }, (e, t) => t + 1).map((n) => x`<button type="button" aria-pressed=${a.has(n) ? "true" : "false"} aria-description=${Ja(t, n)} @click=${() => e.onMonth(n)}>${Ja(t, n, "short")}</button>`)}</div>
+        ${Array.from({ length: 12 }, (e, t) => t + 1).map((n) => x`<button type="button" aria-pressed=${a.has(n) ? "true" : "false"} aria-description=${Qa(t, n)} @click=${() => e.onMonth(n)}>${Qa(t, n, "short")}</button>`)}</div>
       <span class="small muted" id="rest-months-hint">${t.t("care_plan.months_hint")}</span>
       ${e.error ? x`<span class="error-text small" id="rest-error">${e.error}</span>` : S}</div>
     <fieldset class="rest-tasks"><legend class="field-label">${t.t("care_plan.rest_off_heading")}</legend>
       ${i.length ? i.map((n) => x`<div><label class="check"><input type="checkbox" .checked=${r.off.has(n.id)} aria-describedby="rest-task-${n.id}"
           @change=${(t) => e.onToggle(n.id, t.target.checked)}><span>${J(t, n)}</span></label>
-          <span class="small muted growing-hint" id="rest-task-${n.id}">${Za(t, n.schedule, null)}</span></div>`) : x`<p class="small muted">${t.t("care_plan.rest_no_repeating")}</p>`}
+          <span class="small muted growing-hint" id="rest-task-${n.id}">${to(t, n.schedule, null)}</span></div>`) : x`<p class="small muted">${t.t("care_plan.rest_no_repeating")}</p>`}
       <p class="small muted">${t.t("care_plan.rest_yearly_note")}</p></fieldset>
     <div class="actions dialog-actions">
       ${n.rest_period ? x`<button type="button" class="danger-text" ?disabled=${e.busy} @click=${e.onRemove}>${t.t("care_plan.rest_remove")}</button>` : S}<span class="spacer"></span>
       <button type="button" ?disabled=${e.busy} @click=${e.onCancel}>${t.t("common.cancel")}</button>
       <button type="button" class="primary" ?disabled=${e.busy} @click=${e.onSave}>${t.t("care_plan.save")}</button></div>`;
 }
-function Ts(e) {
+function ks(e) {
 	let { l: t } = e;
 	return x`<p class="muted">${t.t("care_plan.automate_intro")}</p>
     <ul class="list automate-list">${e.rows.map((n) => x`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${n.icon}></ha-icon></span>
@@ -7104,7 +7144,7 @@ function Ts(e) {
     <div class="actions dialog-actions"><span class="spacer"></span><button type="button" @click=${e.onClose}>${t.t("care_plan.close")}</button>
       <button type="button" class="primary" @click=${e.onOpenEditor}>${t.t("care_plan.open_automation_editor")}</button></div>`;
 }
-var Es = o`
+var As = o`
   .care-plan .task { grid-template-columns: 40px minmax(0, 1fr) auto 40px; }
   .care-plan .task-side { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
   .cchip { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 2px 10px 2px 7px; border-radius: 13px; font-size: 13px; font-weight: 500; line-height: 1.3; max-width: 100%; }
@@ -7194,13 +7234,13 @@ var Es = o`
     .restline { grid-template-columns: 20px minmax(0, 1fr); }
     .restline > .btn { grid-column: 2; justify-self: start; margin-inline-start: -12px; }
   }
-`, Ds = 5242880, Os = 2048, ks = 41943040, As = 64e6, js = [
+`, js = 5242880, Ms = 2048, Ns = 41943040, Ps = 64e6, Fs = [
 	"image/jpeg",
 	"image/png",
 	"image/webp"
 ];
-async function Ms(e, t, n) {
-	if (!js.includes(e.type) || e.size === 0 || e.size > t) throw Error(n.t(t > 5242880 ? "image_error.type_or_input_size" : "image_error.type_or_size"));
+async function Is(e, t, n) {
+	if (!Fs.includes(e.type) || e.size === 0 || e.size > t) throw Error(n.t(t > 5242880 ? "image_error.type_or_input_size" : "image_error.type_or_size"));
 	let r;
 	try {
 		r = new Uint8Array(await e.slice(0, 12).arrayBuffer());
@@ -7211,7 +7251,7 @@ async function Ms(e, t, n) {
 	if (a !== e.type) throw Error(n.t("image_error.signature"));
 	return a;
 }
-async function Ns(e, t) {
+async function Ls(e, t) {
 	try {
 		if (typeof createImageBitmap == "function") {
 			let t = await createImageBitmap(e, { imageOrientation: "from-image" });
@@ -7240,10 +7280,10 @@ async function Ns(e, t) {
 		throw Error(t.t("image_error.decode"));
 	}
 }
-var Ps = (e, t) => Number.isInteger(e) && Number.isInteger(t) && e >= 1 && t >= 1;
-async function Fs(e, t = L) {
-	let n = await Ms(e, Ds, t), { width: r, height: i, release: a } = await Ns(e, t);
-	if (a(), !Ps(r, i) || r > 2048 || i > 2048) throw Error(t.t("image_error.dimensions"));
+var Rs = (e, t) => Number.isInteger(e) && Number.isInteger(t) && e >= 1 && t >= 1;
+async function zs(e, t = L) {
+	let n = await Is(e, js, t), { width: r, height: i, release: a } = await Ls(e, t);
+	if (a(), !Rs(r, i) || r > 2048 || i > 2048) throw Error(t.t("image_error.dimensions"));
 	return {
 		format: n,
 		bytes: e.size,
@@ -7251,19 +7291,19 @@ async function Fs(e, t = L) {
 		height: i
 	};
 }
-function Is(e, t, n) {
+function Bs(e, t, n) {
 	return new Promise((r) => {
 		e.toBlob((e) => r(e), t, n);
 	});
 }
-async function Ls(e, t = L) {
-	await Ms(e, ks, t);
-	let { source: n, width: r, height: i, release: a } = await Ns(e, t);
+async function Vs(e, t = L) {
+	await Is(e, Ns, t);
+	let { source: n, width: r, height: i, release: a } = await Ls(e, t);
 	try {
-		if (!Ps(r, i)) throw Error(t.t("image_error.decode"));
-		if (r * i > As) throw Error(t.t("image_error.too_many_pixels"));
+		if (!Rs(r, i)) throw Error(t.t("image_error.decode"));
+		if (r * i > Ps) throw Error(t.t("image_error.too_many_pixels"));
 		if (r <= 2048 && i <= 2048 && e.size <= 5242880) return e;
-		let a = Math.min(1, Os / Math.max(r, i)), o = document.createElement("canvas");
+		let a = Math.min(1, Ms / Math.max(r, i)), o = document.createElement("canvas");
 		o.width = Math.max(1, Math.round(r * a)), o.height = Math.max(1, Math.round(i * a));
 		let s = o.getContext("2d");
 		if (!s) throw Error(t.t("image_error.resize"));
@@ -7273,8 +7313,8 @@ async function Ls(e, t = L) {
 			.8,
 			.65
 		]) {
-			let n = await Is(o, "image/webp", t);
-			if (n?.type !== "image/webp" && (n = await Is(o, "image/jpeg", t)), !n || !js.includes(n.type)) break;
+			let n = await Bs(o, "image/webp", t);
+			if (n?.type !== "image/webp" && (n = await Bs(o, "image/jpeg", t)), !n || !Fs.includes(n.type)) break;
 			if (n.size > 0 && n.size <= 5242880) {
 				let t = n.type === "image/webp" ? "webp" : "jpg";
 				return new File([n], `${e.name.replace(/\.[^.]*$/, "") || "photo"}.${t}`, { type: n.type });
@@ -7286,18 +7326,18 @@ async function Ls(e, t = L) {
 	}
 }
 // src/bundle-version.ts
-function Rs(e) {
+function Hs(e) {
 	try {
 		return new URL(e).searchParams.get("v") || null;
 	} catch {
 		return null;
 	}
 }
-function zs(e, t) {
+function Us(e, t) {
 	return !!e && !!t && e !== t;
 }
 // src/snooze.ts
-var Bs = [
+var Ws = [
 	{
 		choice: "1",
 		days: 1,
@@ -7318,12 +7358,12 @@ var Bs = [
 		days: 14,
 		label: "snooze.preset_14"
 	}
-], Vs = /^(\d{4})-(\d\d)-(\d\d)$/;
-function Hs(e, t) {
-	let n = Vs.exec(e);
+], Gs = /^(\d{4})-(\d\d)-(\d\d)$/;
+function Ks(e, t) {
+	let n = Gs.exec(e);
 	return n ? new Date(Date.UTC(Number(n[1]), Number(n[2]) - 1, Number(n[3]) + t)).toISOString().slice(0, 10) : e;
 }
-function Us(e, t) {
+function qs(e, t) {
 	let n = {
 		year: "numeric",
 		month: "2-digit",
@@ -7343,46 +7383,46 @@ function Us(e, t) {
 	}
 	return Object.fromEntries(r.formatToParts(e).filter((e) => e.type !== "literal").map((e) => [e.type, Number(e.value)]));
 }
-function Ws(e, t) {
-	let n = Us(e, t), r = Date.UTC(n.year, n.month - 1, n.day, n.hour % 24, n.minute, n.second);
+function Js(e, t) {
+	let n = qs(e, t), r = Date.UTC(n.year, n.month - 1, n.day, n.hour % 24, n.minute, n.second);
 	return Math.round((r - Math.floor(e / 1e3) * 1e3) / 6e4);
 }
-function Gs(e, t) {
-	let n = Vs.exec(e);
+function Ys(e, t) {
+	let n = Gs.exec(e);
 	if (!n) return null;
-	let r = Date.UTC(Number(n[1]), Number(n[2]) - 1, Number(n[3]), 23, 59, 59), i = Ws(r, t);
-	i = Ws(r - i * 6e4, t);
+	let r = Date.UTC(Number(n[1]), Number(n[2]) - 1, Number(n[3]), 23, 59, 59), i = Js(r, t);
+	i = Js(r - i * 6e4, t);
 	let a = i < 0 ? "-" : "+", o = Math.abs(i);
 	return `${e}T23:59:59${a}${String(Math.floor(o / 60)).padStart(2, "0")}:${String(o % 60).padStart(2, "0")}`;
 }
-function Ks(e, t, n, r) {
-	let i = Bs.find((t) => t.choice === e);
-	return i ? Gs(Hs(t, i.days), r) : Js(n, t) ? Gs(n, r) : null;
+function Xs(e, t, n, r) {
+	let i = Ws.find((t) => t.choice === e);
+	return i ? Ys(Ks(t, i.days), r) : Qs(n, t) ? Ys(n, r) : null;
 }
-function qs(e) {
+function Zs(e) {
 	return {
-		min: Hs(e, 1),
-		max: Hs(e, 365)
+		min: Ks(e, 1),
+		max: Ks(e, 365)
 	};
 }
-function Js(e, t) {
-	if (!Vs.test(e) || Hs(e, 0) !== e) return !1;
-	let { min: n, max: r } = qs(t);
+function Qs(e, t) {
+	if (!Gs.test(e) || Ks(e, 0) !== e) return !1;
+	let { min: n, max: r } = Zs(t);
 	return e >= n && e <= r;
 }
-function Ys(e, t = Date.now()) {
+function $s(e, t = Date.now()) {
 	if (!e) return null;
 	let n = Date.parse(e);
 	return Number.isFinite(n) && n > t ? e : null;
 }
-function Xs(e, t) {
+function ec(e, t) {
 	let n = Date.parse(e);
 	if (!Number.isFinite(n)) return null;
-	let r = Us(n - 1e3, t);
+	let r = qs(n - 1e3, t);
 	return `${String(r.year).padStart(4, "0")}-${String(r.month).padStart(2, "0")}-${String(r.day).padStart(2, "0")}`;
 }
-function Zs(e, t, n) {
-	let r = Vs.exec(t);
+function tc(e, t, n) {
+	let r = Gs.exec(t);
 	if (!r) return t;
 	let i = t.slice(0, 4) === n.slice(0, 4);
 	return new Intl.DateTimeFormat(e.language, {
@@ -7393,12 +7433,12 @@ function Zs(e, t, n) {
 		timeZone: "UTC"
 	}).format(Date.UTC(Number(r[1]), Number(r[2]) - 1, Number(r[3])));
 }
-function Qs(e, t, n, r, i = Date.now()) {
-	let a = Ys(t, i), o = a ? Xs(a, r) : null;
-	return o ? e.t("snooze.chip", { date: Zs(e, o, n).replace(/\s/g, "\xA0") }) : null;
+function nc(e, t, n, r, i = Date.now()) {
+	let a = $s(t, i), o = a ? ec(a, r) : null;
+	return o ? e.t("snooze.chip", { date: tc(e, o, n).replace(/\s/g, "\xA0") }) : null;
 }
 // src/styles.ts
-var $s = o`
+var rc = o`
   :host{display:block;color:var(--primary-text-color,#212121);font-family:var(--paper-font-body1_-_font-family,system-ui,sans-serif);line-height:1.5;overflow-wrap:anywhere}
   *{box-sizing:border-box} .update-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-left:4px solid var(--info-color,#039be5);padding:8px 16px;margin-bottom:16px;background:var(--card-background-color,#fff)} .update-banner p{margin:0} main{width:100%;max-width:none;margin:0;padding:0} .panel-content{width:100%;max-width:1280px;margin:0 auto;padding:16px 24px 24px} header,.actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap} header{justify-content:space-between;margin-bottom:24px}
   .page-title{font-size:inherit;font-weight:inherit;margin:inherit;line-height:inherit}
@@ -7412,7 +7452,7 @@ var $s = o`
    .detail-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 12px;margin:8px 0 16px}.detail-tabs button{flex:0 0 auto;background:var(--secondary-background-color,#f5f5f5);border-color:transparent}.detail-tabs button[aria-current=page]{background:var(--secondary-background-color,#f5f5f5);color:var(--primary-text-color,#212121);border:2px solid var(--primary-color,#007bad);font-weight:600}.plant-overview-card{padding:0;overflow:hidden}.overview-heading{display:flex;align-items:center;gap:20px;padding:24px;background:var(--secondary-background-color,#f5f5f5)}.overview-avatar{width:84px;height:84px;flex:0 0 84px;object-fit:cover;border-radius:16px}.overview-avatar.placeholder{display:grid;place-items:center;background:var(--secondary-background-color,#f5f5f5);color:var(--primary-text-color,#212121);font-size:2rem;font-weight:700;border:1px solid var(--divider-color,#ddd)}.overview-heading h2{font-size:1.8rem;margin:4px 0}.overview-heading>section,.overview-heading>article{padding:0;margin:0;border:0;background:transparent}.eyebrow{font-size:.75rem;font-weight:700;letter-spacing:.08em;color:var(--secondary-text-color,#666);margin:0}.overview-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:20px}.overview-metrics article{display:grid;gap:4px;margin:0;background:var(--secondary-background-color,#f5f5f5);border:0}.overview-metrics article span{color:var(--secondary-text-color,#666)}.overview-metrics article strong{font-size:1.45rem}.overview-sensors,.overview-care{border:0;border-top:1px solid var(--divider-color,#ddd);border-radius:0;margin:0}.overview-sensors h2,.overview-care h2{margin-top:0}.overview-heading button{margin-top:8px}
   .detail-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:4px 2px 8px}.detail-heading h2{font-size:1.5rem;margin:0}.detail-heading p{margin:4px 0;color:var(--secondary-text-color,#666)}.detail-heading a{color:var(--primary-text-color,#212121);text-decoration:underline;text-underline-offset:3px}
   @media(max-width:600px){.panel-content{padding:16px 16px 16px}section,article{padding:16px}.actions button{flex:1 1 auto}header{align-items:flex-start}dl{grid-template-columns:1fr}dd{margin-bottom:8px}.stepper li span:last-child{display:none}.stepper li[aria-current=step] span:last-child{display:inline}.choice-card{min-height:0}.overview-heading{align-items:flex-start;flex-direction:column;padding:18px}.overview-metrics{grid-template-columns:1fr;padding:14px}.detail-tabs button{font-size:.9rem;padding:8px}}
-`, ec, tc = [
+`, ic, ac = [
 	"ha-area-picker",
 	"ha-entity-picker",
 	"ha-selector",
@@ -7420,7 +7460,7 @@ var $s = o`
 	"ha-expansion-panel",
 	"ha-dropdown",
 	"ha-dropdown-item"
-], nc = Nt.filter((e) => e !== "moisture"), rc = "/config/integrations/integration/smart_plants", ic = "https://open.plantbook.io/apikey/", X = class extends C {
+], oc = Nt.filter((e) => e !== "moisture"), sc = "/config/integrations/integration/smart_plants", cc = "https://open.plantbook.io/apikey/", X = class extends C {
 	constructor(...e) {
 		super(...e), this.areas = [], this.entities = [], this.devices = [], this.states = {}, this.blocked = !1, this.navigationContext = 0, this.photoStatus = "", this.step = 1, this.busy = !1, this.error = "", this.name = "", this.area = "", this.photo = null, this.photoUrl = null, this.photoError = "", this.photoChecking = !1, this.dragging = !1, this.moisture = mi(), this.extras = [], this.pendingRole = null, this.roleMenu = !1, this.expanded = /* @__PURE__ */ new Set(), this.opened = /* @__PURE__ */ new Set(), this.query = "", this.results = [], this.searched = !1, this.preview = null, this.accepted = !1, this.speciesError = "", this.common = "", this.latin = "", this.acquired = "", this.placement = "", this.category = "", this.tagText = "", this.draft = null, this.finalRequest = null, this.rejected = !1, this.created = null, this.generation = 0, this.lifecycle = 0, this.photoCheck = 0, this.entityById = /* @__PURE__ */ new Map(), this.areaOfEntity = /* @__PURE__ */ new Map();
 	}
@@ -7437,7 +7477,7 @@ var $s = o`
 	}
 	connectedCallback() {
 		super.connectedCallback();
-		for (let e of tc) q(e) || customElements.whenDefined(e).then(() => this.requestUpdate());
+		for (let e of ac) q(e) || customElements.whenDefined(e).then(() => this.requestUpdate());
 		this.photo && !this.photoUrl && (this.photoUrl = URL.createObjectURL(this.photo)), !this.draft && !this.created && this.start();
 	}
 	disconnectedCallback() {
@@ -7622,7 +7662,7 @@ var $s = o`
 		let t = ++this.photoCheck;
 		this.photoChecking = !0;
 		try {
-			let n = await Ls(e, this.l);
+			let n = await Vs(e, this.l);
 			if (t !== this.photoCheck) return;
 			this.photo = n, this.photoUrl = URL.createObjectURL(n);
 		} catch (e) {
@@ -7865,7 +7905,7 @@ var $s = o`
       <button type="button" class="iconbtn" aria-label=${n.t("wizard.remove_sensor", { name: r })} @click=${() => this.unassign(e)}><ha-icon aria-hidden="true" icon="mdi:close"></ha-icon></button></div>`;
 	}
 	renderSensors() {
-		let e = this.l, t = this.moisture.sources[0]?.entity_id, n = this.knownAreas.find((e) => e.area_id === this.area)?.name, r = this.suggestions(), i = nc.filter((e) => !this.takenRoles.has(e) && e !== this.pendingRole);
+		let e = this.l, t = this.moisture.sources[0]?.entity_id, n = this.knownAreas.find((e) => e.area_id === this.area)?.name, r = this.suggestions(), i = oc.filter((e) => !this.takenRoles.has(e) && e !== this.pendingRole);
 		return x`<h2 tabindex="-1">${e.t("wizard.sensors_heading")}</h2><p class="intro">${e.t("wizard.sensors_intro")}</p>
       <div class="stack">
         ${t ? this.assignedRow("moisture", t) : this.sensorPicker("moisture", e.t("wizard.moisture_sensor"))}
@@ -7890,7 +7930,7 @@ var $s = o`
 		}}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("wizard.add_another")}</button>`;
 		return q("ha-dropdown") && q("ha-dropdown-item") ? x`<ha-dropdown @wa-select=${(e) => {
 			let t = e.detail.item.value;
-			nc.includes(t) && (this.pendingRole = t);
+			oc.includes(t) && (this.pendingRole = t);
 		}}>
         ${n(!0)}${e.map((e) => x`<ha-dropdown-item value=${e}><ha-icon slot="icon" .icon=${A[e].icon}></ha-icon>${j(t, e)}</ha-dropdown-item>`)}</ha-dropdown>` : x`${n(!1)}${this.roleMenu ? x`<div class="role-menu">${e.map((e) => x`<button type="button" class="btn outline sm" @click=${() => {
 			this.pendingRole = e, this.roleMenu = !1;
@@ -7962,9 +8002,9 @@ var $s = o`
           <label class="check"><input type="checkbox" .checked=${this.accepted} @change=${(e) => {
 			this.accepted = e.target.checked, this.error = "";
 		}}>${e.t("wizard.accept_species")}</label>
-          <button type="button" class="btn text sm flush" @click=${() => this.manual()}>${e.t("wizard.remove_species")}</button>` : S}` : t ? this.alert("info", x`${e.t("wizard.provider_unavailable_body")}<span class="alert-links"><a href=${rc} @click=${(e) => {
-			e.preventDefault(), history.pushState(null, "", rc), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
-		}}>${e.t("wizard.open_options")}</a><a href=${ic} target="_blank" rel="noreferrer">${e.t("wizard.openplantbook_credentials_link")}</a></span>`, e.t("wizard.provider_unavailable_title")) : S}
+          <button type="button" class="btn text sm flush" @click=${() => this.manual()}>${e.t("wizard.remove_species")}</button>` : S}` : t ? this.alert("info", x`${e.t("wizard.provider_unavailable_body")}<span class="alert-links"><a href=${sc} @click=${(e) => {
+			e.preventDefault(), history.pushState(null, "", sc), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
+		}}>${e.t("wizard.open_options")}</a><a href=${cc} target="_blank" rel="noreferrer">${e.t("wizard.openplantbook_credentials_link")}</a></span>`, e.t("wizard.provider_unavailable_title")) : S}
       ${this.accepted || this.preview ? S : x`<h3>${e.t("wizard.manual_species")}</h3><div class="two">
         <label class="field">${e.t("species.common_name")}<input maxlength="200" .value=${this.common} @input=${(e) => {
 			this.common = e.target.value;
@@ -8036,7 +8076,7 @@ var $s = o`
     </div></div>`;
 	}
 };
-ec = X, ec.styles = [
+ic = X, ic.styles = [
 	U,
 	Qi,
 	o`
@@ -8195,25 +8235,25 @@ ec = X, ec.styles = [
     }
   `
 ], W([w({ attribute: !1 })], X.prototype, "hass", void 0), W([w({ attribute: !1 })], X.prototype, "capabilities", void 0), W([w({ attribute: !1 })], X.prototype, "areas", void 0), W([w({ attribute: !1 })], X.prototype, "entities", void 0), W([w({ attribute: !1 })], X.prototype, "devices", void 0), W([w({ attribute: !1 })], X.prototype, "states", void 0), W([w({ type: Boolean })], X.prototype, "blocked", void 0), W([w({ type: Number })], X.prototype, "navigationContext", void 0), W([w()], X.prototype, "photoStatus", void 0), W([T()], X.prototype, "step", void 0), W([T()], X.prototype, "busy", void 0), W([T()], X.prototype, "error", void 0), W([T()], X.prototype, "name", void 0), W([T()], X.prototype, "area", void 0), W([T()], X.prototype, "photo", void 0), W([T()], X.prototype, "photoUrl", void 0), W([T()], X.prototype, "photoError", void 0), W([T()], X.prototype, "photoChecking", void 0), W([T()], X.prototype, "dragging", void 0), W([T()], X.prototype, "moisture", void 0), W([T()], X.prototype, "extras", void 0), W([T()], X.prototype, "pendingRole", void 0), W([T()], X.prototype, "roleMenu", void 0), W([T()], X.prototype, "expanded", void 0), W([T()], X.prototype, "opened", void 0), W([T()], X.prototype, "query", void 0), W([T()], X.prototype, "results", void 0), W([T()], X.prototype, "searched", void 0), W([T()], X.prototype, "preview", void 0), W([T()], X.prototype, "accepted", void 0), W([T()], X.prototype, "speciesError", void 0), W([T()], X.prototype, "common", void 0), W([T()], X.prototype, "latin", void 0), W([T()], X.prototype, "acquired", void 0), W([T()], X.prototype, "placement", void 0), W([T()], X.prototype, "category", void 0), W([T()], X.prototype, "tagText", void 0), W([T()], X.prototype, "draft", void 0), W([T()], X.prototype, "finalRequest", void 0), W([T()], X.prototype, "rejected", void 0), W([T()], X.prototype, "created", void 0), customElements.get("smart-plants-wizard") || customElements.define("smart-plants-wizard", X);
-function ac(e) {
+function lc(e) {
 	let t = e.find((e) => e.platform === "smart_plants" && e.unique_id === "smart_plants:all_plants");
 	return t && !t.disabled_by ? t.entity_id : null;
 }
-var oc = [
+var uc = [
 	0,
 	15,
 	30,
 	60,
 	120
-], sc = "smart_plants_", cc = [
+], dc = "smart_plants_", fc = [
 	"needs_water",
 	"problems",
 	"care_tasks"
-], lc = /* @__PURE__ */ new Set([
+], pc = /* @__PURE__ */ new Set([
 	"send_message",
 	"notify",
 	"persistent_notification"
-]), uc = new Uint32Array([
+]), mc = new Uint32Array([
 	1116352408,
 	1899447441,
 	3049323471,
@@ -8279,7 +8319,7 @@ var oc = [
 	3204031479,
 	3329325298
 ]);
-function dc(e) {
+function hc(e) {
 	let t = new TextEncoder().encode(e), n = Math.ceil((t.length + 9) / 64) * 64, r = new Uint8Array(n);
 	r.set(t), r[t.length] = 128;
 	let i = new DataView(r.buffer);
@@ -8302,7 +8342,7 @@ function dc(e) {
 		}
 		let [t, n, r, c, l, u, d, f] = [...a];
 		for (let e = 0; e < 64; e++) {
-			let i = f + (s(l, 6) ^ s(l, 11) ^ s(l, 25)) + (l & u ^ ~l & d) + uc[e] + o[e] >>> 0, a = (s(t, 2) ^ s(t, 13) ^ s(t, 22)) + (t & n ^ t & r ^ n & r) >>> 0;
+			let i = f + (s(l, 6) ^ s(l, 11) ^ s(l, 25)) + (l & u ^ ~l & d) + mc[e] + o[e] >>> 0, a = (s(t, 2) ^ s(t, 13) ^ s(t, 22)) + (t & n ^ t & r ^ n & r) >>> 0;
 			f = d, d = u, u = l, l = c + i >>> 0, c = r, r = n, n = t, t = i + a >>> 0;
 		}
 		[
@@ -8320,12 +8360,12 @@ function dc(e) {
 	}
 	return [...a].map((e) => e.toString(16).padStart(8, "0")).join("");
 }
-function fc(e, t) {
-	let n = `${sc}${e}`;
-	return t ? `${n}_${dc([...t].sort().join(",")).slice(0, 8)}` : n;
+function gc(e, t) {
+	let n = `${dc}${e}`;
+	return t ? `${n}_${hc([...t].sort().join(",")).slice(0, 8)}` : n;
 }
-var pc = (e) => `${e.slice(0, 5)}:00`, mc = (e) => e % 60 == 0 ? { hours: e / 60 } : { minutes: e };
-function hc(e, t) {
+var _c = (e) => `${e.slice(0, 5)}:00`, vc = (e) => e % 60 == 0 ? { hours: e / 60 } : { minutes: e };
+function yc(e, t) {
 	if (t === 0) return e.t("notifications.delay_none");
 	let n = t % 60 == 0;
 	return new Intl.NumberFormat(e.language, {
@@ -8334,7 +8374,7 @@ function hc(e, t) {
 		unitDisplay: "long"
 	}).format(n ? t / 60 : t);
 }
-function gc(e, t, n, r) {
+function bc(e, t, n, r) {
 	switch (e.kind) {
 		case "entity": return {
 			action: "notify.send_message",
@@ -8356,27 +8396,27 @@ function gc(e, t, n, r) {
 			data: {
 				title: n,
 				message: r,
-				notification_id: t === "needs_water" ? `${sc}${t}_{{ trigger.device_id }}` : `${sc}${t}`
+				notification_id: t === "needs_water" ? `${dc}${t}_{{ trigger.device_id }}` : `${dc}${t}`
 			}
 		};
 	}
 }
-function _c(e, t) {
-	let n = fc(e.kind, e.plantDeviceIds), r = e.plantDeviceIds ? { target: { device_id: [...e.plantDeviceIds].sort() } } : e.allPlantsEntityId ? { target: { entity_id: [e.allPlantsEntityId] } } : {};
+function xc(e, t) {
+	let n = gc(e.kind, e.plantDeviceIds), r = e.plantDeviceIds ? { target: { device_id: [...e.plantDeviceIds].sort() } } : e.allPlantsEntityId ? { target: { entity_id: [e.allPlantsEntityId] } } : {};
 	return e.kind === "daily_report" ? {
 		alias: t.t("notifications.alias_daily"),
 		description: t.t("notifications.description_daily"),
 		mode: "single",
 		triggers: [{
 			trigger: "time",
-			at: pc(e.time),
+			at: _c(e.time),
 			id: n
 		}],
 		conditions: [{
 			condition: "smart_plants.needs_attention",
 			...r,
 			options: {
-				include: [...cc],
+				include: [...fc],
 				include_snoozed: !1
 			}
 		}],
@@ -8384,15 +8424,15 @@ function _c(e, t) {
 			action: "smart_plants.get_report",
 			...r,
 			data: {
-				include: [...cc],
+				include: [...fc],
 				include_snoozed: !1,
 				language: t.language
 			},
 			response_variable: "report"
-		}, gc(e.target, e.kind, "{{ report.title }}", "{{ report.message }}")]
+		}, bc(e.target, e.kind, "{{ report.title }}", "{{ report.message }}")]
 	} : {
 		alias: t.t("notifications.alias_water"),
-		description: e.delayMinutes ? t.t("notifications.description_water", { delay: hc(t, e.delayMinutes) }) : t.t("notifications.description_water_now"),
+		description: e.delayMinutes ? t.t("notifications.description_water", { delay: yc(t, e.delayMinutes) }) : t.t("notifications.description_water_now"),
 		mode: "queued",
 		max: 20,
 		triggers: [{
@@ -8401,7 +8441,7 @@ function _c(e, t) {
 			...r,
 			options: {
 				behavior: "each",
-				...e.delayMinutes ? { for: mc(e.delayMinutes) } : {},
+				...e.delayMinutes ? { for: vc(e.delayMinutes) } : {},
 				include_snoozed: !1
 			}
 		}],
@@ -8409,19 +8449,19 @@ function _c(e, t) {
 			condition: "not",
 			conditions: [{
 				condition: "time",
-				after: pc(e.quiet.from),
-				before: pc(e.quiet.to)
+				after: _c(e.quiet.from),
+				before: _c(e.quiet.to)
 			}]
 		}] } : {},
-		actions: [gc(e.target, e.kind, t.t("notifications.msg_water_title", { plant: "{{ trigger.plant }}" }), t.t("notifications.msg_water_body"))]
+		actions: [bc(e.target, e.kind, t.t("notifications.msg_water_title", { plant: "{{ trigger.plant }}" }), t.t("notifications.msg_water_body"))]
 	};
 }
-function vc(e, t) {
+function Sc(e, t) {
 	let n = (e, t) => e.label.localeCompare(t.label), r = Object.values(e).filter((e) => e.entity_id.startsWith("notify.")).map((e) => ({
 		kind: "entity",
 		entityId: e.entity_id,
 		label: typeof e.attributes.friendly_name == "string" && e.attributes.friendly_name ? e.attributes.friendly_name : e.entity_id
-	})).sort(n), i = Object.keys(t?.notify ?? {}).filter((e) => !lc.has(e)).map((e) => ({
+	})).sort(n), i = Object.keys(t?.notify ?? {}).filter((e) => !pc.has(e)).map((e) => ({
 		kind: "service",
 		service: e,
 		label: e
@@ -8432,10 +8472,10 @@ function vc(e, t) {
 		{ kind: "persistent" }
 	];
 }
-function yc(e) {
+function Cc(e) {
 	return e.kind === "entity" ? `entity:${e.entityId}` : e.kind === "service" ? `service:${e.service}` : "persistent";
 }
-function bc(e) {
+function wc(e) {
 	if (!e || typeof e != "object") return null;
 	let t = e.triggers ?? e.trigger, n = Array.isArray(t) ? t : t ? [t] : [];
 	for (let e of n) {
@@ -8444,7 +8484,7 @@ function bc(e) {
 	}
 	return null;
 }
-function xc(e, t) {
+function Tc(e, t) {
 	if (!/_[0-9a-f]{8}$/.test(t)) return null;
 	let n = e && typeof e == "object" ? e : {}, r = (e) => Array.isArray(e) ? e : e ? [e] : [], i = (e) => r(e).filter((e) => typeof e == "string" && e !== "");
 	for (let [e, t] of [
@@ -8460,12 +8500,12 @@ function xc(e, t) {
 	}
 	return [];
 }
-function Sc(e, t, n, r) {
+function Ec(e, t, n, r) {
 	if (!t) return e.t("notifications.covers_all");
 	let i = n.filter((e) => r.some((n) => t.includes(n.id) && n.identifiers.some(([t, n]) => t === "smart_plants" && n === e.id))).map((e) => e.name).sort((t, n) => t.localeCompare(n, e.language));
 	return i.length ? e.t("notifications.covers", { plants: new Intl.ListFormat(e.language, { type: "conjunction" }).format(i) }) : e.t("notifications.covers_none");
 }
-async function Cc(e, t, n = 8) {
+async function Dc(e, t, n = 8) {
 	let r = Array(t.length).fill(null), i = 0;
 	return await Promise.all(Array.from({ length: Math.min(n, t.length) }, async () => {
 		for (; i < t.length;) {
@@ -8474,17 +8514,17 @@ async function Cc(e, t, n = 8) {
 				let t = await e.connection.sendMessagePromise({
 					type: "automation/config",
 					entity_id: a
-				}), i = bc(t?.config);
+				}), i = wc(t?.config);
 				i && (r[n] = {
 					entityId: a,
 					marker: i,
-					deviceIds: xc(t?.config, i)
+					deviceIds: Tc(t?.config, i)
 				});
 			} catch {}
 		}
 	})), r.filter((e) => e !== null);
 }
-function wc(e, t, n) {
+function Oc(e, t, n) {
 	let r = location.href;
 	e.dispatchEvent(new CustomEvent("hass-automation-editor", {
 		detail: { data: t },
@@ -8495,7 +8535,7 @@ function wc(e, t, n) {
 	});
 }
 // src/views/notifications.ts
-var Tc, Ec, Z = class extends C {
+var kc, Ac, Z = class extends C {
 	constructor(...e) {
 		super(...e), this.plants = [], this.devices = [], this.entities = [], this.states = {}, this.plantId = null, this._draft = {
 			kind: "daily_report",
@@ -8525,7 +8565,7 @@ var Tc, Ec, Z = class extends C {
 		let e = this.shadowRoot?.querySelector("#water-delay");
 		e && (e.value = String(this._draft.delayMinutes));
 		let t = this.shadowRoot?.querySelector("#send-to"), n = this._targets();
-		t && (t.value = yc(n.find((e) => yc(e) === this._draft.target) ?? n[0]));
+		t && (t.value = Cc(n.find((e) => Cc(e) === this._draft.target) ?? n[0]));
 	}
 	_close() {
 		this.shadowRoot?.querySelector("dialog")?.close(), this.dispatchEvent(new CustomEvent("notifications-close"));
@@ -8543,7 +8583,7 @@ var Tc, Ec, Z = class extends C {
 		};
 	}
 	_targets() {
-		return vc(this.states, this.hass?.services);
+		return Sc(this.states, this.hass?.services);
 	}
 	_choosable() {
 		return this.plants.map((e) => ({
@@ -8561,7 +8601,7 @@ var Tc, Ec, Z = class extends C {
 			this._edit({ error: this.l.t("notifications.error_no_plants") }), this.updateComplete.then(() => this.shadowRoot?.querySelector(".plant-choices input")?.focus());
 			return;
 		}
-		let n = this._targets(), r = n.find((t) => yc(t) === e.target) ?? n[0], i = _c({
+		let n = this._targets(), r = n.find((t) => Cc(t) === e.target) ?? n[0], i = xc({
 			kind: e.kind,
 			time: e.time,
 			delayMinutes: e.delayMinutes,
@@ -8570,7 +8610,7 @@ var Tc, Ec, Z = class extends C {
 				to: e.quietTo
 			} : null,
 			plantDeviceIds: t,
-			allPlantsEntityId: ac(this.entities),
+			allPlantsEntityId: lc(this.entities),
 			target: r
 		}, this.l), a = this.l, o = this.getRootNode().host ?? this, s = (e) => o.dispatchEvent(new CustomEvent("hass-notification", {
 			bubbles: !0,
@@ -8580,10 +8620,10 @@ var Tc, Ec, Z = class extends C {
 				duration: 8e3
 			}
 		}));
-		wc(this, i, () => s(a.t("notifications.editor_fallback"))), this._close();
+		Oc(this, i, () => s(a.t("notifications.editor_fallback"))), this._close();
 	}
 	render() {
-		let e = this.l, t = this._draft, n = this._targets(), r = n.filter((e) => e.kind === "entity"), i = n.filter((e) => e.kind === "service"), a = n.find((e) => yc(e) === t.target) ?? n[0], o = this._choosable(), s = this._deviceIds(), c = (!s || s.length > 0) && (this.found ?? []).some((e) => e.marker === fc(t.kind, s) && this.states[e.entityId]), l = (e, t) => x`<option value=${yc(e)} ?selected=${yc(e) === yc(a)}>${t}</option>`;
+		let e = this.l, t = this._draft, n = this._targets(), r = n.filter((e) => e.kind === "entity"), i = n.filter((e) => e.kind === "service"), a = n.find((e) => Cc(e) === t.target) ?? n[0], o = this._choosable(), s = this._deviceIds(), c = (!s || s.length > 0) && (this.found ?? []).some((e) => e.marker === gc(t.kind, s) && this.states[e.entityId]), l = (e, t) => x`<option value=${Cc(e)} ?selected=${Cc(e) === Cc(a)}>${t}</option>`;
 		return x`<dialog class="care-dialog notifications-dialog" aria-labelledby="notifications-title" aria-describedby="notifications-intro" @cancel=${(e) => {
 			e.preventDefault(), this._close();
 		}} @keydown=${(e) => this._trapFocus(e)}>
@@ -8601,7 +8641,7 @@ var Tc, Ec, Z = class extends C {
               <span class="choice-text"><span>${e.t("notifications.water")}</span></span></label>
             ${t.kind === "needs_water" ? x`<div class="preset-fields">
               <label>${e.t("notifications.water_delay")}<select id="water-delay" @change=${(e) => this._edit({ delayMinutes: Number(e.target.value) })}>
-                ${oc.map((n) => x`<option value=${String(n)} ?selected=${t.delayMinutes === n}>${hc(e, n)}</option>`)}</select></label>
+                ${uc.map((n) => x`<option value=${String(n)} ?selected=${t.delayMinutes === n}>${yc(e, n)}</option>`)}</select></label>
               <label class="check"><input type="checkbox" .checked=${t.quiet} aria-describedby="quiet-help" @change=${(e) => this._edit({ quiet: e.target.checked })}>
                 <span class="choice-text"><span>${e.t("notifications.quiet")}</span><span class="small muted" id="quiet-help">${e.t("notifications.quiet_help")}</span></span></label>
               ${t.quiet ? x`<label>${e.t("notifications.quiet_from")}<input id="quiet-from" type="time" required .value=${t.quietFrom} @change=${(e) => this._edit({ quietFrom: e.target.value || "22:00" })}></label>
@@ -8632,10 +8672,10 @@ var Tc, Ec, Z = class extends C {
       </div></dialog>`;
 	}
 };
-Tc = Z, Tc.styles = [
+kc = Z, kc.styles = [
 	U,
-	$s,
-	Es,
+	rc,
+	As,
 	o`
     .choice-text { display: flex; flex-direction: column; min-width: 0; }
     .care-dialog h3 { margin: 4px 0 0; font-size: 1rem; }
@@ -8649,7 +8689,7 @@ Tc = Z, Tc.styles = [
     @media (max-width: 600px) { .preset-fields, .plant-choices { padding-inline-start: 0; } .preset-fields { grid-template-columns: 1fr; } }
   `
 ], W([w({ attribute: !1 })], Z.prototype, "hass", void 0), W([w({ attribute: !1 })], Z.prototype, "l", void 0), W([w({ attribute: !1 })], Z.prototype, "plants", void 0), W([w({ attribute: !1 })], Z.prototype, "devices", void 0), W([w({ attribute: !1 })], Z.prototype, "entities", void 0), W([w({ attribute: !1 })], Z.prototype, "states", void 0), W([w({ attribute: !1 })], Z.prototype, "plantId", void 0), W([T()], Z.prototype, "_draft", void 0), W([w({ attribute: !1 })], Z.prototype, "found", void 0);
-var Dc = class extends C {
+var jc = class extends C {
 	constructor(...e) {
 		super(...e), this.plants = [], this.devices = [], this.states = {}, this.found = null, this._toggling = /* @__PURE__ */ new Set(), this._toggleError = null;
 	}
@@ -8700,7 +8740,7 @@ var Dc = class extends C {
 			return x`<li>
           <input class="switch" type="checkbox" role="switch" aria-label=${i} aria-describedby=${`sent-${t}`} .checked=${n.state === "on"} ?disabled=${this._toggling.has(t) || n.state === "unavailable"}
             @change=${(e) => void this._toggle(t, e.target)}>
-          <span class="row-text"><span>${i}</span><span class="small muted"><span class="covers">${Sc(e, r, this.plants, this.devices)}</span> · <span id=${`sent-${t}`}>${s}</span></span></span>
+          <span class="row-text"><span>${i}</span><span class="small muted"><span class="covers">${Ec(e, r, this.plants, this.devices)}</span> · <span id=${`sent-${t}`}>${s}</span></span></span>
           ${typeof o == "string" && o ? x`<a href=${`/config/automation/edit/${encodeURIComponent(o)}`} @click=${(e) => this._link(e)} aria-label=${e.t("notifications.edit_label", { name: i })}>${e.t("notifications.edit")}</a>` : x`<span></span>`}
           ${this._toggleError?.entityId === t ? x`<span class="error-text small toggle-error" role="alert">${this._toggleError.message}</span>` : S}
         </li>`;
@@ -8713,9 +8753,9 @@ var Dc = class extends C {
     </section></div>`;
 	}
 };
-Ec = Dc, Ec.styles = [
+Ac = jc, Ac.styles = [
 	U,
-	$s,
+	rc,
 	o`
     .notify-list { list-style: none; padding: 0; margin: 0; border: 1px solid var(--divider-color, #ddd); border-radius: 12px; }
     .notify-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 14px; margin: 0; }
@@ -8761,9 +8801,9 @@ Ec = Dc, Ec.styles = [
     .existing h2 { margin: 0 0 8px; font-size: 1rem; font-weight: 500; }
     .notify-page .actions { margin: 0; }
   `
-], W([w({ attribute: !1 })], Dc.prototype, "hass", void 0), W([w({ attribute: !1 })], Dc.prototype, "l", void 0), W([w({ attribute: !1 })], Dc.prototype, "plants", void 0), W([w({ attribute: !1 })], Dc.prototype, "devices", void 0), W([w({ attribute: !1 })], Dc.prototype, "states", void 0), W([w({ attribute: !1 })], Dc.prototype, "found", void 0), W([T()], Dc.prototype, "_toggling", void 0), W([T()], Dc.prototype, "_toggleError", void 0), customElements.get("smart-plants-notifications-page") || customElements.define("smart-plants-notifications-page", Dc), customElements.get("smart-plants-notifications") || customElements.define("smart-plants-notifications", Z);
+], W([w({ attribute: !1 })], jc.prototype, "hass", void 0), W([w({ attribute: !1 })], jc.prototype, "l", void 0), W([w({ attribute: !1 })], jc.prototype, "plants", void 0), W([w({ attribute: !1 })], jc.prototype, "devices", void 0), W([w({ attribute: !1 })], jc.prototype, "states", void 0), W([w({ attribute: !1 })], jc.prototype, "found", void 0), W([T()], jc.prototype, "_toggling", void 0), W([T()], jc.prototype, "_toggleError", void 0), customElements.get("smart-plants-notifications-page") || customElements.define("smart-plants-notifications-page", jc), customElements.get("smart-plants-notifications") || customElements.define("smart-plants-notifications", Z);
 // src/views/overview.ts
-var Oc, kc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", Ac = {
+var Mc, Nc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", Pc = {
 	all: {
 		label: "overview.tile_all",
 		icon: "mdi:sprout",
@@ -8789,17 +8829,17 @@ var Oc, kc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 		icon: "mdi:calendar-check-outline",
 		tone: "var(--sp-care)"
 	}
-}, jc = {
+}, Fc = {
 	attention: "overview.sort_attention",
 	name: "overview.sort_name",
 	area: "overview.sort_area"
-}, Mc = {
+}, Ic = {
 	attention: "mdi:alert-circle-outline",
 	name: "mdi:sort-alphabetical-ascending",
 	area: "mdi:texture-box"
 }, Q = class extends C {
 	constructor(...e) {
-		super(...e), this.l = L, this.plants = [], this.overview = {}, this.areaNames = {}, this.thumbnails = {}, this.watering = /* @__PURE__ */ new Set(), this.loading = !1, this.blocked = !1, this.now = void 0, this.timeZone = void 0, this.hidden = !1, this._filter = "all", this._sort = "attention", this._query = "";
+		super(...e), this.l = L, this.plants = [], this.overview = {}, this.areaNames = {}, this.thumbnails = {}, this.watering = /* @__PURE__ */ new Set(), this.loading = !1, this.pending = !1, this.blocked = !1, this.now = void 0, this.timeZone = void 0, this.hidden = !1, this._filter = "all", this._sort = "attention", this._query = "", this._wasSkeleton = !1;
 	}
 	_emit(e, t) {
 		this.dispatchEvent(new CustomEvent(e, {
@@ -8811,7 +8851,7 @@ var Oc, kc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 	_items() {
 		let e = this.now ?? Date.now();
 		return this.plants.map((t) => {
-			let n = t.species?.snapshot.latin_name ?? t.species?.snapshot.common_name ?? null, r = this.areaNames[t.id] ?? null, i = this.overview[t.id], a = Ys(i ? i.snoozed_until : t.snoozed_until, e) !== null;
+			let n = t.species?.snapshot.latin_name ?? t.species?.snapshot.common_name ?? null, r = this.areaNames[t.id] ?? null, i = this.overview[t.id], a = $s(i ? i.snoozed_until : t.snoozed_until, e) !== null;
 			return {
 				id: t.id,
 				name: t.name,
@@ -8821,7 +8861,7 @@ var Oc, kc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 				plant: t,
 				overview: i,
 				species: n,
-				careDue: ts(i).length > 0,
+				careDue: as(i).length > 0,
 				searchText: [
 					t.name,
 					r,
@@ -8838,11 +8878,9 @@ var Oc, kc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 	render() {
 		let e = this.l;
 		if (this.hidden) return S;
-		if (this.loading && !this.plants.length) return x`<p class="loading" role="status">${e.t("list.loading")}</p>`;
-		if (!this.plants.length) return this._renderEmpty();
-		let t = this._items(), n = t.filter((e) => sn(this._filter, e.status, e.careDue, e.snoozed) && ln(e, this._query)), r = on.filter((e) => e !== "care" || t.some((e) => sn("care", e.status, e.careDue, e.snoozed)) || this._filter === "care"), i = this._filter !== "all";
-		return x`<div class="content">
-      <div class="summary ${r.length === 5 ? "five" : ""}" role="group" aria-label=${e.t("overview.filter_label")}>${r.map((e) => this._renderTile(e, t.filter((t) => sn(e, t.status, t.careDue, t.snoozed)).length))}</div>
+		let t = this._skeleton();
+		return !t && !this.plants.length ? this._renderEmpty() : x`<div class="content" aria-busy=${t ? "true" : S}>
+      ${t ? this._renderSkeletonTop() : this._renderSummary()}
       <div class="listbar">
         <label class="search"><ha-icon aria-hidden="true" icon="mdi:magnify"></ha-icon>
           <input type="search" .value=${this._query} placeholder=${e.t("overview.search")} aria-label=${e.t("overview.search")} @input=${(e) => {
@@ -8852,22 +8890,55 @@ var Oc, kc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 			let t = e.detail.item.value;
 			cn.includes(t) && (this._sort = t);
 		}}>
-          <button slot="trigger" class="pill" type="button" aria-label=${e.t("overview.sort_button", { sort: e.t(jc[this._sort]) })}><ha-icon aria-hidden="true" icon="mdi:sort"></ha-icon>${e.t(jc[this._sort])}<ha-icon aria-hidden="true" icon="mdi:menu-down"></ha-icon></button>
+          <button slot="trigger" class="pill" type="button" aria-label=${e.t("overview.sort_button", { sort: e.t(Fc[this._sort]) })}><ha-icon aria-hidden="true" icon="mdi:sort"></ha-icon>${e.t(Fc[this._sort])}<ha-icon aria-hidden="true" icon="mdi:menu-down"></ha-icon></button>
           ${cn.map((t) => x`<ha-dropdown-item value=${t} ?checked=${this._sort === t}>
-            ${this._sort === t ? x`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : x`<ha-icon slot="icon" .icon=${Mc[t]}></ha-icon>`}${e.t(jc[t])}</ha-dropdown-item>`)}
+            ${this._sort === t ? x`<ha-icon slot="icon" icon="mdi:check"></ha-icon>` : x`<ha-icon slot="icon" .icon=${Ic[t]}></ha-icon>`}${e.t(Fc[t])}</ha-dropdown-item>`)}
         </ha-dropdown>
       </div>
-      <div class="countline"><p role="status">${e.t("list.count_filtered", {
-			shown: n.length,
-			total: t.length
-		})}${i ? ` · ${e.t(Ac[this._filter].label)}` : ""}</p>
-        ${i || this._query ? x`<button type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.clear_filter")}</button>` : S}</div>
-      ${n.length ? this._renderList(n) : this._renderNoResults()}
+      ${t ? this._renderSkeletonList() : this._renderResults()}
     </div>
     <button type="button" class="fab" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("panel.add_plant")}</button>`;
 	}
+	_skeleton() {
+		return this.pending || this.loading && !this.plants.length;
+	}
+	updated() {
+		let e = !this.hidden && this._skeleton();
+		this._wasSkeleton && !e && !this.hidden && this.renderRoot.querySelectorAll(".summary, .countline, .grid, .group-heading, .no-results").forEach((e) => la(e)), this._wasSkeleton = e;
+	}
+	_renderSummary() {
+		let e = this._items(), t = on.filter((t) => t !== "care" || e.some((e) => sn("care", e.status, e.careDue, e.snoozed)) || this._filter === "care");
+		return x`<div class="summary ${t.length === 5 ? "five" : ""}" role="group" aria-label=${this.l.t("overview.filter_label")}>${t.map((t) => this._renderTile(t, e.filter((e) => sn(t, e.status, e.careDue, e.snoozed)).length))}</div>`;
+	}
+	_renderResults() {
+		let e = this.l, t = this._items(), n = t.filter((e) => sn(this._filter, e.status, e.careDue, e.snoozed) && ln(e, this._query)), r = this._filter !== "all";
+		return x`<div class="countline"><p role="status">${e.t("list.count_filtered", {
+			shown: n.length,
+			total: t.length
+		})}${r ? ` · ${e.t(Pc[this._filter].label)}` : ""}</p>
+        ${r || this._query ? x`<button type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.clear_filter")}</button>` : S}</div>
+      ${n.length ? this._renderList(n) : this._renderNoResults()}`;
+	}
+	_renderSkeletonTop() {
+		return x`<div class="summary" aria-hidden="true">${[
+			0,
+			1,
+			2,
+			3
+		].map(() => x`<div class="tile sk-tile"><span class="sk round sk-ico"></span><span class="txt"><span class="sk sk-num"></span><span class="sk line sk-lbl"></span></span></div>`)}</div>`;
+	}
+	_renderSkeletonList() {
+		let e = this.plants.length || 3;
+		return x`<div class="countline"><p class="sr-only" role="status">${this.l.t("list.loading")}</p><span class="sk sk-count" aria-hidden="true"></span></div>
+      <ul class="grid" aria-hidden="true">${Array.from({ length: e }, () => x`<li><div class="card">
+        <div class="head"><span class="sk sk-avatar"></span><span class="title"><span class="sk sk-name"></span><span class="sk line sk-sub"></span></span></div>
+        <div class="status"><span class="sk sk-chip"></span><span class="sk line sk-reason"></span></div>
+        <div class="readings"><span class="sk sk-bar"></span></div>
+        <div class="foot"><span class="sk line sk-last"></span><span class="sk sk-button"></span></div>
+      </div></li>`)}</ul>`;
+	}
 	_renderTile(e, t) {
-		let n = Ac[e];
+		let n = Pc[e];
 		return x`<button type="button" class="tile ${t === 0 ? "zero" : ""}" style="--tone:${n.tone}" aria-pressed=${this._filter === e ? "true" : "false"}
       @click=${() => {
 			this._filter = this._filter === e && e !== "all" ? "all" : e;
@@ -8880,7 +8951,7 @@ var Oc, kc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
       <ul class="grid">${e.items.map((e) => x`<li>${this._renderCard(e)}</li>`)}</ul>`) : x`<ul class="grid">${fn(e, this._sort).map((e) => x`<li>${this._renderCard(e)}</li>`)}</ul>`;
 	}
 	_renderCard(e) {
-		let t = this.l, n = e.overview, r = e.plant, i = n ? $t(t, n) : null, a = n ? nn(t, n, this.now) : "", o = n?.roles.moisture, s = n ? an(n) : [], c = `plant-${r.id}`, l = this.now ?? Date.now(), u = Qs(t, n ? n.snoozed_until : r.snoozed_until, So(new Date(l).toISOString(), this.timeZone) ?? "", this.timeZone, l);
+		let t = this.l, n = e.overview, r = e.plant, i = n ? $t(t, n) : null, a = n ? nn(t, n, this.now) : "", o = n?.roles.moisture, s = n ? an(n) : [], c = `plant-${r.id}`, l = this.now ?? Date.now(), u = nc(t, n ? n.snoozed_until : r.snoozed_until, Eo(new Date(l).toISOString(), this.timeZone) ?? "", this.timeZone, l);
 		return x`<article class="card" aria-labelledby=${c}>
       <div class="head"><sp-plant-avatar .src=${this.thumbnails[r.id] ?? null} .name=${r.name} .l=${t}></sp-plant-avatar>
         <div class="title"><div role="heading" aria-level=${this._sort === "area" ? "3" : "2"}><button type="button" class="name" id=${c} @click=${() => this._emit("open-plant", { plantId: r.id })}>${r.name}</button></div>
@@ -8899,25 +8970,28 @@ var Oc, kc = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
     </article>`;
 	}
 	_renderCare(e) {
-		let t = ts(e);
+		let t = as(e);
 		if (!t.length) return S;
 		let n = this.l, r = t.some((e) => e.status === "overdue");
 		return x`<p class="care ${r ? "overdue" : ""}"><ha-icon aria-hidden="true" icon=${r ? "mdi:alarm" : "mdi:calendar-check-outline"}></ha-icon>
-      <span>${n.t("card.care_due", { tasks: ns(n, t) })}${r ? x`<span class="sr-only"> (${n.t("card.care_overdue")})</span>` : S}</span></p>`;
+      <span>${n.t("card.care_due", { tasks: os(n, t) })}${r ? x`<span class="sr-only"> (${n.t("card.care_overdue")})</span>` : S}</span></p>`;
 	}
 	_renderEmpty() {
 		let e = this.l;
 		return x`<sp-empty-state icon="mdi:sprout" .heading=${e.t("overview.empty_heading")}>${e.t("overview.empty_body")}
       <button slot="actions" type="button" class="filled" ?disabled=${this.blocked} @click=${() => this._emit("add-plant")}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${e.t("panel.add_plant")}</button>
-      <a slot="actions" class="text-button" href=${kc} target="_blank" rel="noopener noreferrer">${e.t("overview.how_it_works")}</a></sp-empty-state>`;
+      <a slot="actions" class="text-button" href=${Nc} target="_blank" rel="noopener noreferrer">${e.t("overview.how_it_works")}</a></sp-empty-state>`;
 	}
 	_renderNoResults() {
-		let e = this.l, t = this._query.trim() ? e.t("overview.no_match_query", { query: this._query.trim() }) : e.t("overview.no_match_filter", { filter: e.t(Ac[this._filter].label) });
+		let e = this.l, t = this._query.trim() ? e.t("overview.no_match_query", { query: this._query.trim() }) : e.t("overview.no_match_filter", { filter: e.t(Pc[this._filter].label) });
 		return x`<sp-empty-state class="no-results" compact icon="mdi:magnify-remove-outline" .heading=${e.t("overview.no_match_heading")}>${t}
       <button slot="actions" type="button" class="text-button" @click=${() => this._clear()}>${e.t("overview.show_all")}</button></sp-empty-state>`;
 	}
 };
-Oc = Q, Oc.styles = [U, o`
+Mc = Q, Mc.styles = [
+	U,
+	ea,
+	o`
     /* White text on the theme's primary colour needs a slightly darker fill to reach 4.5:1. */
     :host { display: block; container-type: inline-size; --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000); }
     :host([hidden]) { display: none; }
@@ -8995,7 +9069,21 @@ Oc = Q, Oc.styles = [U, o`
     .filled:disabled { opacity: .5; cursor: default; }
     a.text-button { text-decoration: none; display: inline-flex; align-items: center; }
     .no-results { background: var(--ha-card-background, var(--sp-card)); border: 1px solid var(--divider-color, #e0e0e0); border-radius: var(--ha-card-border-radius, 12px); }
-    .loading { color: var(--sp-text-secondary); }
+    /* Placeholders sized like a tile, the count line and a card with one reading. */
+    .tile.sk-tile { cursor: default; }
+    .sk-ico { width: 40px; height: 40px; flex: none; }
+    .sk-tile .txt { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .sk-num { width: 28px; height: 18px; }
+    .sk-lbl { width: 70%; }
+    .sk-count { width: 110px; height: 12px; margin: 3px 0; }
+    .sk-avatar { width: 56px; height: 56px; border-radius: 12px; flex: none; }
+    .sk-name { width: 55%; height: 16px; margin: 2px 0 4px; }
+    .sk-sub { width: 38%; }
+    .sk-chip { width: 96px; height: 28px; border-radius: 14px; }
+    .sk-reason { width: 72%; }
+    .sk-bar { height: 52px; border-radius: 8px; }
+    .sk-last { width: 42%; }
+    .sk-button { width: 96px; height: 32px; border-radius: 16px; flex: none; }
 
     .fab { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 3;
       display: inline-flex; align-items: center; gap: 10px; height: 56px; padding: 0 22px 0 18px; border: 0; border-radius: 28px; cursor: pointer; font-size: 15px; font-weight: 500;
@@ -9014,18 +9102,22 @@ Oc = Q, Oc.styles = [U, o`
       .summary, .summary.five { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px; }
       .summary::-webkit-scrollbar { display: none; }
       .tile { flex: none; gap: 6px; height: 36px; padding: 0 12px 0 6px; border-radius: 18px; }
-      .tile .ico { width: 26px; height: 26px; }
+      .tile .ico, .sk-ico { width: 26px; height: 26px; }
+      .sk-tile { width: 112px; }
+      .sk-tile .txt { flex-direction: row; align-items: center; }
+      .sk-num { width: 14px; height: 12px; }
       .tile .ico ha-icon { --mdc-icon-size: 16px; }
       .tile .txt { display: inline-flex; align-items: baseline; gap: 5px; white-space: nowrap; }
       .tile .num { display: inline; font-size: 14px; line-height: 1; }
       .tile .lbl { display: inline; overflow-wrap: normal; }
       .grid { grid-template-columns: 1fr; }
     }
-  `], W([w({ attribute: !1 })], Q.prototype, "l", void 0), W([w({ attribute: !1 })], Q.prototype, "plants", void 0), W([w({ attribute: !1 })], Q.prototype, "overview", void 0), W([w({ attribute: !1 })], Q.prototype, "areaNames", void 0), W([w({ attribute: !1 })], Q.prototype, "thumbnails", void 0), W([w({ attribute: !1 })], Q.prototype, "watering", void 0), W([w({ type: Boolean })], Q.prototype, "loading", void 0), W([w({ type: Boolean })], Q.prototype, "blocked", void 0), W([w({ attribute: !1 })], Q.prototype, "now", void 0), W([w({ attribute: !1 })], Q.prototype, "timeZone", void 0), W([w({
+  `
+], W([w({ attribute: !1 })], Q.prototype, "l", void 0), W([w({ attribute: !1 })], Q.prototype, "plants", void 0), W([w({ attribute: !1 })], Q.prototype, "overview", void 0), W([w({ attribute: !1 })], Q.prototype, "areaNames", void 0), W([w({ attribute: !1 })], Q.prototype, "thumbnails", void 0), W([w({ attribute: !1 })], Q.prototype, "watering", void 0), W([w({ type: Boolean })], Q.prototype, "loading", void 0), W([w({ type: Boolean })], Q.prototype, "pending", void 0), W([w({ type: Boolean })], Q.prototype, "blocked", void 0), W([w({ attribute: !1 })], Q.prototype, "now", void 0), W([w({ attribute: !1 })], Q.prototype, "timeZone", void 0), W([w({
 	type: Boolean,
 	reflect: !0
 })], Q.prototype, "hidden", void 0), W([T()], Q.prototype, "_filter", void 0), W([T()], Q.prototype, "_sort", void 0), W([T()], Q.prototype, "_query", void 0), customElements.get("smart-plants-overview") || customElements.define("smart-plants-overview", Q);
-function Nc(e) {
+function Lc(e) {
 	let { friendly_name: t, last_triggered: n, id: r } = e.attributes;
 	return {
 		entityId: e.entity_id,
@@ -9035,29 +9127,29 @@ function Nc(e) {
 		editPath: typeof r == "string" && r ? `/config/automation/edit/${encodeURIComponent(r)}` : null
 	};
 }
-function Pc(e, t, n, r) {
+function Rc(e, t, n, r) {
 	let i = (e, t) => Number(e.status !== "on") - Number(t.status !== "on") || e.name.localeCompare(t.name, r, { sensitivity: "base" }) || e.entityId.localeCompare(t.entityId), a = (e, t) => [...new Set(e)].flatMap((e) => {
 		let r = n[e];
-		return r && !t.has(e) ? [Nc(r)] : [];
+		return r && !t.has(e) ? [Lc(r)] : [];
 	}).sort(i);
 	return {
 		plant: a(e, /* @__PURE__ */ new Set()),
 		allPlants: a(t, new Set(e))
 	};
 }
-function Fc(e, t) {
+function zc(e, t) {
 	let n = !t && e.length > 5;
 	return {
 		shown: n ? e.slice(0, 5) : e,
 		more: n
 	};
 }
-function Ic(e, t, n = Date.now()) {
+function Bc(e, t, n = Date.now()) {
 	let r = t.lastTriggered ? e.t("automations.last_ran", { time: Lt(e, t.lastTriggered, Math.max(n, Date.parse(t.lastTriggered))) }) : e.t("automations.never_ran");
 	return t.editPath ? r : `${e.t("automations.yaml")} · ${r}`;
 }
 // src/panel.ts
-var Lc, Rc = Object.fromEntries([
+var Vc, Hc = Object.fromEntries([
 	{
 		problemRole: "temperature_stress",
 		configRole: "temperature",
@@ -9178,32 +9270,32 @@ var Lc, Rc = Object.fromEntries([
 		validate: (e, t) => ui(e, t),
 		seed: (e) => di(e)
 	}
-].map((e) => [e.problemRole, e])), zc = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", Bc = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Vc = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z", Hc = "M17.75 21.16L15 18.16L16.16 17L17.75 18.59L21.34 15L22.5 16.41L17.75 21.16M10 21H12.8C13.04 21.41 13.33 21.79 13.65 22.13C13.29 22.66 12.69 23 12 23C10.9 23 10 22.11 10 21M3 20V19L5 17V11C5 7.9 7.03 5.18 10 4.29V4C10 2.9 10.9 2 12 2C13.11 2 14 2.9 14 4V4.29C16.97 5.18 19 7.9 19 11V12.08L18 12L17 12.08V11C17 8.24 14.76 6 12 6C9.24 6 7 8.24 7 11V18H12C12 18.7 12.12 19.37 12.34 20H3Z", Uc = "M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z", Wc = /^\/plant\/([^/]+)(?:\/(sensors))?\/?$/, Gc = /^\/notifications\/?$/, Kc = {
+].map((e) => [e.problemRole, e])), Uc = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z", Wc = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z", Gc = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z", Kc = "M17.75 21.16L15 18.16L16.16 17L17.75 18.59L21.34 15L22.5 16.41L17.75 21.16M10 21H12.8C13.04 21.41 13.33 21.79 13.65 22.13C13.29 22.66 12.69 23 12 23C10.9 23 10 22.11 10 21M3 20V19L5 17V11C5 7.9 7.03 5.18 10 4.29V4C10 2.9 10.9 2 12 2C13.11 2 14 2.9 14 4V4.29C16.97 5.18 19 7.9 19 11V12.08L18 12L17 12.08V11C17 8.24 14.76 6 12 6C9.24 6 7 8.24 7 11V18H12C12 18.7 12.12 19.37 12.34 20H3Z", qc = "M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z", Jc = /^\/plant\/([^/]+)(?:\/(sensors))?\/?$/, Yc = /^\/notifications\/?$/, Xc = {
 	fertilizing: ["product", "amount"],
 	pruning: ["part"],
 	repotting: ["container", "medium"],
 	pest_control: ["pest", "product"]
 };
-function qc(e) {
+function Zc(e) {
 	let t = -e.getTimezoneOffset();
 	return `${new Date(e.getTime() + t * 6e4).toISOString().slice(0, 19)}${t < 0 ? "-" : "+"}${String(Math.floor(Math.abs(t) / 60)).padStart(2, "0")}:${String(Math.abs(t) % 60).padStart(2, "0")}`;
 }
-var Jc = "smart_plants.history_role", Yc = "smart_plants.history_range", Xc = 3e5, Zc = 400, Qc = 2e3, $c = 1e3, el = (e, t) => e !== t && (e?.state !== t?.state || JSON.stringify(e?.attributes) !== JSON.stringify(t?.attributes)), tl = (e, t) => !!e && !!t && e !== t && (e.attributes.snoozed_until ?? null) !== (t.attributes.snoozed_until ?? null);
-function nl(e) {
+var Qc = "smart_plants.history_role", $c = "smart_plants.history_range", el = 3e5, tl = 400, nl = 2e3, rl = 1e3, il = (e, t) => e !== t && (e?.state !== t?.state || JSON.stringify(e?.attributes) !== JSON.stringify(t?.attributes)), al = (e, t) => !!e && !!t && e !== t && (e.attributes.snoozed_until ?? null) !== (t.attributes.snoozed_until ?? null);
+function ol(e) {
 	try {
 		return localStorage.getItem(e);
 	} catch {
 		return null;
 	}
 }
-function rl(e, t) {
+function sl(e, t) {
 	try {
 		localStorage.setItem(e, t);
 	} catch {}
 }
 var $ = class e extends C {
 	constructor(...e) {
-		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => Pt(e) ? e : "moisture")(nl(Jc)), this._historyRange = ((e) => vn(e) ? e : "7d")(nl(Yc)), this._history = null, this._careError = "", this._careLoadError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._snoozeDraft = null, this._restEditor = null, this._taskEditor = null, this._automateTaskId = null, this._carePending = /* @__PURE__ */ new Set(), this._careTaskId = null, this._wizardStarted = !1, this._notificationsOpen = !1, this._notificationsReturn = null, this._notifications = null, this._notificationsFor = null, this._notificationsRequest = 0, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._moistureSourceError = "", this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ownWriteAt = -Infinity, this._relatedFor = null, this._relatedRequest = 0, this._relatedAt = -Infinity, this._ready = () => {
+		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => Pt(e) ? e : "moisture")(ol(Qc)), this._historyRange = ((e) => vn(e) ? e : "7d")(ol($c)), this._history = null, this._careError = "", this._careLoadError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._statusRead = !1, this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._snoozeDraft = null, this._restEditor = null, this._taskEditor = null, this._automateTaskId = null, this._carePending = /* @__PURE__ */ new Set(), this._careTaskId = null, this._wizardStarted = !1, this._notificationsOpen = !1, this._notificationsReturn = null, this._notifications = null, this._notificationsFor = null, this._notificationsRequest = 0, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._moistureSourceError = "", this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._ownWriteAt = -Infinity, this._relatedFor = null, this._relatedRequest = 0, this._relatedAt = -Infinity, this._ready = () => {
 			this._refresh();
 		}, this._disconnected = () => {
 			this._context++, this._formBusy = !1, this._blocked = !0, this._request++, this._providerRequest++, this._preview = null, this._clearImage(), this._error = this._l.t("error.disconnected");
@@ -9216,7 +9308,7 @@ var $ = class e extends C {
 		e.has("hass") && (this.hass?.states && (this._states = Object.fromEntries(Object.entries(this.hass.states).filter(([e, t]) => Ct(t) && t.entity_id === e))), this._syncImage()), this._syncHistory();
 	}
 	updated(e) {
-		this._applyRoute(), e.has("hass") && (this.hass?.connection !== this._connection && (this._unbind(), this._bind(), this._refresh()), this.hass?.user?.is_admin === !1 && this._unbind(), this._watchCare(e.get("hass"))), this._syncRelated(), this._syncNotifications();
+		this._applyRoute(), e.has("hass") && (this.hass?.connection !== this._connection && (this._unbind(), this._bind(), this._refresh()), this.hass?.user?.is_admin === !1 && this._unbind(), this._watchCare(e.get("hass"))), this._syncRelated(), this._syncNotifications(), this._fadeLoaded(e);
 		let t = this.shadowRoot?.querySelector("dialog"), n = null;
 		try {
 			n = this.shadowRoot?.activeElement;
@@ -9224,6 +9316,13 @@ var $ = class e extends C {
 			n = null;
 		}
 		t?.open && (!n || !t.contains(n) || n.matches(":disabled")) && t.querySelector("button")?.focus();
+	}
+	_fadeLoaded(e) {
+		if (e.has("_history")) {
+			let t = e.get("_history");
+			t?.status === "loading" && !t.stale && this._history?.status === "ready" && this._history.key === t.key && la(this.shadowRoot?.querySelector(".history-plot"));
+		}
+		e.has("_careHistory") && e.get("_careHistory") === null && this._careHistory && this.shadowRoot?.querySelectorAll(".care-content").forEach((e) => la(e));
 	}
 	connectedCallback() {
 		super.connectedCallback(), this.hasUpdated && (this._bind(), this._refresh(), this._syncImage());
@@ -9245,12 +9344,12 @@ var $ = class e extends C {
 		let t = e?.states, n = this.hass?.states;
 		if (!t || !n || t === n) return;
 		let r = this._view.kind === "detail" ? `smart_plants:${this._view.plantId}:care` : null;
-		this._entities.some((e) => e.platform === "smart_plants" && (r !== null && e.unique_id.startsWith(r) && el(t[e.entity_id], n[e.entity_id]) || e.entity_id.startsWith("binary_sensor.") && tl(t[e.entity_id], n[e.entity_id]))) && (this._carePending.size || this._watering.size || Date.now() - this._ownWriteAt < Qc || this._scheduleCareRefresh());
+		this._entities.some((e) => e.platform === "smart_plants" && (r !== null && e.unique_id.startsWith(r) && il(t[e.entity_id], n[e.entity_id]) || e.entity_id.startsWith("binary_sensor.") && al(t[e.entity_id], n[e.entity_id]))) && (this._carePending.size || this._watering.size || Date.now() - this._ownWriteAt < nl || this._scheduleCareRefresh());
 	}
 	_scheduleCareRefresh() {
 		this._careTimer === void 0 && (this._careTimer = setTimeout(() => {
 			this._careTimer = void 0, this.isConnected && (this._formBusy ? this._scheduleCareRefresh() : this._refresh(!1));
-		}, Zc));
+		}, tl));
 	}
 	_clearCareTimer() {
 		clearTimeout(this._careTimer), this._careTimer = void 0;
@@ -9261,7 +9360,7 @@ var $ = class e extends C {
 		let t = [
 			e.id,
 			B(e, this._devices)?.id ?? "",
-			ac(this._entities) ?? ""
+			lc(this._entities) ?? ""
 		].join(" "), n = Object.keys(this._states).filter((e) => e.startsWith("automation.")).sort().join(" "), r = this._relatedFor;
 		(r?.target !== t || r.automations !== n) && (this._relatedFor = {
 			target: t,
@@ -9271,13 +9370,13 @@ var $ = class e extends C {
 	_scheduleRelated() {
 		this._relatedTimer === void 0 && (this._relatedTimer = setTimeout(() => {
 			this._relatedTimer = void 0, this._loadRelated();
-		}, Math.max(0, this._relatedAt + $c - Date.now())));
+		}, Math.max(0, this._relatedAt + rl - Date.now())));
 	}
 	_loadRelated() {
 		clearTimeout(this._relatedTimer), this._relatedTimer = void 0;
 		let e = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0, t = this.hass;
 		if (!e || !t) return;
-		let n = B(e, this._devices), r = ac(this._entities), i = ++this._relatedRequest;
+		let n = B(e, this._devices), r = lc(this._entities), i = ++this._relatedRequest;
 		this._relatedAt = Date.now(), Promise.allSettled([n ? F.related(t, n.id) : [], r ? F.relatedToEntity(t, r) : []]).then(([e, t]) => {
 			i === this._relatedRequest && (e.status === "fulfilled" && (this._related = e.value), t.status === "fulfilled" && (this._relatedAllPlants = t.value), (e.status === "rejected" || t.status === "rejected") && (this._notice = this._l.t("notice.related_failed")));
 		});
@@ -9307,7 +9406,7 @@ var $ = class e extends C {
 		if (this._notificationsFor === n) return;
 		this._notificationsFor = n;
 		let r = ++this._notificationsRequest;
-		Cc(e, t).then((e) => {
+		Dc(e, t).then((e) => {
 			r === this._notificationsRequest && (this._notifications = e);
 		});
 	}
@@ -9371,11 +9470,18 @@ var $ = class e extends C {
 		try {
 			let i = await F.info(r), a = await F.list(r);
 			if (n !== this._request || !this.isConnected) return;
-			if (this._capabilities = i, this._blocked = !1, this._plants = a, this._updateAvailable = zs(e.bundleVersion, i.bundle_version), t && (this._error = ""), this._base) {
+			if (this._capabilities = i, this._blocked = !1, this._plants = a, this._updateAvailable = Us(e.bundleVersion, i.bundle_version), t && (this._error = ""), this._base) {
 				let e = a.find((e) => e.id === this._base?.id);
-				e && e.revision !== this._base.revision && (Qo(this._base, e) && !this._conflict ? this._formBusy || this._rebaseEdits(this._base, e) : this._setConflict(this._base, e)), e || (this._context++, this._formBusy = !1, this._closeDialog(), this._base = null, this._conflict = null, this._edits = null, this._notice = this._l.t("notice.deleted_elsewhere"), this.updateComplete.then(() => this.shadowRoot?.querySelector("h1")?.focus()));
+				e && e.revision !== this._base.revision && (ns(this._base, e) && !this._conflict ? this._formBusy || this._rebaseEdits(this._base, e) : this._setConflict(this._base, e)), e || (this._context++, this._formBusy = !1, this._closeDialog(), this._base = null, this._conflict = null, this._edits = null, this._notice = this._l.t("notice.deleted_elsewhere"), this.updateComplete.then(() => this.shadowRoot?.querySelector("h1")?.focus()));
 			}
 			this._syncImage();
+			let o = F.overview(r).then((e) => ({
+				entries: e,
+				error: null
+			}), (e) => ({
+				entries: null,
+				error: e
+			}));
 			try {
 				let [e, t, i, a] = await Promise.all([
 					F.areas(r),
@@ -9397,13 +9503,8 @@ var $ = class e extends C {
 			} catch (e) {
 				n === this._request && (this._registryError = this._friendly(e));
 			}
-			try {
-				let e = await F.overview(r);
-				n === this._request && (this._overview = Object.fromEntries(e.map((e) => [e.plant_id, e])), this._overviewError = "");
-			} catch (e) {
-				n === this._request && (this._overview = {}, this._overviewError = this._friendly(e));
-			}
-			if (n === this._request && this._syncThumbnails(), this._view.kind === "detail") {
+			let s = await o;
+			if (n === this._request && (s.entries ? (this._overview = Object.fromEntries(s.entries.map((e) => [e.plant_id, e])), this._overviewError = "") : (this._overview = {}, this._overviewError = this._friendly(s.error)), this._statusRead = !0), n === this._request && this._syncThumbnails(), this._view.kind === "detail") {
 				let e = this._view.plantId;
 				try {
 					let t = await F.evaluation(r, e);
@@ -9435,7 +9536,7 @@ var $ = class e extends C {
 				}
 			}
 		} catch (e) {
-			n === this._request && (this._error = this._friendly(e), this._blocked = !0, this._clearImage());
+			n === this._request && (this._error = this._friendly(e), this._blocked = !0, this._statusRead = !0, this._clearImage());
 		} finally {
 			n === this._request && (this._loading = !1);
 		}
@@ -9449,7 +9550,7 @@ var $ = class e extends C {
 	}
 	_applyRoute() {
 		let e = this.route?.path ?? "";
-		if (Gc.test(e)) {
+		if (Yc.test(e)) {
 			if (e === this._routeApplied) return;
 			this._routeApplied = e, this._view.kind !== "notifications" && this._show({
 				kind: "notifications",
@@ -9457,11 +9558,11 @@ var $ = class e extends C {
 			});
 			return;
 		}
-		if (this._routeApplied && Gc.test(this._routeApplied) && this._view.kind === "notifications") {
+		if (this._routeApplied && Yc.test(this._routeApplied) && this._view.kind === "notifications") {
 			this._routeApplied = null, this._leaveNotifications();
 			return;
 		}
-		let t = Wc.exec(e);
+		let t = Jc.exec(e);
 		if (!t) {
 			this._routeApplied = null;
 			return;
@@ -9481,7 +9582,7 @@ var $ = class e extends C {
 	}
 	_clearRoute() {
 		let e = this.route?.path ?? "";
-		(Wc.test(e) || Gc.test(e)) && (history.replaceState(null, "", this.route?.prefix || "/smart-plants"), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !0 } })));
+		(Jc.test(e) || Yc.test(e)) && (history.replaceState(null, "", this.route?.prefix || "/smart-plants"), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !0 } })));
 	}
 	_plantAreaNames() {
 		return Object.fromEntries(this._plants.map((e) => {
@@ -9526,8 +9627,8 @@ var $ = class e extends C {
 		}, this._conflict = null, this._areaReview = !1, this._preview = null, this._results = [], this._provider = "manual", this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceSaved = {}, this._pendingSourceSwitch = null, this._allSourceSensors = !1, this._sourceUnavailable = null, this._moistureSourceError = "";
 	}
 	_show(e) {
-		let t = Wc.exec(this.route?.path ?? "");
-		if (t && (e.kind !== "detail" || encodeURIComponent(e.plantId) !== t[1]) && this._clearRoute(), Gc.test(this.route?.path ?? "") && e.kind !== "notifications" && this._clearRoute(), this._context++, this._closeDialog(), this._formBusy = !1, this._notificationsOpen = !1, this._notificationsReturn = null, this._providerRequest++, this._view = e, this._error = "", this._notice = "", this._healthError = "", this._careHistory = null, this._careError = "", this._careLoadError = "", this._forgetRelated(), this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), e.kind === "create" && (this._wizardStarted = !0), e.kind === "detail") {
+		let t = Jc.exec(this.route?.path ?? "");
+		if (t && (e.kind !== "detail" || encodeURIComponent(e.plantId) !== t[1]) && this._clearRoute(), Yc.test(this.route?.path ?? "") && e.kind !== "notifications" && this._clearRoute(), this._context++, this._closeDialog(), this._formBusy = !1, this._notificationsOpen = !1, this._notificationsReturn = null, this._providerRequest++, this._view = e, this._error = "", this._notice = "", this._healthError = "", this._careHistory = null, this._careError = "", this._careLoadError = "", this._forgetRelated(), this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), e.kind === "create" && (this._wizardStarted = !0), e.kind === "detail") {
 			this._detailSection = "overview", this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._moistureMode = null, this._careFilter = "all", this._careFormOpen = !1, this._careEditingId = null, this._careTaskId = null, this._careKind = "watering", this._careFields = {};
 			let t = /* @__PURE__ */ new Date();
 			this._careDate = (/* @__PURE__ */ new Date(t.getTime() - t.getTimezoneOffset() * 6e4)).toISOString().slice(0, 16), this._careNote = "";
@@ -9554,7 +9655,7 @@ var $ = class e extends C {
 		this._syncImage(), this._syncThumbnails(), this.updateComplete.then(() => this.shadowRoot?.querySelector("h1")?.focus());
 	}
 	_handleMenuAction(e) {
-		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "notifications" && this._openNotificationsPage(), e.detail.item.value === "snooze-all" && this._openSnoozeAll(), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(kc, "_blank", "noopener,noreferrer");
+		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "notifications" && this._openNotificationsPage(), e.detail.item.value === "snooze-all" && this._openSnoozeAll(), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(Nc, "_blank", "noopener,noreferrer");
 		let t = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0;
 		if (!t) return;
 		let n = B(t, this._devices);
@@ -9602,7 +9703,7 @@ var $ = class e extends C {
 		}), e.section && (this._detailSection = e.section);
 	}
 	_selectSection(e) {
-		ha.includes(e) && e !== this._detailSection && (this._detailSection = e);
+		ya.includes(e) && e !== this._detailSection && (this._detailSection = e);
 	}
 	_openSection(e) {
 		this._selectSection(e);
@@ -9665,7 +9766,7 @@ var $ = class e extends C {
 		let n = this.hass, r = this._l;
 		this._setWatering(e, !0), this._error = "", this._request++;
 		try {
-			let i = await this._withRevision(e, (t) => F.addWatering(n, e, t, qc(/* @__PURE__ */ new Date()), null));
+			let i = await this._withRevision(e, (t) => F.addWatering(n, e, t, Zc(/* @__PURE__ */ new Date()), null));
 			this._adopt(i.plant), this._followQuickWrite(i.plant);
 			let a = this._overview[e];
 			a && (this._overview = {
@@ -9718,7 +9819,8 @@ var $ = class e extends C {
 	_renderCareMissing(e) {
 		let t = this._l;
 		return this._careLoadError ? x`<div class="card-b load-error" role="alert"><span>${t.t("care.load_failed", { error: this._careLoadError })}</span>
-      <button type="button" class="btn text sm" @click=${(t) => this._retryCare(e, t.currentTarget)}>${t.t("history.retry")}</button></div>` : x`<p class="card-b muted" role="status">${t.t("care.loading")}</p>`;
+      <button type="button" class="btn text sm" @click=${(t) => this._retryCare(e, t.currentTarget)}>${t.t("history.retry")}</button></div>` : x`<div class="care-skeleton" aria-busy="true"><p class="sr-only" role="status">${t.t("care.loading")}</p>
+      <ul class="list" aria-hidden="true">${[0, 1].map(() => x`<li class="li"><span class="sk round sk-ic"></span><span class="li-main"><span class="sk line sk-title"></span><span class="sk line sk-meta"></span></span><span></span></li>`)}</ul></div>`;
 	}
 	_retryCare(e, t) {
 		let n = this._context;
@@ -9759,13 +9861,20 @@ var $ = class e extends C {
 		let n = this._historyTarget(t);
 		if (!n) return;
 		let { key: r, entityId: i, role: a } = n, o = this._history?.key === r;
-		if (o && !e && Date.now() - this._historyLoadedAt < Xc) return;
+		if (o && !e && Date.now() - this._historyLoadedAt < el) return;
 		let s = ++this._historyRequest;
-		this._historyLoadedAt = Date.now(), o && this._history?.status === "ready" || (this._history = {
-			key: r,
-			status: "loading",
-			points: []
-		});
+		if (this._historyLoadedAt = Date.now(), !o || this._history?.status !== "ready") {
+			let e = this._history, t = e?.key.slice(e.key.lastIndexOf("|") + 1), n = e && !o && e.key.startsWith(`${i}|`) && t ? e.status === "ready" ? e.points.length ? {
+				range: t,
+				points: e.points
+			} : void 0 : e.stale : void 0;
+			this._history = {
+				key: r,
+				status: "loading",
+				points: [],
+				...n ? { stale: n } : {}
+			};
+		}
 		let c = _n[this._historyRange], l = a === "temperature" || a === "soil_temperature" ? { temperature: "°C" } : void 0;
 		F.statistics(this.hass, i, new Date(Date.now() - c.spanMs), c.period, l).then((e) => {
 			s === this._historyRequest && (this._history = {
@@ -9788,22 +9897,23 @@ var $ = class e extends C {
 			t: Date.parse(e.occurred_at),
 			kind: e.kind
 		})).filter((e) => Number.isFinite(e.t)), o = r?.last_watered_at ? Date.parse(r.last_watered_at) : NaN;
-		return Na(n, {
+		return La(n, {
 			roles: t.roles,
 			role: t.role,
 			range: this._historyRange,
 			status: i?.status ?? "loading",
 			points: i?.points ?? [],
+			stale: i?.stale,
 			reading: r?.roles[t.role],
 			care: a,
 			lastWatered: Number.isFinite(o) ? o : null,
 			now: Date.now(),
 			onLogCare: this._blocked ? null : (e, n) => this._logCareAt(e ?? (t.role === "moisture" ? "fertilizing" : "watering"), n, e === null),
 			onRole: (e) => {
-				this._historyRole = e, rl(Jc, e);
+				this._historyRole = e, sl(Qc, e);
 			},
 			onRange: (e) => {
-				this._historyRange = e, rl(Yc, e);
+				this._historyRange = e, sl($c, e);
 			},
 			onOpen: () => {
 				this.dispatchEvent(new CustomEvent("hass-more-info", {
@@ -9877,7 +9987,7 @@ var $ = class e extends C {
 			this._careError = this._l.t("care.error_note_text");
 			return;
 		}
-		if ((Kc[this._careKind] ?? []).some((e) => (r[e] ?? "").length > 120)) {
+		if ((Xc[this._careKind] ?? []).some((e) => (r[e] ?? "").length > 120)) {
 			this._careError = this._l.t("care.error_details_length");
 			return;
 		}
@@ -9912,10 +10022,10 @@ var $ = class e extends C {
 		let t = this._l, n = this._careHistory, r = (e) => {
 			let n = `care_field.${e}`;
 			return I(n) ? t.t(n) : e;
-		}, i = (e) => t.t(`care_kind.${e}`), a = (e) => t.t(`care_kind_phrase.${e}`), o = this._formBusy || !!this._conflict, s = new Set(n?.events.map((e) => e.kind)).size > 1, c = s ? this._careFilter : "all", l = n?.events.filter((e) => c === "all" || e.kind === c) ?? [], u = [["all", t.t("care.filter_all")], ..._a.map((e) => [e, e === "note" ? t.t("care.filter_notes") : i(e)])], d = this._careFormOpen || this._careEditingId !== null, f = this._careTaskId ? (e.care_tasks ?? []).find((e) => e.id === this._careTaskId) : void 0, p = this._careEditingId ? n?.events.find((e) => e.id === this._careEditingId) : void 0, m = !f && !!p && (p.kind === "task" || !!p.task_id), h = !this._careEditingId && !f ? wo(e.care_tasks ?? [], this._careKind) : void 0, g = (n) => {
+		}, i = (e) => t.t(`care_kind.${e}`), a = (e) => t.t(`care_kind_phrase.${e}`), o = this._formBusy || !!this._conflict, s = new Set(n?.events.map((e) => e.kind)).size > 1, c = s ? this._careFilter : "all", l = n?.events.filter((e) => c === "all" || e.kind === c) ?? [], u = [["all", t.t("care.filter_all")], ...xa.map((e) => [e, e === "note" ? t.t("care.filter_notes") : i(e)])], d = this._careFormOpen || this._careEditingId !== null, f = this._careTaskId ? (e.care_tasks ?? []).find((e) => e.id === this._careTaskId) : void 0, p = this._careEditingId ? n?.events.find((e) => e.id === this._careEditingId) : void 0, m = !f && !!p && (p.kind === "task" || !!p.task_id), h = !this._careEditingId && !f ? Oo(e.care_tasks ?? [], this._careKind) : void 0, g = (n) => {
 			let r = n.task_id ? (e.care_tasks ?? []).find((e) => e.id === n.task_id) : void 0;
 			return n.kind === "task" && r ? J(t, r) : i(n.kind);
-		}, _ = this._today(), ee = us({
+		}, _ = this._today(), ee = ms({
 			l: t,
 			plant: e,
 			overview: this._overview[e.id],
@@ -9940,10 +10050,10 @@ var $ = class e extends C {
 			kind: this._careKind
 		})}</span></p>` : x`<label>${t.t("care.type")}<select aria-label=${t.t("care.type")} .value=${this._careKind} @change=${(e) => {
 			this._careKind = e.target.value, this._careFields = {};
-		}}>${_a.map((e) => x`<option value=${e} ?selected=${e === this._careKind}>${i(e)}</option>`)}</select></label>`}
+		}}>${xa.map((e) => x`<option value=${e} ?selected=${e === this._careKind}>${i(e)}</option>`)}</select></label>`}
         ${h ? x`<p class="small care-note"><ha-icon aria-hidden="true" .icon=${"mdi:check-circle-outline"}></ha-icon><span>${t.t("care_plan.form_also_marks", { name: J(t, h) })}</span></p>` : S}
         <label>${t.t("care.when")}<input type="datetime-local" .value=${this._careDate} @input=${(e) => this._careDate = e.target.value}></label>
-        ${[...Kc[this._careKind] ?? [], ...this._careKind === "note" ? ["text"] : []].map((e) => x`<label>${r(e)}<input aria-label=${r(e)} type=${e === "amount" ? "number" : "text"} maxlength=${e === "text" ? 1e3 : 120} .value=${this._careFields[e] ?? ""} @input=${(t) => this._careFields = {
+        ${[...Xc[this._careKind] ?? [], ...this._careKind === "note" ? ["text"] : []].map((e) => x`<label>${r(e)}<input aria-label=${r(e)} type=${e === "amount" ? "number" : "text"} maxlength=${e === "text" ? 1e3 : 120} .value=${this._careFields[e] ?? ""} @input=${(t) => this._careFields = {
 			...this._careFields,
 			[e]: t.target.value
 		}}></label>`)}
@@ -9966,9 +10076,9 @@ var $ = class e extends C {
 		}}>${t}</button>`)}</div>` : S}
         <p class="small muted" role="status">${t.tn(n.summary.watering_count, "care.watering_count_one", "care.watering_count_other")} ${n.summary.last_watered_local_date ? t.t("care.last_watered", { date: t.date(n.summary.last_watered_local_date) }) : t.t("care.never_watered")}</p>
       </div>` : S}
-      ${n ? n.events.length ? l.length ? x`<ul class="list" aria-label=${t.t("care.events_label")}>${l.map((n) => {
-			let s = Fa(t, n, r), c = t.recordedDateTime(n.occurred_at);
-			return x`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${va[n.kind]}></ha-icon></span>
+      <div class="care-content">${n ? n.events.length ? l.length ? x`<ul class="list" aria-label=${t.t("care.events_label")}>${l.map((n) => {
+			let s = za(t, n, r), c = t.recordedDateTime(n.occurred_at);
+			return x`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${Sa[n.kind]}></ha-icon></span>
             <span class="li-main"><span class="li-title">${g(n)}</span><span class="li-sub"><time datetime=${n.occurred_at}>${c}</time>${s.map((e) => x` · <span class="prose">${e}</span>`)}</span></span>
             <ha-dropdown @wa-select=${(t) => {
 				t.detail.item.value === "edit" ? (this._careTaskId = null, this._editCare(n), this._goTo("care", "#care-form select, #care-form input")) : t.detail.item.value === "delete" && this._deleteCare(e, n);
@@ -9980,7 +10090,7 @@ var $ = class e extends C {
               <ha-dropdown-item value="edit" ?disabled=${o}>${t.t("care.edit_kind", { kind: a(n.kind) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>
               <ha-dropdown-item value="delete" ?disabled=${o}>${t.t("care.delete_kind", { kind: a(n.kind) })}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>
             </ha-dropdown></li>`;
-		})}</ul>` : x`<p class="card-b muted">${t.t("care.filter_empty")}</p>` : x`<p class="card-b muted">${t.t("care.empty")}</p>` : this._renderCareMissing(e.id)}</section>
+		})}</ul>` : x`<p class="card-b muted">${t.t("care.filter_empty")}</p>` : x`<p class="card-b muted">${t.t("care.empty")}</p>` : this._renderCareMissing(e.id)}</div></section>
       ${te ? S : ee}`;
 	}
 	_edit(e) {
@@ -10134,7 +10244,7 @@ var $ = class e extends C {
 			}
 		}
 		if (c && l && u) {
-			let e = Rc[c];
+			let e = Hc[c];
 			if (e) {
 				let n = e.seed(this._persistedRoleOverrides(e, t)), r = { ...n };
 				for (let t of e.keys) l[t] !== u[t] && (r[t] = l[t]);
@@ -10207,21 +10317,21 @@ var $ = class e extends C {
 		return typeof e == "string" && e ? e : void 0;
 	}
 	_today() {
-		return So((/* @__PURE__ */ new Date()).toISOString(), this._timeZone()) ?? (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+		return Eo((/* @__PURE__ */ new Date()).toISOString(), this._timeZone()) ?? (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
 	}
 	_openTaskEditor(e) {
 		this._taskEditor = e ? {
 			step: 2,
 			taskId: e.id,
 			baseline: structuredClone(e),
-			draft: Io(e),
+			draft: Bo(e),
 			errors: {},
 			error: "",
 			moreOpen: e.baseline_done_on !== null
 		} : {
 			step: 1,
 			taskId: null,
-			draft: Oo("custom"),
+			draft: Mo("custom"),
 			errors: {},
 			error: "",
 			moreOpen: !1
@@ -10239,7 +10349,7 @@ var $ = class e extends C {
 		let n = {
 			...t.draft,
 			...e
-		}, r = Object.keys(t.errors).length ? Wo(n, this._today(), this._states).errors ?? {} : {};
+		}, r = Object.keys(t.errors).length ? Jo(n, this._today(), this._states).errors ?? {} : {};
 		this._taskEditor = {
 			...t,
 			draft: n,
@@ -10249,7 +10359,7 @@ var $ = class e extends C {
 	async _saveTask(e) {
 		let t = this._taskEditor, n = this.hass, r = this._l;
 		if (!t || !n || this._formBusy || this._blocked) return;
-		let i = Wo(t.draft, this._today(), this._states);
+		let i = Jo(t.draft, this._today(), this._states);
 		if (!i.input) {
 			this._setTaskEditor({
 				errors: i.errors,
@@ -10277,7 +10387,7 @@ var $ = class e extends C {
 				if (i = await this._withRevision(e, async (t) => {
 					let r = s();
 					if (!r) throw new N("not_found", "Care task not found.");
-					let i = qo(l, r, a);
+					let i = Zo(l, r, a);
 					if (i.overlaps.length) u = i.overlaps, this._setTaskEditor({ baseline: structuredClone(r) });
 					else return Object.keys(i.changes).length ? F.updateCareTask(n, e, o, t, i.changes) : void 0;
 				}), u.length) {
@@ -10296,7 +10406,7 @@ var $ = class e extends C {
 	}
 	_openRestEditor(e) {
 		this._restEditor = {
-			draft: ss(e.rest_period ?? null, e.care_tasks ?? []),
+			draft: ds(e.rest_period ?? null, e.care_tasks ?? []),
 			error: ""
 		}, this._openDialog("care_rest");
 	}
@@ -10306,7 +10416,7 @@ var $ = class e extends C {
 		let n = {
 			...t.draft,
 			...e
-		}, r = t.error ? ((e) => e.error ? this._l.t(e.error) : "")(cs(n)) : "";
+		}, r = t.error ? ((e) => e.error ? this._l.t(e.error) : "")(fs(n)) : "";
 		this._restEditor = {
 			draft: n,
 			error: r
@@ -10315,7 +10425,7 @@ var $ = class e extends C {
 	async _saveRest(e, t = !1) {
 		let n = this._restEditor, r = this.hass, i = this._l;
 		if (!n || !r || this._formBusy || this._blocked) return;
-		let a = t ? null : cs(n.draft);
+		let a = t ? null : fs(n.draft);
 		if (a && !a.rest) {
 			this._restEditor = {
 				...n,
@@ -10332,7 +10442,7 @@ var $ = class e extends C {
 			let a = this._plantById(e);
 			if (!a) return;
 			let c = a;
-			if (JSON.stringify(o) !== JSON.stringify(a.rest_period ?? null) && (c = await this._withRevision(e, (t) => F.setRestPeriod(r, e, t, o)), this._adopt(c), this._followQuickWrite(c)), !t) for (let t of ls(c.care_tasks ?? [], n.draft.off)) c = await this._withRevision(e, (n) => F.updateCareTask(r, e, t.task.id, n, { schedule: t.schedule })), this._adopt(c), this._followQuickWrite(c);
+			if (JSON.stringify(o) !== JSON.stringify(a.rest_period ?? null) && (c = await this._withRevision(e, (t) => F.setRestPeriod(r, e, t, o)), this._adopt(c), this._followQuickWrite(c)), !t) for (let t of ps(c.care_tasks ?? [], n.draft.off)) c = await this._withRevision(e, (n) => F.updateCareTask(r, e, t.task.id, n, { schedule: t.schedule })), this._adopt(c), this._followQuickWrite(c);
 			if (s !== this._context) return;
 			this._formBusy = !1, this._closeDialog(), this._toast(i.t(t ? "care_plan.rest_removed_toast" : "care_plan.rest_saved_toast"));
 		} catch (e) {
@@ -10387,7 +10497,7 @@ var $ = class e extends C {
 	_taskAction(e, t, n) {
 		switch (n) {
 			case "mark_done": {
-				let e = Ba[t.type];
+				let e = Wa[t.type];
 				this._careEditingId = null, this._careFields = {}, this._careNote = "", this._careError = "", this._careTaskId = e === "task" ? t.id : null, this._careKind = e;
 				let n = /* @__PURE__ */ new Date();
 				this._careDate = (/* @__PURE__ */ new Date(n.getTime() - n.getTimezoneOffset() * 6e4)).toISOString().slice(0, 16), this._careFormOpen = !0, this._goTo("care", "#care-form input, #care-form select");
@@ -10408,7 +10518,7 @@ var $ = class e extends C {
 		}
 	}
 	_automateRows(e, t) {
-		let n = this._l, r = $o(e.id, t.id), i = (e) => this._entities.find((t) => t.platform === "smart_plants" && t.unique_id === e)?.entity_id ?? null;
+		let n = this._l, r = rs(e.id, t.id), i = (e) => this._entities.find((t) => t.platform === "smart_plants" && t.unique_id === e)?.entity_id ?? null;
 		return [
 			{
 				icon: "mdi:toggle-switch-outline",
@@ -10438,7 +10548,7 @@ var $ = class e extends C {
 		let r = "", i = S;
 		if (this._dialog === "care_task" && this._taskEditor) {
 			let e = this._taskEditor;
-			r = ps(t, e), i = ms({
+			r = _s(t, e), i = vs({
 				l: t,
 				plant: n,
 				overview: this._overview[n.id],
@@ -10449,7 +10559,7 @@ var $ = class e extends C {
 				busy: this._formBusy || this._blocked,
 				onPreset: (e) => this._setTaskEditor({
 					step: 2,
-					draft: Oo(e, n, this._states, t),
+					draft: Mo(e, n, this._states, t),
 					errors: {},
 					error: "",
 					moreOpen: !1,
@@ -10457,7 +10567,7 @@ var $ = class e extends C {
 				}, !0),
 				onSuggestion: (e, r) => this._setTaskEditor({
 					step: 2,
-					draft: Fo(e, r, n, this._states, t),
+					draft: zo(e, r, n, this._states, t),
 					errors: {},
 					error: "",
 					moreOpen: !1,
@@ -10481,7 +10591,7 @@ var $ = class e extends C {
 				onChange: (e) => this._editTaskDraft(e),
 				onMonth: (e) => {
 					let t = this._taskEditor?.draft;
-					t && this._editTaskDraft(Lo(t.startMonth, t.endMonth, e));
+					t && this._editTaskDraft(Vo(t.startMonth, t.endMonth, e));
 				},
 				onToggleMore: () => this._setTaskEditor({ moreOpen: !this._taskEditor?.moreOpen }),
 				onSave: () => void this._saveTask(n.id),
@@ -10493,7 +10603,7 @@ var $ = class e extends C {
 			});
 		} else if (this._dialog === "care_rest" && this._restEditor) {
 			let e = this._restEditor;
-			r = t.t("care_plan.rest_period"), i = ws({
+			r = t.t("care_plan.rest_period"), i = Os({
 				l: t,
 				plant: n,
 				draft: e.draft,
@@ -10501,7 +10611,7 @@ var $ = class e extends C {
 				busy: this._formBusy || this._blocked,
 				onMonth: (e) => {
 					let t = this._restEditor;
-					t && this._editRest({ ...Lo(t.draft.startMonth, t.draft.endMonth, e) });
+					t && this._editRest({ ...Vo(t.draft.startMonth, t.draft.endMonth, e) });
 				},
 				onToggle: (e, t) => {
 					let n = this._restEditor;
@@ -10515,7 +10625,7 @@ var $ = class e extends C {
 			});
 		} else if (this._dialog === "care_automate") {
 			let e = n.care_tasks?.find((e) => e.id === this._automateTaskId);
-			e ? (r = t.t("care_plan.automate_title", { name: J(t, e) }), i = Ts({
+			e ? (r = t.t("care_plan.automate_title", { name: J(t, e) }), i = ks({
 				l: t,
 				rows: this._automateRows(n, e),
 				onCopy: (e) => this._copyEntityId(e),
@@ -10536,7 +10646,7 @@ var $ = class e extends C {
 		this._formBusy = !0;
 		let r;
 		try {
-			r = await Ls(t, this._l);
+			r = await Vs(t, this._l);
 		} catch (e) {
 			n === this._context && (this._error = e.message);
 			return;
@@ -10603,7 +10713,7 @@ var $ = class e extends C {
 		return e === "on" ? t.t("section.advanced_diagnostics_status_problem") : e === "off" ? t.t("section.advanced_diagnostics_status_ok") : e === "unavailable" ? t.t("section.advanced_diagnostics_status_unavailable") : t.t("section.advanced_diagnostics_status_not_configured");
 	}
 	_renderOtherTargets(e) {
-		let t = this._l, n = pi(e, this._entities, this._states, t).filter((e) => e.status !== "not_configured" && Rc[e.role]), r = this._pendingThresholdSwitch, i = this._thresholdRole ? Rc[this._thresholdRole] : null, a = i ? t.t(`problem_phrase.${i.problemRole}`) : "", o = r ? t.t(`problem_phrase.${r.spec.problemRole}`) : "";
+		let t = this._l, n = pi(e, this._entities, this._states, t).filter((e) => e.status !== "not_configured" && Hc[e.role]), r = this._pendingThresholdSwitch, i = this._thresholdRole ? Hc[this._thresholdRole] : null, a = i ? t.t(`problem_phrase.${i.problemRole}`) : "", o = r ? t.t(`problem_phrase.${r.spec.problemRole}`) : "";
 		return x`<p class="small muted">${t.t("other_targets.intro")}</p>
       ${r ? x`<p class="notice threshold-switch-alert" role="alert">${t.t("section.advanced_diagnostics_switch_prompt", {
 			current: a,
@@ -10615,7 +10725,7 @@ var $ = class e extends C {
 		}}>${t.t("section.advanced_diagnostics_switch_keep")}</button>
       </p>` : S}
       ${n.length ? x`<dl class="other-targets">${n.map((n) => {
-			let r = Rc[n.role], i = fi(e, n.role, this._entities, this._states, t), a = this._thresholdRole === n.role && this._thresholdEdits !== null, o = this._thresholdSaved[n.role];
+			let r = Hc[n.role], i = fi(e, n.role, this._entities, this._states, t), a = this._thresholdRole === n.role && this._thresholdEdits !== null, o = this._thresholdSaved[n.role];
 			return x`<dt>${n.label}</dt><dd>${i.length ? x`<ul class="thresholds" aria-label=${t.t("section.effective_thresholds_label", { label: n.label })}>${i.map((e) => x`<li><span class="threshold-label">${e.label}</span>: <span class="threshold-value">${e.value === null ? "—" : `${t.number(e.value)} ${e.unit}`}</span></li>`)}</ul>` : S}
           <button class="threshold-toggle btn outline sm" type="button" aria-expanded=${a ? "true" : "false"} aria-controls=${`${n.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(r, e)}>${a ? t.t("section.advanced_diagnostics_cancel_edit") : t.t("section.advanced_diagnostics_edit_thresholds")}</button>${a ? this._renderThresholdEditor(r, e) : S}${o && !a ? x`<p class="notice" role="status">${o}</p>` : S}</dd>`;
 		})}</dl>` : x`<p>${t.t("other_targets.none")}</p>`}`;
@@ -10709,7 +10819,7 @@ var $ = class e extends C {
 		if (!n) return r.t("sensors.summary_unavailable");
 		if (!n.sources.length) return r.t("sensors.summary_empty");
 		let i = [r.tn(n.sources.length, "sensors.source_count_one", "sensors.source_count_other"), Vi(r, n.aggregation)];
-		return n.primary_entity_id && n.sources.length > 1 && i.push(r.t("sensors.summary_primary", { name: xa(r, this._states, n.primary_entity_id) })), i.push(r.t("sensors.summary_stale", { duration: Pa(r, n.stale_after_seconds) })), i.join(" · ");
+		return n.primary_entity_id && n.sources.length > 1 && i.push(r.t("sensors.summary_primary", { name: Ta(r, this._states, n.primary_entity_id) })), i.push(r.t("sensors.summary_stale", { duration: Ra(r, n.stale_after_seconds) })), i.join(" · ");
 	}
 	_toggleSourceEdit(e, t, n = "combine") {
 		if (this._sourceRole === e && this._sourceEdits !== null) {
@@ -10828,7 +10938,7 @@ var $ = class e extends C {
 			sources: a.sources.filter((e) => e.entity_id !== n),
 			primary_entity_id: null
 		})) {
-			this._notice = "", this._error = this._l.t("error.remove_main_sensor", { name: xa(this._l, this._states, n) });
+			this._notice = "", this._error = this._l.t("error.remove_main_sensor", { name: Ta(this._l, this._states, n) });
 			return;
 		}
 		if (t === "moisture") {
@@ -10855,7 +10965,7 @@ var $ = class e extends C {
 	_staleAlert(e) {
 		let t = this._l, n = this._overview[e.id]?.roles.moisture;
 		if (!n || n.state !== "stale") return S;
-		let r = n.sources.map((e) => xa(t, this._states, e)).join(", ") || j(t, "moisture"), i = n.last_reported ? t.t("stale_alert.title", {
+		let r = n.sources.map((e) => Ta(t, this._states, e)).join(", ") || j(t, "moisture"), i = n.last_reported ? t.t("stale_alert.title", {
 			name: r,
 			age: Lt(t, n.last_reported)
 		}) : t.t("stale_alert.title_no_age", { name: r });
@@ -10864,20 +10974,20 @@ var $ = class e extends C {
 	_renderSensorsTab(e) {
 		let t = this._l, n = this._formBusy || this._blocked || !!this._conflict, r = this._pendingSourceSwitch, i = wi(this._sourceRole ?? ""), a = this._assignedSensors(e), o = [...z(e)?.sources.length ? [] : ["moisture"], ...Ci.filter((t) => !H(e, t.role)?.sources.length).map((e) => e.role)], s = Ci.find((t) => this._sourceRefused(e, t.role, "pick"));
 		return x`${this._staleAlert(e)}
-      ${r ? x`<div class="notice" role="alert"><p>${t.t("sensors.switch_prompt", { role: i ? Ca(t, i.role) : this._sourceRole ?? "" })}</p>
+      ${r ? x`<div class="notice" role="alert"><p>${t.t("sensors.switch_prompt", { role: i ? Da(t, i.role) : this._sourceRole ?? "" })}</p>
         <button type="button" class="primary" @click=${() => this._confirmSourceSwitch()}>${t.t("section.advanced_diagnostics_switch_discard")}</button>
         <button type="button" @click=${() => {
 			this._pendingSourceSwitch = null;
 		}}>${t.t("section.advanced_diagnostics_switch_keep")}</button></div>` : S}
       <section class="sp-card" aria-labelledby="assigned-heading"><div class="card-h"><h3 id="assigned-heading">${t.t("assigned.heading")}</h3></div>
         ${a.length ? x`<ul class="list">${a.map((r) => {
-			let i = xa(t, this._states, r.entityId), a = this._states[r.entityId], o = a ? t.t("assigned.updated", { age: Lt(t, Sa(a)) }) : t.t("assigned.not_found");
+			let i = Ta(t, this._states, r.entityId), a = this._states[r.entityId], o = a ? t.t("assigned.updated", { age: Lt(t, Ea(a)) }) : t.t("assigned.not_found");
 			return x`<li class="li"><span class="ic" aria-hidden="true"><ha-icon .icon=${A[r.role].icon}></ha-icon></span>
             <span class="li-main"><span class="li-title">${i}</span><span class="li-sub">${j(t, r.role)} · ${o}${r.main && r.several ? ` · ${t.t("assigned.main")}` : ""}${r.own ? ` · ${t.t("assigned.own_sensor")}` : ""}</span></span>
             <span class="li-actions"><span class="li-value">${this._sensorValue(r.entityId)}</span>
               <ha-dropdown @wa-select=${(t) => void this._sensorAction(e, r.role, r.entityId, t.detail.item.value)}>
                 <button slot="trigger" type="button" class="icon-btn" ?disabled=${n} aria-label=${t.t("assigned.menu", { name: i })}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
-                <ha-dropdown-item value="change">${t.t("assigned.change", { role: Ca(t, r.role) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>
+                <ha-dropdown-item value="change">${t.t("assigned.change", { role: Da(t, r.role) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>
                 ${r.several && !r.main ? x`<ha-dropdown-item value="primary">${t.t("assigned.make_main")}<ha-icon slot="icon" icon="mdi:star-outline"></ha-icon></ha-dropdown-item>` : S}
                 <ha-dropdown-item value="remove">${t.t("assigned.remove")}<ha-icon slot="icon" icon="mdi:link-variant-off"></ha-icon></ha-dropdown-item>
               </ha-dropdown></span></li>`;
@@ -10907,7 +11017,7 @@ var $ = class e extends C {
       ${this._sourceError ? x`<p class="error" role="alert">${this._sourceError}</p>` : S}
       <div class="actions">
         <button type="button" @click=${() => this._closeSourceEditor()}>${i.t("common.cancel")}</button>
-        <button type="button" class="primary" @click=${() => void this._saveRoleSources(e, t)}>${i.t("sensors.save", { role: Ca(i, e) })}</button>
+        <button type="button" class="primary" @click=${() => void this._saveRoleSources(e, t)}>${i.t("sensors.save", { role: Da(i, e) })}</button>
       </div></fieldset></div>`;
 	}
 	_renderCombine(e) {
@@ -10915,7 +11025,7 @@ var $ = class e extends C {
 		return x`<p class="small muted">${t.t("combine.intro")}</p>
       <dl class="sensors">
         <dt>${j(t, "moisture")}</dt><dd>${this._sourceSummary(e, "moisture")}
-          <button class="source-toggle btn text sm" type="button" aria-expanded=${i ? "true" : "false"} aria-controls="moisture-sources-editor" aria-label=${i ? t.t("common.cancel") : t.t("combine.edit_label", { role: Ca(t, "moisture") })} ?disabled=${n || !r?.moisture} @click=${() => {
+          <button class="source-toggle btn text sm" type="button" aria-expanded=${i ? "true" : "false"} aria-controls="moisture-sources-editor" aria-label=${i ? t.t("common.cancel") : t.t("combine.edit_label", { role: Da(t, "moisture") })} ?disabled=${n || !r?.moisture} @click=${() => {
 			i ? this._closeMoistureEditor() : this._moistureMode = "combine";
 		}}>${i ? t.t("common.cancel") : t.t("sensors.edit")}</button>
           ${i && r?.moisture ? x`<div id="moisture-sources-editor" class="editor"><fieldset ?disabled=${n}>${Yi(t, r.moisture, this._defaults(e), this._entities, this._states, this._allSensors, (e) => this._allSensors = e, (e) => this._edit({ moisture: e }), "combine")}
@@ -10924,7 +11034,7 @@ var $ = class e extends C {
         ${Ci.map((r) => {
 			let i = this._sourceRole === r.role && this._sourceEdits !== null && this._sourceMode === "combine", a = this._sourceSaved[r.role], o = j(t, r.role);
 			return x`<dt>${o}</dt><dd>${this._sourceSummary(e, r.role)}
-            <button class="source-toggle btn text sm" type="button" aria-expanded=${i ? "true" : "false"} aria-controls=${`${r.role}-sources-editor`} aria-label=${i ? t.t("common.cancel") : t.t("combine.edit_label", { role: Ca(t, r.role) })} ?disabled=${n} @click=${() => this._toggleSourceEdit(r.role, e, "combine")}>${i ? t.t("common.cancel") : t.t("sensors.edit")}</button>
+            <button class="source-toggle btn text sm" type="button" aria-expanded=${i ? "true" : "false"} aria-controls=${`${r.role}-sources-editor`} aria-label=${i ? t.t("common.cancel") : t.t("combine.edit_label", { role: Da(t, r.role) })} ?disabled=${n} @click=${() => this._toggleSourceEdit(r.role, e, "combine")}>${i ? t.t("common.cancel") : t.t("sensors.edit")}</button>
             ${i ? this._renderSourceEditor(r.role, e) : S}
             ${!i && this._sourceRefused(e, r.role, "combine") ? x`<p id=${`${r.role}-sources-unavailable`} class="error" role="alert">${t.t("sensors.refused", { role: o })}</p>` : S}
             ${a && !i ? x`<p class="notice" role="status">${a}</p>` : S}</dd>`;
@@ -10992,21 +11102,21 @@ var $ = class e extends C {
 		i.href = r, i.download = `smart-plants-${e.id}-diagnostics.json`, i.click(), setTimeout(() => URL.revokeObjectURL(r), 1e3);
 	}
 	_openSnooze(e) {
-		let t = this._today(), n = Ys(e.snoozed_until), r = n ? Xs(n, this._timeZone()) : null;
-		this._snoozeDraft = r && Js(r, t) ? {
+		let t = this._today(), n = $s(e.snoozed_until), r = n ? ec(n, this._timeZone()) : null;
+		this._snoozeDraft = r && Qs(r, t) ? {
 			choice: "date",
 			date: r,
 			error: ""
 		} : {
 			choice: "1",
-			date: qs(t).min,
+			date: Zs(t).min,
 			error: ""
 		}, this._openDialog("snooze", this.shadowRoot?.querySelector(".panel-appbar ha-dropdown [slot=trigger]") ?? null);
 	}
 	_saveSnooze(e) {
 		let t = this._snoozeDraft, n = this._plantById(e);
 		if (!t || !n || !this.hass) return;
-		let r = Ks(t.choice, this._today(), t.date, this._timeZone());
+		let r = Xs(t.choice, this._today(), t.date, this._timeZone());
 		if (!r) {
 			this._snoozeDraft = {
 				...t,
@@ -11026,14 +11136,14 @@ var $ = class e extends C {
 	_renderSnoozeDialog(e) {
 		let t = this._plantById(e), n = this._snoozeDraft;
 		if (!t || !n) return S;
-		let r = this._l, i = this._today(), a = Ys(t.snoozed_until), o = a ? Xs(a, this._timeZone()) : null, s = this._formBusy || this._blocked || !!this._conflict;
+		let r = this._l, i = this._today(), a = $s(t.snoozed_until), o = a ? ec(a, this._timeZone()) : null, s = this._formBusy || this._blocked || !!this._conflict;
 		return x`<dialog class="care-dialog snooze-dialog" aria-labelledby="dialog-title" aria-describedby="snooze-intro" @cancel=${(e) => {
 			e.preventDefault(), this._closeDialog();
 		}} @keydown=${(e) => this._trapFocus(e)}>
       <h2 id="dialog-title" tabindex="-1">${r.t(o ? "snooze.title_change" : "snooze.title", { name: t.name })}</h2>
       <div class="dialog-body">
         <p class="muted" id="snooze-intro">${r.t("snooze.intro")}</p>
-        ${o ? x`<p class="snooze-current">${r.t("snooze.current", { date: Zs(r, o, i) })}</p>` : S}
+        ${o ? x`<p class="snooze-current">${r.t("snooze.current", { date: tc(r, o, i) })}</p>` : S}
         ${this._renderSnoozeChoices(n, i)}
         <div class="actions dialog-actions">
           ${o ? x`<button type="button" ?disabled=${s} @click=${() => this._resumeSnooze(t.id)}>${r.t("snooze.resume")}</button>` : S}<span class="spacer"></span>
@@ -11042,7 +11152,7 @@ var $ = class e extends C {
       </div></dialog>`;
 	}
 	_renderSnoozeChoices(e, t) {
-		let n = this._l, r = qs(t), i = (t) => {
+		let n = this._l, r = Zs(t), i = (t) => {
 			this._snoozeDraft = {
 				...e,
 				choice: t,
@@ -11050,8 +11160,8 @@ var $ = class e extends C {
 			};
 		};
 		return x`<fieldset class="snooze-choices"><legend class="field-label">${n.t("snooze.choices")}</legend>
-          ${Bs.map((r) => x`<label class="check"><input type="radio" name="snooze-choice" value=${r.choice} .checked=${e.choice === r.choice} @change=${() => i(r.choice)}>
-            <span class="choice-text"><span>${n.t(r.label)}</span><span class="small muted">${n.t("snooze.preset_until", { date: Zs(n, Hs(t, r.days), t) })}</span></span></label>`)}
+          ${Ws.map((r) => x`<label class="check"><input type="radio" name="snooze-choice" value=${r.choice} .checked=${e.choice === r.choice} @change=${() => i(r.choice)}>
+            <span class="choice-text"><span>${n.t(r.label)}</span><span class="small muted">${n.t("snooze.preset_until", { date: tc(n, Ks(t, r.days), t) })}</span></span></label>`)}
           <label class="check"><input type="radio" name="snooze-choice" value="date" .checked=${e.choice === "date"} @change=${() => i("date")}><span class="choice-text"><span>${n.t("snooze.preset_date")}</span></span></label>
         </fieldset>
         ${e.choice === "date" ? x`<div class="field-group"><label for="snooze-date" class="field-label">${n.t("snooze.date_label")}</label>
@@ -11072,14 +11182,14 @@ var $ = class e extends C {
 	_openSnoozeAll() {
 		this._snoozeDraft = {
 			choice: "1",
-			date: qs(this._today()).min,
+			date: Zs(this._today()).min,
 			error: ""
 		}, this._openDialog("snooze_all", this.shadowRoot?.querySelector(".panel-appbar ha-dropdown [slot=trigger]") ?? null);
 	}
 	_saveSnoozeAll() {
 		let e = this._snoozeDraft;
 		if (!e) return;
-		let t = Ks(e.choice, this._today(), e.date, this._timeZone());
+		let t = Xs(e.choice, this._today(), e.date, this._timeZone());
 		t ? (this._closeDialog(), this._snoozeMany(t)) : (this._snoozeDraft = {
 			...e,
 			error: this._l.t("snooze.error_date")
@@ -11089,7 +11199,7 @@ var $ = class e extends C {
 		if (!this.hass || this._formBusy || this._blocked) return;
 		let t = this.hass, n = this._l, r = await this._snoozeWrite(() => F.snoozeMany(t, e));
 		if (!r) return;
-		let i = r.plants.length, a = e ? Xs(e, this._timeZone()) : null, o = i ? a ? n.tn(i, "snooze.all_done_one", "snooze.all_done_other", { date: Zs(n, a, this._today()) }) : n.tn(i, "snooze.all_resumed_one", "snooze.all_resumed_other") : n.t("snooze.all_unchanged");
+		let i = r.plants.length, a = e ? ec(e, this._timeZone()) : null, o = i ? a ? n.tn(i, "snooze.all_done_one", "snooze.all_done_other", { date: tc(n, a, this._today()) }) : n.tn(i, "snooze.all_resumed_one", "snooze.all_resumed_other") : n.t("snooze.all_unchanged");
 		this._toast(o, i ? {
 			text: n.t("snooze.undo"),
 			action: () => void this._restoreSnoozes(r.previous)
@@ -11127,10 +11237,10 @@ var $ = class e extends C {
 	_renderSnoozeAllDialog() {
 		let e = this._snoozeDraft;
 		if (!e) return S;
-		let t = this._l, n = this._today(), r = Date.now(), i = this._activePlants(), a = this._plants.length > i.length, o = Ks(e.choice, n, e.date, this._timeZone()), s = o ? Date.parse(o) : NaN, c = i.filter((e) => {
-			let t = Ys(e.snoozed_until, r);
+		let t = this._l, n = this._today(), r = Date.now(), i = this._activePlants(), a = this._plants.length > i.length, o = Xs(e.choice, n, e.date, this._timeZone()), s = o ? Date.parse(o) : NaN, c = i.filter((e) => {
+			let t = $s(e.snoozed_until, r);
 			return t !== null && Date.parse(t) >= s;
-		}).length, l = i.filter((e) => Ys(e.snoozed_until, r) !== null).length, u = this._formBusy || this._blocked, d = [
+		}).length, l = i.filter((e) => $s(e.snoozed_until, r) !== null).length, u = this._formBusy || this._blocked, d = [
 			c === i.length ? t.t("snooze.all_none") : t.tn(i.length - c, "snooze.all_summary_one", "snooze.all_summary_other"),
 			a ? t.t("snooze.all_paused") : "",
 			c && c < i.length ? t.tn(c, "snooze.all_kept_one", "snooze.all_kept_other") : ""
@@ -11158,7 +11268,7 @@ var $ = class e extends C {
 		this._mutate(() => e.lifecycle_state === "active" ? F.disable(t, e.id, e.revision) : F.reenable(t, e.id, e.revision));
 	}
 	_expander(e, t, n, r, i) {
-		return Ia({
+		return Ba({
 			key: e,
 			icon: t,
 			header: n,
@@ -11191,7 +11301,7 @@ var $ = class e extends C {
 		});
 	}
 	_renderHeader(e) {
-		let t = this._l, n = this._overview[e.id], r = B(e, this._devices)?.area_id, i = e.species?.snapshot.latin_name ?? e.species?.snapshot.common_name ?? null, a = n ? $t(t, n) : null, o = Qs(t, e.snoozed_until, this._today(), this._timeZone()), s = this._formBusy || this._blocked || !!this._conflict;
+		let t = this._l, n = this._overview[e.id], r = B(e, this._devices)?.area_id, i = e.species?.snapshot.latin_name ?? e.species?.snapshot.common_name ?? null, a = n ? $t(t, n) : null, o = nc(t, e.snoozed_until, this._today(), this._timeZone()), s = this._formBusy || this._blocked || !!this._conflict;
 		return x`<div class="sp-card header-card">
       <div class="hero">
         <sp-plant-avatar size="large" .src=${this._imageUrl} .name=${e.name} .l=${t} @photo-error=${() => {
@@ -11203,7 +11313,7 @@ var $ = class e extends C {
             <span><ha-icon aria-hidden="true" icon="mdi:leaf"></ha-icon>${i ? x`<i>${i}</i>` : t.t("detail.no_species")}</span></div>
           ${n && a || o ? x`<div class="hero-status">${n && a ? x`<sp-status-chip .status=${n.status} .label=${a.label} .more=${a.more} .l=${t}></sp-status-chip>` : S}
             ${o ? x`<span class="snooze"><sp-snooze-chip .label=${o}></sp-snooze-chip><button type="button" class="btn text sm" ?disabled=${s} aria-label=${t.t("snooze.resume_label", { name: e.name })} @click=${() => this._resumeSnooze(e.id)}>${t.t("snooze.resume")}</button></span>` : S}
-            ${n ? x`<span class="reason">${Oa(t, n)}</span>` : S}</div>` : S}
+            ${n ? x`<span class="reason">${Ma(t, n)}</span>` : S}</div>` : S}
           ${this._renderCareChips(e, n)}
         </div>
         <div class="hero-actions">
@@ -11211,45 +11321,45 @@ var $ = class e extends C {
           <button type="button" class="btn outline" @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:note-edit-outline"></ha-icon>${t.t("detail.log_care")}</button>
         </div>
       </div>
-      ${ka(t, n)}
+      ${Na(t, n)}
     </div>`;
 	}
 	_renderCareChips(e, t) {
-		let n = this._l, r = ts(t);
+		let n = this._l, r = as(t);
 		if (!r.length) return S;
 		let i = this._today(), a = r.slice(0, 2).map((t) => {
-			let r = e.care_tasks?.find((e) => e.id === t.task_id), a = r ? xo(n, t, r.schedule, i, {
+			let r = e.care_tasks?.find((e) => e.id === t.task_id), a = r ? To(n, t, r.schedule, i, {
 				lastDoneAt: r.last_done_at,
 				timeZone: this._timeZone()
 			}) : null;
-			return x`<li class="cchip tone-${a?.tone ?? "care"}"><ha-icon aria-hidden="true" .icon=${a?.icon ?? "mdi:calendar-clock"}></ha-icon><span>${es(n, t)}${a?.tone === "overdue" ? x`<span class="sr-only"> (${a.text})</span>` : S}</span></li>`;
+			return x`<li class="cchip tone-${a?.tone ?? "care"}"><ha-icon aria-hidden="true" .icon=${a?.icon ?? "mdi:calendar-clock"}></ha-icon><span>${is(n, t)}${a?.tone === "overdue" ? x`<span class="sr-only"> (${a.text})</span>` : S}</span></li>`;
 		});
 		return x`<ul class="care-chips" aria-label=${n.t("care_plan.due_chips_label")}>${a}${r.length > 2 ? x`<li class="cchip tone-later"><span aria-hidden="true">+${n.number(r.length - 2)}</span><span class="sr-only">${n.t("care_plan.more_due", { count: r.length - 2 })}</span></li>` : S}</ul>`;
 	}
 	_renderTabs() {
 		let e = this._l;
 		return q("ha-tab-group") ? x`<ha-tab-group class="tabs" @wa-tab-show=${(e) => this._selectSection(e.detail.name)}>
-        ${ha.map((t) => x`<ha-tab-group-tab slot="nav" .panel=${t} .active=${this._detailSection === t}>${e.t(ga[t])}</ha-tab-group-tab>`)}</ha-tab-group>` : x`<div class="tablist" role="tablist" aria-label=${e.t("detail.sections_label")} @keydown=${(e) => {
-			let t = ha.indexOf(this._detailSection), n = e.key === "ArrowRight" ? (t + 1) % ha.length : e.key === "ArrowLeft" ? (t + ha.length - 1) % ha.length : e.key === "Home" ? 0 : e.key === "End" ? ha.length - 1 : -1;
-			n < 0 || (e.preventDefault(), this._selectSection(ha[n]), this.updateComplete.then(() => this.shadowRoot?.querySelector(`#tab-${ha[n]}`)?.focus()));
-		}}>${ha.map((t) => {
+        ${ya.map((t) => x`<ha-tab-group-tab slot="nav" .panel=${t} .active=${this._detailSection === t}>${e.t(ba[t])}</ha-tab-group-tab>`)}</ha-tab-group>` : x`<div class="tablist" role="tablist" aria-label=${e.t("detail.sections_label")} @keydown=${(e) => {
+			let t = ya.indexOf(this._detailSection), n = e.key === "ArrowRight" ? (t + 1) % ya.length : e.key === "ArrowLeft" ? (t + ya.length - 1) % ya.length : e.key === "Home" ? 0 : e.key === "End" ? ya.length - 1 : -1;
+			n < 0 || (e.preventDefault(), this._selectSection(ya[n]), this.updateComplete.then(() => this.shadowRoot?.querySelector(`#tab-${ya[n]}`)?.focus()));
+		}}>${ya.map((t) => {
 			let n = this._detailSection === t;
-			return x`<button type="button" role="tab" id=${`tab-${t}`} aria-controls="detail-panel" aria-selected=${n ? "true" : "false"} tabindex=${n ? "0" : "-1"} @click=${() => this._selectSection(t)}>${e.t(ga[t])}</button>`;
+			return x`<button type="button" role="tab" id=${`tab-${t}`} aria-controls="detail-panel" aria-selected=${n ? "true" : "false"} tabindex=${n ? "0" : "-1"} @click=${() => this._selectSection(t)}>${e.t(ba[t])}</button>`;
 		})}</div>`;
 	}
 	_renderOverviewTab(e) {
-		let t = this._l, n = this._overview[e.id], r = wa(n), i = this._careHistory, a = i?.events.slice(0, 3) ?? [], o = B(e, this._devices), s = !e.placement || !e.acquired_at || !e.category || !e.tags.length, c = e.species?.snapshot, l = c ? _i(c, t.language) : null;
+		let t = this._l, n = this._overview[e.id], r = Oa(n), i = this._careHistory, a = i?.events.slice(0, 3) ?? [], o = B(e, this._devices), s = !e.placement || !e.acquired_at || !e.category || !e.tags.length, c = e.species?.snapshot, l = c ? _i(c, t.language) : null;
 		return x`<div class="cols">
       <div class="stack">
         <section class="sp-card" aria-labelledby="readings-heading"><div class="card-h"><h3 id="readings-heading">${t.t("readings.heading")}</h3>
           ${r.length ? x`<button type="button" class="btn text sm" @click=${() => this._openSection("sensors")}>${t.t("readings.manage")}</button>` : S}</div>
-          ${r.length ? x`<ul class="list">${r.map(([e, n]) => Aa(t, e, n, this._states))}</ul>` : !n && this._overviewError ? x`<p class="card-b muted">${t.t("readings.unavailable")}</p>` : x`<div class="card-b"><div class="empty-box"><span>${n?.status === "paused" ? t.t("readings.paused") : t.t("readings.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._openSection("sensors")}>${t.t("readings.assign")}</button></div></div>`}
+          ${r.length ? x`<ul class="list">${r.map(([e, n]) => Pa(t, e, n, this._states))}</ul>` : !n && this._overviewError ? x`<p class="card-b muted">${t.t("readings.unavailable")}</p>` : x`<div class="card-b"><div class="empty-box"><span>${n?.status === "paused" ? t.t("readings.paused") : t.t("readings.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._openSection("sensors")}>${t.t("readings.assign")}</button></div></div>`}
         </section>
         ${this._renderHistory(e)}
         <section class="sp-card" aria-labelledby="recent-heading"><div class="card-h"><h3 id="recent-heading">${t.t("recent.heading")}</h3>
           ${i?.events.length ? x`<button type="button" class="btn text sm" @click=${() => this._openSection("care")}>${t.t("recent.show_all")}</button>` : S}</div>
-          ${i ? a.length ? x`<ul class="list">${a.map((e) => x`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${va[e.kind]}></ha-icon></span>
-            <span class="li-main"><span class="li-title">${t.t(`care_done.${e.kind}`)}</span><span class="li-sub">${t.date(e.local_date)}</span></span><span></span></li>`)}</ul>` : x`<div class="card-b"><div class="empty-box"><span>${t.t("care.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._openCareForm()}>${t.t("detail.log_care")}</button></div></div>` : this._renderCareMissing(e.id)}
+          <div class="care-content">${i ? a.length ? x`<ul class="list">${a.map((e) => x`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${Sa[e.kind]}></ha-icon></span>
+            <span class="li-main"><span class="li-title">${t.t(`care_done.${e.kind}`)}</span><span class="li-sub">${t.date(e.local_date)}</span></span><span></span></li>`)}</ul>` : x`<div class="card-b"><div class="empty-box"><span>${t.t("care.empty")}</span><button type="button" class="btn tonal sm" @click=${() => this._openCareForm()}>${t.t("detail.log_care")}</button></div></div>` : this._renderCareMissing(e.id)}</div>
         </section>
       </div>
       <div class="stack">
@@ -11269,7 +11379,7 @@ var $ = class e extends C {
       </div></div>`;
 	}
 	_renderAutomations(e) {
-		let t = this._l, n = Pc(this._related, this._relatedAllPlants, this._states, t.language), r = e ? `/config/automation/edit/new?add_automation_element=trigger&target_device_id=${encodeURIComponent(e.id)}` : "", i = e ? `/config/devices/device/${encodeURIComponent(e.id)}` : "", a = e ? x`<div class="row"><a class="btn outline sm" href=${i} @click=${(e) => this._internalLink(e, i)}><ha-icon aria-hidden="true" icon="mdi:devices"></ha-icon>${t.t("automations.open_device")}</a>
+		let t = this._l, n = Rc(this._related, this._relatedAllPlants, this._states, t.language), r = e ? `/config/automation/edit/new?add_automation_element=trigger&target_device_id=${encodeURIComponent(e.id)}` : "", i = e ? `/config/devices/device/${encodeURIComponent(e.id)}` : "", a = e ? x`<div class="row"><a class="btn outline sm" href=${i} @click=${(e) => this._internalLink(e, i)}><ha-icon aria-hidden="true" icon="mdi:devices"></ha-icon>${t.t("automations.open_device")}</a>
       <a class="btn outline sm" href=${r} @click=${(e) => this._internalLink(e, r)}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${t.t("automations.create")}</a></div>` : S, o = n.plant.length > 0 || n.allPlants.length > 0, s = e ? x`<div class="row"><button type="button" class="btn text sm" @click=${(e) => this._openNotifications(e.currentTarget)}><ha-icon aria-hidden="true" icon="mdi:bell-outline"></ha-icon>${t.t("automations.notifications")}</button></div>` : S;
 		return x`<section class="sp-card" aria-labelledby="automations-heading"><div class="card-h"><h3 id="automations-heading">${t.t("automations.heading")}</h3></div>
       ${o ? x`${this._renderAutomationGroup("plant", n.plant)}${this._renderAutomationGroup("allPlants", n.allPlants)}
@@ -11277,14 +11387,14 @@ var $ = class e extends C {
 	}
 	_renderAutomationGroup(e, t) {
 		if (!t.length) return S;
-		let n = this._l, { shown: r, more: i } = Fc(t, this._relatedExpanded.has(e)), a = e === "plant" ? "automations-plant" : "automations-all-plants";
+		let n = this._l, { shown: r, more: i } = zc(t, this._relatedExpanded.has(e)), a = e === "plant" ? "automations-plant" : "automations-all-plants";
 		return x`${e === "allPlants" ? x`<h4 class="rel-group" id="automations-all-plants-heading">${n.t("automations.all_plants")}</h4>` : S}
       <ul class="list rel" id=${a} tabindex="-1" aria-labelledby=${e === "plant" ? "automations-heading" : "automations-all-plants-heading"}>${r.map((e) => this._renderAutomationRow(e))}</ul>
       ${i ? x`<div class="rel-more"><button type="button" class="btn text sm" @click=${() => this._showAllAutomations(e, a)}>${n.t("automations.show_all", { count: t.length })}</button></div>` : S}`;
 	}
 	_renderAutomationRow(e) {
 		let t = this._l, n = e.editPath, r = (this._notifications ?? []).some((t) => t.entityId === e.entityId), i = e.status === "on" ? "tonal" : e.status === "unavailable" ? "tone-bad" : "", a = e.status === "off" ? x`<span class="cchip tone-later">${t.t("automations.off")}</span>` : e.status === "unavailable" ? x`<span class="cchip tone-overdue"><ha-icon aria-hidden="true" icon="mdi:alert-circle-outline"></ha-icon>${t.t("automations.unavailable")}</span>` : S, o = x`<span class="ic ${i}" aria-hidden="true"><ha-icon icon=${r ? "mdi:bell-outline" : "mdi:robot"}></ha-icon></span>
-      <span class="li-main"><span class="li-title">${e.name}</span><span class="li-sub">${r ? x`<span class="rel-kind">${t.t("automations.notification")}</span> · ` : S}${Ic(t, e)}</span></span>
+      <span class="li-main"><span class="li-title">${e.name}</span><span class="li-sub">${r ? x`<span class="rel-kind">${t.t("automations.notification")}</span> · ` : S}${Bc(t, e)}</span></span>
       <span class="rel-end">${a}${n ? x`<ha-icon aria-hidden="true" icon="mdi:chevron-right"></ha-icon>` : S}</span>`;
 		return x`<li>${n ? x`<a class="li" href=${n} @click=${(e) => this._internalLink(e, n)}>${o}</a>` : x`<div class="li">${o}</div>`}</li>`;
 	}
@@ -11401,7 +11511,7 @@ var $ = class e extends C {
       ${this._overviewError ? this._renderStatusError() : S}
       ${this._renderHeader(n)}
       ${this._renderTabs()}
-      <div class="tabpanel" id="detail-panel" role="tabpanel" aria-label=${t.t(ga[this._detailSection])}>${{
+      <div class="tabpanel" id="detail-panel" role="tabpanel" aria-label=${t.t(ba[this._detailSection])}>${{
 			overview: () => this._renderOverviewTab(n),
 			sensors: () => this._renderSensorsTab(n),
 			care: () => this._renderCare(n),
@@ -11436,7 +11546,7 @@ var $ = class e extends C {
 		let f = this._context;
 		if (this._refresh(!1), o && i) {
 			try {
-				if (await Fs(n, c), !this.isConnected || this.hass?.connection !== i.connection || this._blocked) return;
+				if (await zs(n, c), !this.isConnected || this.hass?.connection !== i.connection || this._blocked) return;
 				let e = await F.uploadImage(i, t.id, t.revision, n);
 				if (!this.isConnected || this.hass?.connection !== i.connection) return;
 				f === this._context && this._base?.id === t.id && this._base.revision === t.revision && !this._formBusy && !this._conflict && this._rebaseEdits(this._base, e), this._createdPlantId === t.id && d(c.t("created.photo_uploaded"));
@@ -11453,7 +11563,7 @@ var $ = class e extends C {
 		window.location.reload();
 	}
 	_renderSidebarButton() {
-		return q("ha-menu-button") ? x`<ha-menu-button slot="navigationIcon" .hass=${this.hass} .narrow=${this.narrow}></ha-menu-button>` : !this.narrow && this.hass?.dockedSidebar !== "always_hidden" ? S : x`<ha-icon-button slot="navigationIcon" class="sidebar-toggle" .label=${this.hass?.localize?.("ui.sidebar.sidebar_toggle") || this._l.t("panel.sidebar")} .path=${Uc} @click=${() => this.dispatchEvent(new CustomEvent("hass-toggle-menu", {
+		return q("ha-menu-button") ? x`<ha-menu-button slot="navigationIcon" .hass=${this.hass} .narrow=${this.narrow}></ha-menu-button>` : !this.narrow && this.hass?.dockedSidebar !== "always_hidden" ? S : x`<ha-icon-button slot="navigationIcon" class="sidebar-toggle" .label=${this.hass?.localize?.("ui.sidebar.sidebar_toggle") || this._l.t("panel.sidebar")} .path=${qc} @click=${() => this.dispatchEvent(new CustomEvent("hass-toggle-menu", {
 			bubbles: !0,
 			composed: !0
 		}))}></ha-icon-button>`;
@@ -11461,19 +11571,19 @@ var $ = class e extends C {
 	render() {
 		let e = this._l;
 		if (this.hass?.user?.is_admin === !1) return x`<main><div class="panel-content"><p role="alert">${e.t("panel.admin_required")}</p></div></main>`;
-		let t = this.hass?.localize?.("ui.common.menu") || e.t("panel.menu"), n = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0, r = this._formBusy || this._blocked || !!this._conflict, i = this._notificationCount(), a = x`<ha-dropdown-item value="notifications">${e.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon>${i ? x`<span slot="details" class="menu-count">${i}</span>` : S}</ha-dropdown-item>`, o = i && this._view.kind !== "create" && this._view.kind !== "notifications" ? x`<ha-icon-button slot="actionItems" class="header-bell" .label=${e.tn(i, "panel.bell_one", "panel.bell_other")} .path=${Hc}
+		let t = this.hass?.localize?.("ui.common.menu") || e.t("panel.menu"), n = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0, r = this._formBusy || this._blocked || !!this._conflict, i = this._notificationCount(), a = x`<ha-dropdown-item value="notifications">${e.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon>${i ? x`<span slot="details" class="menu-count">${i}</span>` : S}</ha-dropdown-item>`, o = i && this._view.kind !== "create" && this._view.kind !== "notifications" ? x`<ha-icon-button slot="actionItems" class="header-bell" .label=${e.tn(i, "panel.bell_one", "panel.bell_other")} .path=${Kc}
       @click=${() => this._openNotificationsPage()}></ha-icon-button>` : S;
 		return x`<main><ha-top-app-bar-fixed class="panel-appbar" .narrow=${this.narrow}>
-       ${this._view.kind === "detail" ? x`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Vc} @click=${() => {
+       ${this._view.kind === "detail" ? x`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Gc} @click=${() => {
 			this._formBusy || this._show({ kind: "list" });
-		}}></ha-icon-button>` : this._view.kind === "notifications" ? x`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Vc} @click=${() => this._leaveNotifications()}></ha-icon-button>` : this._renderSidebarButton()}
+		}}></ha-icon-button>` : this._view.kind === "notifications" ? x`<ha-icon-button slot="navigationIcon" class="back" .label=${e.t("detail.back")} .path=${Gc} @click=${() => this._leaveNotifications()}></ha-icon-button>` : this._renderSidebarButton()}
        <h1 slot="title" class="page-title" tabindex="-1">${n ? n.name : this._view.kind === "notifications" ? e.t("notifications.title") : "Smart Plants"}</h1>
        ${o}
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
-         <ha-icon-button slot="trigger" .label=${t} .path=${zc}></ha-icon-button>
+         <ha-icon-button slot="trigger" .label=${t} .path=${Uc}></ha-icon-button>
          ${n ? x`
          ${a}
-         <ha-dropdown-item value="snooze" ?disabled=${r || n.lifecycle_state !== "active"}>${Ys(n.snoozed_until) ? e.t("snooze.menu_change") : e.t("snooze.menu")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>
+         <ha-dropdown-item value="snooze" ?disabled=${r || n.lifecycle_state !== "active"}>${$s(n.snoozed_until) ? e.t("snooze.menu_change") : e.t("snooze.menu")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>
          <wa-divider role="separator"></wa-divider>
          <ha-dropdown-item value="open-device" ?disabled=${!B(n, this._devices)}>${e.t("detail.menu_open_device")}<ha-icon slot="icon" icon="mdi:open-in-new"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="download-diagnostics">${e.t("detail.menu_download")}<ha-icon slot="icon" icon="mdi:download"></ha-icon></ha-dropdown-item>
@@ -11481,7 +11591,7 @@ var $ = class e extends C {
          <ha-dropdown-item value="toggle-monitoring" ?disabled=${r}>${n.lifecycle_state === "active" ? e.t("manage.pause") : e.t("manage.resume")}<ha-icon slot="icon" .icon=${n.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="delete-plant" ?disabled=${r}>${e.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>` : x`
          ${this._view.kind === "list" ? S : x`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${e.t("panel.back_to_overview")}</ha-dropdown-item>`}
-         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${Bc}></ha-svg-icon></ha-dropdown-item>
+         <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${Wc}></ha-svg-icon></ha-dropdown-item>
          ${this._view.kind === "list" ? x`<wa-divider role="separator"></wa-divider>${a}` : S}
          ${this._view.kind === "list" && this._activePlants().length >= 2 ? x`<ha-dropdown-item value="snooze-all" ?disabled=${this._formBusy || this._blocked}>${e.t("snooze.menu_all")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>` : S}
          <wa-divider role="separator"></wa-divider>
@@ -11497,7 +11607,7 @@ var $ = class e extends C {
 		}}>${e.t("panel.open_created")}</button>` : S}` : S}
       ${this._view.kind === "list" && this._overviewError ? this._renderStatusError() : S}
       <smart-plants-overview ?hidden=${this._view.kind !== "list"} .l=${e} .plants=${this._plants} .overview=${this._overview} .areaNames=${this._plantAreaNames()}
-        .thumbnails=${this._thumbnails} .watering=${this._watering} .timeZone=${this._timeZone()} .loading=${this._loading} .blocked=${this._blocked}
+        .thumbnails=${this._thumbnails} .watering=${this._watering} .timeZone=${this._timeZone()} .loading=${this._loading} .pending=${!this._statusRead} .blocked=${this._blocked}
         @open-plant=${(e) => this._openFromOverview(e.detail)} @add-plant=${() => this._show({ kind: "create" })} @log-watering=${(e) => void this._logWatering(e.detail.plantId)}></smart-plants-overview>
       ${this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : S}
       ${this._view.kind === "notifications" ? x`<smart-plants-notifications-page .hass=${this.hass} .l=${e} .plants=${this._plants} .devices=${this._devices} .states=${this._states} .found=${this._notifications}
@@ -11511,13 +11621,14 @@ var $ = class e extends C {
         <p role="status" aria-live="polite">${this._formBusy ? e.t("panel.busy") : ""}</p></div></ha-top-app-bar-fixed></main>`;
 	}
 };
-Lc = $, Lc.styles = [
+Vc = $, Vc.styles = [
 	U,
-	$s,
-	La,
-	Es
-], Lc.bundleVersion = Rs(import.meta.url), W([w({ attribute: !1 })], $.prototype, "hass", void 0), W([w({ attribute: !1 })], $.prototype, "panel", void 0), W([w({
+	ea,
+	rc,
+	Va,
+	As
+], Vc.bundleVersion = Hs(import.meta.url), W([w({ attribute: !1 })], $.prototype, "hass", void 0), W([w({ attribute: !1 })], $.prototype, "panel", void 0), W([w({
 	type: Boolean,
 	reflect: !0
-})], $.prototype, "narrow", void 0), W([w({ attribute: !1 })], $.prototype, "route", void 0), W([T()], $.prototype, "_plants", void 0), W([T()], $.prototype, "_loading", void 0), W([T()], $.prototype, "_error", void 0), W([T()], $.prototype, "_notice", void 0), W([T()], $.prototype, "_view", void 0), W([T()], $.prototype, "_detailSection", void 0), W([T()], $.prototype, "_formBusy", void 0), W([T()], $.prototype, "_capabilities", void 0), W([T()], $.prototype, "_updateAvailable", void 0), W([T()], $.prototype, "_blocked", void 0), W([T()], $.prototype, "_areas", void 0), W([T()], $.prototype, "_entities", void 0), W([T()], $.prototype, "_devices", void 0), W([T()], $.prototype, "_states", void 0), W([T()], $.prototype, "_evaluations", void 0), W([T()], $.prototype, "_health", void 0), W([T()], $.prototype, "_healthError", void 0), W([T()], $.prototype, "_careHistory", void 0), W([T()], $.prototype, "_historyRole", void 0), W([T()], $.prototype, "_historyRange", void 0), W([T()], $.prototype, "_history", void 0), W([T()], $.prototype, "_careError", void 0), W([T()], $.prototype, "_careLoadError", void 0), W([T()], $.prototype, "_careDate", void 0), W([T()], $.prototype, "_careNote", void 0), W([T()], $.prototype, "_careKind", void 0), W([T()], $.prototype, "_careFields", void 0), W([T()], $.prototype, "_careEditingId", void 0), W([T()], $.prototype, "_registryError", void 0), W([T()], $.prototype, "_areaReview", void 0), W([T()], $.prototype, "_overview", void 0), W([T()], $.prototype, "_overviewError", void 0), W([T()], $.prototype, "_thumbnails", void 0), W([T()], $.prototype, "_watering", void 0), W([T()], $.prototype, "_edits", void 0), W([T()], $.prototype, "_conflict", void 0), W([T()], $.prototype, "_allSensors", void 0), W([T()], $.prototype, "_preview", void 0), W([T()], $.prototype, "_provider", void 0), W([T()], $.prototype, "_query", void 0), W([T()], $.prototype, "_results", void 0), W([T()], $.prototype, "_related", void 0), W([T()], $.prototype, "_relatedAllPlants", void 0), W([T()], $.prototype, "_relatedExpanded", void 0), W([T()], $.prototype, "_imageUrl", void 0), W([T()], $.prototype, "_imageLoading", void 0), W([T()], $.prototype, "_imageError", void 0), W([T()], $.prototype, "_dialog", void 0), W([T()], $.prototype, "_snoozeDraft", void 0), W([T()], $.prototype, "_restEditor", void 0), W([T()], $.prototype, "_taskEditor", void 0), W([T()], $.prototype, "_automateTaskId", void 0), W([T()], $.prototype, "_carePending", void 0), W([T()], $.prototype, "_careTaskId", void 0), W([T()], $.prototype, "_wizardStarted", void 0), W([T()], $.prototype, "_notificationsOpen", void 0), W([T()], $.prototype, "_notifications", void 0), W([T()], $.prototype, "_creationNotice", void 0), W([T()], $.prototype, "_creationPhoto", void 0), W([T()], $.prototype, "_createdPlantId", void 0), W([T()], $.prototype, "_thresholdRole", void 0), W([T()], $.prototype, "_thresholdEdits", void 0), W([T()], $.prototype, "_thresholdBaseline", void 0), W([T()], $.prototype, "_thresholdError", void 0), W([T()], $.prototype, "_thresholdSaved", void 0), W([T()], $.prototype, "_pendingThresholdSwitch", void 0), W([T()], $.prototype, "_sourceRole", void 0), W([T()], $.prototype, "_sourceEdits", void 0), W([T()], $.prototype, "_sourceBaseline", void 0), W([T()], $.prototype, "_sourceError", void 0), W([T()], $.prototype, "_sourceUnavailable", void 0), W([T()], $.prototype, "_sourceSaved", void 0), W([T()], $.prototype, "_pendingSourceSwitch", void 0), W([T()], $.prototype, "_sourceMode", void 0), W([T()], $.prototype, "_moistureMode", void 0), W([T()], $.prototype, "_moistureSourceError", void 0), W([T()], $.prototype, "_expanded", void 0), W([T()], $.prototype, "_settingsOpen", void 0), W([T()], $.prototype, "_careFilter", void 0), W([T()], $.prototype, "_careFormOpen", void 0), W([T()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);
+})], $.prototype, "narrow", void 0), W([w({ attribute: !1 })], $.prototype, "route", void 0), W([T()], $.prototype, "_plants", void 0), W([T()], $.prototype, "_loading", void 0), W([T()], $.prototype, "_error", void 0), W([T()], $.prototype, "_notice", void 0), W([T()], $.prototype, "_view", void 0), W([T()], $.prototype, "_detailSection", void 0), W([T()], $.prototype, "_formBusy", void 0), W([T()], $.prototype, "_capabilities", void 0), W([T()], $.prototype, "_updateAvailable", void 0), W([T()], $.prototype, "_blocked", void 0), W([T()], $.prototype, "_areas", void 0), W([T()], $.prototype, "_entities", void 0), W([T()], $.prototype, "_devices", void 0), W([T()], $.prototype, "_states", void 0), W([T()], $.prototype, "_evaluations", void 0), W([T()], $.prototype, "_health", void 0), W([T()], $.prototype, "_healthError", void 0), W([T()], $.prototype, "_careHistory", void 0), W([T()], $.prototype, "_historyRole", void 0), W([T()], $.prototype, "_historyRange", void 0), W([T()], $.prototype, "_history", void 0), W([T()], $.prototype, "_careError", void 0), W([T()], $.prototype, "_careLoadError", void 0), W([T()], $.prototype, "_careDate", void 0), W([T()], $.prototype, "_careNote", void 0), W([T()], $.prototype, "_careKind", void 0), W([T()], $.prototype, "_careFields", void 0), W([T()], $.prototype, "_careEditingId", void 0), W([T()], $.prototype, "_registryError", void 0), W([T()], $.prototype, "_areaReview", void 0), W([T()], $.prototype, "_overview", void 0), W([T()], $.prototype, "_overviewError", void 0), W([T()], $.prototype, "_statusRead", void 0), W([T()], $.prototype, "_thumbnails", void 0), W([T()], $.prototype, "_watering", void 0), W([T()], $.prototype, "_edits", void 0), W([T()], $.prototype, "_conflict", void 0), W([T()], $.prototype, "_allSensors", void 0), W([T()], $.prototype, "_preview", void 0), W([T()], $.prototype, "_provider", void 0), W([T()], $.prototype, "_query", void 0), W([T()], $.prototype, "_results", void 0), W([T()], $.prototype, "_related", void 0), W([T()], $.prototype, "_relatedAllPlants", void 0), W([T()], $.prototype, "_relatedExpanded", void 0), W([T()], $.prototype, "_imageUrl", void 0), W([T()], $.prototype, "_imageLoading", void 0), W([T()], $.prototype, "_imageError", void 0), W([T()], $.prototype, "_dialog", void 0), W([T()], $.prototype, "_snoozeDraft", void 0), W([T()], $.prototype, "_restEditor", void 0), W([T()], $.prototype, "_taskEditor", void 0), W([T()], $.prototype, "_automateTaskId", void 0), W([T()], $.prototype, "_carePending", void 0), W([T()], $.prototype, "_careTaskId", void 0), W([T()], $.prototype, "_wizardStarted", void 0), W([T()], $.prototype, "_notificationsOpen", void 0), W([T()], $.prototype, "_notifications", void 0), W([T()], $.prototype, "_creationNotice", void 0), W([T()], $.prototype, "_creationPhoto", void 0), W([T()], $.prototype, "_createdPlantId", void 0), W([T()], $.prototype, "_thresholdRole", void 0), W([T()], $.prototype, "_thresholdEdits", void 0), W([T()], $.prototype, "_thresholdBaseline", void 0), W([T()], $.prototype, "_thresholdError", void 0), W([T()], $.prototype, "_thresholdSaved", void 0), W([T()], $.prototype, "_pendingThresholdSwitch", void 0), W([T()], $.prototype, "_sourceRole", void 0), W([T()], $.prototype, "_sourceEdits", void 0), W([T()], $.prototype, "_sourceBaseline", void 0), W([T()], $.prototype, "_sourceError", void 0), W([T()], $.prototype, "_sourceUnavailable", void 0), W([T()], $.prototype, "_sourceSaved", void 0), W([T()], $.prototype, "_pendingSourceSwitch", void 0), W([T()], $.prototype, "_sourceMode", void 0), W([T()], $.prototype, "_moistureMode", void 0), W([T()], $.prototype, "_moistureSourceError", void 0), W([T()], $.prototype, "_expanded", void 0), W([T()], $.prototype, "_settingsOpen", void 0), W([T()], $.prototype, "_careFilter", void 0), W([T()], $.prototype, "_careFormOpen", void 0), W([T()], $.prototype, "_allSourceSensors", void 0), customElements.get("smart-plants-panel") || customElements.define("smart-plants-panel", $);
 export { $ as SmartPlantsPanel };
