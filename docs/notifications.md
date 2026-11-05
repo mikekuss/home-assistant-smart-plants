@@ -1,33 +1,24 @@
 # Notifications
 
-The Smart Plants panel can set up two common notifications for you. It doesn't send anything
-itself. It fills in Home Assistant's automation editor, you check the automation and save it
-there, and from then on it is a normal automation that you can see, edit, turn off or delete
-like any other.
-
-If you want something else, build your own automation with the Smart Plants triggers,
-conditions and the `smart_plants.get_report` action described in
-[Automations](automations.md).
+The panel can set up two common notifications for you. It fills in Home Assistant's automation
+editor, and you save the automation there. After that it's a normal automation that you can
+edit, turn off or delete. For anything else, build your own with the
+[Smart Plants triggers and actions](automations.md).
 
 ## Set up a notification
 
-1. Open **Smart Plants** in the sidebar.
-2. On the plants overview or a plant's page, open **⋮ → Notifications…**. From a plant's page,
-   the notification starts with that plant chosen. A plant's **Automations** card also has
-   **Set up notifications**, and so does the screen that confirms a new plant.
-3. Choose one of the two notifications, the plants, and where to send the message.
-4. Select **Open in automation editor**. Home Assistant's editor opens with the automation
-   filled in.
-5. Check it and select **Save**.
+1. In the Smart Plants panel, select **⋮ > Notifications…** on the overview or a plant's page.
+   You also find **Set up notifications** on a plant's **Automations** card and after you
+   create a plant.
+2. Pick one of the two notifications, the plants and where to send the message.
+3. Select **Open in automation editor**, check the automation and select **Save**.
 
-Each save creates one automation. To add the other notification too, open
-**⋮ → Notifications…** again.
+Each save creates one automation. Open the dialog again to add the other one.
 
-### Daily plant report
+## Daily plant report
 
-One message a day, at the time you pick (08:00 by default), when at least one plant needs
-water, has a problem or has a care task due. The message lists those plants, one line each,
-for example:
+One message a day at the time you pick, 08:00 by default, when at least one plant needs water,
+has a problem or has a care task due:
 
 ```text
 2 plants need attention
@@ -35,88 +26,49 @@ for example:
 • Office Aloe: Low light
 ```
 
-On a day when everything is fine, nothing is sent. Snoozed and paused plants are left out.
+Nothing is sent on days when all plants are fine. Snoozed and paused plants are left out.
 
-### Tell me right away when a plant needs water
+## Message when a plant needs water
 
-A message as soon as a plant needs water, or after it has needed water for the delay you pick
-(30 minutes by default; you can choose right away, 15 or 30 minutes, 1 or 2 hours). The delay
-keeps a short dip in the reading from sending a message. Each plant sends its own message, for
-example *Aloe needs water*.
-
-A plant that started to need water while it was snoozed sends its message once the snooze
+Each plant sends its own message, for example *Aloe needs water*. You pick a delay: right
+away, 15 or 30 minutes (the default), 1 or 2 hours. The delay keeps a short dip from sending a
+message. A plant that started to need water during a snooze sends its message when the snooze
 ends.
 
-**Quiet hours** are off by default. Turn them on to get no messages between two times (22:00
-to 07:00 by default). A message that would arrive during quiet hours is dropped, not sent
-later. If you also have the daily report, it still lists the plant.
+**Quiet hours** are off by default. When on, messages between the two times (22:00 to 07:00
+by default) are dropped, not sent later.
 
-### Plants
+## Choose the plants and the destination
 
-**All plants** (the default) includes plants you add later. In the automation editor the
-target shows as the **All plants** entity, which Smart Plants creates for this. If you deleted
-or disabled that entity, the target is left empty, which also means all plants.
+- **All plants**, the default, includes plants you add later. The editor shows it as the
+  **All plants** entity.
+- **Choose plants** limits the notification to the plants you tick. Plants you add later need
+  an edit of the automation.
 
-**Choose plants** limits the notification to the plants you tick. The editor shows them as
-devices. A plant you add later is not included until you edit the automation.
-
-### Send to
-
-The list shows, in this order:
-
-1. Notification entities (`notify.*`), by name. Newer Telegram, email and companion app
-   setups create these.
-2. Notification services, such as `mobile_app_my_phone`.
-3. **Home Assistant notification**, which shows the message in Home Assistant's own
-   notifications. It is always there and is the default when nothing else is set up.
+**Send to** lists notification entities (`notify.*`), then notification services such as
+`mobile_app_my_phone`, then **Home Assistant notification**, which is always there.
 
 ## Your notifications
 
-Until you set one up, the dialog starts with a short note on what notifications do. **Set one
-up** moves to the first choice of the form.
+The dialog lists your notifications under **Your notifications**, with a switch to turn each
+on or off, its plants, when it last sent a message, and **Edit**. With at least one
+notification, a bell with their number appears in the panel header, and the plant's
+**Automations** card marks them with a bell.
 
-When you have at least one notification set up this way, the dialog lists it under **Your
-notifications** with:
+A **Choose plants** notification shows the plants that its Smart Plants triggers, conditions
+and actions target, so it follows your edits. An **All plants** notification always shows
+*For all plants*.
 
-- a switch that turns the automation on or off,
-- the plants it is for, or *For all plants*,
-- when it last sent a message,
-- **Edit**, which opens it in the automation editor.
+Delete a notification under **Settings > Automations & scenes**. The dialog finds the
+automations by their trigger IDs, which start with `smart_plants_`. If you change all of them,
+the automation keeps working but the dialog no longer lists it.
 
-The plants come from the devices that the automation's Smart Plants trigger or condition
-targets, so they follow your edits in the automation editor. A notification whose plants were
-all deleted says so.
+## Known limitations
 
-With at least one notification, the panel also shows it in these places:
-
-- A bell in the panel header, next to **⋮**, with the number of notifications. It opens the
-  dialog. Without notifications there is no bell.
-- The number next to **Notifications…** in the **⋮** menus.
-- In a plant's **Automations** card, a bell icon and *Notification* on the rows of those
-  automations.
-
-The panel reads your automations once when it opens and again whenever Home Assistant reloads
-them, for example after you save in the automation editor.
-
-To delete one, use **Settings → Automations & scenes** in Home Assistant. If you pick the same
-notification and plants again, the dialog says that you already have it. You can still create
-a second one.
-
-The dialog finds these automations by their **Trigger IDs**. It lists an automation when any of
-its triggers has an ID that starts with `smart_plants_`. Keep those IDs when you edit the
-automation. If you change or remove all of them, the automation keeps working, but the dialog
-no longer lists it.
-
-## Things to know
-
-- The texts (name, description and message) are written in the panel's language when you open
-  the editor. They don't change later if you switch Home Assistant to another language. Edit
-  the automation to change them. The daily report asks for the same language, so its title
-  and message match the rest of the automation.
-- Home Assistant's editor can only save automations when your `configuration.yaml` has the
-  default `automation: !include automations.yaml` line. If you keep automations in split files
-  or packages, saving fails or writes to a file Home Assistant doesn't load. In that case copy
-  the YAML from the editor (**⋮ → Edit in YAML**) into your own files.
-- If the editor opens empty, your Home Assistant frontend didn't accept the filled-in
-  automation and the panel shows a message. Build the automation by hand from the examples in
-  [Automations](automations.md).
+- The texts are written in the panel's language when you open the editor. Edit the automation
+  to change them later.
+- The editor saves only with the default `automation: !include automations.yaml` line. With
+  split files or packages, copy the YAML from the editor (**⋮ > Edit in YAML**) into your
+  files.
+- If the editor opens empty, your Home Assistant didn't accept the filled-in automation, and
+  the panel says so. Build it from the [examples](automations.md#examples).

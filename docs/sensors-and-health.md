@@ -1,216 +1,142 @@
-# Sensors and plant health
+# Sensors and health
 
-Smart Plants doesn't talk to hardware. You assign existing Home Assistant sensor entities to
-a plant's **roles**, and Smart Plants turns their readings into plant-level sensors, problem
-indicators, and a health score.
+Smart Plants doesn't talk to hardware. You assign existing Home Assistant sensors to a plant,
+and Smart Plants turns their readings into plant sensors, problem sensors and a health score.
 
-## Supported roles
+## Supported sensors
 
-| Role | Accepted source units | Valid range | Plant sensor | Problem indicator | Default combination |
-| --- | --- | --- | --- | --- | --- |
-| Soil moisture | `%` | 0–100 % | Soil moisture | Needs water, Too wet, Sensor stale | Main sensor only |
-| Air temperature | `°C`, `°F`, `K` | −40 to 80 °C | Temperature | Temperature stress | Average |
-| Air humidity | `%` | 0–100 % | Humidity | Humidity stress | Average |
-| Illuminance | `lx` | 0–200,000 lx | Illuminance | Low light | Main sensor only |
-| Conductivity | `µS/cm` (also `μS/cm`, `uS/cm`) | 0–10,000 µS/cm | Conductivity | Conductivity stress | Main sensor only |
-| Soil temperature | `°C`, `°F`, `K` | −20 to 60 °C | Soil temperature | Soil temperature stress | Main sensor only |
-| CO₂ | `ppm` | 0–10,000 ppm | CO2 | CO2 stress | Average |
-| Battery | `%` | 0–100 % | Battery | Low battery | Lowest |
+Each plant has one role per kind of reading. The panel calls roles readings and uses plainer
+names for some: *Temperature*, *Humidity*, *Light* and *Fertilizer level*.
 
-Notes:
+| Role | Units | Valid range | Problem sensor | Default combination |
+| --- | --- | --- | --- | --- |
+| Soil moisture | `%` | 0–100 % | Needs water, Too wet, Sensor stale | Main sensor only |
+| Temperature | `°C`, `°F`, `K` | −40 to 80 °C | Temperature stress | Average |
+| Humidity | `%` | 0–100 % | Humidity stress | Average |
+| Illuminance | `lx` | 0–200,000 lx | Low light | Main sensor only |
+| Conductivity | `µS/cm`, `μS/cm`, `uS/cm` | 0–10,000 µS/cm | Conductivity stress | Main sensor only |
+| Soil temperature | `°C`, `°F`, `K` | −20 to 60 °C | Soil temperature stress | Main sensor only |
+| CO₂ | `ppm` | 0–10,000 ppm | CO2 stress | Average |
+| Battery | `%` | 0–100 % | Low battery | Lowest |
 
-- Sources must be entities in the `sensor` domain with a numeric state.
-- The unit is checked on every reading. A reading with a missing or different unit, a
-  non-numeric state, `unknown`/`unavailable`, or a value outside the valid range is ignored.
-- Temperatures in °F or K are converted to °C. Plant temperature sensors report in °C, and
-  Home Assistant displays them in your configured unit system.
-- The panel's sensor picker filters by device class and unit (for example `moisture` for
-  soil moisture, `carbon_dioxide` for CO₂). Use **Show all sensors, including ones that don't look
-  like a match** if your sensor lacks a device class; the unit must still match.
-- The picker leaves out Smart Plants' own sensors, even with **Show all sensors** turned on,
-  and Smart Plants refuses them as sources. Smart Plants calculates a plant's sensors from its
-  sources, so with one of them as a source a plant would read its own value or copy another
-  plant's. Assign the device's sensor instead. A plant that already uses one keeps it until
-  you replace it. The **Sensors** tab marks it *Smart Plants sensor, replace it*.
-- In the panel, roles are called readings and some have plainer names: *Temperature*,
-  *Humidity*, *Light* (illuminance), and *Fertilizer level* (conductivity).
+- A source must be a `sensor` entity with a number as its state.
+- Smart Plants checks the unit of every reading. It ignores a reading with a missing or other
+  unit, a value outside the valid range, `unknown` and `unavailable`.
+- Temperatures are converted to °C. Home Assistant shows them in your unit system.
+- Smart Plants' own sensors can't be sources. A plant that already uses one keeps it, and the
+  **Sensors** tab marks it *Smart Plants sensor, replace it*.
 
-## Multiple sensors per role
+## Use several sensors for one reading
 
-Each role accepts up to 32 source sensors. You choose how they are combined with
-**Combine readings** in the plant's **Sensors** tab, under **Several sensors for one
-reading**:
+A reading takes up to 32 sensors. Set **Combine readings** on the **Sensors** tab under
+**Several sensors for one reading**:
 
-| Combine readings | Result |
+| Combine readings | Value |
 | --- | --- |
-| Main sensor only | The value of the sensor you chose as **Main sensor**. There is no automatic fallback: if the main sensor is invalid or not updating, the plant value is unavailable. |
-| Average | Mean of all valid, fresh sources. |
-| Lowest | Lowest valid, fresh source. |
-| Highest | Highest valid, fresh source. |
+| Main sensor only | The **Main sensor**. When it's invalid or not updating, the value is unavailable. There is no fallback to another sensor. |
+| Average | The mean of all valid, current sensors. |
+| Lowest | The lowest valid, current sensor. |
+| Highest | The highest valid, current sensor. |
 
-A reading with a single sensor always uses it as its main sensor. That covers a sensor picked
-in the add-plant wizard, the first sensor you add to a reading, and the sensor left after you
-remove the others. With several sensors, Smart Plants never chooses or replaces the main
-sensor by itself. **Main sensor only** then needs a main sensor, otherwise the role has no
-value:
+A single sensor is always the main sensor. With several sensors, Smart Plants never picks the
+main sensor for you. Until you pick one, **Main sensor only** gives no value, and the plant
+shows *No main sensor* with *Soil moisture: no main sensor chosen*. To remove the main sensor,
+first select **Use as main sensor** on another one.
 
-- The panel doesn't save **Main sensor only** for several sensors without a main sensor.
-  Choose one under **Main sensor**, or pick another way to combine the readings.
-- To remove the main sensor of several, first select **Use as main sensor** in another
-  sensor's **⋮** menu under **Assigned sensors**.
-- A plant whose soil moisture sensors have no main sensor shows *No main sensor* and
-  *Soil moisture: no main sensor chosen*.
+## Data updates
 
-With **Average**, **Lowest**, and **Highest**, sources that are not updating or invalid are
-left out; if none remain, the value is unavailable.
+Smart Plants updates a plant when an assigned sensor reports. Timers handle the rest: sensors
+that stop updating, the daytime hours of *Low light*, and care task dates just after midnight.
+Smart Plants doesn't poll your sensors.
 
-## Staleness
+A sensor counts as not updating when it hasn't reported a valid state for **Not updating
+after**, 6 hours by default (60 seconds to 7 days, set in seconds). A sensor that reports the
+same value again stays current. A new sensor gets one full window before it can count as not
+updating. An assigned sensor that no longer exists counts as not updating at once.
 
-Each role has a **Not updating after** window: 6 hours by default, adjustable from 60 seconds
-to 7 days (the field takes seconds, 60–604800) in the plant's **Sensors** tab under
-**Several sensors for one reading**. A source is stale when it hasn't delivered a valid reading within that window. The
-panel shows a stale sensor as *not updating*.
+A plant shows *No recent data* when an assigned sensor is not updating or has no usable value
+and nothing more urgent applies. The plant page names the sensor, for example
+*Temperature: sensor is not reporting*. Two sensors are exceptions:
 
-A plant shows *No recent data* when an assigned sensor is stale or gives no usable value, and
-no other problem applies. This covers soil moisture and every other reading except the
-battery, because many battery sensors only report when the level changes. A light sensor
-doesn't count at night (18:00 to 08:00), and in the morning it doesn't count until its
-staleness window has passed since 08:00. A light sensor that only reports changes can sit at
-0 lx all night and go stale before dawn; it then has the full window of daylight to report
-before the plant shows *No recent data*. With the default 6 hours, a light sensor that
-stays quiet all day counts from 14:00. The plant page and the card name the sensor, for
-example *Temperature: not reporting*. A sensor you removed from a role doesn't count, even
-though its entities stay and read unavailable.
+- **Battery** never counts, because many battery sensors report only on a change.
+- **Light** doesn't count from 18:00 to 08:00. In the morning it counts once its window has
+  passed since 08:00, so with 6 hours, a quiet light sensor counts from 14:00.
 
-- A newly assigned source gets one full window as a grace period before it can be stale.
-- An assigned sensor that no longer exists counts as stale.
-- The window is measured from the last time the source reported a valid state to Home
-  Assistant, even if the value didn't change. A sensor that keeps reporting the same value (for
-  example 0 lx at night) stays fresh.
-- Some devices only send an update when their value changes. If such a sensor can stay
-  silent longer than the window, increase the window for that role.
+For soil moisture, *Sensor stale* turns on while any moisture sensor is not updating. For the
+other readings, the problem sensor becomes unavailable instead. If a sensor reports only on a
+change, raise its **Not updating after** value.
 
-For soil moisture, the *Sensor stale* entity turns on while any assigned moisture source is
-stale. For the other roles, the problem indicator becomes unavailable while any of that
-role's sources is stale.
+## Problem sensors
 
-## Problem indicators
+Each problem sensor is a binary sensor. On means there is a problem. It turns on at one value
+and off at another, so it doesn't flicker around a single limit. While the value is back in
+range but the sensor is still on, the status names the value where it turns off, for example
+*Soil moisture 16%, alert turns off at 17%*.
 
-All problem indicators are binary sensors with the *problem* device class: **on** means
-"problem". They use two thresholds each (hysteresis): one to turn on and a separate "clear"
-value to turn off, so they don't flicker around a single boundary.
+When a reading has no valid value, its problem sensor is **unavailable**, never off.
+Unavailable doesn't mean healthy.
 
-The status text on the plant card and plant page follows the same rule. While the reading is
-past the limit, it says so, for example *Soil moisture 12% is below the minimum of 15%*.
-Once the reading is back inside the limit but the alert is still on, it names the value at
-which the alert turns off, for example *Soil moisture 16%, alert turns off at 17%*.
+- **Needs water** turns on below the minimum and off at minimum + 2 points.
+- **Too wet** turns on above the maximum and off at maximum − 2 points.
+- A stress sensor turns off at its clear value, or when the reading reaches the opposite
+  limit.
+- **Low light** uses the brightest reading of the last two hours between 08:00 and 18:00, from
+  at least two different minutes. Until then it's unavailable. At night it's off, or
+  unavailable while the light sensor is not updating.
 
-When a role has no valid value, its indicator is **unavailable**, never "off". Unavailable
-does not mean healthy.
-
-### Soil moisture
-
-- **Needs water** turns on when moisture drops **below** the minimum and turns off once it
-  reaches minimum + 2 percentage points.
-- **Too wet** turns on when moisture rises **above** the maximum and turns off once it falls
-  to maximum − 2 percentage points.
-
-### Manual watering grace
-
-When you log a **watering** in the plant's care history, *Needs water* stays off for 24 hours
-from the time you entered. This applies to every logged watering: from the panel or from the
-[`smart_plants.log_care`](automations.md#log-care-with-actions) action, for example after an
-irrigation valve ran. A backdated entry only gives the remaining part of its 24 hours.
-After the grace period, the normal rules apply to the current moisture reading. The grace
-period doesn't change the moisture value, *Too wet*, *Sensor stale*, or the health score.
-
-### Low light
-
-Low light counts daytime readings only (08:00–18:00 in Home Assistant's time zone).
-It uses the brightest reading of the last two hours and needs daytime readings from at least
-two different minutes; until then it's unavailable. A sensor that reports the same value
-again still counts, and readings within one minute count once, with the brightest one kept.
-At 08:00 and 18:00 Low light updates on its own, without waiting for a new reading. Outside daytime, *Low light* stays off and illuminance is left
-out of the health score.
+After you log a watering, *Needs water* stays off for 24 hours from the time of the entry.
+This holds for the panel, the card and the `smart_plants.log_care` action. Other sensors and the
+health score don't change.
 
 ## Built-in thresholds
 
-| Role | Turns on | Turns off | Where to edit |
-| --- | --- | --- | --- |
-| Soil moisture | below 15 % (minimum); above 55 % (maximum); target 35 % | minimum + 2; maximum − 2 | Settings tab (Soil moisture targets) or the number entities |
-| Air temperature | ≤ 10 °C (cold) or ≥ 35 °C (hot) | ≥ 12 °C; ≤ 32 °C | Settings tab (Other targets) |
-| Air humidity | ≤ 25 % (dry) or ≥ 85 % (damp) | ≥ 30 %; ≤ 80 % | Settings tab (Other targets) |
-| Illuminance | brightest recent daytime reading < 500 lx | ≥ 700 lx | Settings tab (Other targets) |
-| Conductivity | ≤ 350 µS/cm (low) or ≥ 2000 µS/cm (high) | ≥ 500; ≤ 1800 µS/cm | Settings tab (Other targets) |
-| Soil temperature | ≤ 10 °C (cold) or ≥ 35 °C (hot) | ≥ 12 °C; ≤ 32 °C | Settings tab (Other targets) |
-| CO₂ | ≥ 5000 ppm | ≤ 4000 ppm | Settings tab (Other targets) |
-| Battery | ≤ 20 % | ≥ 25 % | Settings tab (Other targets) |
+| Role | Turns on | Turns off |
+| --- | --- | --- |
+| Soil moisture | below 15 % (minimum), above 55 % (maximum), target 35 % | minimum + 2, maximum − 2 |
+| Temperature | ≤ 10 °C or ≥ 35 °C | ≥ 12 °C, ≤ 32 °C |
+| Humidity | ≤ 25 % or ≥ 85 % | ≥ 30 %, ≤ 80 % |
+| Illuminance | brightest daytime reading < 500 lx | ≥ 700 lx |
+| Conductivity | ≤ 350 or ≥ 2,000 µS/cm | ≥ 500, ≤ 1,800 µS/cm |
+| Soil temperature | ≤ 10 °C or ≥ 35 °C | ≥ 12 °C, ≤ 32 °C |
+| CO₂ | ≥ 5,000 ppm | ≤ 4,000 ppm |
+| Battery | ≤ 20 % | ≥ 25 % |
 
-All thresholds are editable per plant. An override applies only to that plant; clearing it
-returns to the default. Moisture thresholds must be whole numbers with
-minimum < target < maximum and at least 4 points between minimum and maximum.
-
-If you applied species data from [OpenPlantBook](openplantbook.md), its moisture minimum and
-maximum replace the built-in moisture defaults for that plant. Your own overrides always take
-precedence.
+You can change every threshold per plant on the **Settings** tab. Moisture values are whole
+numbers with minimum < target < maximum, at least 4 points apart. The clear value of an
+override must sit between its trigger value and the normal range. Species data from
+[OpenPlantBook](openplantbook.md) replaces the moisture minimum and maximum defaults. Your own
+values always win.
 
 ## Health score
 
-Each plant has a **Health score** sensor from 0 to 100. The panel doesn't show it on plant
-cards; open the plant, go to the **Sensors** tab, and expand **Troubleshooting** to see the
-score under **Overall health** with the roles it includes.
+The **Health score** sensor goes from 0 to 100. The panel shows it on the **Sensors** tab
+under **Troubleshooting** as **Overall health**.
 
-**Moisture part.** Moisture is scored continuously: 100 at the target, 50 at the minimum and
-at the maximum, falling to 0 at 0 % and 100 % moisture.
+- Soil moisture scores 100 at the target, 50 at the minimum and maximum, and 0 at 0 % and
+  100 %.
+- Every other reading scores 100 while its problem sensor is off and 0 while it's on.
+- The score is the weighted average of the readings that have a value: soil moisture 3,
+  temperature 2, all others 1. Battery never counts. Light doesn't count at night.
 
-**Other roles.** Each other configured role scores 100 while its problem indicator is off and
-0 while it is on.
+For example, moisture at 80, temperature fine and humidity stress on give
+(3 × 80 + 2 × 100 + 1 × 0) / 6 ≈ 73. Readings without a current value are left out. Without
+any, the score is unavailable. The attributes `configured`, `contributors`, `confidence` and
+`confidence_label` tell you how complete it is, see [Entities](entities.md#sensors).
 
-**Combination.** The score is a weighted average of the roles that currently have a value:
+## When a sensor changes or disappears
 
-| Role | Weight |
-| --- | --- |
-| Soil moisture | 3 |
-| Air temperature | 2 |
-| Air humidity, illuminance, conductivity, soil temperature, CO₂ | 1 each |
-| Battery | not included |
+Smart Plants stores sensors by their entity registry ID, so renaming a sensor's entity ID keeps
+the assignment. A sensor without a unique ID is stored by entity ID, and renaming it breaks the
+assignment.
 
-For example, moisture scoring 80, temperature fine, and humidity stress active gives
-(3 × 80 + 2 × 100 + 1 × 0) / 6 ≈ 73.
+### When a sensor disappears
 
-- Roles without sources, or currently unavailable or stale, are **left out** rather than
-  counted as healthy. Illuminance is also left out at night.
-- Battery is device health, not plant health, so it never affects the score.
-- If no role contributes, the score is unavailable.
+When an assigned sensor is removed from Home Assistant, the plant keeps the assignment and
+Home Assistant shows the repair "Smart Plants: assigned source missing".
 
-The score's attributes tell you how complete it is:
+1. Go to **Settings > System > Repairs** and select the issue.
+2. Pick a replacement, or leave the field empty to remove the assignment.
+3. Select **Submit**.
 
-| Attribute | Meaning |
-| --- | --- |
-| `configured` | Roles that have at least one source. |
-| `contributors` | Roles that contributed to the current score. |
-| `confidence` | Share of configured roles that contributed (0–1). |
-| `confidence_label` | `high` (all), `medium` (at least half), `low` (fewer than half), `unknown` (none configured). |
-
-## When a source sensor changes
-
-Smart Plants stores assigned sensors by their entity registry ID, so the plant keeps working
-when you rename a sensor's entity ID. Smart Plants updates the assignment by itself.
-
-Sensors that are not in the entity registry (no unique ID) are tracked by entity ID only;
-renames of those can't be followed.
-
-### When a source sensor disappears
-
-If an assigned sensor is removed from the entity registry, Smart Plants keeps the assignment
-and creates a **Repairs** issue: "Smart Plants: assigned source missing".
-
-1. Go to **Settings → System → Repairs** and select the issue.
-2. Choose a replacement sensor, or leave the field empty to remove the assignment. The list
-   leaves out Smart Plants' own sensors.
-3. Submit.
-
-If the missing sensor was the main sensor, the replacement becomes the main sensor. If you
-remove it and one sensor is left, that sensor becomes the main sensor. The issue disappears
-on its own if the sensor comes back or you change the assignment in the panel. Paused plants
-don't raise these issues.
+A replacement for the main sensor becomes the main sensor. The issue goes away when the sensor
+comes back or you change the assignment in the panel. Paused plants raise no repairs.

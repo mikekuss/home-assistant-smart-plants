@@ -15,7 +15,7 @@ Report them privately through GitHub's
 Include the affected version, a description of the issue, and steps to reproduce.
 You can expect an initial response within a few days.
 
-When sharing diagnostics or logs, remove anything you consider sensitive first.
-Smart Plants diagnostics never include your OpenPlantBook credentials (only whether they
-are set), but plant names, entity IDs, and logs from other integrations may still be
-private.
+Check diagnostics and logs before you share them. Smart Plants diagnostics never include
+OpenPlantBook credentials, only whether they are set. The integration diagnostics contain no
+plant names or entity IDs. A plant's own diagnostics from the panel contain its sensor and
+automation entity IDs, and logs can contain entries from other integrations.

@@ -1,125 +1,69 @@
 # OpenPlantBook
 
 [OpenPlantBook](https://open.plantbook.io/) is an optional species database. Smart Plants can
-search it and import species details and moisture ranges into your plants. Smart Plants works
-fully without it. You can create and manage every plant by hand.
+search it and import species details and moisture ranges. Every plant works without it.
 
-Smart Plants connects to the OpenPlantBook API directly. You do **not** need the separate
-Home Assistant OpenPlantBook integration.
+Smart Plants calls the OpenPlantBook API itself. You don't need the separate OpenPlantBook
+integration.
 
-## Get API credentials
+## Turn on species search
 
-1. Create an account at [open.plantbook.io](https://open.plantbook.io/).
-2. Open the [API key page](https://open.plantbook.io/apikey/) and create client
-   credentials.
-3. Note the **client ID** and **client secret**.
+1. Create an account at [open.plantbook.io](https://open.plantbook.io/) and create client
+   credentials on the [API key page](https://open.plantbook.io/apikey/).
+2. Go to **Settings > Devices & services > Smart Plants > Configure**.
+3. Tick **Enable direct OpenPlantBook provider**, enter the **OpenPlantBook client ID** and
+   **OpenPlantBook client secret**, and select **Submit**.
 
-## Enable the provider
+Smart Plants checks the credentials before it saves. To turn search off again, untick the
+provider. Species data you applied stays on your plants.
 
-You can enter the credentials during setup or later:
+## Search a species
 
-1. Go to **Settings → Devices & services → Smart Plants → Configure**.
-2. Tick **Enable direct OpenPlantBook provider**.
-3. Enter the **OpenPlantBook client ID** and **OpenPlantBook client secret**.
-4. Select **Submit**.
+- In the wizard, open **Species and watering targets** on the review step and use **Search
+  OpenPlantBook**.
+- For an existing plant, open the **Settings** tab, select **Find species** or **Change
+  species** and choose *OpenPlantBook*.
 
-Smart Plants checks the credentials with OpenPlantBook before saving. Possible errors:
+Type at least three characters. A result opens a read-only preview with the names, category,
+care text, the moisture minimum and maximum if available, and the attribution per field. For
+an existing plant it also shows what would change. A preview expires after 10 minutes.
+
+## Apply species data
+
+- **In the wizard,** tick **I reviewed and accept this species information**, then select
+  **Create plant**.
+- **For an existing plant,** select **Accept and apply reviewed species**.
+
+Smart Plants stores the species with the plant. OpenPlantBook's moisture minimum and maximum
+become the plant's defaults, and your own values stay. If the imported range doesn't fit your
+current targets, Smart Plants doesn't apply it. Change the **Soil moisture targets** first.
+
+**Preview species refresh** fetches the latest data for a plant and shows the changes. Saving
+manual species details replaces the OpenPlantBook data.
+
+## Data and privacy
+
+- Species data lives in `.storage/smart_plants.inventory` with its source, attribution and
+  fetch time. Your plants never depend on OpenPlantBook being reachable.
+- Smart Plants keeps search results and species details in memory for up to an hour.
+- Smart Plants doesn't download images from OpenPlantBook.
+- The credentials live in the configuration entry. Diagnostics never include them.
+
+Species data and care text belong to OpenPlantBook and its contributors. Smart Plants shows
+the attribution "OpenPlantBook (https://open.plantbook.io/)" next to imported data. Smart
+Plants isn't affiliated with OpenPlantBook.
+
+## Troubleshooting
 
 | Message | What to do |
 | --- | --- |
 | Enter both an OpenPlantBook client ID and client secret, or disable the provider. | Fill in both fields, or untick the provider. |
-| OpenPlantBook rejected these credentials. | Check the ID and secret on the OpenPlantBook API key page. |
-| OpenPlantBook could not be reached. | Try again later, or disable the provider for now. |
-| The OpenPlantBook client ID or client secret is too long. | Check that you pasted only the credential. |
+| OpenPlantBook rejected these credentials. | Check them on the API key page. |
+| OpenPlantBook could not be reached. Try again later or disable the provider. | Check the connection and try again. |
+| The OpenPlantBook client ID or client secret is too long. | Paste only the credential. |
+| OpenPlantBook didn't accept your credentials. … | Update them in the reauthentication prompt under **Settings > Devices & services**. |
+| OpenPlantBook is getting too many requests. … | Wait and try again. |
+| OpenPlantBook took too long to answer. … or isn't reachable right now. … | Try again later, or continue without a species. |
+| Species search needs OpenPlantBook. | Turn on the provider in the options. |
 
-The secret is never shown again in the form. Leave it empty in the options to keep the stored
-secret.
-
-## Search and preview
-
-With the provider enabled, you can search OpenPlantBook in two places:
-
-- In the creation wizard, open **Species and watering targets** on the review step and use
-  **Search OpenPlantBook**.
-- For an existing plant, in the **Settings** tab under **Species** (**Find species** or
-  **Change species**), choose *OpenPlantBook* as the species provider and search.
-
-Type at least three characters. Smart Plants doesn't send your language with the search, so
-the results use OpenPlantBook's own names. The species details in the preview use your Home
-Assistant language where OpenPlantBook has a translation. Selecting a result opens a **read-only preview** that shows:
-
-- common name, scientific name, and category,
-- care text supplied by OpenPlantBook (watering, sunlight, soil, pruning, fertilization),
-- imported moisture minimum and maximum, if OpenPlantBook has them,
-- attribution for each field,
-- for existing plants, the changes compared to the current species data.
-
-Nothing changes until you accept the preview. A preview expires after 10 minutes. After that,
-request a new one.
-
-OpenPlantBook can also supply common names in English and German. When the panel is shown in
-German and the species has a German name, the panel shows that name next to the scientific
-name, for example on the plant's **About** card; otherwise it shows OpenPlantBook's display
-name. The overview search finds a plant by any of these names.
-
-## Apply reviewed data
-
-- **In the wizard:** tick **I reviewed and accept this species information**, then select
-  **Create plant**.
-- **For an existing plant:** review the changes and select
-  **Accept and apply reviewed species**.
-
-What applying does:
-
-- Smart Plants stores the species snapshot with the plant: names, category, care text,
-  attribution, and when it was fetched.
-- OpenPlantBook's moisture minimum and maximum become the plant's **default** moisture
-  minimum and maximum. The target keeps its built-in default.
-- Your own **overrides always stay.** Each threshold either inherits its default or
-  uses your override, field by field. Applying species data only changes defaults.
-- If the imported values can't be combined with your current settings (for example, the
-  imported minimum is above the current target), Smart Plants doesn't apply them. The wizard
-  then asks you to check the **Soil moisture targets**. For an existing plant, set matching
-  **Soil moisture targets** in the **Settings** tab first and apply again.
-
-For a plant that already has OpenPlantBook data, **Preview species refresh** fetches the
-latest data and shows what would change. You can also switch back to manual species details
-at any time; saving manual details replaces the species data.
-
-## What is stored locally
-
-Smart Plants stores species data in the plant inventory in your Home Assistant configuration directory
-(`.storage/smart_plants.inventory`) together with the source reference, attribution, locale,
-and fetch time. Your plants never depend on OpenPlantBook being reachable: if it's down, or
-you disable the provider, existing species data and thresholds stay as they are.
-
-Smart Plants does **not** download or display images from OpenPlantBook. Plant photos only
-come from your own uploads.
-
-Smart Plants keeps search results and species details in memory for up to an hour to save
-requests. Your credentials live in the Smart Plants configuration entry, and diagnostics
-downloads never include them.
-
-## Reauthentication
-
-If OpenPlantBook rejects the stored credentials during a search or preview (for example after
-you rotated them), Home Assistant shows a **reauthentication** prompt for Smart Plants in
-**Settings → Devices & services**. Enter the new client ID and secret there. Your plants stay
-available while authentication fails. Only species search stops working.
-
-## Disable the provider
-
-Go to **Settings → Devices & services → Smart Plants → Configure** and untick
-**Enable direct OpenPlantBook provider**. Species data you already applied stays on your
-plants. The wizard then explains that species search needs OpenPlantBook and only offers
-entering a name yourself.
-
-## Attribution and licensing
-
-Species data and care text come from OpenPlantBook and belong to OpenPlantBook and its
-contributors. Smart Plants shows the attribution "OpenPlantBook (https://open.plantbook.io/)"
-next to imported data and keeps it with each stored snapshot. Please respect OpenPlantBook's
-terms of use for your account.
-
-Smart Plants is an independent project and is not affiliated with or endorsed by
-OpenPlantBook.
+A preview that can't be applied after a while has expired. Search again.

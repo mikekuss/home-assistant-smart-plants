@@ -2,196 +2,146 @@
 
 ## Download diagnostics
 
-1. Go to **Settings → Devices & services → Smart Plants**.
-2. Open the **⋮** menu and select **Download diagnostics**.
+Go to **Settings > Devices & services > Smart Plants** and select **⋮ > Download
+diagnostics**. The file contains settings, counts and states, for example how many plants,
+sensors per role and care tasks exist. It doesn't contain plant names, entity IDs, readings,
+thresholds, care history, photos or credentials. Look through it before you post it.
 
-The file is safe to share. It contains:
+Each plant also has its own diagnostics. Open the plant and select **⋮ > Download diagnostics**.
+That file contains the plant's configuration, its sensor and automation entity IDs and its
+current evaluation, without the plant name, notes, photo or credentials. The **Sensors** tab
+shows the same evaluation under **Troubleshooting**.
 
-- whether OpenPlantBook is enabled and whether credentials are configured (yes/no only; the
-  file never includes the client ID or secret),
-- whether "Preserve inventory when the integration is removed" is on, and the forecast
-  refresh interval in minutes,
-- OpenPlantBook connection status, such as whether a token and cached results exist,
-- inventory counts: number of plants, active vs. paused (`disabled`) plants, species
-  sources, assigned sensor sources (in total and per role, for example moisture,
-  temperature, or battery), photos, care tasks per type and per schedule, plants with a rest
-  period, and internal pending operations,
-- when each snooze ends, as a sorted list that doesn't say which plant it belongs to,
-- for each care task that follows a reading: its condition, whether it reads a plant sensor,
-  another sensor or a forecast, and its current status. For a forecast it also lists whether
-  the task uses the forecast low or high, the forecast window in hours and whether the last
-  fetch returned a value.
+## Turn on debug logging
 
-It does **not** contain plant names, entity IDs (not even of the weather entity a forecast
-task watches), sensor readings, thresholds, care history, care task names or instructions, or
-photos. Still, have a look at the file before attaching it publicly.
-
-> [!NOTE]
-> Each plant also has its own diagnostics in the panel: open the plant, go to the **Sensors**
-> tab and expand **Troubleshooting**. It shows the sensor entity IDs, the soil moisture
-> evaluation, the overall health score and the state of every problem check. **Download
-> diagnostics** there (or in the plant's **⋮** menu) saves a JSON file with the plant's
-> configuration, sensor entity IDs, current evaluation and the entity IDs of the automations
-> that use the plant. It contains no plant name, notes, photo, or credentials. The
-> **Automations** card on the plant's **Overview** tab lists those automations, see
-> [See which automations use a plant](automations.md#see-which-automations-use-a-plant).
-
-## Enable debug logging
-
-Add this to `configuration.yaml` and restart Home Assistant:
+Go to **Settings > Devices & services > Smart Plants** and select **⋮ > Enable debug
+logging**. Reproduce the problem, then turn it off to download the log. Or add this to
+`configuration.yaml` and restart:
 
 ```yaml
 logger:
-  default: warning
   logs:
     custom_components.smart_plants: debug
 ```
 
-Alternatively, go to **Settings → Devices & services → Smart Plants**, open the **⋮** menu,
-and select **Enable debug logging**. Reproduce the problem, then disable it again to download
-the log.
+## Panel
 
-## Common issues
+### Smart Plants is missing from the sidebar
 
-### The Smart Plants panel doesn't appear in the sidebar
+- Only administrators see the panel.
+- Check that the integration is loaded under **Settings > Devices & services**.
+- After an install or update, restart Home Assistant and reload the page. In the companion
+  app, clear the frontend cache in the app settings.
+- If you hid the panel, show it again in your profile's sidebar settings.
 
-- The panel is **admin-only**. Log in with an administrator account.
-- Make sure the integration is set up and loaded under **Settings → Devices & services**.
-  The sidebar entry is removed while the integration is not loaded.
-- After installing or updating, restart Home Assistant, then reload the browser page. In the
-  companion app, clear the frontend cache (in the app settings) or restart the app.
-- If you hid the panel from the sidebar, re-show it via your profile's sidebar settings.
+### "Smart Plants requires an admin account."
 
-### The panel shows "Smart Plants requires an admin account"
+Your user isn't an administrator. Sign in as an administrator, or use the
+[dashboard card](dashboard-card.md).
 
-Your current user is not an administrator. Ask an administrator to change your user or log
-in with an administrator account.
+### "This plant was changed somewhere else."
 
-### A plant shows no moisture reading
+Someone saved the same plant in another tab or device. The panel keeps your edits. Check the
+latest values and save again.
 
-- Check that at least one moisture sensor is assigned in the plant's **Sensors** tab.
-- With several sensors and **Main sensor only**, the default, you must select a main
-  sensor. Until then the plant shows *No main sensor*. In the **Sensors** tab, open
-  **Several sensors for one reading**, select **Change** next to the reading, and either
-  pick a **Main sensor** or set **Combine readings** to **Average**, **Lowest**, or
-  **Highest**. A single sensor is always the main sensor.
-- The source must report a numeric value with the unit `%`, between 0 and 100. Sensors with a
-  different or missing unit are ignored. Check the source in **Developer tools → States**.
-- A source that is not updating (stale) is excluded. With **Main sensor only**, a stale main
-  sensor makes the plant reading unavailable (there's no automatic fallback).
+### A photo is rejected
 
-The same applies to the other roles with their own units; see
-[Sensors and health](sensors-and-health.md#supported-roles).
+Photos must be JPEG, PNG or WebP, up to 40 MiB and 64 megapixels, and the content must match
+the file type. A PNG renamed to `.jpg` is rejected.
 
-### Sensor stale is on, but the sensor works
+### "Smart Plants storage is full"
 
-A source is considered stale when it hasn't reported a valid reading to Home Assistant within
-the **Not updating after** window (6 hours by default). The panel shows such a sensor as
-*not updating* and the plant as *No recent data*, unless the stale sensor is the battery
-sensor, or a light sensor at night or early in the morning (see
-[Staleness](sensors-and-health.md#staleness)). Some sensors only report when the value
-changes, and a very stable reading can look stale. Increase **Not updating after** for that
-reading in the plant's **Sensors** tab under **Several sensors for one reading**, or check
-whether the device has stopped reporting.
+All plants share one storage file of at most 8 MiB. Delete old care entries or long notes.
 
-### A problem indicator is unavailable
+## Readings and status
 
-Unavailable means Smart Plants has no trustworthy value, which is deliberately different from
-"no problem". Common causes:
+### A plant shows no soil moisture
 
-- no valid reading from the assigned sensors (unit mismatch, out-of-range value, sensor
-  offline),
-- a source for that role is stale,
-- for *Low light*: daytime readings from fewer than two different minutes in the last two hours,
-- the plant is paused (**Pause monitoring**).
+- Check that a moisture sensor is assigned on the **Sensors** tab.
+- With several sensors and **Main sensor only**, pick a **Main sensor** under **Several
+  sensors for one reading**, or choose **Average**, **Lowest** or **Highest**. Until then the
+  plant shows *No main sensor*.
+- The sensor must report a number in `%` from 0 to 100. Check it in **Developer tools >
+  States**.
+- With **Main sensor only**, a main sensor that isn't updating makes the value unavailable.
+
+The other readings work the same with their own units, see
+[Supported sensors](sensors-and-health.md#supported-sensors).
+
+### *Sensor stale* is on, but the sensor works
+
+A sensor counts as not updating when it hasn't reported for **Not updating after**, 6 hours by
+default. Sensors that report only on a change can look stale while their value is stable.
+Raise **Not updating after** for that reading under **Several sensors for one reading**.
+
+### A problem sensor is unavailable, not off
+
+Smart Plants reports "no problem" only with a valid, current reading, so a broken sensor never
+looks healthy. Common causes:
+
+- No valid reading, for example a wrong unit, a value out of range or an offline sensor.
+- A sensor of that reading isn't updating.
+- *Low light* has daytime readings from fewer than two minutes in the last two hours, or its
+  sensor isn't updating at night.
+- The plant is paused.
 
 ### "Smart Plants: assigned source missing" in Repairs
 
-An assigned sensor was removed from Home Assistant. Open the issue in
-**Settings → System → Repairs** and choose a replacement or leave the field empty to remove
-the assignment. See
-[Sensors and health](sensors-and-health.md#when-a-source-sensor-disappears).
+An assigned sensor was removed from Home Assistant. Open the repair and pick a replacement, or
+leave the field empty to remove it. See
+[When a sensor disappears](sensors-and-health.md#when-a-sensor-disappears). If the fix fails
+with "The replacement is unavailable, incompatible, or no longer matches the entity registry",
+pick another `sensor` entity.
 
-If the fix fails with "The replacement is unavailable, incompatible, or no longer matches the
-entity registry", pick a different entity from the `sensor` domain.
+## Automations and care
 
-### OpenPlantBook errors
+### An automation didn't fire after a restart
 
-| Symptom | What to do |
-| --- | --- |
-| "OpenPlantBook rejected these credentials." | Check the client ID and secret on the [OpenPlantBook API key page](https://open.plantbook.io/apikey/) and enter them again. |
-| "OpenPlantBook could not be reached." | Check your internet connection and try later, or disable the provider for now. |
-| A reauthentication prompt appears under **Settings → Devices & services** | The stored credentials stopped working. Open the prompt and enter valid credentials. |
-| The wizard says "Species search needs OpenPlantBook.", or the plant's **Species provider** list offers only **Manual species** | Enable the provider and add credentials in the integration options. See [OpenPlantBook](openplantbook.md). |
-| Applying species data fails | The imported moisture range conflicts with your current thresholds. Adjust the **Soil moisture targets** and try again. |
-| A reviewed species can't be applied after a while | Previews are valid for 10 minutes. Request a new preview. |
-
-OpenPlantBook problems never affect your existing plants or their entities.
-
-### Photo upload is rejected
-
-Photos must be JPEG, PNG, or WebP. The panel scales larger photos down to 2048 × 2048 pixels
-and 5 MiB before upload, but it refuses files above 40 MiB or 64 megapixels; scale those down
-first. The file content must match its type (for example, a PNG renamed to `.jpg` is
-rejected).
-
-### "Review changes from another session"
-
-Someone saved changes to the same plant in another browser tab or device while you were
-editing. The panel keeps your edits and shows what changed. Review the differences before
-saving again.
+The Smart Plants triggers fire when a problem starts, not when an entity comes back from
+unavailable. After a restart, resuming a plant or a sensor reconnecting, the trigger doesn't
+fire again, or every restart would repeat your notifications. A snooze that ends while Home
+Assistant is off fires nothing either. The [daily report](notifications.md#daily-plant-report)
+still lists the plant.
 
 ### Old care entries disappeared
 
-Each plant keeps up to 256 care entries. When a new entry would go over that limit, Smart
-Plants removes one old entry to make room: first the oldest watering (never the latest one),
-then the oldest note, then the oldest entry that is not the latest of its type. Smart Plants
-never refuses a new entry because the history is full.
+Each plant keeps up to 256 entries. A new entry beyond that removes the oldest watering first,
+then the oldest note, then the oldest entry that isn't the latest of its type.
 
-### A reading task shows "No reading"
+### A reading task shows *No reading*
 
-The task's sensor doesn't deliver a number Smart Plants can use. The task keeps its state (a
-due task stays due) until a reading arrives.
+The task's sensor gives no usable number. The task keeps its state until a reading arrives.
 
-- Check the sensor in **Developer tools → States**. It must report a number, not `unknown` or
-  `unavailable`.
-- For one of the plant's own sensors, check the reading on the **Sensors** tab. If the sensor
-  is stale, the task has no reading either.
-- For another sensor, its unit must be convertible into the unit you saved the task with. A
-  temperature sensor that switched from °C to °F still works; a sensor that lost its unit
-  doesn't.
-- A paused plant's reading tasks show no reading until you resume the plant.
+- Check the sensor in **Developer tools > States**. It must report a number.
+- For a plant sensor, check the reading on the **Sensors** tab.
+- Another sensor's unit must be convertible into the task's unit. A sensor without a unit
+  doesn't work.
+- A paused plant's tasks show no reading.
 
-### A forecast task shows "No forecast"
+### A forecast task shows *No forecast*
 
-Smart Plants couldn't get a usable forecast from the weather entity.
+- The weather entity must be available, report a temperature unit and offer a forecast. Test
+  it in **Developer tools > Actions** with `weather.get_forecasts` and `type: hourly` or
+  `type: daily`.
+- If you removed or renamed the weather entity, edit the task and pick it again.
+- With debug logging, each failed fetch logs a line such as
+  `Forecast for weather.home skipped: no forecast type`.
 
-- The weather entity must be available and offer a forecast. In **Developer tools →
-  Actions**, run `weather.get_forecasts` with the entity and `type: hourly` or `type: daily`.
-  If both fail, the weather integration provides no forecast.
-- The weather entity must report a temperature unit (°C or °F).
-- Smart Plants refreshes the forecast every 30 minutes, or at the **Forecast refresh
-  interval** set in the [options](installation.md#options). Right after a restart or a change to
-  the task, the first value can take a few seconds.
-- If you removed or renamed the weather entity, edit the task and pick the weather entity
-  again.
+For OpenPlantBook messages, see [OpenPlantBook](openplantbook.md#troubleshooting).
 
-With debug logging enabled (see above), each failed fetch logs one line with the weather
-entity and the reason, for example `Forecast for weather.home skipped: no forecast type`.
+## Known limitations
+
+- Only administrators can use the panel. Other users get the dashboard card and the entities.
+- Plants are managed in the panel. Only the moisture limits are entities.
+- There is no import from other plant integrations.
+- The panel, setup and entity names are in English and German.
+- The history chart needs the recorder. Its **24 h** range goes back as far as the recorder
+  keeps short-term statistics, 10 days by default.
+- Smart Plants never switches devices.
 
 ## Report a bug
 
-Open an issue on
-[GitHub](https://github.com/mikekuss/home-assistant-smart-plants/issues) and include:
-
-- your Home Assistant version (**Settings → About**),
-- your Smart Plants version (shown in HACS or on the integration page),
-- how you installed it (HACS or manual),
-- steps to reproduce, what you expected, and what happened instead,
-- the diagnostics file (see above),
-- relevant log lines with debug logging enabled,
-- for panel problems: your browser or companion app version and any errors from the browser
-  developer console.
-
-Search existing issues first. Review diagnostics and logs for anything you don't want to share
-before posting them.
+Search the [issues](https://github.com/mikekuss/home-assistant-smart-plants/issues) first, then
+open a bug report. Include your Home Assistant and Smart Plants versions, the steps to
+reproduce, the diagnostics file and debug log lines. For panel problems, add your browser and
+any console errors.
