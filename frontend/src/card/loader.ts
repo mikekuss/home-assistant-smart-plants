@@ -3,8 +3,12 @@
 // card is available on any dashboard and listed in the card picker. The card
 // content and the translations live in a second module, which is imported
 // only once a card is on screen or the card editor opens. Without a card on
-// any dashboard this module only defines the element and the picker entry.
+// any dashboard this module only defines the element and the picker entry,
+// and it adds the sidebar icon of the Smart Plants panel.
 import { pickerText } from "./picker.js";
+import { registerSidebarIcon } from "./sidebar-icon.js";
+
+registerSidebarIcon();
 
 export const CARD_TYPE = "smart-plants-plant-card";
 const CONTENT_ELEMENT = "smart-plants-plant-card-content";
