@@ -7,13 +7,13 @@ edit, turn off or delete. For anything else, build your own with the
 
 ## Set up a notification
 
-1. In the Smart Plants panel, select **⋮ > Notifications…** on the overview or a plant's page.
-   You also find **Set up notifications** on a plant's **Automations** card and after you
-   create a plant.
+1. In the Smart Plants panel, select **⋮ > Notifications** on the overview or a plant's page,
+   then **Add notification**. You also find **Set up notifications** on a plant's
+   **Automations** card and after you create a plant; there the plant is already chosen.
 2. Pick one of the two notifications, the plants and where to send the message.
 3. Select **Open in automation editor**, check the automation and select **Save**.
 
-Each save creates one automation. Open the dialog again to add the other one.
+Each save creates one automation. Select **Add notification** again to add the other one.
 
 ## Daily plant report
 
@@ -50,18 +50,22 @@ by default) are dropped, not sent later.
 
 ## Your notifications
 
-The dialog lists your notifications under **Your notifications**, with a switch to turn each
-on or off, its plants, when it last sent a message, and **Edit**. With at least one
-notification, a bell with their number appears in the panel header, and the plant's
-**Automations** card marks them with a bell.
+The **Notifications** page lists your notifications under **Your notifications**, with a
+switch to turn each on or off, its plants, when it last sent a message, and **Edit**. Its
+address is `/smart-plants/notifications`, so you can link to it from a dashboard.
+
+With at least one notification, a bell with a check mark appears in the panel header and opens
+the page. The bell has no number on it: it shows that notifications are set up, not that
+messages are waiting. The **⋮** menus show how many you have next to **Notifications**, and the
+plant's **Automations** card marks them with a bell.
 
 A **Choose plants** notification shows the plants that its Smart Plants triggers, conditions
 and actions target, so it follows your edits. An **All plants** notification always shows
 *For all plants*.
 
-Delete a notification under **Settings > Automations & scenes**. The dialog finds the
+Delete a notification under **Settings > Automations & scenes**. The page finds the
 automations by their trigger IDs, which start with `smart_plants_`. If you change all of them,
-the automation keeps working but the dialog no longer lists it.
+the automation keeps working but the page no longer lists it.
 
 ## Known limitations
 

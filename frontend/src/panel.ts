@@ -121,7 +121,8 @@ const _EDITOR_BY_PROBLEM_ROLE: Record<string, ThresholdEditorSpec> = Object.from
 const MENU_ICON_PATH = "M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z";
 const ADD_ICON_PATH = "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z";
 const BACK_ICON_PATH = "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z";
-const BELL_ICON_PATH = "M21 19v1H3v-1l2-2v-6c0-3.1 2.03-5.83 5-6.71V4a2 2 0 1 1 4 0v.29c2.97.88 5 3.61 5 6.71v6l2 2Zm-7 2a2 2 0 1 1-4 0h4Z";
+// mdi:bell-check-outline: notifications are set up, not waiting to be read.
+const BELL_ICON_PATH = "M17.75 21.16L15 18.16L16.16 17L17.75 18.59L21.34 15L22.5 16.41L17.75 21.16M10 21H12.8C13.04 21.41 13.33 21.79 13.65 22.13C13.29 22.66 12.69 23 12 23C10.9 23 10 22.11 10 21M3 20V19L5 17V11C5 7.9 7.03 5.18 10 4.29V4C10 2.9 10.9 2 12 2C13.11 2 14 2.9 14 4V4.29C16.97 5.18 19 7.9 19 11V12.08L18 12L17 12.08V11C17 8.24 14.76 6 12 6C9.24 6 7 8.24 7 11V18H12C12 18.7 12.12 19.37 12.34 20H3Z";
 const SIDEBAR_ICON_PATH = "M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z";
 // Sections of the plant page that expand and collapse.
 type Expandable = "combine" | "troubleshooting" | "other_targets" | "more_details";
@@ -145,9 +146,11 @@ import type { AutomationRow, RelatedAutomations } from "./related-automations.js
 import type { PlantOverview } from "./overview-model.js";
 import type { CareEvent, CareHistory, CareTask, Evaluation, HAArea, HADevice, HAEntity, HAState, HealthEvaluation, HomeAssistantLike, MoistureInput, PanelCapabilities, PanelInfo, PlantPlacement, PlantRecord, RoleSourceInput, SpeciesPreview, SpeciesSearchResult } from "./types.js";
 
-type View = { kind: "list" } | { kind: "create" } | { kind: "detail"; plantId: string };
+// The Notifications page remembers the plant it was opened from, so Back returns there.
+type View = { kind: "list" } | { kind: "create" } | { kind: "detail"; plantId: string } | { kind: "notifications"; from: string | null };
 interface PanelRoute { prefix?: string; path?: string }
 const PLANT_ROUTE = /^\/plant\/([^/]+)(?:\/(sensors))?\/?$/;
+const NOTIFICATIONS_ROUTE = /^\/notifications\/?$/;
 interface Edits { name: string; acquired: string; placement: PlantPlacement | null; category: string; tagText: string; area: string; common: string; latin: string; moisture: MoistureInput | null }
 type SaveKind = "identity" | "taxonomy" | "area" | "moisture" | "species";
 interface Conflict { before: PlantRecord; after: PlantRecord; changes: string[] }
@@ -597,11 +600,20 @@ export class SmartPlantsPanel extends LitElement {
     return this._l.t(isMessageKey(key) ? key : "api_error.unknown");
   }
   private _plantById(id: string): PlantRecord | undefined { return this._plants.find(p => p.id === id); }
-  // Opens the plant a deep link names, once the plants are loaded. Each link is
-  // followed once; leaving that plant clears the link from the address bar.
+  // Opens the plant a deep link names, once the plants are loaded, or the
+  // Notifications page. Each link is followed once; leaving that page clears
+  // the link from the address bar, and going back in the browser from the
+  // Notifications page returns to the page it was opened from.
   private _routeApplied: string | null = null;
   private _applyRoute(): void {
     const path = this.route?.path ?? "";
+    if (NOTIFICATIONS_ROUTE.test(path)) {
+      if (path === this._routeApplied) return;
+      this._routeApplied = path;
+      if (this._view.kind !== "notifications") this._show({ kind: "notifications", from: null });
+      return;
+    }
+    if (this._routeApplied && NOTIFICATIONS_ROUTE.test(this._routeApplied) && this._view.kind === "notifications") { this._routeApplied = null; this._leaveNotifications(); return; }
     const match = PLANT_ROUTE.exec(path);
     if (!match) { this._routeApplied = null; return; }
     if (path === this._routeApplied || this._loading || this._blocked) return;
@@ -612,7 +624,8 @@ export class SmartPlantsPanel extends LitElement {
     else this._clearRoute();
   }
   private _clearRoute(): void {
-    if (!PLANT_ROUTE.test(this.route?.path ?? "")) return;
+    const path = this.route?.path ?? "";
+    if (!PLANT_ROUTE.test(path) && !NOTIFICATIONS_ROUTE.test(path)) return;
     history.replaceState(null, "", this.route?.prefix || "/smart-plants");
     window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: true } }));
   }
@@ -634,6 +647,7 @@ export class SmartPlantsPanel extends LitElement {
   private _show(view: View): void {
     const routed = PLANT_ROUTE.exec(this.route?.path ?? "");
     if (routed && !(view.kind === "detail" && encodeURIComponent(view.plantId) === routed[1])) this._clearRoute();
+    if (NOTIFICATIONS_ROUTE.test(this.route?.path ?? "") && view.kind !== "notifications") this._clearRoute();
     this._context++; this._closeDialog(); this._formBusy = false; this._notificationsOpen = false; this._notificationsReturn = null;
     this._providerRequest++; this._view = view; this._error = ""; this._notice = ""; this._healthError = ""; this._careHistory = null; this._careError = ""; this._careLoadError = "";
     // Every plant opens with a new search for its automations.
@@ -661,7 +675,7 @@ export class SmartPlantsPanel extends LitElement {
   private _handleMenuAction(event: CustomEvent<{ item: { value: string } }>): void {
     if (event.detail.item.value === "add-plant") this._show({ kind: "create" });
     if (event.detail.item.value === "back-to-overview") this._show({ kind: "list" });
-    if (event.detail.item.value === "notifications") this._openNotifications(null);
+    if (event.detail.item.value === "notifications") this._openNotificationsPage();
     if (event.detail.item.value === "snooze-all") this._openSnoozeAll();
     if (event.detail.item.value === "integration-options") this._navigate("/config/integrations/integration/smart_plants");
     if (event.detail.item.value === "documentation") window.open(DOCUMENTATION_URL, "_blank", "noopener,noreferrer");
@@ -673,6 +687,17 @@ export class SmartPlantsPanel extends LitElement {
     if (event.detail.item.value === "toggle-monitoring") this._toggleMonitoring(plant);
     if (event.detail.item.value === "snooze") this._openSnooze(plant);
     if (event.detail.item.value === "delete-plant") this._openDialog("delete", this.shadowRoot?.querySelector<HTMLElement>(".panel-appbar ha-dropdown [slot=trigger]") ?? null);
+  }
+  // The Notifications page has its own address, so it can be linked to and
+  // Back in the browser leaves it.
+  private _openNotificationsPage(): void {
+    if (this._formBusy) return;
+    this._show({ kind: "notifications", from: this._view.kind === "detail" ? this._view.plantId : null });
+    this._navigate(`${this.route?.prefix || "/smart-plants"}/notifications`);
+  }
+  private _leaveNotifications(): void {
+    const from = this._view.kind === "notifications" ? this._view.from : null;
+    this._show(from && this._plantById(from) ? { kind: "detail", plantId: from } : { kind: "list" });
   }
   private _openNotifications(trigger: HTMLElement | null): void {
     this._notificationsReturn = trigger; this._notificationsOpen = true;
@@ -2411,14 +2436,16 @@ export class SmartPlantsPanel extends LitElement {
     const menuLabel = this.hass?.localize?.("ui.common.menu") || l.t("panel.menu");
     const detailPlant = this._view.kind === "detail" ? this._plantById(this._view.plantId) : undefined;
     const busy = this._formBusy || this._blocked || !!this._conflict;
-    // The count and the header bell show only once notifications exist.
+    // The count and the header bell show only once notifications exist. The
+    // bell carries no count, which would read as unread messages.
     const count = this._notificationCount();
     const notificationsItem = html`<ha-dropdown-item value="notifications">${l.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon>${count ? html`<span slot="details" class="menu-count">${count}</span>` : nothing}</ha-dropdown-item>`;
-    const bell = count && this._view.kind !== "create" ? html`<span slot="actionItems" class="header-bell"><ha-icon-button .label=${l.tn(count, "panel.bell_one", "panel.bell_other")} .path=${BELL_ICON_PATH}
-      @click=${(e: Event) => this._openNotifications(e.currentTarget as HTMLElement)}></ha-icon-button><span class="bell-count" aria-hidden="true">${count}</span></span>` : nothing;
+    const bell = count && this._view.kind !== "create" && this._view.kind !== "notifications" ? html`<ha-icon-button slot="actionItems" class="header-bell" .label=${l.tn(count, "panel.bell_one", "panel.bell_other")} .path=${BELL_ICON_PATH}
+      @click=${() => this._openNotificationsPage()}></ha-icon-button>` : nothing;
     return html`<main><ha-top-app-bar-fixed class="panel-appbar" .narrow=${this.narrow}>
-       ${this._view.kind === "detail" ? html`<ha-icon-button slot="navigationIcon" class="back" .label=${l.t("detail.back")} .path=${BACK_ICON_PATH} @click=${() => { if (!this._formBusy) this._show({ kind: "list" }); }}></ha-icon-button>` : this._renderSidebarButton()}
-       <h1 slot="title" class="page-title" tabindex="-1">${detailPlant ? detailPlant.name : "Smart Plants"}</h1>
+       ${this._view.kind === "detail" ? html`<ha-icon-button slot="navigationIcon" class="back" .label=${l.t("detail.back")} .path=${BACK_ICON_PATH} @click=${() => { if (!this._formBusy) this._show({ kind: "list" }); }}></ha-icon-button>`
+         : this._view.kind === "notifications" ? html`<ha-icon-button slot="navigationIcon" class="back" .label=${l.t("detail.back")} .path=${BACK_ICON_PATH} @click=${() => this._leaveNotifications()}></ha-icon-button>` : this._renderSidebarButton()}
+       <h1 slot="title" class="page-title" tabindex="-1">${detailPlant ? detailPlant.name : this._view.kind === "notifications" ? l.t("notifications.title") : "Smart Plants"}</h1>
        ${bell}
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
          <ha-icon-button slot="trigger" .label=${menuLabel} .path=${MENU_ICON_PATH}></ha-icon-button>
@@ -2446,6 +2473,8 @@ export class SmartPlantsPanel extends LitElement {
         .thumbnails=${this._thumbnails} .watering=${this._watering} .timeZone=${this._timeZone()} .loading=${this._loading} .blocked=${this._blocked}
         @open-plant=${(e: CustomEvent<OpenPlantDetail>) => this._openFromOverview(e.detail)} @add-plant=${() => this._show({ kind: "create" })} @log-watering=${(e: CustomEvent<{ plantId: string }>) => void this._logWatering(e.detail.plantId)}></smart-plants-overview>
       ${this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : nothing}
+      ${this._view.kind === "notifications" ? html`<smart-plants-notifications-page .hass=${this.hass} .l=${l} .plants=${this._plants} .devices=${this._devices} .states=${this._states} .found=${this._notifications}
+        @notifications-add=${(e: CustomEvent<{ trigger: HTMLElement }>) => this._openNotifications(e.detail.trigger)}></smart-plants-notifications-page>` : nothing}
       ${this._notificationsOpen && this._view.kind !== "create" ? html`<smart-plants-notifications .hass=${this.hass} .l=${l} .plants=${this._plants} .devices=${this._devices} .entities=${this._entities} .states=${this._states} .found=${this._notifications} .plantId=${detailPlant?.id ?? null}
         @notifications-close=${() => this._closeNotifications()}></smart-plants-notifications>` : nothing}
       ${this._dialog === "snooze_all" && this._view.kind === "list" ? this._renderSnoozeAllDialog() : nothing}
