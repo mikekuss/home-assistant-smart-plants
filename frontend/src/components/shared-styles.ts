@@ -32,3 +32,15 @@ export function statusColorVar(themeVariable: string): string {
     default: return "var(--sp-disabled)";
   }
 }
+
+// Loading placeholders in the shape of the content they stand for, so the
+// layout does not move when the data arrives. They pulse gently; with reduced
+// motion they stay still.
+export const skeletonStyles = css`
+  .sk { display: block; background: color-mix(in srgb, var(--primary-text-color, #212121) 8%, transparent); border-radius: 6px;
+    animation: sp-pulse 1.4s ease-in-out infinite alternate; }
+  .sk.line { height: 12px; }
+  .sk.round { border-radius: 50%; }
+  @keyframes sp-pulse { from { opacity: 1; } to { opacity: .55; } }
+  @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+`;

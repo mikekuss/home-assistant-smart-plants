@@ -310,6 +310,60 @@ describe("plant history", () => {
     await click(el, "Temperature"); await settle(el);
     expect(history(el)!.querySelector("sp-history-chart")!.actions.map(action => action.label)).toEqual(["Log care at this time"]);
   });
+  it("holds the chart's place while it loads and keeps the previous range dimmed on a range switch", async () => {
+    const plant = plantWithSensors();
+    let reply = deferred<unknown>();
+    const { el } = await mount(plant, wateredOverview, msg => msg.type === "config/entity_registry/list" ? registry(plant) : msg.type === "recorder/statistics_during_period" ? reply.promise : undefined);
+    await settle(el);
+    // First load: a placeholder of the chart's size, with the drying rate's line.
+    expect(history(el)!.querySelector(".history-skeleton")!.getAttribute("aria-busy")).toBe("true");
+    expect(history(el)!.querySelector(".history-skeleton-rate")).not.toBeNull();
+    expect(history(el)!.querySelector("sp-history-chart")).toBeNull();
+    reply.resolve(statistics(moistureId)); await settle(el);
+    const chart = history(el)!.querySelector("sp-history-chart")!;
+    expect(history(el)!.querySelector(".history-skeleton")).toBeNull();
+    const drawn = chart.points.length;
+    // Another range: the previous chart stays, dimmed, without point actions.
+    reply = deferred<unknown>();
+    await click(el, "30 days"); await settle(el);
+    const plot = history(el)!.querySelector(".history-plot")!;
+    expect(plot.classList.contains("stale")).toBe(true);
+    expect(plot.getAttribute("aria-busy")).toBe("true");
+    expect(plot.textContent).toContain("Loading history…");
+    expect(history(el)!.querySelector("sp-history-chart")).toBe(chart);
+    expect(chart.points).toHaveLength(drawn);
+    expect(chart.actions).toEqual([]);
+    reply.resolve({ [moistureId]: [] }); await settle(el);
+    expect(plot.classList.contains("stale")).toBe(false);
+    expect(plot.getAttribute("aria-busy")).toBe("false");
+    expect(chart.actions.length).toBeGreaterThan(0);
+  });
+  it("shows the placeholder, not another reading's chart, when the reading changes", async () => {
+    const base = plantWithSensors();
+    const plant: PlantRecord = { ...base, roles: { ...base.roles!, temperature: { sources: [{ entity_id: "sensor.mock_temp", registry_id: null }], primary_entity_id: null, aggregation: "average", stale_after_seconds: 21600 } } };
+    let reply: ReturnType<typeof deferred<unknown>> | null = null;
+    const { el } = await mount(plant, wateredOverview, msg => msg.type === "config/entity_registry/list" ? registry(plant, ["moisture", "temperature"]) : msg.type === "recorder/statistics_during_period" ? reply?.promise ?? statistics((msg.statistic_ids as string[])[0]!) : undefined);
+    await settle(el);
+    expect(history(el)!.querySelector("sp-history-chart")).not.toBeNull();
+    reply = deferred<unknown>();
+    await click(el, "Temperature"); await settle(el);
+    expect(history(el)!.querySelector(".history-plot")).toBeNull();
+    expect(history(el)!.querySelector(".history-skeleton")).not.toBeNull();
+    // Only soil moisture has a drying rate below its chart.
+    expect(history(el)!.querySelector(".history-skeleton-rate")).toBeNull();
+  });
+  it("holds the place of the care history with placeholder rows while it loads", async () => {
+    const plant = plantWithSensors();
+    const care = deferred<unknown>();
+    const { el } = await mount(plant, wateredOverview, msg => msg.type === "smart_plants/care/list" ? care.promise : undefined);
+    const skeleton = root(el).querySelector<HTMLElement>(".care-skeleton")!;
+    expect(skeleton.getAttribute("aria-busy")).toBe("true");
+    expect(skeleton.querySelector("ul")!.getAttribute("aria-hidden")).toBe("true");
+    expect(skeleton.querySelectorAll(".li")).toHaveLength(2);
+    expect(skeleton.querySelector("[role=status]")!.textContent).toBe("Loading care history…");
+    care.resolve({ revision: plant.revision, events: [], summary: { watering_count: 0, last_watered_at: null, last_watered_local_date: null } }); await settle(el);
+    expect(root(el).querySelector(".care-skeleton")).toBeNull();
+  });
   it("ignores a slow reply for a range that is no longer shown", async () => {
     const plant = plantWithSensors();
     const slow = deferred<unknown>();

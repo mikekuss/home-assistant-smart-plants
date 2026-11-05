@@ -40,6 +40,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The documentation is shorter and checked against the current code. Install steps cover the
   Marketplace in Home Assistant 2026.11, care has its own [Care](docs/care.md) page, and the
   local testing guide moved into [CONTRIBUTING.md](CONTRIBUTING.md).
+- The panel no longer jumps while it loads. The overview shows placeholder cards until the
+  status of your plants is there, instead of cards that say "0 Needs water" and then grow.
+  The **History** chart and the care history keep their space while they load, and switching
+  the chart's range keeps the previous chart, dimmed, until the new one is there. A dashboard
+  card holds its place until it has loaded. New content fades in briefly, never on the
+  regular refresh, and not at all when your device asks for reduced motion.
 
 ## [0.16.0] - 2026-11-04
 

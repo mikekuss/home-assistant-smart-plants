@@ -11,6 +11,9 @@ export default defineConfig({
     browserName: "chromium",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    // Axe and screenshots check content at rest, not halfway through a fade.
+    // motion.spec.ts turns motion back on to test the fades themselves.
+    reducedMotion: "reduce",
   },
   projects: [
     { name: "desktop", use: { viewport: { width: 1440, height: 1000 } } },

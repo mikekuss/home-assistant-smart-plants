@@ -2,7 +2,12 @@ import { LitElement, css, html } from "lit";
 import { property } from "lit/decorators.js";
 import { ENGLISH } from "../localize.js";
 import type { Localizer } from "../localize.js";
+import { fadeIn } from "./motion.js";
 import { themeFallbacks } from "./shared-styles.js";
+
+// Photos already faded in once. A card that is drawn again, for example after
+// going back to the overview, shows its photo at once.
+const shown = new Set<string>();
 
 // The plant photo, or a plant icon on a tinted tile when there is none.
 // `src` is an object URL the view created from the authenticated image fetch.
@@ -25,8 +30,15 @@ export class SpPlantAvatar extends LitElement {
 
   protected render() {
     return html`<div class="tile" part="tile">${this.src
-      ? html`<img src=${this.src} alt=${this.l.t("photo.alt", { name: this.name })} @error=${() => this.dispatchEvent(new CustomEvent("photo-error", { bubbles: true, composed: true }))}>`
+      ? html`<img src=${this.src} alt=${this.l.t("photo.alt", { name: this.name })} @load=${(e: Event) => this._loaded(e.currentTarget as HTMLImageElement)} @error=${() => this.dispatchEvent(new CustomEvent("photo-error", { bubbles: true, composed: true }))}>`
       : html`<ha-icon aria-hidden="true" icon="mdi:sprout"></ha-icon>`}</div>`;
+  }
+
+  private _loaded(img: HTMLImageElement): void {
+    const src = img.getAttribute("src");
+    if (!src || shown.has(src)) return;
+    shown.add(src);
+    fadeIn(img, 150);
   }
 }
 

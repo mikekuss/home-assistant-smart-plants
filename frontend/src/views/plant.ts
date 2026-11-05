@@ -138,6 +138,8 @@ const ROLE_UNITS: Record<ReadingRole, string> = { moisture: "%", temperature: "Â
 const RANGE_LABELS: Record<HistoryRange, MessageKey> = { "24h": "history.range_24h", "7d": "history.range_7d", "30d": "history.range_30d", "1y": "history.range_1y" };
 
 export type HistoryStatus = "loading" | "ready" | "unavailable" | "error";
+// The chart of the previous range, kept dimmed while another range loads.
+export interface HistoryStale { range: HistoryRange; points: readonly HistoryPoint[] }
 export interface HistoryCard {
   // Roles that can be charted, and the one shown.
   roles: readonly ReadingRole[];
@@ -145,6 +147,7 @@ export interface HistoryCard {
   range: HistoryRange;
   status: HistoryStatus;
   points: readonly HistoryPoint[];
+  stale?: HistoryStale | undefined;
   reading: RoleReading | undefined;
   // Logged care to mark on the chart.
   care: readonly { t: number; kind: CareEvent["kind"] }[];
@@ -164,10 +167,12 @@ export interface HistoryCard {
 // range, logged care and, for soil moisture, how fast it is dropping.
 export function renderHistoryCard(l: Localizer, card: HistoryCard) {
   const { role, range, reading } = card;
-  const spec = RANGE_SPECS[range];
+  // While another range loads, the previous one stays drawn, dimmed.
+  const stale = card.status === "loading" ? card.stale : undefined;
+  const spec = RANGE_SPECS[stale ? stale.range : range];
   const unit = reading?.unit || ROLE_UNITS[role];
   const live = reading && reading.state !== "stale" && reading.state !== "unavailable" ? reading.value : null;
-  const points = card.status === "ready" ? withLiveValue(card.points, live, card.now) : [];
+  const points = card.status === "ready" ? withLiveValue(card.points, live, card.now) : stale ? withLiveValue(stale.points, live, card.now) : [];
   const band = chartBand(role, reading?.range);
   const target = formatRange(l, role, reading?.range, unit);
   const estimate = role === "moisture" && points.length ? dryingEstimate(points, { periodMs: spec.periodMs, wateredAt: card.lastWatered, min: band.min }) : null;
@@ -180,7 +185,7 @@ export function renderHistoryCard(l: Localizer, card: HistoryCard) {
     ...(role === "moisture" ? [{ key: "watering", label: l.t("history.log_watering_at") }] : []),
     { key: "care", label: l.t(role === "moisture" ? "history.log_other_care_at" : "history.log_care_at") },
   ] : [];
-  const message = card.status === "loading" ? l.t("history.loading") : card.status === "unavailable" ? l.t("history.unavailable") : card.status === "ready" && !points.length ? l.t("history.empty") : "";
+  const message = card.status === "loading" ? "" : card.status === "unavailable" ? l.t("history.unavailable") : card.status === "ready" && !points.length ? l.t("history.empty") : "";
   return html`<section class="sp-card history-card" aria-labelledby="history-heading"><div class="card-h"><h3 id="history-heading">${l.t("history.heading")}</h3>
       ${card.status !== "unavailable" ? html`<button type="button" class="btn text sm" @click=${card.onOpen}>${l.t("history.open_native")}</button>` : nothing}</div>
     <div class="card-b">
@@ -191,9 +196,12 @@ export function renderHistoryCard(l: Localizer, card: HistoryCard) {
       </div>
       ${card.status === "error" ? html`<div class="row"><span class="error-text" role="alert">${l.t("history.error")}</span><button type="button" class="btn text sm" @click=${card.onRetry}>${l.t("history.retry")}</button></div>`
         : message ? html`<p class="muted history-message" role="status">${message}</p>`
-        : html`<sp-history-chart .points=${points} .start=${card.now - spec.spanMs} .end=${card.now} .periodMs=${spec.periodMs} .unit=${unit} .band=${band} .markers=${markers} .markerGroups=${markerGroups}
+        : card.status === "loading" && !stale ? html`<div class="history-skeleton" aria-busy="true"><p class="sr-only" role="status">${l.t("history.loading")}</p>
+            <span class="sk sk-plot" aria-hidden="true"></span><span class="sk line sk-legend" aria-hidden="true"></span></div>
+          ${role === "moisture" ? html`<div class="history-skeleton-rate" aria-hidden="true"><span class="sk line"></span></div>` : nothing}`
+        : html`<div class="history-plot ${stale ? "stale" : ""}" aria-busy=${stale ? "true" : "false"}>${stale ? html`<p class="sr-only" role="status">${l.t("history.loading")}</p>` : nothing}<sp-history-chart .points=${points} .start=${card.now - spec.spanMs} .end=${card.now} .periodMs=${spec.periodMs} .unit=${unit} .band=${band} .markers=${markers} .markerGroups=${markerGroups}
             .summary=${historySummary(l, readingLabel(l, role), range, points, unit)} .bandLabel=${target ? l.t("history.legend_target", { range: target }) : ""}
-            .actions=${actions} @point-action=${(e: CustomEvent<{ t: number; key: string }>) => card.onLogCare?.(e.detail.key === "watering" ? "watering" : null, e.detail.t)} .l=${l}></sp-history-chart>`}
+            .actions=${stale ? [] : actions} @point-action=${(e: CustomEvent<{ t: number; key: string }>) => card.onLogCare?.(e.detail.key === "watering" ? "watering" : null, e.detail.t)} .l=${l}></sp-history-chart></div>`}
       ${drying ? html`<p class="small history-rate"><strong>${drying.rate}</strong>${drying.forecast ? html` <span class="muted">${drying.forecast}</span>` : nothing}</p>` : nothing}
     </div></section>`;
 }
@@ -404,6 +412,20 @@ export const plantStyles = css`
   .pd .seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--sp-primary) 14%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); font-weight: 500; }
   .pd .seg button:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: -2px; }
   .history-message { min-height: 120px; display: grid; place-items: center; text-align: center; }
+  /* The placeholder takes the chart's height: the plot, its readout row and one legend line. */
+  .history-skeleton { display: flex; flex-direction: column; }
+  .history-skeleton .sk-plot { height: 200px; border-radius: 4px; }
+  .history-skeleton .sk-legend { width: 60%; margin: 35px 0 5px; }
+  /* Soil moisture adds the drying rate below the chart. */
+  .history-skeleton-rate { height: 39px; padding-top: 4px; box-sizing: border-box; }
+  .history-skeleton-rate .sk { width: 50%; }
+  .care-skeleton .sk-ic { width: 40px; height: 40px; }
+  .care-skeleton .li-main { gap: 6px; }
+  .care-skeleton .sk-title { width: 45%; height: 14px; }
+  .care-skeleton .sk-meta { width: 30%; }
+  .history-plot { transition: opacity 150ms ease-out; }
+  .history-plot.stale { opacity: .5; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { .history-plot { transition: none; } }
   .history-rate strong { font-weight: 500; }
 
   ha-alert { display: block; }
@@ -411,6 +433,9 @@ export const plantStyles = css`
   .alert-title { font-weight: 500; }
 
   @container plant (max-width: 700px) {
+    /* The legend and the drying rate wrap to more lines on narrow pages. */
+    .history-skeleton .sk-legend { margin-bottom: 25px; }
+    .history-skeleton-rate { height: 78px; }
     .hero { grid-template-columns: auto minmax(0, 1fr); gap: 14px; padding: 14px; }
     .hero-name { font-size: 21px; }
     .hero-actions { grid-column: 1 / -1; flex-direction: row; }
