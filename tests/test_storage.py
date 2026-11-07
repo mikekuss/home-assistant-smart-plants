@@ -106,6 +106,7 @@ async def test_current_version_round_trip(
             ],
             "pending_operations": [],
             "tombstones": [],
+            "archived_plants": [],
         },
     )
 
@@ -1261,6 +1262,7 @@ async def test_load_normalizes_date_only_acquired_at(
             "plants": [plant, timestamped],
             "pending_operations": [],
             "tombstones": [],
+            "archived_plants": [],
         },
     )
 

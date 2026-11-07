@@ -111,6 +111,7 @@ async def test_synthetic_role_registers_through_controller_seam(
             "plants": [payload],
             "pending_operations": [],
             "tombstones": [],
+            "archived_plants": [],
         },
     }
 

@@ -269,6 +269,7 @@ async def test_startup_repairs_a_stored_single_sensor_without_main_sensor(
             "plants": [plant.as_storage()],
             "pending_operations": [],
             "tombstones": [],
+            "archived_plants": [],
         },
     }
     manager = SmartPlantsManager(hass)

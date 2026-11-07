@@ -6,7 +6,28 @@ compatibly):
 
 Commands (all admin-only):
 
-* ``smart_plants/plants/list`` -> ``{"plants": [PlantView, ...]}``
+* ``smart_plants/plants/list`` -> ``{"plants": [PlantView, ...],
+  "archived_count"}``; ``archived_count`` is the number of retired plants.
+* ``smart_plants/plants/archive`` -> ``{"archived": ArchivedSummary}``;
+  retires a plant: its device and entities are removed, its sensors are
+  free, and a plain record with photo and care log stays.
+* ``smart_plants/archive/list`` -> ``{"plants": [ArchivedSummary, ...]}``,
+  the most recently retired first.
+* ``smart_plants/archive/get`` -> ``{"plant": ArchivedView}``; the summary
+  plus ``events`` (care log, newest first), ``placement``, ``tags`` and
+  ``sources`` (``{role: [entity_id, ...]}``).
+* ``smart_plants/archive/restore_check`` -> ``{"name_taken",
+  "suggested_name", "sources_in_use": [{"role", "entity_id", "plants"}],
+  "sources_missing": [{"role", "entity_id"}], "area_missing", "blocked"}``;
+  ``blocked`` is ``null``, ``"limit"`` or ``"busy"``.
+* ``smart_plants/archive/restore`` -> ``{"plant": PlantView}``; sensors in
+  use by other plants come back only with ``include_sources_in_use``.
+* ``smart_plants/archive/delete`` -> ``{}``; deletes a retired plant and its
+  photo for good.
+* ``smart_plants/archive/card_info`` -> ``{"plant_id", "name", "image_id"}``
+  for the retired plant whose removed device had ``device_id``. Any signed-in
+  user may call it, like reading a plant photo, so a dashboard card can say
+  the plant was retired.
 * ``smart_plants/plants/create`` -> ``{"plant": PlantView}``
 * ``smart_plants/plants/update`` -> ``{"plant": PlantView}``
 * ``smart_plants/plants/disable`` -> ``{"plant": PlantView}``
@@ -142,13 +163,17 @@ from homeassistant.components.websocket_api.decorators import (
 )
 from homeassistant.config_entries import ConfigEntryState
 
-from .care import CARE_TASK_TYPES, care_summary
+from .care import CARE_TASK_TYPES, care_summary, ordered_events
 from .const import DOMAIN
 from .manager import (
     PlantChange,
+    SmartPlantsArchiveBusyError,
+    SmartPlantsArchiveFullError,
     SmartPlantsManager,
     SmartPlantsManagerUnavailableError,
+    SmartPlantsPlantLimitError,
     SmartPlantsPlantNotFoundError,
+    SmartPlantsRestoreConflictError,
     SmartPlantsRevisionConflictError,
     SmartPlantsValidationError,
     restore_snooze_change,
@@ -156,6 +181,7 @@ from .manager import (
 )
 from .models import (
     CARE_TASK_INSTRUCTIONS_MAX_LEN,
+    ArchivedPlant,
     PlantPlacement,
     PlantRecord,
     PlantSpecies,
@@ -189,6 +215,9 @@ ERR_REVISION_CONFLICT = "revision_conflict"
 ERR_INVALID_FORMAT = "invalid_format"
 ERR_UNKNOWN = "unknown_error"
 ERR_PROVIDER_DISABLED = "provider_disabled"
+ERR_BUSY = "busy"
+ERR_CONFLICT = "conflict"
+ERR_LIMIT = "limit"
 ERR_PROVIDER_AUTH = "provider_authentication"
 ERR_PROVIDER_RATE_LIMIT = "provider_rate_limit"
 ERR_PROVIDER_TIMEOUT = "provider_timeout"
@@ -376,7 +405,10 @@ async def _handle_list(
         return
     connection.send_result(
         msg["id"],
-        {"plants": [_plant_view(plant) for plant in manager.list_plants()]},
+        {
+            "plants": [_plant_view(plant) for plant in manager.list_plants()],
+            "archived_count": len(manager.list_archived()),
+        },
     )
 
 
@@ -2030,6 +2062,262 @@ _PANEL_HANDLERS = (
 )
 
 
+# --- Retired plants -------------------------------------------------------
+
+
+def _archived_summary(record: ArchivedPlant) -> dict[str, Any]:
+    """Serialize a retired plant for the archive list."""
+    return {
+        "id": record.id,
+        "revision": record.revision,
+        "name": record.name,
+        "created_at": record.created_at,
+        "acquired_at": record.acquired_at,
+        "archived_at": record.archived_at,
+        "species": record.species.as_storage() if record.species else None,
+        "category": record.category,
+        "image": record.image.as_storage() if record.image else None,
+        "area_name": record.area_name,
+        "event_count": len(record.care_events),
+    }
+
+
+def _archived_view(record: ArchivedPlant) -> dict[str, Any]:
+    """Serialize a retired plant with its care log for its own page."""
+    return {
+        **_archived_summary(record),
+        "placement": record.placement.as_storage() if record.placement else None,
+        "tags": list(record.tags),
+        "sources": {
+            role: [source.entity_id for source in items]
+            for role, items in record.sources.items()
+        },
+        "events": [event.as_storage() for event in ordered_events(record.care_events)],
+        "summary": care_summary(record.care_events),
+    }
+
+
+def _send_archive_error(
+    connection: ActiveConnection, msg: dict[str, Any], err: Exception
+) -> None:
+    """Reply with the error code of a failed retire, restore or delete."""
+    if isinstance(err, SmartPlantsPlantNotFoundError):
+        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
+    elif isinstance(err, SmartPlantsRevisionConflictError):
+        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
+    elif isinstance(err, SmartPlantsArchiveBusyError):
+        connection.send_error(msg["id"], ERR_BUSY, str(err))
+    elif isinstance(err, SmartPlantsRestoreConflictError):
+        connection.send_error(msg["id"], ERR_CONFLICT, str(err))
+    elif isinstance(err, (SmartPlantsArchiveFullError, SmartPlantsPlantLimitError)):
+        connection.send_error(msg["id"], ERR_LIMIT, str(err))
+    elif isinstance(err, SmartPlantsValidationError):
+        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
+    elif isinstance(err, SmartPlantsManagerUnavailableError):
+        _reply_not_loaded(connection, msg["id"])
+    else:
+        _LOGGER.error(
+            "Unhandled error in %s", msg["type"], exc_info=(type(err), err, None)
+        )
+        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/plants/archive",
+        vol.Required("plant_id"): _plant_id,
+        vol.Required("expected_revision"): _positive_int,
+    }
+)
+@require_admin
+@async_response
+async def _handle_archive(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    manager = _current_manager(hass)
+    if manager is None:
+        _reply_not_loaded(connection, msg["id"])
+        return
+    try:
+        record = await manager.async_archive_plant(
+            msg["plant_id"], expected_revision=msg["expected_revision"]
+        )
+    except Exception as err:  # noqa: BLE001
+        _send_archive_error(connection, msg, err)
+        return
+    connection.send_result(msg["id"], {"archived": _archived_summary(record)})
+
+
+@websocket_command({vol.Required("type"): "smart_plants/archive/list"})
+@require_admin
+@async_response
+async def _handle_archive_list(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    manager = _current_manager(hass)
+    if manager is None:
+        _reply_not_loaded(connection, msg["id"])
+        return
+    connection.send_result(
+        msg["id"],
+        {"plants": [_archived_summary(item) for item in manager.list_archived()]},
+    )
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/archive/get",
+        vol.Required("plant_id"): _plant_id,
+    }
+)
+@require_admin
+@async_response
+async def _handle_archive_get(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    manager = _current_manager(hass)
+    if manager is None:
+        _reply_not_loaded(connection, msg["id"])
+        return
+    try:
+        record = manager.get_archived(msg["plant_id"])
+    except SmartPlantsPlantNotFoundError:
+        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
+        return
+    connection.send_result(msg["id"], {"plant": _archived_view(record)})
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/archive/restore_check",
+        vol.Required("plant_id"): _plant_id,
+    }
+)
+@require_admin
+@async_response
+async def _handle_archive_restore_check(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    manager = _current_manager(hass)
+    if manager is None:
+        _reply_not_loaded(connection, msg["id"])
+        return
+    try:
+        result = manager.restore_check(msg["plant_id"])
+    except SmartPlantsPlantNotFoundError:
+        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
+        return
+    connection.send_result(msg["id"], result)
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/archive/restore",
+        vol.Required("plant_id"): _plant_id,
+        vol.Required("expected_revision"): _positive_int,
+        vol.Required("name"): str,
+        vol.Optional("include_sources_in_use", default=False): bool,
+        # What the restore check showed; a different answer now is refused.
+        vol.Required("expected_name_taken"): bool,
+        vol.Required("expected_sources_in_use"): vol.All(
+            [vol.All(str, vol.Length(min=1, max=255))], vol.Length(max=100)
+        ),
+    }
+)
+@require_admin
+@async_response
+async def _handle_archive_restore(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    manager = _current_manager(hass)
+    if manager is None:
+        _reply_not_loaded(connection, msg["id"])
+        return
+    try:
+        plant = await manager.async_restore_plant(
+            msg["plant_id"],
+            expected_revision=msg["expected_revision"],
+            name=msg["name"],
+            include_sources_in_use=msg["include_sources_in_use"],
+            expected_name_taken=msg["expected_name_taken"],
+            expected_sources_in_use=msg["expected_sources_in_use"],
+        )
+    except Exception as err:  # noqa: BLE001
+        _send_archive_error(connection, msg, err)
+        return
+    connection.send_result(msg["id"], {"plant": _plant_view(plant)})
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/archive/delete",
+        vol.Required("plant_id"): _plant_id,
+        vol.Required("expected_revision"): _positive_int,
+    }
+)
+@require_admin
+@async_response
+async def _handle_archive_delete(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    manager = _current_manager(hass)
+    if manager is None:
+        _reply_not_loaded(connection, msg["id"])
+        return
+    try:
+        await manager.async_delete_archived(
+            msg["plant_id"], expected_revision=msg["expected_revision"]
+        )
+    except Exception as err:  # noqa: BLE001
+        _send_archive_error(connection, msg, err)
+        return
+    connection.send_result(msg["id"], {})
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/archive/card_info",
+        vol.Required("device_id"): vol.All(str, vol.Length(min=1, max=200)),
+    }
+)
+@async_response
+async def _handle_archive_card_info(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    # Not admin-only: a dashboard card shows its plant to every signed-in
+    # user, and this returns no more than the card showed before.
+    manager = _current_manager(hass)
+    if manager is None:
+        _reply_not_loaded(connection, msg["id"])
+        return
+    record = manager.archived_by_device(msg["device_id"])
+    if record is None:
+        connection.send_error(msg["id"], ERR_NOT_FOUND, "no retired plant")
+        return
+    connection.send_result(
+        msg["id"],
+        {
+            "plant_id": record.id,
+            "name": record.name,
+            "image_id": record.image.id if record.image else None,
+        },
+    )
+
+
 def async_register(hass: HomeAssistant) -> None:
     """
     Register every Smart Plants WebSocket command exactly once per process.
@@ -2074,6 +2362,13 @@ def async_register(hass: HomeAssistant) -> None:
     async_register_command(hass, _handle_species_preview)
     async_register_command(hass, _handle_species_refresh_preview)
     async_register_command(hass, _handle_species_apply)
+    async_register_command(hass, _handle_archive)
+    async_register_command(hass, _handle_archive_list)
+    async_register_command(hass, _handle_archive_get)
+    async_register_command(hass, _handle_archive_restore_check)
+    async_register_command(hass, _handle_archive_restore)
+    async_register_command(hass, _handle_archive_delete)
+    async_register_command(hass, _handle_archive_card_info)
     for handler in _PANEL_HANDLERS:
         async_register_command(hass, handler)
     hass.data[_REGISTRATION_FLAG] = True

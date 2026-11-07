@@ -74,7 +74,7 @@ async def test_list_empty(
     await client.send_json_auto_id({"type": "smart_plants/plants/list"})
     response = await client.receive_json()
     assert response["success"] is True
-    assert response["result"] == {"plants": []}
+    assert response["result"] == {"plants": [], "archived_count": 0}
 
 
 async def test_role_api_rejects_unknown_role(
@@ -141,6 +141,10 @@ async def test_list_requires_admin(
     assert response["error"]["code"] == "unauthorized"
 
 
+# Read-only commands a dashboard card needs for every signed-in user.
+_ANY_USER_COMMANDS = frozenset({"smart_plants/archive/card_info"})
+
+
 @pytest.mark.parametrize("group", [GROUP_ID_USER, GROUP_ID_READ_ONLY])
 async def test_every_command_refuses_users_who_are_not_admins(
     hass: HomeAssistant, group: str
@@ -156,7 +160,7 @@ async def test_every_command_refuses_users_who_are_not_admins(
     handlers = {
         command: handler
         for command, (handler, _schema) in hass.data[WEBSOCKET_DOMAIN].items()
-        if command.startswith(f"{DOMAIN}/")
+        if command.startswith(f"{DOMAIN}/") and command not in _ANY_USER_COMMANDS
     }
     assert "smart_plants/plants/list" in handlers
     assert "smart_plants/wizard/start" in handlers

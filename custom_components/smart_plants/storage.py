@@ -27,6 +27,7 @@ from .models import (
     COLLECTION_MAX_COUNT,
     PENDING_OPERATION_SCHEMA_VERSION,
     TOMBSTONE_SCHEMA_VERSION,
+    ArchivedPlant,
     BatteryConfig,
     Co2Config,
     ConductivityConfig,
@@ -66,6 +67,7 @@ _MINOR_READING_CARE_TASKS: Final = 14
 _MINOR_ALERT_SNOOZE: Final = 15
 _MINOR_FORECAST_READINGS: Final = 16
 _MINOR_PEST_CONTROL: Final = 17
+_MINOR_PLANT_ARCHIVE: Final = 18
 _SPECIES_CARE_RANGE_KEYS: Final = (
     "min_temperature",
     "max_temperature",
@@ -587,6 +589,15 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                             "older storage cannot contain pest control care events"
                         )
 
+        if old_major_version == 1 and old_minor_version < _MINOR_PLANT_ARCHIVE:
+            # Minor 18 adds the collection of retired plants. Older storage
+            # has none; one that claims some is not trusted.
+            if data.get("archived_plants", []) != []:
+                raise SmartPlantsInvalidStorageError(
+                    "older storage cannot contain retired plants"
+                )
+            data["archived_plants"] = []
+
         # Home Assistant writes the result back right after this returns.
         # Check it first, so storage that fails to migrate never replaces
         # the backup of the last inventory that converted cleanly.
@@ -920,12 +931,55 @@ def _snapshot_from_payload(  # noqa: PLR0912
             f"plant {conflicting_tombstone!r} cannot also have a tombstone"
         )
 
+    archived_records = _archived_from_payload(
+        inventory.get("archived_plants"), live_ids, require_roles=require_roles
+    )
+
     return InventorySnapshot(
         revision=revision,
         plants=plant_records,
         pending_operations=tuple(pending_records),
         tombstones=tuple(tombstone_records),
+        archived_plants=archived_records,
     )
+
+
+def _archived_from_payload(
+    archived: object, live_ids: set[str], *, require_roles: bool
+) -> dict[str, ArchivedPlant]:
+    """
+    Parse the retired plants and check them against the live plants.
+
+    A retired plant keeps its id so it can come back, so an id may be live
+    or retired, never both. A tombstone may name a retired plant while its
+    device and entities are still being removed.
+    """
+    if archived is None and not require_roles:
+        return {}
+    if not isinstance(archived, list):
+        raise SmartPlantsInvalidStorageError(
+            "Smart Plants retired plants collection is invalid"
+        )
+    if len(archived) > COLLECTION_MAX_COUNT:
+        raise _SmartPlantsStorageLimitError(
+            "Smart Plants collection size limit exceeded"
+        )
+    records: dict[str, ArchivedPlant] = {}
+    for entry in archived:
+        try:
+            record = ArchivedPlant.from_storage(entry)
+        except ValueError as err:
+            raise SmartPlantsInvalidStorageError(str(err)) from err
+        if record.id in records:
+            raise SmartPlantsInvalidStorageError(
+                "duplicate Smart Plants retired plant id"
+            )
+        if record.id in live_ids:
+            raise SmartPlantsInvalidStorageError(
+                f"plant {record.id!r} cannot be live and retired"
+            )
+        records[record.id] = record
+    return records
 
 
 def _has_corrupt_sibling(path: str) -> bool:

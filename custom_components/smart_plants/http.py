@@ -50,6 +50,8 @@ from .manager import (
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
+    from .models import ArchivedPlant, PlantRecord
+
 _LOGGER = logging.getLogger(__name__)
 
 _REGISTRATION_FLAG = f"{DOMAIN}_http_registered"
@@ -182,7 +184,13 @@ class SmartPlantsImageView(HomeAssistantView):
                 "Smart Plants is not loaded",
             )
         try:
-            plant = manager.get_plant(plant_id)
+            plant: PlantRecord | ArchivedPlant
+            try:
+                plant = manager.get_plant(plant_id)
+            except SmartPlantsPlantNotFoundError:
+                # A retired plant keeps its photo; reading it is all the
+                # archive allows. Upload and delete stay live-plant only.
+                plant = manager.get_archived(plant_id)
             if plant.image is None:
                 return _error_response(
                     HTTPStatus.NOT_FOUND, ERR_NOT_FOUND, "plant has no image"
