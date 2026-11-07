@@ -378,7 +378,7 @@ describe("notifications from the plant page", () => {
     expect(itemLabel(menuItem(el))).toBe("Notifications");
     const menu = root(el).querySelector(".panel-appbar ha-dropdown")!;
     const order = [...menu.children].filter(child => child.slot !== "trigger").map(child => child.getAttribute("value") ?? child.tagName.toLowerCase());
-    expect(order).toEqual(["notifications", "snooze", "wa-divider", "open-device", "download-diagnostics", "wa-divider", "toggle-monitoring", "delete-plant"]);
+    expect(order).toEqual(["notifications", "snooze", "wa-divider", "open-device", "download-diagnostics", "wa-divider", "toggle-monitoring", "retire-plant", "delete-plant"]);
     expect(menu.querySelector('[value="snooze"] ha-icon')!.getAttribute("icon")).toBe("mdi:alarm-snooze");
     await openPage(el);
     expect(root(el).querySelector("h1")!.textContent).toBe("Notifications");

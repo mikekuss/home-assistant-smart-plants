@@ -47,7 +47,11 @@ const state = {
   conflictNext: false, loseCreateResponse: false, imageFailure: null,
   blobsCreated: [], blobsRevoked: [], imageSerial: 0,
   holdNext: {}, pending: {}, roleDefaults: copy(roleDefaults),
+  // Retired plants, newest first, in the shape archive/get returns.
+  archived: [],
 };
+const archivedSummary = r => ({ id: r.id, revision: r.revision, name: r.name, created_at: r.created_at, acquired_at: r.acquired_at, archived_at: r.archived_at, species: r.species, category: r.category, image: r.image, area_name: r.area_name, event_count: r.events.length });
+const lifecycleNote = (id, text, at) => ({ schema_version: 2, id, kind: "note", provenance: "manual", task_id: null, occurred_at: at, local_date: at.slice(0, 10), created_at: at, updated_at: at, payload: { text } });
 // Deliberately allow an already-admitted response to arrive after disconnect or
 // abort, exercising the production component's generation checks as well.
 async function hold(key, response) {
@@ -344,7 +348,9 @@ const connection = {
     if (Object.hasOwn(state.malformed, message.type)) return copy(state.malformed[message.type]);
     // Any message type can be held, for loading states; some types are also
     // held inside respond() after their reply was computed.
-    return viewResult(await hold(message.type, await respond(message)));
+    const result = await hold(message.type, await respond(message));
+    // Retired plants are not plant records and keep their own shape.
+    return message.type.startsWith("smart_plants/archive/") && message.type !== "smart_plants/archive/restore" ? result : viewResult(result);
   },
 };
 // Storage-shaped responses; sendMessagePromise applies the PlantView defaults.
@@ -356,7 +362,36 @@ async function respond(message) {
   }
   switch (message.type) {
     case "smart_plants/panel/info": return { api_version: 1, schema_version: 1, providers: [{ provider: "manual", available: true, search_supported: false }, { provider: "openplantbook", available: state.providerAvailable, search_supported: true }] };
-    case "smart_plants/plants/list": return { plants: copy(state.plants) };
+    case "smart_plants/plants/list": return { plants: copy(state.plants), archived_count: state.archived.length };
+    case "smart_plants/plants/archive": {
+      const at = new Date().toISOString(); const device = state.devices.find(d => d.identifiers[0][1] === p.id);
+      const area = state.areas.find(a => a.area_id === device?.area_id)?.name ?? null;
+      const record = { id: p.id, revision: p.revision + 1, name: p.name, created_at: p.created_at, acquired_at: p.acquired_at, archived_at: at, species: p.species, category: p.category, image: null, area_name: area,
+        placement: p.placement, tags: p.tags, sources: {}, events: [lifecycleNote(`retired-${state.archived.length + 1}`, "Retired", at), ...copy(p.care_events)], summary: { watering_count: p.care_events.filter(e => e.kind === "watering").length, last_watered_at: null, last_watered_local_date: null } };
+      state.plants = state.plants.filter(v => v.id !== p.id); state.devices = state.devices.filter(d => d.identifiers[0][1] !== p.id);
+      state.archived.unshift(record); return { archived: archivedSummary(record) };
+    }
+    case "smart_plants/archive/list": return { plants: state.archived.map(archivedSummary) };
+    case "smart_plants/archive/get": { const r = state.archived.find(v => v.id === message.plant_id); if (!r) reject("not_found"); return { plant: { ...copy(r), event_count: r.events.length } }; }
+    case "smart_plants/archive/restore_check": {
+      const r = state.archived.find(v => v.id === message.plant_id); if (!r) reject("not_found");
+      const taken = state.plants.some(v => v.name.toLowerCase() === r.name.toLowerCase());
+      return { name_taken: taken, suggested_name: taken ? `${r.name} 2` : r.name, sources_in_use: [], sources_missing: [], area_missing: false, blocked: null };
+    }
+    case "smart_plants/archive/restore": {
+      const r = state.archived.find(v => v.id === message.plant_id); if (!r) reject("not_found");
+      if (message.expected_revision !== r.revision) reject("revision_conflict");
+      const at = new Date().toISOString();
+      const restored = { id: r.id, revision: r.revision + 1, name: message.name, created_at: r.created_at, lifecycle_state: "active", acquired_at: r.acquired_at, species: r.species, placement: r.placement, tags: r.tags, category: r.category, image: null,
+        care_events: [...r.events.slice().reverse(), lifecycleNote(`restored-${r.revision}`, "Restored", at)], care_tasks: [], rest_period: null, roles: { moisture: moisture() } };
+      state.archived = state.archived.filter(v => v.id !== r.id); state.plants.push(restored); state.devices.push(deviceFor(restored));
+      return { plant: copy(restored) };
+    }
+    case "smart_plants/archive/delete": {
+      const r = state.archived.find(v => v.id === message.plant_id); if (!r) reject("not_found");
+      if (message.expected_revision !== r.revision) reject("revision_conflict");
+      state.archived = state.archived.filter(v => v.id !== r.id); return {};
+    }
     case "smart_plants/plants/overview": return { plants: state.plants.map(overviewOf) };
     case "config/area_registry/list": return copy(state.areas);
     case "config/entity_registry/list": return copy(state.entities);

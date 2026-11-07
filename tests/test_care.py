@@ -196,7 +196,7 @@ async def test_minor_ten_migration_adds_empty_history(
         },
     }
     loaded = await SmartPlantsStore(hass).async_load()
-    assert STORAGE_MINOR_VERSION == 17
+    assert STORAGE_MINOR_VERSION == 18
     assert loaded.plants["p"].care_events == ()
     assert hass_storage[STORAGE_KEY]["data"]["plants"][0]["care_events"] == []
 
@@ -223,6 +223,7 @@ async def test_older_minor_with_pest_control_fails_closed(
                 "plants": [plant],
                 "pending_operations": [],
                 "tombstones": [],
+                **({"archived_plants": []} if expected else {}),
             },
         }
         if expected is None:

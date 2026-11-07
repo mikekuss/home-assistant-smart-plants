@@ -23,6 +23,8 @@ import { snoozeChipText } from "../snooze.js";
 import { DOMAIN, plantDevices, plantView } from "./plant-state.js";
 import type { CardHassData, CardPlant, PlantView } from "./plant-state.js";
 
+interface RetiredCardPlant { deviceId: string; plantId: string; name: string; imageId: string | null }
+
 export const CONTENT_ELEMENT = "smart-plants-plant-card-content";
 export const PANEL_PATH = "/smart-plants";
 
@@ -108,6 +110,8 @@ export class SmartPlantsPlantCardContent extends LitElement {
     .warning { display: flex; gap: 10px; padding: 14px; background: color-mix(in srgb, var(--sp-warning) 14%, var(--sp-card)); }
     .warning ha-icon { color: color-mix(in srgb, var(--sp-warning) 70%, var(--sp-text)); }
     .warning p { margin: 2px 0 0; font-size: 13px; }
+    .retired { display: flex; gap: 12px; align-items: center; padding: 14px; }
+    .retired p { margin: 2px 0 0; font-size: 13px; color: var(--secondary-text-color); }
     .warning strong { font-weight: 500; }
     /* A narrow card, such as half a section: area and species stay on one line,
        the reason takes at most two lines, and the last watering shows only the
@@ -140,6 +144,9 @@ export class SmartPlantsPlantCardContent extends LitElement {
   @state() private _photo: string | null = null;
   private _photoFor: string | null = null;
   private _photoRequest = 0;
+  // The retired plant behind a device that is gone, looked up once per device.
+  @state() private _retired: RetiredCardPlant | null = null;
+  private _retiredFor: string | null = null;
 
   public setConfig(config: PlantCardConfig): void {
     this._config = { show_readings: true, show_watering: true, ...config };
@@ -173,7 +180,10 @@ export class SmartPlantsPlantCardContent extends LitElement {
   // so a photo already on screen for the same plant stays.
   private _syncPhoto(): void {
     const plant = this._plant();
-    const view = plant?.kind === "plant" && this.isConnected ? plant : null;
+    this._syncRetired(plant);
+    const live = plant?.kind === "plant" && this.isConnected ? plant : null;
+    const retired = plant?.kind === "missing" && this.isConnected && this._retired?.deviceId === this._config?.device_id ? this._retired : null;
+    const view = live ?? (retired ? { plantId: retired.plantId, photoId: retired.imageId } : null);
     if (view && view.photoId === undefined && this._photoFor?.startsWith(`${view.plantId}/`)) return;
     const key = view?.photoId ? `${view.plantId}/${view.photoId}` : null;
     if (key === this._photoFor) return;
@@ -189,6 +199,20 @@ export class SmartPlantsPlantCardContent extends LitElement {
       const blob = await response.blob();
       if (request !== this._photoRequest || !blob.type.startsWith("image/") || !blob.size) return;
       this._photo = URL.createObjectURL(blob);
+    }).catch(() => undefined);
+  }
+
+  // A card whose plant was retired still knows the removed device's id; the
+  // archive answers with the plant's name and photo for it.
+  private _syncRetired(plant: CardPlant | null): void {
+    const deviceId = plant?.kind === "missing" ? this._config?.device_id ?? null : null;
+    if (deviceId === this._retiredFor) return;
+    this._retiredFor = deviceId; this._retired = null;
+    const hass = this.hass;
+    if (!deviceId || !hass?.callWS) return;
+    void hass.callWS<{ plant_id?: unknown; name?: unknown; image_id?: unknown }>({ type: `${DOMAIN}/archive/card_info`, device_id: deviceId }).then(result => {
+      if (this._retiredFor !== deviceId || typeof result?.plant_id !== "string" || typeof result.name !== "string") return;
+      this._retired = { deviceId, plantId: result.plant_id, name: result.name, imageId: typeof result.image_id === "string" ? result.image_id : null };
     }).catch(() => undefined);
   }
 
@@ -266,6 +290,11 @@ export class SmartPlantsPlantCardContent extends LitElement {
     const l = this._l;
     if (!this._config.device_id) return this._warning(l.t("plant_card.name"), l.t("plant_card.no_plant"));
     const plant = this._plant();
+    const retired = this._retired?.deviceId === this._config.device_id ? this._retired : null;
+    if (plant?.kind === "missing" && retired) {
+      return html`<ha-card><div class="retired"><sp-plant-avatar .l=${l} .name=${retired.name} .src=${this._photo} @photo-error=${() => this._dropPhoto()}></sp-plant-avatar>
+        <div><strong>${retired.name}</strong><p>${l.t("plant_card.retired_body", { name: retired.name })}</p></div></div></ha-card>`;
+    }
     if (!plant || plant.kind === "missing") return this._warning(l.t("plant_card.missing_title"), l.t("plant_card.missing_body"));
     return this._renderPlant(plant, l);
   }

@@ -125,6 +125,38 @@ export interface PlantRecord {
   snoozed_until?: string | null;
 }
 
+// A retired plant: no device or entities any more, only a plain record with
+// its photo and care log. `sources` (role -> entity ids) only on the detail.
+export interface ArchivedPlantSummary {
+  id: string;
+  revision: number;
+  name: string;
+  created_at: string;
+  acquired_at: string | null;
+  archived_at: string;
+  species: PlantSpecies | null;
+  category: string | null;
+  image: PlantImage | null;
+  area_name: string | null;
+  event_count: number;
+}
+export interface ArchivedPlantView extends ArchivedPlantSummary {
+  placement: PlantPlacement | null;
+  tags: string[];
+  sources: Record<string, string[]>;
+  events: CareEvent[];
+  summary: CareHistory["summary"];
+}
+// What restoring a retired plant would run into, checked before it is confirmed.
+export interface RestoreCheck {
+  name_taken: boolean;
+  suggested_name: string;
+  sources_in_use: { role: string; entity_id: string; plants: string[] }[];
+  sources_missing: { role: string; entity_id: string }[];
+  area_missing: boolean;
+  blocked: "limit" | "busy" | null;
+}
+
 // Months are 1-12, inclusive at both ends; a range may wrap past December.
 export interface RestPeriod {
   start_month: number;

@@ -103,6 +103,12 @@ fire again, or every restart would repeat your notifications. A snooze that ends
 Assistant is off fires nothing either. The [daily report](notifications.md#daily-plant-report)
 still lists the plant.
 
+### An automation stopped working after retiring a plant
+
+Retiring removes the plant's entities, so automations, scripts and dashboards that used them
+stop working, as after a delete. Point them at another plant, or restore the plant from
+**⋮ > Retired plants** in the overview.
+
 ### Old care entries disappeared
 
 Each plant keeps up to 256 entries. A new entry beyond that removes the oldest watering first,

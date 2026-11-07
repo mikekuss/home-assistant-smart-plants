@@ -3515,17 +3515,272 @@ class Tombstone:
         }
 
 
+ARCHIVED_AREA_NAME_MAX_LEN: Final = 100
+
+
+@dataclass(frozen=True, slots=True)
+class ArchivedPlant:
+    """
+    Plain record of a plant the user retired.
+
+    The live plant, its device and its entities are gone. What stays is
+    what the user wants to look back on, and enough to bring the plant back:
+    identity, species, photo, care log, dates, the area and the assigned
+    sensors. Thresholds, care tasks, the rest period and the snooze are not
+    kept. The record is read-only; only restore and delete change it.
+    """
+
+    id: str
+    revision: int
+    name: str
+    created_at: str
+    archived_at: str
+    acquired_at: str | None = None
+    species: PlantSpecies | None = None
+    placement: PlantPlacement | None = None
+    tags: tuple[str, ...] = ()
+    category: str | None = None
+    image: PlantImage | None = None
+    care_events: tuple[CareEvent, ...] = ()
+    area_id: str | None = None
+    area_name: str | None = None
+    # The removed device's id, so a dashboard card that still points at it
+    # can say the plant was retired.
+    device_id: str | None = None
+    # Role key -> assigned sources, the main source first.
+    sources: Mapping[str, tuple[SensorSource, ...]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "tags", tuple(self.tags))
+        object.__setattr__(self, "care_events", tuple(self.care_events))
+        object.__setattr__(
+            self,
+            "sources",
+            MappingProxyType(
+                {role: tuple(items) for role, items in self.sources.items()}
+            ),
+        )
+
+    @classmethod
+    def from_plant(
+        cls,
+        plant: PlantRecord,
+        *,
+        archived_at: str,
+        area_id: str | None,
+        area_name: str | None,
+        device_id: str | None,
+    ) -> Self:
+        """Keep the parts of ``plant`` the archive holds."""
+        from .roles import role_definitions  # noqa: PLC0415
+
+        sources: dict[str, tuple[SensorSource, ...]] = {}
+        for definition in role_definitions():
+            if definition.replace_sources is None:
+                continue
+            config = plant.role_config(definition.key)
+            assigned = tuple(getattr(config, "sources", ()) or ())
+            if not assigned:
+                continue
+            primary = getattr(config, "primary_entity_id", None)
+            sources[definition.key] = tuple(
+                sorted(assigned, key=lambda source: source.entity_id != primary)
+            )
+        return cls(
+            id=plant.id,
+            revision=plant.revision + 1,
+            name=plant.name,
+            created_at=plant.created_at,
+            archived_at=archived_at,
+            acquired_at=plant.acquired_at,
+            species=plant.species,
+            placement=plant.placement,
+            tags=plant.tags,
+            category=plant.category,
+            image=plant.image,
+            care_events=plant.care_events,
+            area_id=area_id,
+            area_name=area_name,
+            device_id=device_id,
+            sources=sources,
+        )
+
+    @classmethod
+    def from_storage(cls, data: object) -> Self:
+        if not isinstance(data, dict):
+            raise ValueError("archived plant must be an object")
+        _require_no_extra_keys(
+            data,
+            frozenset(
+                {
+                    "id",
+                    "revision",
+                    "name",
+                    "created_at",
+                    "archived_at",
+                    "acquired_at",
+                    "species",
+                    "placement",
+                    "tags",
+                    "category",
+                    "image",
+                    "care_events",
+                    "area_id",
+                    "area_name",
+                    "device_id",
+                    "sources",
+                }
+            ),
+            "archived plant",
+        )
+        for key in (
+            "care_events",
+            "sources",
+            "tags",
+            "area_id",
+            "area_name",
+            "device_id",
+        ):
+            if key not in data:
+                raise ValueError(f"archived plant {key} is required")
+        raw_tags = data["tags"]
+        if not isinstance(raw_tags, list):
+            raise ValueError("archived plant tags must be a list of strings")
+        tags = tuple(_require_short_str(tag, "archived plant tag") for tag in raw_tags)
+        if len(tags) > PLANT_TAG_MAX_COUNT or any(
+            len(tag) > _SHORT_VALUE_MAX_LEN for tag in tags
+        ):
+            raise ValueError("archived plant tags exceed their limits")
+        raw_events = data["care_events"]
+        if not isinstance(raw_events, list) or len(raw_events) > MAX_CARE_EVENTS:
+            raise ValueError("archived plant care_events exceeds its limit")
+        care_events = tuple(CareEvent.from_storage(row) for row in raw_events)
+        if len({event.id for event in care_events}) != len(care_events):
+            raise ValueError("duplicate care event id")
+        area_id = data["area_id"]
+        if area_id is not None:
+            area_id = _require_bounded_trimmed_str(
+                area_id, "archived plant area_id", _IDENTIFIER_MAX_LEN
+            )
+        device_id = data["device_id"]
+        if device_id is not None:
+            device_id = _require_bounded_trimmed_str(
+                device_id, "archived plant device_id", _IDENTIFIER_MAX_LEN
+            )
+        species_data = data.get("species")
+        placement_data = data.get("placement")
+        image_data = data.get("image")
+        return cls(
+            id=_require_identifier(data.get("id"), "archived plant id"),
+            revision=_require_positive_int(
+                data.get("revision"), "archived plant revision"
+            ),
+            name=_require_bounded_trimmed_str(
+                data.get("name"), "archived plant name", 200
+            ),
+            created_at=_require_iso8601(
+                data.get("created_at"), "archived plant created_at"
+            ),
+            archived_at=_require_iso8601(
+                data.get("archived_at"), "archived plant archived_at"
+            ),
+            acquired_at=_optional_acquired_at(
+                data.get("acquired_at"), "archived plant acquired_at"
+            ),
+            species=PlantSpecies.from_storage(species_data)
+            if species_data is not None
+            else None,
+            placement=PlantPlacement.from_storage(placement_data)
+            if placement_data is not None
+            else None,
+            tags=tags,
+            category=_optional_bounded_trimmed_str(
+                data.get("category"), "archived plant category", _SHORT_VALUE_MAX_LEN
+            ),
+            image=PlantImage.from_storage(image_data)
+            if image_data is not None
+            else None,
+            care_events=care_events,
+            area_id=area_id,
+            area_name=_optional_bounded_trimmed_str(
+                data["area_name"],
+                "archived plant area_name",
+                ARCHIVED_AREA_NAME_MAX_LEN,
+            ),
+            device_id=device_id,
+            sources=_archived_sources_from_storage(data["sources"]),
+        )
+
+    def as_storage(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "revision": self.revision,
+            "name": self.name,
+            "created_at": self.created_at,
+            "archived_at": self.archived_at,
+            "acquired_at": self.acquired_at,
+            "species": self.species.as_storage() if self.species is not None else None,
+            "placement": self.placement.as_storage()
+            if self.placement is not None
+            else None,
+            "tags": list(self.tags),
+            "category": self.category,
+            "image": self.image.as_storage() if self.image is not None else None,
+            "care_events": [event.as_storage() for event in self.care_events],
+            "area_id": self.area_id,
+            "area_name": self.area_name,
+            "device_id": self.device_id,
+            "sources": {
+                role: [source.as_storage() for source in items]
+                for role, items in self.sources.items()
+            },
+        }
+
+
+def _archived_sources_from_storage(
+    data: object,
+) -> dict[str, tuple[SensorSource, ...]]:
+    from .roles import ROLE_METADATA  # noqa: PLC0415
+
+    if not isinstance(data, dict):
+        raise ValueError("archived plant sources must be an object")
+    sources: dict[str, tuple[SensorSource, ...]] = {}
+    for role, items in data.items():
+        definition = ROLE_METADATA.get(role)
+        if definition is None or definition.replace_sources is None:
+            raise ValueError("archived plant sources name an unknown role")
+        if not isinstance(items, list) or not items:
+            raise ValueError("archived plant sources must be non-empty lists")
+        if len(items) > SENSOR_SOURCE_MAX_COUNT:
+            raise ValueError("archived plant sources exceed their limit")
+        parsed = tuple(SensorSource.from_storage(item) for item in items)
+        if any(
+            not valid_entity_id(source.entity_id)
+            or not source.entity_id.startswith(f"{definition.source_domain}.")
+            for source in parsed
+        ):
+            raise ValueError("archived plant source entity_id is invalid")
+        if len({source.entity_id for source in parsed}) != len(parsed):
+            raise ValueError("archived plant sources must be unique")
+        sources[role] = parsed
+    return sources
+
+
 @dataclass(frozen=True, slots=True)
 class InventorySnapshot:
     revision: int
     plants: Mapping[str, PlantRecord] = field(default_factory=dict)
     pending_operations: tuple[PendingOperation, ...] = ()
     tombstones: tuple[Tombstone, ...] = ()
+    archived_plants: Mapping[str, ArchivedPlant] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "plants", MappingProxyType(dict(self.plants)))
         object.__setattr__(self, "pending_operations", tuple(self.pending_operations))
         object.__setattr__(self, "tombstones", tuple(self.tombstones))
+        object.__setattr__(
+            self, "archived_plants", MappingProxyType(dict(self.archived_plants))
+        )
 
     @classmethod
     def empty(cls) -> Self:
@@ -3537,27 +3792,35 @@ class InventorySnapshot:
             "plants": [plant.as_storage() for plant in self.plants.values()],
             "pending_operations": [op.as_storage() for op in self.pending_operations],
             "tombstones": [tombstone.as_storage() for tombstone in self.tombstones],
+            "archived_plants": [
+                archived.as_storage() for archived in self.archived_plants.values()
+            ],
         }
 
     def with_plant(self, plant: PlantRecord) -> Self:
         plants = dict(self.plants)
         plants[plant.id] = plant
-        return type(self)(
-            revision=self.revision + 1,
-            plants=plants,
-            pending_operations=self.pending_operations,
-            tombstones=self.tombstones,
-        )
+        return replace(self, revision=self.revision + 1, plants=plants)
 
     def without_plant(self, plant_id: str) -> Self:
         plants = dict(self.plants)
         plants.pop(plant_id, None)
-        return type(self)(
-            revision=self.revision + 1,
-            plants=plants,
-            pending_operations=self.pending_operations,
-            tombstones=self.tombstones,
-        )
+        return replace(self, revision=self.revision + 1, plants=plants)
+
+    def with_archived(self, archived: ArchivedPlant) -> Self:
+        records = dict(self.archived_plants)
+        records[archived.id] = archived
+        return replace(self, revision=self.revision + 1, archived_plants=records)
+
+    def without_archived(self, plant_id: str) -> Self:
+        records = dict(self.archived_plants)
+        records.pop(plant_id, None)
+        return replace(self, revision=self.revision + 1, archived_plants=records)
+
+
+def archived_image_ids(records: Iterable[ArchivedPlant]) -> frozenset[str]:
+    """Photo ids of archived plants; their files must never be reaped."""
+    return frozenset(record.image.id for record in records if record.image is not None)
 
 
 # --- Recovery-schema payload dispatch ------------------------------------

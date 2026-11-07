@@ -55,8 +55,10 @@ from .images import (
     write_image_file,
 )
 from .models import (
+    ARCHIVED_AREA_NAME_MAX_LEN,
     CARE_TASK_MAX_COUNT,
     COLLECTION_MAX_COUNT,
+    ArchivedPlant,
     CareTask,
     IntervalSchedule,
     InventorySnapshot,
@@ -72,6 +74,7 @@ from .models import (
     SensorSource,
     Tombstone,
     YearlySchedule,
+    archived_image_ids,
     normalize_acquired_at,
     parse_care_schedule,
     require_iso_date,
@@ -148,6 +151,26 @@ class SmartPlantsPlantLimitError(HomeAssistantError, SmartPlantsValidationError)
             translation_key="plant_limit",
             translation_placeholders={"max": str(COLLECTION_MAX_COUNT)},
         )
+
+
+class SmartPlantsArchiveFullError(HomeAssistantError, SmartPlantsValidationError):
+    """Raised when retiring a plant would exceed the retired plants storage holds."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            f"Smart Plants keeps at most {COLLECTION_MAX_COUNT} retired plants",
+            translation_domain=DOMAIN,
+            translation_key="archive_limit",
+            translation_placeholders={"max": str(COLLECTION_MAX_COUNT)},
+        )
+
+
+class SmartPlantsArchiveBusyError(RuntimeError):
+    """Raised while an unfinished change of the plant still has to complete."""
+
+    def __init__(self, plant_id: str) -> None:
+        super().__init__(f"plant {plant_id} has an unfinished change")
+        self.plant_id = plant_id
 
 
 class SmartPlantsPlantNotFoundError(LookupError):
@@ -2289,7 +2312,22 @@ class SmartPlantsManager:
         await self._dispatch_event(event)
         if self.entities_for_plant(plant_id):
             raise RuntimeError("plant entities remain attached after deletion dispatch")
+        await self._async_finish_removal(
+            plant_id,
+            tombstone,
+            current.image.id if current.image is not None else None,
+        )
 
+    async def _async_finish_removal(
+        self, plant_id: str, tombstone: Tombstone, image_id: str | None
+    ) -> None:
+        """
+        Remove a gone plant's device and entities, then its photo file.
+
+        Used after a delete, a retire and a delete of a retired plant. Every
+        step is repeated by the startup replay of the tombstone if it does
+        not finish here.
+        """
         async with self._mutation_lock:
             if self._closing or self._unavailable:
                 return
@@ -2300,6 +2338,7 @@ class SmartPlantsManager:
                 known_plant_ids = {
                     *self._snapshot.plants,
                     *(item.plant_id for item in self._snapshot.tombstones),
+                    *self._snapshot.archived_plants,
                 }
                 await self._reconciler.async_reconcile_absent(
                     plant_id, known_plant_ids=known_plant_ids
@@ -2336,15 +2375,12 @@ class SmartPlantsManager:
                 # authorizes deleting a shared/reused image id after cross-
                 # record validation, so clearing it before the unlink would
                 # leak the file until orphan cleanup finally reaped it.
-                previous_image_id = (
-                    current.image.id if current.image is not None else None
-                )
-                if previous_image_id is not None:
+                if image_id is not None:
                     images_dir = await self._hass.async_add_executor_job(
                         get_images_dir, self._hass
                     )
                     if _is_image_still_referenced(
-                        previous_image_id, self._snapshot, exclude_plant_id=plant_id
+                        image_id, self._snapshot, exclude_plant_id=plant_id
                     ):
                         # Shared id — leave the file alone; the tombstone
                         # can be cleared safely because another plant is
@@ -2352,13 +2388,374 @@ class SmartPlantsManager:
                         pass
                     else:
                         await self._hass.async_add_executor_job(
-                            delete_image_file, images_dir, previous_image_id
+                            delete_image_file, images_dir, image_id
                         )
                 remaining = tuple(
                     t for t in self._snapshot.tombstones if t.plant_id != plant_id
                 )
                 cleared = replace(self._snapshot, tombstones=remaining)
                 await self._async_publish(cleared)
+
+    # --- Retired plants --------------------------------------------------
+
+    def list_archived(self) -> tuple[ArchivedPlant, ...]:
+        """Retired plants, the most recently retired first."""
+        return tuple(
+            sorted(
+                self._snapshot.archived_plants.values(),
+                key=lambda record: record.archived_at,
+                reverse=True,
+            )
+        )
+
+    def get_archived(self, plant_id: str) -> ArchivedPlant:
+        record = self._snapshot.archived_plants.get(plant_id)
+        if record is None:
+            raise SmartPlantsPlantNotFoundError(plant_id)
+        return record
+
+    async def async_archive_plant(
+        self, plant_id: str, *, expected_revision: int
+    ) -> ArchivedPlant:
+        """
+        Retire a plant: keep a plain record, remove everything live.
+
+        The plant leaves the live inventory in the same save that stores the
+        record and a tombstone. The tombstone then drives the removal of the
+        device and every entity, exactly as a delete does, but without
+        touching the photo. Its sensors are free for another plant at once.
+        """
+        self._raise_if_unavailable()
+        async with self._mutation_lock:
+            self._raise_if_unavailable()
+            current = self._require_plant(plant_id)
+            self._require_expected_revision(current, expected_revision)
+            if any(op.plant_id == plant_id for op in self._snapshot.pending_operations):
+                raise SmartPlantsArchiveBusyError(plant_id)
+            if len(self._snapshot.archived_plants) >= COLLECTION_MAX_COUNT:
+                raise SmartPlantsArchiveFullError
+            now = _utcnow_iso()
+            noted, _ = _with_care_event(
+                current,
+                kind="note",
+                occurred_at=now,
+                payload={
+                    "text": _lifecycle_note(self._hass.config.language, "retired")
+                },
+                provenance="manual",
+                task_id=None,
+            )
+            device_id, area_id, area_name = self._device_area(plant_id)
+            archived = ArchivedPlant.from_plant(
+                noted,
+                archived_at=now,
+                area_id=area_id,
+                area_name=area_name,
+                device_id=device_id,
+            )
+            tombstone = Tombstone(
+                plant_id=plant_id,
+                deleted_at=now,
+                payload={"image_id": None, "cleanup_phase": "pending"},
+            )
+            snapshot = self._snapshot.without_plant(plant_id)
+            snapshot = replace(
+                snapshot.with_archived(archived),
+                tombstones=(*_tombstones_with_room(snapshot.tombstones), tombstone),
+            )
+            await self._async_publish(snapshot)
+            event = PlantDeletedEvent(
+                kind="plant_deleted", plant_id=plant_id, previous=current
+            )
+            self._prepare_event(event)
+        await self._dispatch_event(event)
+        if self.entities_for_plant(plant_id):
+            raise RuntimeError("plant entities remain attached after retiring")
+        await self._async_finish_removal(plant_id, tombstone, None)
+        return archived
+
+    def restore_check(self, plant_id: str) -> dict[str, Any]:
+        """
+        Describe what restoring a retired plant would run into.
+
+        The panel shows this before the user confirms: a name now used by a
+        live plant, sensors that another plant uses now or that no longer
+        exist, an area that was deleted, and whether restoring is blocked.
+        """
+        record = self.get_archived(plant_id)
+        return self._restore_conflicts(record)
+
+    async def async_restore_plant(
+        self,
+        plant_id: str,
+        *,
+        expected_revision: int,
+        name: str,
+        include_sources_in_use: bool,
+    ) -> PlantRecord:
+        """
+        Bring a retired plant back as a live plant with the same id.
+
+        Name, species, photo, care log, dates, area and the sensors that are
+        still there come back. Sensors another plant uses now come back only
+        with ``include_sources_in_use``. Thresholds follow the species, as for
+        a new plant; care tasks and custom thresholds were not kept.
+        """
+        cleaned_name = _validate_name(name)
+        self._raise_if_unavailable()
+        async with self._mutation_lock:
+            self._raise_if_unavailable()
+            record = self.get_archived(plant_id)
+            if record.revision != expected_revision:
+                raise SmartPlantsRevisionConflictError(
+                    plant_id, expected_revision, record.revision
+                )
+            conflicts = self._restore_conflicts(record)
+            if conflicts["blocked"] == "limit":
+                raise SmartPlantsPlantLimitError
+            if conflicts["blocked"] == "busy":
+                raise SmartPlantsArchiveBusyError(plant_id)
+            skipped = {
+                (item["role"], item["entity_id"])
+                for item in conflicts["sources_missing"]
+            }
+            if not include_sources_in_use:
+                skipped.update(
+                    (item["role"], item["entity_id"])
+                    for item in conflicts["sources_in_use"]
+                )
+            sources = {
+                role: [
+                    source
+                    for source in self._resolved_sources(items)
+                    if (role, source.entity_id) not in skipped
+                ]
+                for role, items in record.sources.items()
+            }
+            now = _utcnow_iso()
+            plant = PlantRecord(
+                id=record.id,
+                revision=record.revision + 1,
+                name=cleaned_name,
+                created_at=record.created_at,
+                acquired_at=record.acquired_at,
+                species=record.species,
+                placement=record.placement,
+                tags=record.tags,
+                category=record.category,
+                image=record.image,
+                care_events=record.care_events,
+            )
+            moisture_values = {
+                key: value
+                for key, value in MoistureConfig().as_storage().items()
+                if key
+                in (
+                    "aggregation",
+                    "stale_after_seconds",
+                    "threshold_overrides",
+                )
+            }
+            moisture_sources = sources.pop("moisture", [])
+            plant = replace(
+                plant,
+                moisture=self._configure_moisture(
+                    plant.moisture,
+                    {
+                        **moisture_values,
+                        "sources": [item.as_storage() for item in moisture_sources],
+                        "primary_entity_id": moisture_sources[0].entity_id
+                        if moisture_sources
+                        else None,
+                    },
+                    species=record.species,
+                ),
+            )
+            roles = {
+                role: {
+                    "sources": [item.as_storage() for item in items],
+                    "primary_entity_id": items[0].entity_id,
+                }
+                for role, items in sources.items()
+                if items
+            }
+            if roles:
+                plant = self._configure_wizard_roles(plant, roles)
+            plant = plant.with_next_revision(
+                **_care_append_changes(
+                    plant,
+                    _build_care_event(
+                        kind="note",
+                        occurred_at=now,
+                        payload={
+                            "text": _lifecycle_note(
+                                self._hass.config.language, "restored"
+                            )
+                        },
+                        provenance="manual",
+                        task_id=None,
+                    ),
+                )
+            )
+            try:
+                plant = PlantRecord.from_storage(plant.as_storage(), require_roles=True)
+            except ValueError as err:
+                raise SmartPlantsValidationError(str(err)) from err
+            area_id = None if conflicts["area_missing"] else record.area_id
+            await self._async_apply_with_reconciliation(
+                target_snapshot=self._snapshot.without_archived(plant_id).with_plant(
+                    plant
+                ),
+                kind="create_plant",
+                plant_id=plant.id,
+                requested_at=now,
+                expected_revision=None,
+                area_id=area_id,
+                side_effect=self._make_present_side_effect(plant, area_id),
+            )
+            event = PlantAddedEvent(kind="plant_added", plant=plant)
+            self._prepare_event(event)
+        await self._dispatch_event(event)
+        return plant
+
+    async def async_delete_archived(
+        self, plant_id: str, *, expected_revision: int
+    ) -> None:
+        """Delete a retired plant for good, photo included."""
+        self._raise_if_unavailable()
+        async with self._mutation_lock:
+            self._raise_if_unavailable()
+            record = self.get_archived(plant_id)
+            if record.revision != expected_revision:
+                raise SmartPlantsRevisionConflictError(
+                    plant_id, expected_revision, record.revision
+                )
+            if any(item.plant_id == plant_id for item in self._snapshot.tombstones):
+                raise SmartPlantsArchiveBusyError(plant_id)
+            image_id = record.image.id if record.image is not None else None
+            tombstone = Tombstone(
+                plant_id=plant_id,
+                deleted_at=_utcnow_iso(),
+                payload={"image_id": image_id, "cleanup_phase": "pending"},
+            )
+            snapshot = self._snapshot.without_archived(plant_id)
+            snapshot = replace(
+                snapshot,
+                tombstones=(*_tombstones_with_room(snapshot.tombstones), tombstone),
+            )
+            await self._async_publish(snapshot)
+        await self._async_finish_removal(plant_id, tombstone, image_id)
+
+    def _restore_conflicts(self, record: ArchivedPlant) -> dict[str, Any]:
+        from homeassistant.helpers import area_registry as ar  # noqa: PLC0415
+
+        live = self._snapshot.plants
+        names = {plant.name.casefold() for plant in live.values()}
+        users: dict[str, list[str]] = {}
+        for plant in live.values():
+            for definition in role_definitions():
+                config = plant.role_config(definition.key)
+                for source in getattr(config, "sources", ()) or ():
+                    users.setdefault(source.entity_id, []).append(plant.name)
+        in_use: list[dict[str, Any]] = []
+        missing: list[dict[str, Any]] = []
+        for role, items in record.sources.items():
+            for source in items:
+                current = self._resolved_source(source)
+                if current is None:
+                    missing.append({"role": role, "entity_id": source.entity_id})
+                elif current.entity_id in users:
+                    in_use.append(
+                        {
+                            "role": role,
+                            "entity_id": current.entity_id,
+                            "plants": sorted(set(users[current.entity_id])),
+                        }
+                    )
+        blocked: str | None = None
+        if any(item.plant_id == record.id for item in self._snapshot.tombstones):
+            blocked = "busy"
+        elif len(live) >= COLLECTION_MAX_COUNT:
+            blocked = "limit"
+        area_missing = (
+            record.area_id is not None
+            and ar.async_get(self._hass).async_get_area(record.area_id) is None
+        )
+        return {
+            "name_taken": record.name.casefold() in names,
+            "suggested_name": _free_name(record.name, names),
+            "sources_in_use": in_use,
+            "sources_missing": missing,
+            "area_missing": area_missing,
+            "blocked": blocked,
+        }
+
+    def _resolved_source(self, source: SensorSource) -> SensorSource | None:
+        """
+        Return ``source`` as it is called now, or ``None`` when it is gone.
+
+        A registered sensor is followed through renames by its registry id.
+        An unregistered one counts as present while it has a state.
+        """
+        from homeassistant.helpers import entity_registry as er  # noqa: PLC0415
+
+        registry = er.async_get(self._hass)
+        if source.registry_id is not None:
+            entry = registry.async_get(source.registry_id)
+            if entry is None:
+                return None
+            return SensorSource(entry.entity_id, entry.id)
+        entry = registry.async_get(source.entity_id)
+        if entry is not None:
+            return SensorSource(entry.entity_id, entry.id)
+        if self._hass.states.get(source.entity_id) is None:
+            return None
+        return source
+
+    def _resolved_sources(
+        self, sources: Iterable[SensorSource]
+    ) -> tuple[SensorSource, ...]:
+        """Present sources under their current ids, each entity once."""
+        resolved: list[SensorSource] = []
+        seen: set[str] = set()
+        for source in sources:
+            current = self._resolved_source(source)
+            if current is None or current.entity_id in seen:
+                continue
+            seen.add(current.entity_id)
+            resolved.append(current)
+        return tuple(resolved)
+
+    def _device_area(self, plant_id: str) -> tuple[str | None, str | None, str | None]:
+        """Return the device id, and its area id and name, of a plant."""
+        from homeassistant.helpers import area_registry as ar  # noqa: PLC0415
+        from homeassistant.helpers import device_registry as dr  # noqa: PLC0415
+
+        device = dr.async_get(self._hass).async_get_device(
+            identifiers={(DOMAIN, plant_id)}
+        )
+        if device is None:
+            return None, None, None
+        area = (
+            ar.async_get(self._hass).async_get_area(device.area_id)
+            if device.area_id is not None
+            else None
+        )
+        if area is None:
+            return device.id, None, None
+        name = area.name.strip()[:ARCHIVED_AREA_NAME_MAX_LEN].strip()
+        return device.id, area.id, name or None
+
+    def archived_by_device(self, device_id: str) -> ArchivedPlant | None:
+        """Return the retired plant whose removed device had ``device_id``."""
+        return next(
+            (
+                record
+                for record in self._snapshot.archived_plants.values()
+                if record.device_id == device_id
+            ),
+            None,
+        )
 
     async def _async_set_lifecycle_state(
         self,
@@ -2448,6 +2845,10 @@ class SmartPlantsManager:
                 plants=read_plants,
                 pending_operations=self._snapshot.pending_operations,
                 tombstones=self._snapshot.tombstones,
+                archived_image_ids=archived_image_ids(
+                    self._snapshot.archived_plants.values()
+                ),
+                archived_plant_ids=tuple(self._snapshot.archived_plants),
             )
             if not completed_ops and not completed_tombstones and not plant_updates:
                 pending_cleanup = tuple(
@@ -2499,7 +2900,8 @@ class SmartPlantsManager:
                 for plant_id, plant in plant_updates.items():
                     if plant_id in merged_plants and plant_id not in stale_plant_ids:
                         merged_plants[plant_id] = plant
-                progressed = InventorySnapshot(
+                progressed = replace(
+                    self._snapshot,
                     revision=self._snapshot.revision + 1,
                     plants=merged_plants,
                     pending_operations=remaining_ops,
@@ -2864,6 +3266,32 @@ def _tombstones_with_room(tombstones: tuple[Tombstone, ...]) -> tuple[Tombstone,
     )
     kept = [tombstone for tombstone in tombstones if tombstone is not victim]
     return _tombstones_with_room(tuple(kept))
+
+
+_LIFECYCLE_NOTES: dict[str, dict[str, str]] = {
+    "en": {"retired": "Retired", "restored": "Restored"},
+    "de": {"retired": "Archiviert", "restored": "Wiederhergestellt"},
+}
+
+
+def _lifecycle_note(language: str | None, key: str) -> str:
+    """Care note text for a retire or a restore, in the Home Assistant language."""
+    texts = _LIFECYCLE_NOTES[
+        "de" if (language or "").lower().startswith("de") else "en"
+    ]
+    return texts[key]
+
+
+def _free_name(name: str, taken: set[str]) -> str:
+    """Return ``name``, or ``name 2``, ``name 3``... when a live plant uses it."""
+    if name.casefold() not in taken:
+        return name
+    for number in range(2, COLLECTION_MAX_COUNT + 2):
+        suffix = f" {number}"
+        candidate = f"{name[: _NAME_MAX_LEN - len(suffix)].rstrip()}{suffix}"
+        if candidate.casefold() not in taken:
+            return candidate
+    return name
 
 
 def _snooze_ended(plant: PlantRecord, now: datetime) -> bool:
@@ -3610,6 +4038,12 @@ def _is_image_still_referenced(
             continue
         if other.image is not None and other.image.id == image_id:
             return True
+    if image_id in archived_image_ids(
+        record
+        for record_id, record in snapshot.archived_plants.items()
+        if record_id != exclude_plant_id
+    ):
+        return True
     for operation in snapshot.pending_operations:
         if operation.plant_id == exclude_plant_id:
             continue

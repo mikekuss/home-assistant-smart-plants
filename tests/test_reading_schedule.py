@@ -533,6 +533,7 @@ def _seed(hass_storage: dict[str, Any], *, minor: int, plants: list[Any]) -> Non
             "plants": plants,
             "pending_operations": [],
             "tombstones": [],
+            "archived_plants": [],
         },
     }
 
@@ -581,7 +582,7 @@ def _plant(tasks: list[dict[str, Any]]) -> dict[str, Any]:
 async def test_minor_thirteen_loads_unchanged_and_saves_as_current(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
-    assert STORAGE_MINOR_VERSION == 17
+    assert STORAGE_MINOR_VERSION == 18
     plant = _plant([_task_row()])
     _seed(hass_storage, minor=13, plants=[plant])
 
@@ -671,7 +672,7 @@ async def test_current_minor_keeps_reading_tasks(
 async def test_newer_minor_is_rejected(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
-    assert STORAGE_MINOR_VERSION + 1 == 18
+    assert STORAGE_MINOR_VERSION + 1 == 19
     _seed(hass_storage, minor=STORAGE_MINOR_VERSION + 1, plants=[])
     with pytest.raises(SmartPlantsUnsupportedStorageError):
         await SmartPlantsStore(hass).async_load()

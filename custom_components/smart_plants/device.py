@@ -107,6 +107,9 @@ class SmartPlantsDeviceReconciler:
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
         self._hass = hass
         self._entry_id = entry_id
+        # Photos of retired plants. Set for each replay pass; no cleanup
+        # path may unlink one of them.
+        self._archived_image_ids: frozenset[str] = frozenset()
 
     def _registry(self) -> dr.DeviceRegistry:
         return dr.async_get(self._hass)
@@ -274,6 +277,8 @@ class SmartPlantsDeviceReconciler:
         plants: dict[str, PlantRecord],
         pending_operations: tuple[PendingOperation, ...],
         tombstones: tuple[Tombstone, ...],
+        archived_image_ids: frozenset[str] = frozenset(),
+        archived_plant_ids: Iterable[str] = (),
     ) -> tuple[
         frozenset[str],
         frozenset[str],
@@ -293,9 +298,11 @@ class SmartPlantsDeviceReconciler:
         completed_tombstones: set[str] = set()
         plant_updates: dict[str, PlantRecord] = {}
         images_dir = get_images_dir(self._hass)
+        self._archived_image_ids = archived_image_ids
         known_plant_ids = {
             *plants,
             *(tombstone.plant_id for tombstone in tombstones),
+            *archived_plant_ids,
         }
 
         # Only the newest photo operation of a plant may still change its
@@ -427,6 +434,7 @@ class SmartPlantsDeviceReconciler:
                 plant_updates=plant_updates,
                 pending_operations=pending_operations,
                 completed_ops=completed_ops,
+                protected=self._archived_image_ids,
             ):
                 await self._hass.async_add_executor_job(
                     delete_image_file, images_dir, payload_image
@@ -449,6 +457,7 @@ class SmartPlantsDeviceReconciler:
             referenced_ids = _referenced_image_ids(
                 plants, plant_updates, pending_operations, completed_ops
             )
+            referenced_ids.update(self._archived_image_ids)
 
             files = await self._hass.async_add_executor_job(
                 list_image_files, images_dir
@@ -532,6 +541,7 @@ class SmartPlantsDeviceReconciler:
                 plant_updates=plant_updates,
                 pending_operations=pending_operations,
                 completed_ops={*completed_ops, op.op_id},
+                protected=self._archived_image_ids,
             ):
                 await self._hass.async_add_executor_job(
                     delete_image_file, images_dir, new_image.id
@@ -556,6 +566,7 @@ class SmartPlantsDeviceReconciler:
                     plant_updates=plant_updates,
                     pending_operations=pending_operations,
                     completed_ops=completed_ops,
+                    protected=self._archived_image_ids,
                 )
             ):
                 await self._hass.async_add_executor_job(
@@ -612,6 +623,7 @@ class SmartPlantsDeviceReconciler:
             plant_updates=plant_updates,
             pending_operations=pending_operations,
             completed_ops={*completed_ops, op.op_id},
+            protected=self._archived_image_ids,
         ):
             await self._hass.async_add_executor_job(
                 delete_image_file, images_dir, image_id
@@ -660,6 +672,7 @@ class SmartPlantsDeviceReconciler:
             plant_updates=plant_updates,
             pending_operations=pending_operations,
             completed_ops=completed_ops,
+            protected=self._archived_image_ids,
         ):
             await self._hass.async_add_executor_job(
                 delete_image_file, images_dir, previous_image_id
@@ -700,6 +713,7 @@ def _is_image_safely_deletable(  # noqa: PLR0913
     plant_updates: dict[str, PlantRecord],
     pending_operations: tuple[PendingOperation, ...],
     completed_ops: set[str],
+    protected: frozenset[str] = frozenset(),
 ) -> bool:
     """
     Return True only when ``image_id`` is safe to unlink for a deletion.
@@ -709,7 +723,11 @@ def _is_image_safely_deletable(  # noqa: PLR0913
     (which could otherwise resurface a "missing" image on the next
     startup pass). Cross-record validation catches a stale tombstone
     that names a shared or reused image id, and refuses to delete.
+    ``protected`` holds ids that are never deletable, such as the photos
+    of retired plants.
     """
+    if image_id in protected:
+        return False
     for plant_id, plant in plants.items():
         if plant_id == tombstone_plant_id:
             continue
