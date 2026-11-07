@@ -263,7 +263,7 @@ test("groups the plant menu and marks notifications in the Automations card", as
   await expect(page.getByRole("heading", { name: "Office Aloe", level: 1 })).toBeVisible();
   await page.getByRole("button", { name: "Menu", exact: true }).click();
   const items = await page.locator("smart-plants-panel .panel-appbar ha-dropdown").evaluate(menu => [...menu.children].filter(n => n.slot !== "trigger").map(n => n.getAttribute("value") ?? n.localName));
-  expect(items).toEqual(["notifications", "snooze", "wa-divider", "open-device", "download-diagnostics", "wa-divider", "toggle-monitoring", "delete-plant"]);
+  expect(items).toEqual(["notifications", "snooze", "wa-divider", "open-device", "download-diagnostics", "wa-divider", "toggle-monitoring", "retire-plant", "delete-plant"]);
   await expect(page.getByRole("separator")).toHaveCount(2);
   await expect(menuItem(page, "Notifications")).toHaveAccessibleName("Notifications 2");
   await page.keyboard.press("Escape");

@@ -358,6 +358,14 @@ export class SmartPlantsWizard extends LitElement {
     else this.extras = [...this.extras.filter(x => x.role !== role), { role, entity_id: id }];
     if (this.pendingRole === role) this.pendingRole = null;
   }
+  // Start a new plant with these sensors and this area, as after retiring a
+  // plant whose sensors stay in place. Only an untouched first step takes it,
+  // so nothing the user already chose is replaced.
+  public prefill(input: { area: string; sensors: { role: ReadingRole; entity_id: string }[] }): void {
+    if (this.step !== 1 || this.busy || this.name || this.assignedIds.length) return;
+    if (input.area && this.knownAreas.some(a => a.area_id === input.area)) this.area = input.area;
+    for (const sensor of input.sensors) if (this.states[sensor.entity_id]) this.assign(sensor.role, sensor.entity_id);
+  }
   private unassign(role: ReadingRole): void {
     if (role === "moisture") this.moisture = { ...this.moisture, sources: [], primary_entity_id: null };
     else this.extras = this.extras.filter(x => x.role !== role);

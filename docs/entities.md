@@ -35,7 +35,7 @@ real IDs on the device page (**⋮ > Open device** in the panel).
 
 All entities are enabled by default, except the moisture numbers, *Last watered*, the
 [buttons](#buttons) and the *next due* and *last done* sensors of care tasks. To use one,
-enable it on the device page. Deleting a plant removes its device and entities.
+enable it on the device page. Deleting or retiring a plant removes its device and entities.
 
 ## Sensors
 
@@ -213,6 +213,13 @@ sensor shows no attributes, so a state condition on `snoozed: false` doesn't mat
 
 A paused plant's entities stay registered and become unavailable until you resume it. Home
 Assistant keeps their history.
+
+## Retired plants
+
+Retiring a plant removes its device and every entity, like a delete. The entity IDs become
+free, so a new plant with the same name gets them. Restoring a retired plant creates the device
+and entities again with the same unique IDs. Home Assistant keeps the old entity history until
+the recorder purges it.
 
 ## Not exposed as entities
 
