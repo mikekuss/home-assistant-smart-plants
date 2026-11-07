@@ -106,6 +106,8 @@ def _inventory_summary(snapshot: Any) -> dict[str, Any]:
         "snoozed_until": sorted(snoozed_until),
         "pending_operation_count": len(snapshot.pending_operations),
         "tombstone_count": len(snapshot.tombstones),
+        # Retired plants hold names, areas and care notes, so only how many.
+        "archived_count": len(snapshot.archived_plants),
     }
 
 

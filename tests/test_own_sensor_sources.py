@@ -201,6 +201,7 @@ async def test_stored_own_sensor_keeps_working_until_replaced(
             "plants": [plant.as_storage()],
             "pending_operations": [],
             "tombstones": [],
+            "archived_plants": [],
         },
     }
     manager = SmartPlantsManager(hass)

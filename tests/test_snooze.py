@@ -98,6 +98,7 @@ def _seed(hass_storage: dict[str, Any], *, minor: int, plants: list[Any]) -> Non
             "plants": plants,
             "pending_operations": [],
             "tombstones": [],
+            "archived_plants": [],
         },
     }
 
@@ -124,7 +125,7 @@ def _state_attributes(
 async def test_minor_fourteen_migrates_without_snooze(
     hass: HomeAssistant, hass_storage: dict[str, Any]
 ) -> None:
-    assert STORAGE_MINOR_VERSION == 17
+    assert STORAGE_MINOR_VERSION == 18
     row = _plant_row()
     del row["snoozed_until"]
     _seed(hass_storage, minor=14, plants=[row])

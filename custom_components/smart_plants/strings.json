@@ -741,6 +741,9 @@
     "pending_operations_full": {
       "message": "Smart Plants already has {max} unfinished changes waiting to be completed. Restart Home Assistant to complete them. If this message comes back, check the Home Assistant log for Smart Plants errors."
     },
+    "archive_limit": {
+      "message": "Smart Plants keeps at most {max} retired plants. Delete some retired plants for good before you retire another one."
+    },
     "plant_limit": {
       "message": "Smart Plants manages at most {max} plants. Delete a plant before you add another one."
     },
