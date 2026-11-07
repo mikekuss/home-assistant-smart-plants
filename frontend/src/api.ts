@@ -12,6 +12,7 @@ import type {
   MoistureInput, HAArea, HAEntity, HADevice, HAState, Evaluation,
   HealthEvaluation, PlantPlacement, PlantSpecies, SensorSource,
   CareHistory, CareEvent, CareTaskInput, CareTaskChanges, CareTaskCompletion, RestPeriod,
+  ArchivedPlantSummary, ArchivedPlantView, RestoreCheck,
 } from "./types.js";
 import { validPlant, validPlantList, validResponse, validState } from "./validation.js";
 import { parseOverview } from "./overview-model.js";
@@ -184,7 +185,9 @@ export const api = {
   async subscribeRegistry(hass: HomeAssistantLike, callback: () => void): Promise<() => void> {
     const unsubscribers: (() => void)[] = [];
     try {
-      if (hass.connection.subscribeEvents) for (const event of ["area_registry_updated", "device_registry_updated", "entity_registry_updated"]) {
+      // Deleting a retired plant for good touches no registry, so the
+      // integration announces it with its own event.
+      if (hass.connection.subscribeEvents) for (const event of ["area_registry_updated", "device_registry_updated", "entity_registry_updated", "smart_plants_archive_updated"]) {
         unsubscribers.push(await hass.connection.subscribeEvents(callback, event));
       }
     } catch (error) { unsubscribers.forEach(fn => fn()); throw error; }
@@ -301,10 +304,50 @@ export const api = {
   },
 
   async list(hass: HomeAssistantLike): Promise<PlantRecord[]> {
-    const result = await send<{ plants: PlantRecord[] }>(hass, {
+    return (await api.listWithArchive(hass)).plants;
+  },
+
+  // The live plants, and how many plants are retired.
+  async listWithArchive(hass: HomeAssistantLike): Promise<{ plants: PlantRecord[]; archivedCount: number }> {
+    const result = await send<{ plants: PlantRecord[]; archived_count?: unknown }>(hass, {
       type: "smart_plants/plants/list",
     });
-    return validPlantList(result.plants) as PlantRecord[];
+    const count = result.archived_count;
+    return {
+      plants: validPlantList(result.plants) as PlantRecord[],
+      archivedCount: typeof count === "number" && Number.isInteger(count) && count > 0 ? count : 0,
+    };
+  },
+
+  async archive(hass: HomeAssistantLike, plantId: string, expectedRevision: number): Promise<ArchivedPlantSummary> {
+    return (await send<{ archived: ArchivedPlantSummary }>(hass, { type: "smart_plants/plants/archive", plant_id: plantId, expected_revision: expectedRevision })).archived;
+  },
+
+  async archiveList(hass: HomeAssistantLike): Promise<ArchivedPlantSummary[]> {
+    const result = await send<{ plants?: unknown }>(hass, { type: "smart_plants/archive/list" });
+    if (!Array.isArray(result?.plants)) throw new ApiError("invalid_response", "Invalid archive response.");
+    return result.plants as ArchivedPlantSummary[];
+  },
+
+  async archiveGet(hass: HomeAssistantLike, plantId: string): Promise<ArchivedPlantView> {
+    return (await send<{ plant: ArchivedPlantView }>(hass, { type: "smart_plants/archive/get", plant_id: plantId })).plant;
+  },
+
+  async restoreCheck(hass: HomeAssistantLike, plantId: string): Promise<RestoreCheck> {
+    return send<RestoreCheck>(hass, { type: "smart_plants/archive/restore_check", plant_id: plantId });
+  },
+
+  // The check the user saw goes along; the backend refuses with "conflict"
+  // when its answer is different now.
+  async restore(hass: HomeAssistantLike, plantId: string, expectedRevision: number, name: string, includeSourcesInUse: boolean, check: Pick<RestoreCheck, "name_taken" | "sources_in_use">): Promise<PlantRecord> {
+    return (await send<{ plant: PlantRecord }>(hass, {
+      type: "smart_plants/archive/restore", plant_id: plantId, expected_revision: expectedRevision, name, include_sources_in_use: includeSourcesInUse,
+      expected_name_taken: check.name_taken, expected_sources_in_use: check.sources_in_use.map(item => item.entity_id),
+    })).plant;
+  },
+
+  async deleteArchived(hass: HomeAssistantLike, plantId: string, expectedRevision: number): Promise<void> {
+    await send<Record<string, never>>(hass, { type: "smart_plants/archive/delete", plant_id: plantId, expected_revision: expectedRevision });
   },
 
   async create(

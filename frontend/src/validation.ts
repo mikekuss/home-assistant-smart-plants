@@ -5,6 +5,10 @@ const text = (v: unknown, max = 500): v is string => typeof v === "string" && v.
 const nullableText = (v: unknown, max = 500) => v === null || text(v, max);
 const integer = (v: unknown, min: number, max: number) => typeof v === "number" && Number.isSafeInteger(v) && v >= min && v <= max;
 const timestamp = (v: unknown) => text(v, 64) && /^\d{4}-\d\d-\d\dT/.test(v) && Number.isFinite(Date.parse(v));
+// A retired plant as the archive commands return it.
+const archivedSummary = (v: unknown): boolean => object(v) && text(v.id, 200) && integer(v.revision, 1, Number.MAX_SAFE_INTEGER) && text(v.name, 200) &&
+  timestamp(v.created_at) && timestamp(v.archived_at) && (v.acquired_at === null || text(v.acquired_at, 64)) &&
+  (v.species === null || object(v.species)) && (v.image === null || object(v.image)) && nullableText(v.area_name, 100) && integer(v.event_count, 0, 10_000);
 // The backend stores acquired_at as a full timestamp, but older or API-written
 // records may still carry a calendar date such as "2024-03-01".
 const acquiredAt = (v: unknown) => v === null || timestamp(v) || (typeof v === "string" && /^\d{4}-\d\d-\d\d$/.test(v) && Number.isFinite(Date.parse(v)));
@@ -249,7 +253,19 @@ export function validResponse(msg: Record<string, unknown>, v: unknown): boolean
     return new Set(kept.map(p => p.id)).size === kept.length;
   }
   if (command === "smart_plants/roles/list") return Array.isArray(v.roles) && v.roles.every(r => object(r) && text(r.role) && text(r.source_domain) && Array.isArray(r.aggregations) && r.aggregations.every(a => text(a)) && Array.isArray(r.thresholds) && r.thresholds.every(t => object(t) && text(t.key) && text(t.entity_role) && text(t.translation_key)) && Array.isArray(r.entities) && r.entities.every(e => object(e) && text(e.role) && text(e.platform) && text(e.translation_key)));
-  if (command === "smart_plants/plants/delete") return Object.keys(v).length === 0;
+  if (command === "smart_plants/plants/delete" || command === "smart_plants/archive/delete") return Object.keys(v).length === 0;
+  // Retired plants: a summary names the plant it is about; the detail carries
+  // its care log and sensors.
+  if (command === "smart_plants/plants/archive") return archivedSummary(v.archived) && (v.archived as Record<string, unknown>).id === msg.plant_id;
+  if (command === "smart_plants/archive/list") return Array.isArray(v.plants) && v.plants.every(archivedSummary) && new Set(v.plants.map(p => (p as Record<string, unknown>).id)).size === v.plants.length;
+  if (command === "smart_plants/archive/get") {
+    if (!archivedSummary(v.plant) || !object(v.plant) || v.plant.id !== msg.plant_id) return false;
+    return Array.isArray(v.plant.events) && v.plant.events.every(validCareEvent) && object(v.plant.sources) && object(v.plant.summary);
+  }
+  if (command === "smart_plants/archive/restore_check") {
+    return typeof v.name_taken === "boolean" && text(v.suggested_name) && Array.isArray(v.sources_in_use) && Array.isArray(v.sources_missing) &&
+      typeof v.area_missing === "boolean" && (v.blocked === null || v.blocked === "limit" || v.blocked === "busy");
+  }
   // The reply carries the snooze end the backend stored, in UTC; asking for the
   // current end again leaves the revision unchanged.
   if (command === "smart_plants/plants/snooze") {

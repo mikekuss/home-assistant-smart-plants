@@ -1391,6 +1391,65 @@ var Me = {
 	"manage.delete": "Pflanze löschen",
 	"manage.delete_hint": "Entfernt die Pflanze, ihr Gerät, die Entitäten und den Pflegeverlauf",
 	"manage.delete_button": "Löschen",
+	"api_error.busy": "Smart Plants schließt gerade noch eine Änderung an dieser Pflanze ab. Versuche es gleich noch einmal.",
+	"api_error.conflict": "Inzwischen hat sich etwas geändert. Prüfe die Angaben und versuche es noch einmal.",
+	"api_error.limit": "Für eine weitere Pflanze ist kein Platz. Smart Plants behält nur eine begrenzte Zahl an Pflanzen und archivierten Pflanzen. Lösche eine, die du nicht mehr brauchst, und versuche es dann noch einmal.",
+	"manage.retire": "Pflanze archivieren",
+	"manage.retire_hint": "Entfernt Gerät und Entitäten, gibt die Sensoren frei, behält Foto und Pflegeverlauf",
+	"manage.retire_button": "Archivieren",
+	"manage.retire_menu": "Pflanze archivieren…",
+	"dialog.delete_retire_hint": "Wenn du Foto und Pflegeverlauf behalten willst, archiviere die Pflanze stattdessen.",
+	"dialog.delete_retire_instead": "Stattdessen archivieren",
+	"dialog.retire_title": "{name} archivieren?",
+	"dialog.retire_body": "Gerät und Entitäten werden entfernt, und die Sensoren sind frei für eine andere Pflanze. Foto und Pflegeverlauf bleiben im Archiv. Dort kannst du die Pflanze wiederherstellen oder endgültig löschen.",
+	"dialog.retire_automations_one": "{count} Automation nutzt Entitäten dieser Pflanze und funktioniert dann nicht mehr.",
+	"dialog.retire_automations_other": "{count} Automationen nutzen Entitäten dieser Pflanze und funktionieren dann nicht mehr.",
+	"dialog.retire_confirm": "Archivieren",
+	"archive.menu": "Archiv",
+	"archive.title": "Archiv",
+	"archive.intro": "Pflanzen, die du archiviert hast, mit Foto und Pflegeverlauf. Sie haben kein Gerät und keine Entitäten mehr.",
+	"archive.loading": "Archiv wird geladen…",
+	"archive.empty": "Das Archiv ist leer.",
+	"archive.date_range": "{start} – {end}",
+	"archive.fact_acquired": "Erworben",
+	"archive.fact_added": "Hinzugefügt",
+	"archive.fact_retired": "Archiviert",
+	"archive.fact_monitored": "Überwacht",
+	"archive.years_one": "{count} Jahr",
+	"archive.years_other": "{count} Jahre",
+	"archive.months_one": "{count} Monat",
+	"archive.months_other": "{count} Monate",
+	"archive.duration_both": "{years}, {months}",
+	"archive.days_one": "{count} Tag",
+	"archive.days_other": "{count} Tage",
+	"archive.less_than_day": "Weniger als ein Tag",
+	"archive.care_count": "{kind}: {count}",
+	"archive.care_heading": "Pflegeverlauf",
+	"archive.restore": "Wiederherstellen",
+	"archive.delete": "Endgültig löschen",
+	"archive.retired_toast": "{name} archiviert",
+	"archive.retired_new_plant": "Neue Pflanze mit diesen Sensoren",
+	"archive.retired_open": "Öffnen",
+	"archive.restored_toast": "{name} wiederhergestellt",
+	"archive.deleted_toast": "{name} endgültig gelöscht",
+	"archive.restore_title": "{name} wiederherstellen?",
+	"archive.restore_body": "Die Pflanze kommt mit Foto, Pflegeverlauf, Art und Sensoren zurück. Die Schwellenwerte richten sich wieder nach der Art. Eigene Schwellenwerte und Pflegeaufgaben wurden nicht behalten.",
+	"archive.restore_name": "Name",
+	"archive.restore_name_taken": "Es gibt schon eine Pflanze namens {name}.",
+	"archive.restore_name_required": "Gib einen Namen ein.",
+	"archive.restore_in_use": "Diese Sensoren nutzen jetzt andere Pflanzen:",
+	"archive.restore_share": "Auch für diese Pflanze verwenden",
+	"archive.restore_missing": "Diese Sensoren gibt es nicht mehr, sie werden weggelassen:",
+	"archive.restore_area_missing": "Den Bereich {area} gibt es nicht mehr. Die Pflanze bekommt keinen Bereich.",
+	"archive.restore_without": "Ohne sie wiederherstellen",
+	"archive.restore_confirm": "Wiederherstellen",
+	"archive.restore_changed": "Inzwischen hat eine andere Pflanze diesen Namen oder einen Sensor übernommen. Prüfe die Angaben und stelle die Pflanze dann wieder her.",
+	"archive.restore_blocked_limit": "Smart Plants verwaltet schon so viele Pflanzen, wie es kann. Lösche zuerst eine Pflanze.",
+	"archive.restore_blocked_busy": "Das alte Gerät wird noch entfernt. Versuche es gleich noch einmal.",
+	"archive.delete_title": "{name} endgültig löschen?",
+	"archive.delete_body": "Foto und Pflegeverlauf werden entfernt. Das lässt sich nicht rückgängig machen.",
+	"archive.delete_confirm": "Endgültig löschen",
+	"plant_card.retired_body": "{name} wurde archiviert. Foto und Pflegeverlauf findest du in Smart Plants im Archiv.",
 	"care_task_type.fertilize": "Düngen",
 	"care_task_type.prune": "Schneiden",
 	"care_task_type.repot": "Umtopfen",
@@ -2555,6 +2614,65 @@ var Me = {
 	"manage.delete": "Delete plant",
 	"manage.delete_hint": "Removes the plant, its device, entities and care history",
 	"manage.delete_button": "Delete",
+	"api_error.busy": "Smart Plants is still finishing a change to this plant. Try again in a moment.",
+	"api_error.conflict": "Something changed in the meantime. Check the details and try again.",
+	"api_error.limit": "There's no room for another plant. Smart Plants keeps a limited number of plants and retired plants. Delete one you no longer need, then try again.",
+	"manage.retire": "Retire plant",
+	"manage.retire_hint": "Removes the device and entities, frees the sensors, keeps the photo and care history",
+	"manage.retire_button": "Retire",
+	"manage.retire_menu": "Retire plant…",
+	"dialog.delete_retire_hint": "To keep the photo and care history, retire the plant instead.",
+	"dialog.delete_retire_instead": "Retire instead",
+	"dialog.retire_title": "Retire {name}?",
+	"dialog.retire_body": "Its device and entities are removed, and its sensors become free for another plant. The photo and care history are kept under Retired plants. You can restore it or delete it for good there.",
+	"dialog.retire_automations_one": "{count} automation uses this plant's entities and will stop working.",
+	"dialog.retire_automations_other": "{count} automations use this plant's entities and will stop working.",
+	"dialog.retire_confirm": "Retire",
+	"archive.menu": "Retired plants",
+	"archive.title": "Retired plants",
+	"archive.intro": "Plants you retired, with their photo and care history. They have no device or entities.",
+	"archive.loading": "Loading retired plants…",
+	"archive.empty": "There are no retired plants.",
+	"archive.date_range": "{start} – {end}",
+	"archive.fact_acquired": "Acquired",
+	"archive.fact_added": "Added",
+	"archive.fact_retired": "Retired",
+	"archive.fact_monitored": "Monitored for",
+	"archive.years_one": "{count} year",
+	"archive.years_other": "{count} years",
+	"archive.months_one": "{count} month",
+	"archive.months_other": "{count} months",
+	"archive.duration_both": "{years}, {months}",
+	"archive.days_one": "{count} day",
+	"archive.days_other": "{count} days",
+	"archive.less_than_day": "Less than a day",
+	"archive.care_count": "{kind}: {count}",
+	"archive.care_heading": "Care history",
+	"archive.restore": "Restore",
+	"archive.delete": "Delete for good",
+	"archive.retired_toast": "{name} retired",
+	"archive.retired_new_plant": "Add plant with its sensors",
+	"archive.retired_open": "Open",
+	"archive.restored_toast": "{name} restored",
+	"archive.deleted_toast": "{name} deleted for good",
+	"archive.restore_title": "Restore {name}?",
+	"archive.restore_body": "It comes back with its photo, care history, species and sensors. Thresholds follow the species again. Custom thresholds and care tasks were not kept.",
+	"archive.restore_name": "Name",
+	"archive.restore_name_taken": "A plant named {name} already exists.",
+	"archive.restore_name_required": "Enter a name.",
+	"archive.restore_in_use": "These sensors are used by other plants now:",
+	"archive.restore_share": "Use them for this plant too",
+	"archive.restore_missing": "These sensors no longer exist and are left out:",
+	"archive.restore_area_missing": "The area {area} no longer exists. The plant gets no area.",
+	"archive.restore_without": "Restore without them",
+	"archive.restore_confirm": "Restore",
+	"archive.restore_changed": "Another plant took this name or a sensor in the meantime. Check the details, then restore again.",
+	"archive.restore_blocked_limit": "Smart Plants already manages as many plants as it can. Delete a plant first.",
+	"archive.restore_blocked_busy": "The old device is still being removed. Try again in a moment.",
+	"archive.delete_title": "Delete {name} for good?",
+	"archive.delete_body": "Its photo and care history are removed. This can't be undone.",
+	"archive.delete_confirm": "Delete for good",
+	"plant_card.retired_body": "{name} was retired. Its photo and care history are in Smart Plants under Retired plants.",
 	"care_task_type.fertilize": "Fertilize",
 	"care_task_type.prune": "Prune",
 	"care_task_type.repot": "Repot",
@@ -3843,7 +3961,7 @@ function Gt(e) {
 }
 var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code : null, qt = () => He({ language: document.documentElement.lang || "en" }), $ = class extends L {
 	constructor(...e) {
-		super(...e), this._config = null, this._busy = !1, this._photo = null, this._photoFor = null, this._photoRequest = 0;
+		super(...e), this._config = null, this._busy = !1, this._photo = null, this._photoFor = null, this._photoRequest = 0, this._retired = null, this._retiredFor = null;
 	}
 	setConfig(e) {
 		this._config = {
@@ -3871,15 +3989,37 @@ var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		return !this.hass || !this._config?.device_id ? null : Bt(this.hass, this._config.device_id);
 	}
 	_syncPhoto() {
-		let e = this._plant(), t = e?.kind === "plant" && this.isConnected ? e : null;
-		if (t && t.photoId === void 0 && this._photoFor?.startsWith(`${t.plantId}/`)) return;
-		let n = t?.photoId ? `${t.plantId}/${t.photoId}` : null;
-		if (n === this._photoFor || (this._clearPhoto(), this._photoFor = n, !t?.photoId || !this.hass)) return;
-		let r = ++this._photoRequest, i = this.hass, a = `/api/${X}/plants/${encodeURIComponent(t.plantId)}/image?v=${encodeURIComponent(t.photoId)}`;
-		(i.fetchWithAuth ? i.fetchWithAuth(a) : fetch(a, { credentials: "same-origin" })).then(async (e) => {
+		let e = this._plant();
+		this._syncRetired(e);
+		let t = e?.kind === "plant" && this.isConnected ? e : null, n = e?.kind === "missing" && this.isConnected && this._retired?.deviceId === this._config?.device_id ? this._retired : null, r = t ?? (n ? {
+			plantId: n.plantId,
+			photoId: n.imageId
+		} : null);
+		if (r && r.photoId === void 0 && this._photoFor?.startsWith(`${r.plantId}/`)) return;
+		let i = r?.photoId ? `${r.plantId}/${r.photoId}` : null;
+		if (i === this._photoFor || (this._clearPhoto(), this._photoFor = i, !r?.photoId || !this.hass)) return;
+		let a = ++this._photoRequest, o = this.hass, s = `/api/${X}/plants/${encodeURIComponent(r.plantId)}/image?v=${encodeURIComponent(r.photoId)}`;
+		(o.fetchWithAuth ? o.fetchWithAuth(s) : fetch(s, { credentials: "same-origin" })).then(async (e) => {
 			if (!e.ok) return;
 			let t = await e.blob();
-			r === this._photoRequest && t.type.startsWith("image/") && t.size && (this._photo = URL.createObjectURL(t));
+			a === this._photoRequest && t.type.startsWith("image/") && t.size && (this._photo = URL.createObjectURL(t));
+		}).catch(() => void 0);
+	}
+	_syncRetired(e) {
+		let t = e?.kind === "missing" ? this._config?.device_id ?? null : null;
+		if (t === this._retiredFor) return;
+		this._retiredFor = t, this._retired = null;
+		let n = this.hass;
+		t && n?.callWS && n.callWS({
+			type: `${X}/archive/card_info`,
+			device_id: t
+		}).then((e) => {
+			this._retiredFor === t && typeof e?.plant_id == "string" && typeof e.name == "string" && (this._retired = {
+				deviceId: t,
+				plantId: e.plant_id,
+				name: e.name,
+				imageId: typeof e.image_id == "string" ? e.image_id : null
+			});
 		}).catch(() => void 0);
 	}
 	_dropPhoto() {
@@ -3950,8 +4090,9 @@ var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		if (!this._config || !this.hass) return M;
 		let e = this._l;
 		if (!this._config.device_id) return this._warning(e.t("plant_card.name"), e.t("plant_card.no_plant"));
-		let t = this._plant();
-		return !t || t.kind === "missing" ? this._warning(e.t("plant_card.missing_title"), e.t("plant_card.missing_body")) : this._renderPlant(t, e);
+		let t = this._plant(), n = this._retired?.deviceId === this._config.device_id ? this._retired : null;
+		return t?.kind === "missing" && n ? A`<ha-card><div class="retired"><sp-plant-avatar .l=${e} .name=${n.name} .src=${this._photo} @photo-error=${() => this._dropPhoto()}></sp-plant-avatar>
+        <div><strong>${n.name}</strong><p>${e.t("plant_card.retired_body", { name: n.name })}</p></div></div></ha-card>` : !t || t.kind === "missing" ? this._warning(e.t("plant_card.missing_title"), e.t("plant_card.missing_body")) : this._renderPlant(t, e);
 	}
 	_warning(e, t) {
 		return A`<ha-card><div class="warning" role="alert"><ha-icon aria-hidden="true" icon="mdi:alert-outline"></ha-icon><div><strong>${e}</strong><p>${t}</p></div></div></ha-card>`;
@@ -4022,6 +4163,8 @@ Vt = $, Vt.styles = [W, o`
     .warning { display: flex; gap: 10px; padding: 14px; background: color-mix(in srgb, var(--sp-warning) 14%, var(--sp-card)); }
     .warning ha-icon { color: color-mix(in srgb, var(--sp-warning) 70%, var(--sp-text)); }
     .warning p { margin: 2px 0 0; font-size: 13px; }
+    .retired { display: flex; gap: 12px; align-items: center; padding: 14px; }
+    .retired p { margin: 2px 0 0; font-size: 13px; color: var(--secondary-text-color); }
     .warning strong { font-weight: 500; }
     /* A narrow card, such as half a section: area and species stay on one line,
        the reason takes at most two lines, and the last watering shows only the
@@ -4046,7 +4189,7 @@ Vt = $, Vt.styles = [W, o`
       .foot { padding: 6px 6px 8px 12px; }
       .warning { padding: 12px; }
     }
-  `], G([R({ attribute: !1 })], $.prototype, "hass", void 0), G([je()], $.prototype, "_config", void 0), G([je()], $.prototype, "_busy", void 0), G([je()], $.prototype, "_photo", void 0), customElements.get("smart-plants-plant-card-content") || customElements.define(Ht, $);
+  `], G([R({ attribute: !1 })], $.prototype, "hass", void 0), G([je()], $.prototype, "_config", void 0), G([je()], $.prototype, "_busy", void 0), G([je()], $.prototype, "_photo", void 0), G([je()], $.prototype, "_retired", void 0), customElements.get("smart-plants-plant-card-content") || customElements.define(Ht, $);
 function Jt() {
 	let e = qt(), t = {
 		device_id: "plant_card.editor_plant",

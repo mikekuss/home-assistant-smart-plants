@@ -278,7 +278,11 @@ export class SmartPlantsWizard extends LitElement {
     this.busy = true;
     try { const draft = await api.startWizard(this.hass); if (lifecycle === this.lifecycle && this.isConnected) this.draft = draft; }
     catch (e) { if (lifecycle === this.lifecycle) this.fail(e); }
-    finally { if (lifecycle === this.lifecycle) this.busy = false; }
+    finally {
+      if (lifecycle === this.lifecycle) this.busy = false;
+      const pending = this.pendingPrefill; this.pendingPrefill = null;
+      if (pending && lifecycle === this.lifecycle && this.draft) this.prefill(pending);
+    }
   }
   // The common name shown next to the Latin name, in the panel language.
   private commonName(snapshot: SpeciesSnapshot): string | null {
@@ -357,6 +361,18 @@ export class SmartPlantsWizard extends LitElement {
     if (role === "moisture") this.moisture = { ...this.moisture, sources: [this.source(id)], primary_entity_id: id };
     else this.extras = [...this.extras.filter(x => x.role !== role), { role, entity_id: id }];
     if (this.pendingRole === role) this.pendingRole = null;
+  }
+  // A wizard opened for the first time is still loading its draft; prefilled
+  // choices wait until the draft is there.
+  private pendingPrefill: { area: string; sensors: { role: ReadingRole; entity_id: string }[] } | null = null;
+  // Start a new plant with these sensors and this area, as after retiring a
+  // plant whose sensors stay in place. Only an untouched first step takes it,
+  // so nothing the user already chose is replaced.
+  public prefill(input: { area: string; sensors: { role: ReadingRole; entity_id: string }[] }): void {
+    if (this.busy && !this.draft && this.step === 1) { this.pendingPrefill = input; return; }
+    if (this.step !== 1 || this.busy || this.name || this.assignedIds.length) return;
+    if (input.area && this.knownAreas.some(a => a.area_id === input.area)) this.area = input.area;
+    for (const sensor of input.sensors) if (this.states[sensor.entity_id]) this.assign(sensor.role, sensor.entity_id);
   }
   private unassign(role: ReadingRole): void {
     if (role === "moisture") this.moisture = { ...this.moisture, sources: [], primary_entity_id: null };

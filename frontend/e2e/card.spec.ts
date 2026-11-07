@@ -60,8 +60,10 @@ test("admin sees the plants, opens one in the panel and undoes a watering", asyn
   const after = await record(page);
   expect(after.calls).toEqual([expect.objectContaining({ service: "log_care", data: expect.objectContaining({ kind: "watering" }), target: { device_id: "device-kitchen-basil" }, returnResponse: true })]);
   // Undo reads the history for its revision, then deletes the event the action returned.
-  expect(after.ws.map(m => m.type)).toEqual(["smart_plants/care/list", "smart_plants/care/delete"]);
-  expect(after.ws[1]).toMatchObject({ event_id: "event-1" });
+  // The card of the missing plant asked whether the plant was retired.
+  const care = after.ws.filter(m => m.type !== "smart_plants/archive/card_info");
+  expect(care.map(m => m.type)).toEqual(["smart_plants/care/list", "smart_plants/care/delete"]);
+  expect(care[1]).toMatchObject({ event_id: "event-1" });
 
   await aloe.getByRole("button", { name: "Office Aloe", exact: true }).click();
   expect((await record(page)).navigations).toEqual(["/smart-plants/plant/00000000000040008000000000000001"]);
@@ -91,7 +93,7 @@ test("other users get more-info and a toast without Undo", async ({ page }, info
   await expect(toast).toBeVisible();
   await expect(toast.getByRole("button")).toHaveCount(0);
   const after = await record(page);
-  expect(after.ws).toEqual([]);
+  expect(after.ws.filter(m => m.type !== "smart_plants/archive/card_info")).toEqual([]);
   expect(after.navigations).toEqual([]);
 });
 

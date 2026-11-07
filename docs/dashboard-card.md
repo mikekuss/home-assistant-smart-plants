@@ -57,7 +57,8 @@ The card works from the plant's entities, so it knows less than the panel:
 - It shows **No recent data** when *Needs water* or *Too wet* is disabled, because it can't
   tell whether the soil is in range.
 - Without a current moisture reading, it shows no target band and no last watering.
-- A deleted plant shows "Plant not found".
+- A deleted plant shows "Plant not found". A retired plant shows its photo and name and says
+  it was retired.
 
 Home Assistant loads a small script of about 4 KB in every browser session to add the card to
 the picker. The card itself loads when it's on screen. If loading fails, for example during a
