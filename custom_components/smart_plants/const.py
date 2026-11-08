@@ -25,7 +25,7 @@ CONF_OPENPLANTBOOK_CLIENT_SECRET = "openplantbook_client_secret"  # noqa: S105
 
 STORAGE_KEY = f"{DOMAIN}.inventory"
 STORAGE_MAJOR_VERSION = 1
-STORAGE_MINOR_VERSION = 17
+STORAGE_MINOR_VERSION = 18
 # Runtime state of reading care tasks; kept apart from the inventory so
 # sensor-driven changes never bump a plant revision.
 READING_STATE_STORAGE_KEY = f"{DOMAIN}.reading_state"
@@ -67,3 +67,7 @@ IMAGE_ALLOWED_INPUT_TYPES: frozenset[str] = frozenset(
 )
 IMAGE_OUTPUT_CONTENT_TYPE = "image/webp"
 IMAGE_OUTPUT_EXTENSION = ".webp"
+
+# Fired on the event bus when a retired plant is deleted for good. That change
+# touches no registry, so open panels listen for this to refresh their count.
+EVENT_ARCHIVE_UPDATED = "smart_plants_archive_updated"

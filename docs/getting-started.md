@@ -69,10 +69,10 @@ The page has four tabs:
 - **Sensors.** The assigned sensors, settings for readings with several sensors, and
   **Troubleshooting** with the health score and every problem check.
 - **Care.** The care log and the care plan, see [Care](care.md).
-- **Settings.** Name, area, photo, species, targets, more details, pause and delete.
+- **Settings.** Name, area, photo, species, targets, more details, pause, retire and delete.
 
 The **⋮** menu in the top bar has **Notifications**, **Snooze alerts…**, **Open device**,
-**Download diagnostics**, **Pause monitoring** and **Delete plant**.
+**Download diagnostics**, **Pause monitoring**, **Retire plant…** and **Delete plant**.
 
 ### Read the history chart
 
@@ -154,15 +154,48 @@ The Smart Plants triggers and the plant report skip snoozed plants. When the sno
 the plant still needs water, the trigger fires once. See [Snooze alerts](automations.md#snooze-alerts)
 for the actions.
 
-## Pause or delete a plant
+## Pause, retire or delete a plant
 
 Use the **Settings** tab under **Manage**, or the **⋮** menu.
 
 - **Pause monitoring** stops the checks. The plant's entities become unavailable and keep
   their history. Pausing ends a snooze.
 - **Resume monitoring** starts the checks again.
+- **Retire plant…** is for a plant that died or that you gave away. See
+  [Retired plants](#retired-plants).
 - **Delete plant** removes the plant, its device and entities, photo and care history. You
-  can't undo this. Update the automations that used it.
+  can't undo this. Update the automations that used it. The delete dialog also offers
+  **Retire instead**.
+
+### Retired plants
+
+Retiring removes the plant's device and entities, so its sensors are free for another plant
+right away and a new plant with the same name gets the same entity IDs. Smart Plants keeps a
+plain record: name, species, area, photo, acquired and added dates, the sensors it had, and the
+care history. The care history gets a *Retired* note. Thresholds, care tasks, the rest period
+and a snooze are not kept. Before you confirm, the dialog says how many automations use the
+plant's entities; they stop working, as after a delete.
+
+If the plant had sensors, the message after retiring offers **Add plant with its sensors**. It opens
+**Add plant** with the same sensors and area already chosen.
+
+Once a plant is retired, the overview has a **Retired plants** button (an archive box) next to
+the notification bell, and its **⋮** menu has **Retired plants** with the count. Without
+retired plants, neither is there. The list's address is `/smart-plants/retired`, and each
+retired plant has its own page at `/smart-plants/retired/<plant ID>` with its photo, dates, how
+long it was monitored (in days when under a month), how often each kind of care was logged and
+its care history, which you can't edit. From there:
+
+- **Restore** brings the plant back with the same ID, its photo, care history, species, area
+  and sensors. Its thresholds follow the species again, as for a new plant. If a sensor is now
+  used by another plant, the dialog lists it and restores without it, unless you choose to use
+  it for both. A sensor that no longer exists is left out. If a plant with the same name
+  exists, the dialog suggests a new name such as *Basil 2*. If another plant takes the name
+  or one of the sensors while the dialog is open, Smart Plants doesn't restore yet: the dialog
+  shows the new situation and you choose again. The care history gets a *Restored* note.
+- **Delete for good** removes the record and its photo. You can't undo this.
+
+Smart Plants keeps up to 1,000 retired plants. Removing the integration removes them too.
 
 ## Next steps
 

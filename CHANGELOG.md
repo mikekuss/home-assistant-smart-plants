@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Retire a plant that died or that you gave away: **⋮ > Retire plant…** on the plant page,
+  **Retire** under **Manage**, or **Retire instead** in the delete dialog. Its device and
+  entities are removed and its sensors are free at once; its photo, species, dates, sensors and
+  care history are kept. Afterwards you can start a new plant with the same sensors. Retired
+  plants are listed under **Retired plants** in the overview, a header button and a **⋮** entry
+  that appear only once a plant is retired, at `/smart-plants/retired`. From there you can restore a plant or delete
+  it for good. A dashboard card of a retired plant says so. See
+  [Retired plants](docs/getting-started.md#retired-plants).
+
 ## [0.17.0] - 2026-11-06
 
 ### Added

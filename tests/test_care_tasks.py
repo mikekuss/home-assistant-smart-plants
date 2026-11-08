@@ -920,9 +920,10 @@ async def test_minor_eleven_migration_keeps_every_care_event(
             ],
             "pending_operations": [],
             "tombstones": [],
+            "archived_plants": [],
         },
     }
-    assert STORAGE_MINOR_VERSION == 17
+    assert STORAGE_MINOR_VERSION == 18
     loaded = await SmartPlantsStore(hass).async_load()
     plant = loaded.plants["p"]
     assert plant.care_tasks == ()
@@ -965,6 +966,7 @@ async def test_minor_eleven_migration_fails_closed(
             "plants": [plant],
             "pending_operations": [],
             "tombstones": [],
+            "archived_plants": [],
         },
     }
     with pytest.raises(SmartPlantsInvalidStorageError, match="care tasks"):
@@ -992,6 +994,7 @@ async def test_stored_task_with_short_instructions_still_loads(
             "plants": [plant],
             "pending_operations": [],
             "tombstones": [],
+            "archived_plants": [],
         },
     }
     loaded = await SmartPlantsStore(hass).async_load()

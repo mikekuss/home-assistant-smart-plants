@@ -240,6 +240,19 @@ describe("card", () => {
     const unset = await mount(cardHass(), { device_id: undefined });
     expect(text(unset)).toContain("Pick a plant in the card editor.");
   });
+  it("says the plant was retired when the archive knows its device", async () => {
+    const hass = cardHass();
+    delete hass.devices![DEVICE];
+    hass.callWS = async <T,>(msg: Record<string, unknown>): Promise<T> => {
+      hass.ws.push(msg);
+      return (msg.type === "smart_plants/archive/card_info" && msg.device_id === DEVICE ? { plant_id: "old", name: "Basil", image_id: null } : {}) as T;
+    };
+    const content = await mount(hass);
+    await new Promise(resolve => setTimeout(resolve, 0)); await content.updateComplete;
+    expect(hass.ws).toContainEqual({ type: "smart_plants/archive/card_info", device_id: DEVICE });
+    expect(text(content)).toContain("Basil was retired.");
+    expect($(content, "[role='alert']")).toBeNull();
+  });
   it("speaks German when Home Assistant does", async () => {
     const content = await mount(cardHass({}, { language: "de" }));
     const all = deepText(content);
