@@ -33,7 +33,9 @@ function menuValues(el: SmartPlantsPanel): string[] {
   return [...menu.querySelectorAll("ha-dropdown-item")].map(item => item.getAttribute("value") ?? "");
 }
 async function choose(el: SmartPlantsPanel, value: string): Promise<void> {
-  el.shadowRoot!.querySelector(".panel-appbar ha-dropdown")!.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value } } }));
+  // Retire and Delete sit in the plant card's menu, the rest in the header menu.
+  const menu = value === "retire-plant" || value === "delete-plant" ? ".plant-menu" : ".panel-appbar ha-dropdown";
+  el.shadowRoot!.querySelector(menu)!.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value } } }));
   await settle(el);
 }
 async function archivePage(el: SmartPlantsPanel): Promise<SmartPlantsArchive> {

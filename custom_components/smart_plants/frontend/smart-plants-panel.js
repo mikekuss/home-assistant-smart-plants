@@ -2584,6 +2584,7 @@ var Bn = {
 	"detail.log_care": "Pflege eintragen",
 	"detail.key_readings": "Wichtige Messwerte",
 	"detail.menu_open_device": "Gerät öffnen",
+	"detail.plant_menu": "Weitere Aktionen für {name}",
 	"detail.menu_download": "Diagnose herunterladen",
 	"reading_state.ok": "Im Bereich",
 	"reading_state.low": "Zu niedrig",
@@ -3807,6 +3808,7 @@ var Bn = {
 	"detail.log_care": "Log care",
 	"detail.key_readings": "Key readings",
 	"detail.menu_open_device": "Open device",
+	"detail.plant_menu": "More actions for {name}",
 	"detail.menu_download": "Download diagnostics",
 	"reading_state.ok": "In range",
 	"reading_state.low": "Too low",
@@ -6130,7 +6132,12 @@ var Ha = o`
   .snooze-dialog .check input { margin: 0; flex: none; }
   .snooze-dialog .choice-text { display: flex; flex-direction: column; min-width: 0; }
   .snooze-dialog input[type="date"] { max-width: 240px; }
-  .hero-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+  .hero-actions { display: flex; gap: 8px; align-items: flex-start; }
+  .hero-buttons { display: flex; flex-direction: column; gap: 8px; align-items: stretch; max-width: 240px; }
+  /* Labels in any language fit: buttons wrap onto more rows first, and a
+     label longer than a whole row wraps inside its button. */
+  .pd .hero-buttons .btn { min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: center; }
+  .plant-menu { flex: none; }
   .keyreads { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); border-top: 1px solid var(--divider-color, #e0e0e0); }
   .kr { display: flex; flex-direction: column; padding: 12px 20px; border-inline-end: 1px solid var(--divider-color, #e0e0e0); min-width: 0; }
   .kr:last-child { border-inline-end: 0; }
@@ -6275,8 +6282,9 @@ var Ha = o`
     .history-skeleton-rate { height: 78px; }
     .hero { grid-template-columns: auto minmax(0, 1fr); gap: 14px; padding: 14px; }
     .hero-name { font-size: 21px; }
-    .hero-actions { grid-column: 1 / -1; flex-direction: row; }
-    .hero-actions .btn { flex: 1; }
+    .hero-actions { grid-column: 1 / -1; }
+    .hero-buttons { flex: 1; flex-direction: row; flex-wrap: wrap; min-width: 0; max-width: none; }
+    .hero-buttons .btn { flex: 1 1 auto; }
     .keyreads { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kr { padding: 10px 14px; }
     .kr:nth-child(2n) { border-inline-end: 0; }
@@ -10152,10 +10160,13 @@ var $ = class e extends C {
 	}
 	_handleMenuAction(e) {
 		e.detail.item.value === "add-plant" && this._show({ kind: "create" }), e.detail.item.value === "back-to-overview" && this._show({ kind: "list" }), e.detail.item.value === "notifications" && this._openNotificationsPage(), e.detail.item.value === "archive" && !this._formBusy && this._openArchive(null), e.detail.item.value === "snooze-all" && this._openSnoozeAll(), e.detail.item.value === "integration-options" && this._navigate("/config/integrations/integration/smart_plants"), e.detail.item.value === "documentation" && window.open(Hc, "_blank", "noopener,noreferrer");
-		let t = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0;
-		if (!t) return;
-		let n = B(t, this._devices);
-		e.detail.item.value === "open-device" && n && this._navigate(`/config/devices/device/${encodeURIComponent(n.id)}`), e.detail.item.value === "download-diagnostics" && this._downloadDiagnostics(t), e.detail.item.value === "toggle-monitoring" && this._toggleMonitoring(t), e.detail.item.value === "snooze" && this._openSnooze(t), e.detail.item.value === "delete-plant" && this._openDialog("delete", this.shadowRoot?.querySelector(".panel-appbar ha-dropdown [slot=trigger]") ?? null), e.detail.item.value === "retire-plant" && this._openDialog("retire", this.shadowRoot?.querySelector(".panel-appbar ha-dropdown [slot=trigger]") ?? null);
+	}
+	_handlePlantAction(e, t) {
+		let n = B(e, this._devices);
+		t === "open-device" && n && this._navigate(`/config/devices/device/${encodeURIComponent(n.id)}`), t === "download-diagnostics" && this._downloadDiagnostics(e), t === "toggle-monitoring" && this._toggleMonitoring(e), t === "snooze" && this._openSnooze(e), t === "delete-plant" && this._openDialog("delete", this._plantMenuTrigger()), t === "retire-plant" && this._openDialog("retire", this._plantMenuTrigger());
+	}
+	_plantMenuTrigger() {
+		return this.shadowRoot?.querySelector(".plant-menu [slot=trigger]") ?? null;
 	}
 	_openNotificationsPage() {
 		this._formBusy || (this._show({
@@ -11663,7 +11674,7 @@ var $ = class e extends C {
 			choice: "1",
 			date: Qs(t).min,
 			error: ""
-		}, this._openDialog("snooze", this.shadowRoot?.querySelector(".panel-appbar ha-dropdown [slot=trigger]") ?? null);
+		}, this._openDialog("snooze", this._plantMenuTrigger());
 	}
 	_saveSnooze(e) {
 		let t = this._snoozeDraft, n = this._plantById(e);
@@ -11869,8 +11880,21 @@ var $ = class e extends C {
           ${this._renderCareChips(e, n)}
         </div>
         <div class="hero-actions">
-          <button type="button" class="btn filled" ?disabled=${this._blocked || this._watering.has(e.id) || !!this._conflict} @click=${() => void this._logWatering(e.id)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${t.t("card.log_watering")}</button>
-          <button type="button" class="btn outline" @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:note-edit-outline"></ha-icon>${t.t("detail.log_care")}</button>
+          <div class="hero-buttons">
+            <button type="button" class="btn filled" ?disabled=${this._blocked || this._watering.has(e.id) || !!this._conflict} @click=${() => void this._logWatering(e.id)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${t.t("card.log_watering")}</button>
+            <button type="button" class="btn outline" @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:note-edit-outline"></ha-icon>${t.t("detail.log_care")}</button>
+          </div>
+          <ha-dropdown class="plant-menu" @wa-select=${(t) => this._handlePlantAction(e, t.detail.item.value)}>
+            <button slot="trigger" type="button" class="icon-btn" aria-label=${t.t("detail.plant_menu", { name: e.name })}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
+            <ha-dropdown-item value="snooze" ?disabled=${s || e.lifecycle_state !== "active"}>${ec(e.snoozed_until) ? t.t("snooze.menu_change") : t.t("snooze.menu")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>
+            <wa-divider role="separator"></wa-divider>
+            <ha-dropdown-item value="open-device" ?disabled=${!B(e, this._devices)}>${t.t("detail.menu_open_device")}<ha-icon slot="icon" icon="mdi:open-in-new"></ha-icon></ha-dropdown-item>
+            <ha-dropdown-item value="download-diagnostics">${t.t("detail.menu_download")}<ha-icon slot="icon" icon="mdi:download"></ha-icon></ha-dropdown-item>
+            <wa-divider role="separator"></wa-divider>
+            <ha-dropdown-item value="toggle-monitoring" ?disabled=${s}>${e.lifecycle_state === "active" ? t.t("manage.pause") : t.t("manage.resume")}<ha-icon slot="icon" .icon=${e.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
+            <ha-dropdown-item value="retire-plant" ?disabled=${s}>${t.t("manage.retire_menu")}<ha-icon slot="icon" icon="mdi:archive-outline"></ha-icon></ha-dropdown-item>
+            <ha-dropdown-item value="delete-plant" ?disabled=${s}>${t.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>
+          </ha-dropdown>
         </div>
       </div>
       ${Pa(t, n)}
@@ -12125,8 +12149,8 @@ var $ = class e extends C {
 	render() {
 		let e = this._l;
 		if (this.hass?.user?.is_admin === !1) return x`<main><div class="panel-content"><p role="alert">${e.t("panel.admin_required")}</p></div></main>`;
-		let t = this.hass?.localize?.("ui.common.menu") || e.t("panel.menu"), n = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0, r = this._formBusy || this._blocked || !!this._conflict, i = this._notificationCount(), a = x`<ha-dropdown-item value="notifications">${e.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon>${i ? x`<span slot="details" class="menu-count">${i}</span>` : S}</ha-dropdown-item>`, o = i && this._view.kind !== "create" && this._view.kind !== "notifications" ? x`<ha-icon-button slot="actionItems" class="header-bell" .label=${e.tn(i, "panel.bell_one", "panel.bell_other")} .path=${tl}
-      @click=${() => this._openNotificationsPage()}></ha-icon-button>` : S, s = this._archivedCount && this._view.kind === "list" ? x`<ha-icon-button slot="actionItems" class="header-archive" .label=${e.t("archive.menu")} .path=${nl}
+		let t = this.hass?.localize?.("ui.common.menu") || e.t("panel.menu"), n = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0, r = this._notificationCount(), i = x`<ha-dropdown-item value="notifications">${e.t("overview.menu_notifications")}<ha-icon slot="icon" icon="mdi:bell-outline"></ha-icon>${r ? x`<span slot="details" class="menu-count">${r}</span>` : S}</ha-dropdown-item>`, a = r && this._view.kind !== "create" && this._view.kind !== "notifications" ? x`<ha-icon-button slot="actionItems" class="header-bell" .label=${e.tn(r, "panel.bell_one", "panel.bell_other")} .path=${tl}
+      @click=${() => this._openNotificationsPage()}></ha-icon-button>` : S, o = this._archivedCount && this._view.kind === "list" ? x`<ha-icon-button slot="actionItems" class="header-archive" .label=${e.t("archive.menu")} .path=${nl}
       @click=${() => {
 			this._formBusy || this._openArchive(null);
 		}}></ha-icon-button>` : S;
@@ -12137,27 +12161,17 @@ var $ = class e extends C {
 			this._view.kind === "archive" && this._view.plantId && this._archivedCount ? this._openArchive(null, !0) : this._show({ kind: "list" });
 		}}></ha-icon-button>` : this._renderSidebarButton()}
        <h1 slot="title" class="page-title" tabindex="-1">${n ? n.name : this._view.kind === "notifications" ? e.t("notifications.title") : this._view.kind === "archive" ? e.t("archive.title") : "Smart Plants"}</h1>
-       ${s}${o}
+       ${o}${a}
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
          <ha-icon-button slot="trigger" .label=${t} .path=${Qc}></ha-icon-button>
-         ${n ? x`
-         ${a}
-         <ha-dropdown-item value="snooze" ?disabled=${r || n.lifecycle_state !== "active"}>${ec(n.snoozed_until) ? e.t("snooze.menu_change") : e.t("snooze.menu")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>
-         <wa-divider role="separator"></wa-divider>
-         <ha-dropdown-item value="open-device" ?disabled=${!B(n, this._devices)}>${e.t("detail.menu_open_device")}<ha-icon slot="icon" icon="mdi:open-in-new"></ha-icon></ha-dropdown-item>
-         <ha-dropdown-item value="download-diagnostics">${e.t("detail.menu_download")}<ha-icon slot="icon" icon="mdi:download"></ha-icon></ha-dropdown-item>
-         <wa-divider role="separator"></wa-divider>
-         <ha-dropdown-item value="toggle-monitoring" ?disabled=${r}>${n.lifecycle_state === "active" ? e.t("manage.pause") : e.t("manage.resume")}<ha-icon slot="icon" .icon=${n.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
-         <ha-dropdown-item value="retire-plant" ?disabled=${r}>${e.t("manage.retire_menu")}<ha-icon slot="icon" icon="mdi:archive-outline"></ha-icon></ha-dropdown-item>
-         <ha-dropdown-item value="delete-plant" ?disabled=${r}>${e.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>` : x`
-         ${this._view.kind === "list" ? S : x`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${e.t("panel.back_to_overview")}</ha-dropdown-item>`}
+         ${this._view.kind !== "list" && this._view.kind !== "detail" ? x`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${e.t("panel.back_to_overview")}</ha-dropdown-item>` : S}
          <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${e.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${$c}></ha-svg-icon></ha-dropdown-item>
-         ${this._view.kind === "list" ? x`<wa-divider role="separator"></wa-divider>${a}` : S}
+         ${this._view.kind === "list" || this._view.kind === "detail" ? x`<wa-divider role="separator"></wa-divider>${i}` : S}
          ${this._view.kind === "list" && this._archivedCount ? x`<ha-dropdown-item value="archive">${e.t("archive.menu")}<ha-icon slot="icon" icon="mdi:archive-outline"></ha-icon><span slot="details" class="menu-count">${this._archivedCount}</span></ha-dropdown-item>` : S}
          ${this._view.kind === "list" && this._activePlants().length >= 2 ? x`<ha-dropdown-item value="snooze-all" ?disabled=${this._formBusy || this._blocked}>${e.t("snooze.menu_all")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>` : S}
          <wa-divider role="separator"></wa-divider>
          <ha-dropdown-item value="integration-options">${e.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
-         <ha-dropdown-item value="documentation">${e.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>`}
+         <ha-dropdown-item value="documentation">${e.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>
        </ha-dropdown>
        <div class="panel-content">${this._updateAvailable ? x`<div class="update-banner" role="status"><p>${e.t("panel.update_available")}</p><button type="button" @click=${() => this._reload()}>${e.t("panel.reload")}</button></div>` : S}${this._error ? x`<p class="error" role="alert">${this._error}</p>` : S}${this._notice ? x`<p class="notice" role="status">${this._notice}</p>` : S}${this._registryError ? x`<p class="notice" role="alert">${e.t("panel.registry_unavailable")}</p>` : S}
       ${this._creationNotice && this._view.kind !== "create" ? x`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && (this._view.kind !== "detail" || this._view.plantId !== this._createdPlantId) ? x`<button ?disabled=${this._formBusy} @click=${() => {

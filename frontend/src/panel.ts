@@ -722,15 +722,19 @@ export class SmartPlantsPanel extends LitElement {
     if (event.detail.item.value === "snooze-all") this._openSnoozeAll();
     if (event.detail.item.value === "integration-options") this._navigate("/config/integrations/integration/smart_plants");
     if (event.detail.item.value === "documentation") window.open(DOCUMENTATION_URL, "_blank", "noopener,noreferrer");
-    const plant = this._view.kind === "detail" ? this._plantById(this._view.plantId) : undefined;
-    if (!plant) return;
+  }
+  // The plant's own actions sit in the ⋮ menu of the plant's top card.
+  private _handlePlantAction(plant: PlantRecord, value: string): void {
     const device = plantDevice(plant, this._devices);
-    if (event.detail.item.value === "open-device" && device) this._navigate(`/config/devices/device/${encodeURIComponent(device.id)}`);
-    if (event.detail.item.value === "download-diagnostics") this._downloadDiagnostics(plant);
-    if (event.detail.item.value === "toggle-monitoring") this._toggleMonitoring(plant);
-    if (event.detail.item.value === "snooze") this._openSnooze(plant);
-    if (event.detail.item.value === "delete-plant") this._openDialog("delete", this.shadowRoot?.querySelector<HTMLElement>(".panel-appbar ha-dropdown [slot=trigger]") ?? null);
-    if (event.detail.item.value === "retire-plant") this._openDialog("retire", this.shadowRoot?.querySelector<HTMLElement>(".panel-appbar ha-dropdown [slot=trigger]") ?? null);
+    if (value === "open-device" && device) this._navigate(`/config/devices/device/${encodeURIComponent(device.id)}`);
+    if (value === "download-diagnostics") this._downloadDiagnostics(plant);
+    if (value === "toggle-monitoring") this._toggleMonitoring(plant);
+    if (value === "snooze") this._openSnooze(plant);
+    if (value === "delete-plant") this._openDialog("delete", this._plantMenuTrigger());
+    if (value === "retire-plant") this._openDialog("retire", this._plantMenuTrigger());
+  }
+  private _plantMenuTrigger(): HTMLElement | null {
+    return this.shadowRoot?.querySelector<HTMLElement>(".plant-menu [slot=trigger]") ?? null;
   }
   // The Notifications page has its own address, so it can be linked to and
   // Back in the browser leaves it.
@@ -2033,7 +2037,7 @@ export class SmartPlantsPanel extends LitElement {
     const currentDate = current ? snoozeEndDate(current, this._timeZone()) : null;
     // Changing a snooze starts from the day it ends now.
     this._snoozeDraft = currentDate && validSnoozeDate(currentDate, today) ? { choice: "date", date: currentDate, error: "" } : { choice: "1", date: snoozeDateRange(today).min, error: "" };
-    this._openDialog("snooze", this.shadowRoot?.querySelector<HTMLElement>(".panel-appbar ha-dropdown [slot=trigger]") ?? null);
+    this._openDialog("snooze", this._plantMenuTrigger());
   }
   private _saveSnooze(plantId: string): void {
     const draft = this._snoozeDraft; const plant = this._plantById(plantId);
@@ -2243,8 +2247,21 @@ export class SmartPlantsPanel extends LitElement {
           ${this._renderCareChips(plant, o)}
         </div>
         <div class="hero-actions">
-          <button type="button" class="btn filled" ?disabled=${this._blocked || this._watering.has(plant.id) || !!this._conflict} @click=${() => void this._logWatering(plant.id)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${l.t("card.log_watering")}</button>
-          <button type="button" class="btn outline" @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:note-edit-outline"></ha-icon>${l.t("detail.log_care")}</button>
+          <div class="hero-buttons">
+            <button type="button" class="btn filled" ?disabled=${this._blocked || this._watering.has(plant.id) || !!this._conflict} @click=${() => void this._logWatering(plant.id)}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${l.t("card.log_watering")}</button>
+            <button type="button" class="btn outline" @click=${() => this._openCareForm()}><ha-icon aria-hidden="true" icon="mdi:note-edit-outline"></ha-icon>${l.t("detail.log_care")}</button>
+          </div>
+          <ha-dropdown class="plant-menu" @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => this._handlePlantAction(plant, e.detail.item.value)}>
+            <button slot="trigger" type="button" class="icon-btn" aria-label=${l.t("detail.plant_menu", { name: plant.name })}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
+            <ha-dropdown-item value="snooze" ?disabled=${busy || plant.lifecycle_state !== "active"}>${activeSnooze(plant.snoozed_until) ? l.t("snooze.menu_change") : l.t("snooze.menu")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>
+            <wa-divider role="separator"></wa-divider>
+            <ha-dropdown-item value="open-device" ?disabled=${!plantDevice(plant, this._devices)}>${l.t("detail.menu_open_device")}<ha-icon slot="icon" icon="mdi:open-in-new"></ha-icon></ha-dropdown-item>
+            <ha-dropdown-item value="download-diagnostics">${l.t("detail.menu_download")}<ha-icon slot="icon" icon="mdi:download"></ha-icon></ha-dropdown-item>
+            <wa-divider role="separator"></wa-divider>
+            <ha-dropdown-item value="toggle-monitoring" ?disabled=${busy}>${plant.lifecycle_state === "active" ? l.t("manage.pause") : l.t("manage.resume")}<ha-icon slot="icon" .icon=${plant.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
+            <ha-dropdown-item value="retire-plant" ?disabled=${busy}>${l.t("manage.retire_menu")}<ha-icon slot="icon" icon="mdi:archive-outline"></ha-icon></ha-dropdown-item>
+            <ha-dropdown-item value="delete-plant" ?disabled=${busy}>${l.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>
+          </ha-dropdown>
         </div>
       </div>
       ${renderKeyReadings(l, o)}
@@ -2544,7 +2561,6 @@ export class SmartPlantsPanel extends LitElement {
     if (this.hass?.user?.is_admin === false) return html`<main><div class="panel-content"><p role="alert">${l.t("panel.admin_required")}</p></div></main>`;
     const menuLabel = this.hass?.localize?.("ui.common.menu") || l.t("panel.menu");
     const detailPlant = this._view.kind === "detail" ? this._plantById(this._view.plantId) : undefined;
-    const busy = this._formBusy || this._blocked || !!this._conflict;
     // The count and the header bell show only once notifications exist. The
     // bell carries no count, which would read as unread messages.
     const count = this._notificationCount();
@@ -2562,24 +2578,14 @@ export class SmartPlantsPanel extends LitElement {
        ${retired}${bell}
        <ha-dropdown slot="actionItems" @wa-select=${this._handleMenuAction}>
          <ha-icon-button slot="trigger" .label=${menuLabel} .path=${MENU_ICON_PATH}></ha-icon-button>
-         ${detailPlant ? html`
-         ${notificationsItem}
-         <ha-dropdown-item value="snooze" ?disabled=${busy || detailPlant.lifecycle_state !== "active"}>${activeSnooze(detailPlant.snoozed_until) ? l.t("snooze.menu_change") : l.t("snooze.menu")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>
-         <wa-divider role="separator"></wa-divider>
-         <ha-dropdown-item value="open-device" ?disabled=${!plantDevice(detailPlant, this._devices)}>${l.t("detail.menu_open_device")}<ha-icon slot="icon" icon="mdi:open-in-new"></ha-icon></ha-dropdown-item>
-         <ha-dropdown-item value="download-diagnostics">${l.t("detail.menu_download")}<ha-icon slot="icon" icon="mdi:download"></ha-icon></ha-dropdown-item>
-         <wa-divider role="separator"></wa-divider>
-         <ha-dropdown-item value="toggle-monitoring" ?disabled=${busy}>${detailPlant.lifecycle_state === "active" ? l.t("manage.pause") : l.t("manage.resume")}<ha-icon slot="icon" .icon=${detailPlant.lifecycle_state === "active" ? "mdi:pause-circle-outline" : "mdi:play-circle-outline"}></ha-icon></ha-dropdown-item>
-         <ha-dropdown-item value="retire-plant" ?disabled=${busy}>${l.t("manage.retire_menu")}<ha-icon slot="icon" icon="mdi:archive-outline"></ha-icon></ha-dropdown-item>
-         <ha-dropdown-item value="delete-plant" ?disabled=${busy}>${l.t("manage.delete")}<ha-icon slot="icon" icon="mdi:delete-outline"></ha-icon></ha-dropdown-item>` : html`
-         ${this._view.kind !== "list" ? html`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${l.t("panel.back_to_overview")}</ha-dropdown-item>` : nothing}
+         ${this._view.kind !== "list" && this._view.kind !== "detail" ? html`<ha-dropdown-item value="back-to-overview" ?disabled=${this._formBusy}>${l.t("panel.back_to_overview")}</ha-dropdown-item>` : nothing}
          <ha-dropdown-item value="add-plant" ?disabled=${this._blocked}>${l.t("panel.add_plant")}<ha-svg-icon slot="icon" .path=${ADD_ICON_PATH}></ha-svg-icon></ha-dropdown-item>
-         ${this._view.kind === "list" ? html`<wa-divider role="separator"></wa-divider>${notificationsItem}` : nothing}
+         ${this._view.kind === "list" || this._view.kind === "detail" ? html`<wa-divider role="separator"></wa-divider>${notificationsItem}` : nothing}
          ${this._view.kind === "list" && this._archivedCount ? html`<ha-dropdown-item value="archive">${l.t("archive.menu")}<ha-icon slot="icon" icon="mdi:archive-outline"></ha-icon><span slot="details" class="menu-count">${this._archivedCount}</span></ha-dropdown-item>` : nothing}
          ${this._view.kind === "list" && this._activePlants().length >= 2 ? html`<ha-dropdown-item value="snooze-all" ?disabled=${this._formBusy || this._blocked}>${l.t("snooze.menu_all")}<ha-icon slot="icon" icon="mdi:alarm-snooze"></ha-icon></ha-dropdown-item>` : nothing}
          <wa-divider role="separator"></wa-divider>
          <ha-dropdown-item value="integration-options">${l.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
-         <ha-dropdown-item value="documentation">${l.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>`}
+         <ha-dropdown-item value="documentation">${l.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>
        </ha-dropdown>
        <div class="panel-content">${this._updateAvailable ? html`<div class="update-banner" role="status"><p>${l.t("panel.update_available")}</p><button type="button" @click=${() => this._reload()}>${l.t("panel.reload")}</button></div>` : nothing}${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}${this._notice ? html`<p class="notice" role="status">${this._notice}</p>` : nothing}${this._registryError ? html`<p class="notice" role="alert">${l.t("panel.registry_unavailable")}</p>` : nothing}
       ${this._creationNotice && this._view.kind !== "create" ? html`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && !(this._view.kind === "detail" && this._view.plantId === this._createdPlantId) ? html`<button ?disabled=${this._formBusy} @click=${() => { if (this._createdPlantId) this._show({ kind: "detail", plantId: this._createdPlantId }); }}>${l.t("panel.open_created")}</button>` : nothing}` : nothing}

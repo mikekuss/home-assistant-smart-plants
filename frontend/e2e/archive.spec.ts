@@ -22,6 +22,11 @@ async function audit(page: Page, info: TestInfo, name: string) {
   expect(result.violations, `${name}: ${JSON.stringify(result.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })))}`).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${name}: no horizontal scroll`).toBe(true);
 }
+// The plant's own actions sit in the ⋮ menu of the plant's top card.
+async function plantMenu(page: Page, item: string) {
+  await button(page, /^(More actions for|Weitere Aktionen für) /).click();
+  await menuItem(page, item).focus(); await menuItem(page, item).press("Enter");
+}
 async function menu(page: Page, item: string | RegExp) {
   await button(page, /^(Menu|Menü)$/).click();
   await menuItem(page, item).focus(); await menuItem(page, item).press("Enter");
@@ -38,7 +43,7 @@ test("retires a plant, shows it under Retired plants and restores it", async ({ 
   await page.keyboard.press("Escape");
 
   await button(page, "Office Aloe").click();
-  await menu(page, "Retire plant…");
+  await plantMenu(page, "Retire plant…");
   const dialog = page.locator("smart-plants-panel dialog");
   await expect(dialog.getByRole("heading", { name: "Retire Office Aloe?" })).toBeVisible();
   await expect(dialog).toContainText("its sensors become free for another plant");
@@ -70,7 +75,7 @@ test("retires a plant, shows it under Retired plants and restores it", async ({ 
 test("deletes a retired plant for good from its page", async ({ page }, info) => {
   await page.goto(`${url}?seed&tz=UTC`);
   await button(page, "Office Aloe").click();
-  await menu(page, "Delete plant");
+  await plantMenu(page, "Delete plant");
   const dialog = page.locator("smart-plants-panel dialog");
   await dialog.getByRole("button", { name: "Retire instead" }).click();
   await dialog.getByRole("button", { name: "Retire", exact: true }).click();
