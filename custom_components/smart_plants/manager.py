@@ -100,9 +100,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 _UNSET: Any = object()
-_IN_DISPATCH: contextvars.ContextVar[bool] = contextvars.ContextVar(
-    "smart_plants_in_dispatch", default=False
-)
 
 
 class _Subscription:
@@ -137,6 +134,13 @@ class _EventDelivery:
         self.done = done
         self.nested = nested
         self.started = False
+
+
+# The delivery whose subscribers are running in this context. Tasks started by
+# a subscriber copy it, so it is only trusted while that delivery is running.
+_ACTIVE_DELIVERY: contextvars.ContextVar[_EventDelivery | None] = (
+    contextvars.ContextVar("smart_plants_active_delivery", default=None)
+)
 
 
 _TAG_MAX_LEN = 60
@@ -268,14 +272,15 @@ class SmartPlantsManager:
         # strand the events behind its own.
         self._event_queue: deque[_EventDelivery] = deque()
         self._event_worker: asyncio.Task[None] | None = None
-        # Events committed by a subscriber while it handles another event.
-        # They are delivered inline by the subscriber's own call, because the
-        # queue is still busy with the event that subscriber is handling.
-        self._nested_events: list[_EventDelivery] = []
         # Undelivered events by ``id(event)`` so a caller can wait for its own.
         self._event_deliveries: dict[int, _EventDelivery] = {}
-        # Tasks that are delivering a nested event right now.
-        self._event_tasks: set[asyncio.Task[Any]] = set()
+        # Tasks delivering an event committed by a subscriber while its own
+        # event was still being delivered; see ``_queue_event``.
+        self._nested_tasks: set[asyncio.Task[None]] = set()
+        # plant_id -> the record the plant's controllers were last synced to.
+        # A nested event can be delivered before an older queued event of the
+        # same plant; this keeps the older one from rolling controllers back.
+        self._synced_plants: dict[str, PlantRecord] = {}
         # Platform → plant_id → role → entity. Populated by SmartPlantsEntity
         # on ``async_added_to_hass`` and cleared on removal so lookups
         # never return a detached HA entity handle.
@@ -406,14 +411,20 @@ class SmartPlantsManager:
         if delivery is None or delivery.event is not event:
             # Already delivered, or skipped because the manager unloaded.
             return
-        if delivery.nested and not delivery.started:
-            await self._async_deliver_nested(until=delivery)
-            return
         await asyncio.shield(delivery.done)
 
     def _queue_event(self, event: PlantEvent) -> None:
-        """Hand a committed event to ordered delivery; call under the lock."""
-        nested = _IN_DISPATCH.get() or (
+        """
+        Hand a committed event to ordered delivery; call under the lock.
+
+        A subscriber may write while its event is being delivered and wait for
+        that write. Its event cannot wait in the queue behind the event the
+        subscriber is handling, so it gets a delivery task of its own instead.
+        A task that a subscriber merely started and that writes after that
+        delivery finished uses the queue like any other caller.
+        """
+        active = _ACTIVE_DELIVERY.get()
+        nested = (active is not None and not active.done.done()) or (
             self._event_worker is not None
             and asyncio.current_task() is self._event_worker
         )
@@ -422,7 +433,13 @@ class SmartPlantsManager:
         if self._unavailable:
             self._finish_delivery(delivery)
         elif nested:
-            self._nested_events.append(delivery)
+            task = self._hass.async_create_task(
+                self._async_deliver(delivery),
+                "smart_plants nested event delivery",
+                eager_start=False,
+            )
+            self._nested_tasks.add(task)
+            task.add_done_callback(self._nested_tasks.discard)
         else:
             self._event_queue.append(delivery)
             if self._event_worker is None:
@@ -439,8 +456,6 @@ class SmartPlantsManager:
         delivery.started = True
         if self._event_deliveries.get(id(delivery.event)) is delivery:
             del self._event_deliveries[id(delivery.event)]
-        with contextlib.suppress(ValueError):
-            self._nested_events.remove(delivery)
         if not delivery.done.done():
             delivery.done.set_result(None)
 
@@ -448,12 +463,8 @@ class SmartPlantsManager:
         """Deliver queued events one after another until the queue is empty."""
         try:
             while self._event_queue:
-                delivery = self._event_queue[0]
-                await self._async_deliver(delivery)
+                await self._async_deliver(self._event_queue[0])
                 self._event_queue.popleft()
-                # A nested event whose writer stopped waiting for it is
-                # delivered before the next queued event.
-                await self._async_deliver_nested()
         finally:
             self._event_worker = None
             # The loop ends early only when this task itself is cancelled,
@@ -461,48 +472,37 @@ class SmartPlantsManager:
             while self._event_queue:
                 self._finish_delivery(self._event_queue.popleft())
 
-    async def _async_deliver_nested(self, until: _EventDelivery | None = None) -> None:
-        """Deliver nested events in commit order, up to and including ``until``."""
-        task = asyncio.current_task()
-        if task is not None:
-            self._event_tasks.add(task)
-        try:
-            for delivery in tuple(self._nested_events):
-                if not delivery.started:
-                    await self._async_deliver(delivery)
-                if delivery is until:
-                    break
-        finally:
-            if task is not None:
-                self._event_tasks.discard(task)
-        if until is not None and not until.done.done():
-            # Another task started it first; wait for that delivery.
-            await asyncio.shield(until.done)
-
     async def _async_deliver(self, delivery: _EventDelivery) -> None:
         delivery.started = True
         try:
-            await self._async_apply_event(delivery.event)
-        except Exception:
-            # The change is already durable; a failed consumer must not turn
-            # it into a failed mutation or stop the events after it.
-            _LOGGER.exception("Smart Plants failed to deliver %s", delivery.event.kind)
+            await self._async_apply_event(delivery)
         finally:
             self._finish_delivery(delivery)
 
-    async def _async_apply_event(self, event: PlantEvent) -> None:
+    async def _async_apply_event(self, delivery: _EventDelivery) -> None:
         if self._closing or self._unavailable:
             return
-        # Controllers follow the events in commit order, so an older event
-        # can never roll a controller back after a newer one synced it.
-        self._sync_controllers_for(event)
+        event = delivery.event
+        # The change is already durable; a failed controller or tracker update
+        # is logged and the subscribers still get the event.
+        try:
+            self._sync_controllers_for(event)
+        except Exception:
+            _LOGGER.exception(
+                "Smart Plants failed to update controllers for %s", event.kind
+            )
         if self._reading_tracker is not None:
-            self._reading_tracker.handle_event(event)
-        token = _IN_DISPATCH.set(True)
+            try:
+                self._reading_tracker.handle_event(event)
+            except Exception:
+                _LOGGER.exception(
+                    "Smart Plants failed to update reading tasks for %s", event.kind
+                )
+        token = _ACTIVE_DELIVERY.set(delivery)
         try:
             await self._async_notify_subscribers(event)
         finally:
-            _IN_DISPATCH.reset(token)
+            _ACTIVE_DELIVERY.reset(token)
 
     async def _async_notify_subscribers(self, event: PlantEvent) -> None:
         # Snapshot the subscriber list before iterating so an
@@ -622,6 +622,7 @@ class SmartPlantsManager:
         return self.get_role_controller(plant_id, "moisture")
 
     def _create_controllers(self, plant: PlantRecord, *, start: bool) -> None:
+        self._synced_plants[plant.id] = plant
         by_role = self._controllers.setdefault(plant.id, {})
         for definition in role_definitions():
             config = definition.config_for(plant)
@@ -647,13 +648,15 @@ class SmartPlantsManager:
                 controller.close()
         self._controllers.clear()
 
-    def _sync_controllers_for(self, event: PlantEvent) -> None:  # noqa: PLR0912
+    def _sync_controllers_for(self, event: PlantEvent) -> None:
         """
         Update controllers to reflect ``event``.
 
         Runs on the event-dispatch path so entity listeners see a
         controller state that matches the plant record they will read
-        immediately afterwards.
+        immediately afterwards. Changes are taken against the record the
+        controllers were last synced to, so an event delivered after a newer
+        one of the same plant is skipped instead of rolling them back.
         """
         if isinstance(event, PlantAddedEvent):
             if event.plant.lifecycle_state != "active":
@@ -662,33 +665,54 @@ class SmartPlantsManager:
                 return
             self._create_controllers(event.plant, start=True)
         elif isinstance(event, PlantDeletedEvent):
+            self._synced_plants.pop(event.plant_id, None)
             deleted = self._controllers.pop(event.plant_id, {})
             for controller in deleted.values():
                 controller.close()
-        elif isinstance(event, PlantLifecycleChangedEvent):
-            existing = self._controllers.get(event.plant.id)
-            if event.plant.lifecycle_state == "disabled":
-                for controller in (existing or {}).values():
-                    controller.stop()
-            elif event.plant.lifecycle_state == "active":
-                if existing is None:
-                    self._create_controllers(event.plant, start=True)
-                else:
-                    for controller in existing.values():
-                        controller.start()
-        elif isinstance(event, PlantUpdatedEvent):
-            existing = self._controllers.get(event.plant.id, {})
-            moisture_controller = existing.get("moisture")
-            if moisture_controller is not None and (
-                event.previous.care_events != event.plant.care_events
-            ):
-                moisture_controller.set_care_events(event.plant.care_events)
-            for definition in role_definitions():
-                controller = existing.get(definition.key)
-                previous = definition.config_for(event.previous)
-                current = definition.config_for(event.plant)
-                if controller is not None and previous != current:
-                    controller.reconfigure(current)
+        elif isinstance(event, (PlantLifecycleChangedEvent, PlantUpdatedEvent)):
+            plant = event.plant
+            synced = self._synced_plants.get(plant.id)
+            if synced is not None and synced.revision > plant.revision:
+                return
+            if synced is not None:
+                base = synced
+            elif isinstance(event, PlantUpdatedEvent):
+                base = event.previous
+            else:
+                base = plant
+            self._synced_plants[plant.id] = plant
+            if (
+                isinstance(event, PlantLifecycleChangedEvent)
+                or base.lifecycle_state != plant.lifecycle_state
+            ) and self._sync_controller_lifecycle(plant):
+                return
+            self._sync_controller_configs(base, plant)
+
+    def _sync_controller_lifecycle(self, plant: PlantRecord) -> bool:
+        """Start or stop the plant's controllers; ``True`` if newly created."""
+        existing = self._controllers.get(plant.id)
+        if plant.lifecycle_state == "disabled":
+            for controller in (existing or {}).values():
+                controller.stop()
+        elif plant.lifecycle_state == "active":
+            if existing is None:
+                self._create_controllers(plant, start=True)
+                return True
+            for controller in existing.values():
+                controller.start()
+        return False
+
+    def _sync_controller_configs(self, base: PlantRecord, plant: PlantRecord) -> None:
+        existing = self._controllers.get(plant.id, {})
+        moisture_controller = existing.get("moisture")
+        if moisture_controller is not None and base.care_events != plant.care_events:
+            moisture_controller.set_care_events(plant.care_events)
+        for definition in role_definitions():
+            controller = existing.get(definition.key)
+            previous = definition.config_for(base)
+            current = definition.config_for(plant)
+            if controller is not None and previous != current:
+                controller.reconfigure(current)
 
     async def async_unload(self) -> None:
         # Close admission before waiting so queued mutations cannot overtake
@@ -715,18 +739,15 @@ class SmartPlantsManager:
         self._registry_tasks.clear()
         self._snooze_tasks.clear()
         # Drain event delivery. Every committed event is owned by the queue
-        # or by a nested delivery, so this wait is finite: the events that
-        # have not started yet are skipped now that the manager is closing.
+        # or by a nested delivery task, so this wait is finite: the events
+        # that have not started yet are skipped now that the manager closes.
         current = asyncio.current_task()
         worker = self._event_worker
         if worker is not None and worker is not current:
             await asyncio.wait({worker})
-        for delivery in tuple(self._nested_events):
-            if not delivery.started:
-                self._finish_delivery(delivery)
-        event_tasks = [task for task in self._event_tasks if task is not current]
-        if event_tasks:
-            await asyncio.wait(event_tasks)
+        nested_tasks = [task for task in self._nested_tasks if task is not current]
+        if nested_tasks:
+            await asyncio.wait(nested_tasks)
         # Detach controllers so their source-state subscriptions do not
         # outlive the unload; entity teardown then runs against a manager
         # that is already quiescent.
@@ -741,6 +762,7 @@ class SmartPlantsManager:
         except Exception:
             _LOGGER.exception("Smart Plants role controller close failed")
         self._event_deliveries.clear()
+        self._synced_plants.clear()
         self._subscribers.clear()
         self._registry_subscribers.clear()
         self._entity_index.clear()
