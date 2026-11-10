@@ -71,8 +71,10 @@ The page has four tabs:
 - **Care.** The care log and the care plan, see [Care](care.md).
 - **Settings.** Name, area, photo, species, targets, more details, pause, retire and delete.
 
-The **⋮** menu in the top bar has **Notifications**, **Snooze alerts…**, **Open device**,
-**Download diagnostics**, **Pause monitoring**, **Retire plant…** and **Delete plant**.
+The plant's top card has **Watered**, **Log care** and a **⋮** button with the plant's
+actions: **Snooze alerts…**, **Open device**, **Download diagnostics**, **Pause monitoring**,
+**Retire plant…** and **Delete plant**. The **⋮** menu in the top bar has the page-level items:
+**Add plant**, **Notifications**, **Integration options** and **Documentation**.
 
 ### Read the history chart
 
@@ -137,7 +139,7 @@ save.
 
 ## Snooze alerts while you're away
 
-A snooze mutes a plant's alerts. Open the plant and select **⋮ > Snooze alerts…**, then pick
+A snooze mutes a plant's alerts. Open the plant and select **⋮ > Snooze alerts…** in its top card, then pick
 **1 day**, **3 days**, **1 week**, **2 weeks** or **Until date…** (up to a year). The snooze
 lasts until the end of that day in Home Assistant's time zone.
 
@@ -156,7 +158,7 @@ for the actions.
 
 ## Pause, retire or delete a plant
 
-Use the **Settings** tab under **Manage**, or the **⋮** menu.
+Use the **Settings** tab under **Manage**, or the **⋮** button in the plant's top card.
 
 - **Pause monitoring** stops the checks. The plant's entities become unavailable and keep
   their history. Pausing ends a snooze.

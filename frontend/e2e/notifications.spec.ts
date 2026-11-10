@@ -257,15 +257,21 @@ test("shows a bell without a count that opens the page, with the plants each one
   await expect(bell(page)).toHaveCount(0);
 });
 
-test("groups the plant menu and marks notifications in the Automations card", async ({ page }, info) => {
+test("groups the header and plant menus and marks notifications in the Automations card", async ({ page }, info) => {
   await page.goto(`${url}?seed&notifications&automations`);
   await page.locator("smart-plants-overview").getByRole("button", { name: /Office Aloe/ }).first().click();
   await expect(page.getByRole("heading", { name: "Office Aloe", level: 1 })).toBeVisible();
+  const children = (selector: string) => page.locator(selector).evaluate(menu => [...menu.children].filter(n => n.slot !== "trigger").map(n => n.getAttribute("value") ?? n.localName));
+  // The header keeps page-level items; the plant's own actions sit in the plant card's menu.
   await page.getByRole("button", { name: "Menu", exact: true }).click();
-  const items = await page.locator("smart-plants-panel .panel-appbar ha-dropdown").evaluate(menu => [...menu.children].filter(n => n.slot !== "trigger").map(n => n.getAttribute("value") ?? n.localName));
-  expect(items).toEqual(["notifications", "snooze", "wa-divider", "open-device", "download-diagnostics", "wa-divider", "toggle-monitoring", "retire-plant", "delete-plant"]);
+  expect(await children("smart-plants-panel .panel-appbar > ha-dropdown[slot=actionItems]")).toEqual(["add-plant", "wa-divider", "notifications", "wa-divider", "integration-options", "documentation"]);
   await expect(page.getByRole("separator")).toHaveCount(2);
   await expect(menuItem(page, "Notifications")).toHaveAccessibleName("Notifications 2");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "More actions for Office Aloe", exact: true }).click();
+  expect(await children("smart-plants-panel .plant-menu")).toEqual(["snooze", "wa-divider", "open-device", "download-diagnostics", "wa-divider", "toggle-monitoring", "retire-plant", "delete-plant"]);
+  await expect(page.getByRole("separator")).toHaveCount(2);
+  await expect(menuItem(page, "Snooze alerts…")).toBeVisible();
   await page.keyboard.press("Escape");
   const card = page.locator("section[aria-labelledby=automations-heading]");
   const marked = card.getByRole("link", { name: /^Smart Plants: plant needs water/ });

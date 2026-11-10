@@ -293,7 +293,12 @@ export const plantStyles = css`
   .snooze-dialog .check input { margin: 0; flex: none; }
   .snooze-dialog .choice-text { display: flex; flex-direction: column; min-width: 0; }
   .snooze-dialog input[type="date"] { max-width: 240px; }
-  .hero-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+  .hero-actions { display: flex; gap: 8px; align-items: flex-start; }
+  .hero-buttons { display: flex; flex-direction: column; gap: 8px; align-items: stretch; max-width: 240px; }
+  /* Labels in any language fit: buttons wrap onto more rows first, and a
+     label longer than a whole row wraps inside its button. */
+  .pd .hero-buttons .btn { min-width: 0; white-space: normal; overflow-wrap: anywhere; text-align: center; }
+  .plant-menu { flex: none; }
   .keyreads { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); border-top: 1px solid var(--divider-color, #e0e0e0); }
   .kr { display: flex; flex-direction: column; padding: 12px 20px; border-inline-end: 1px solid var(--divider-color, #e0e0e0); min-width: 0; }
   .kr:last-child { border-inline-end: 0; }
@@ -438,8 +443,9 @@ export const plantStyles = css`
     .history-skeleton-rate { height: 78px; }
     .hero { grid-template-columns: auto minmax(0, 1fr); gap: 14px; padding: 14px; }
     .hero-name { font-size: 21px; }
-    .hero-actions { grid-column: 1 / -1; flex-direction: row; }
-    .hero-actions .btn { flex: 1; }
+    .hero-actions { grid-column: 1 / -1; }
+    .hero-buttons { flex: 1; flex-direction: row; flex-wrap: wrap; min-width: 0; max-width: none; }
+    .hero-buttons .btn { flex: 1 1 auto; }
     .keyreads { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kr { padding: 10px 14px; }
     .kr:nth-child(2n) { border-inline-end: 0; }

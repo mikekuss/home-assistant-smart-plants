@@ -35,8 +35,9 @@ async function expand(page: Page, name: string) {
   if (await toggle.getAttribute("aria-expanded") !== "true") await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 }
-async function menu(page: Page, item: string) {
-  await button(page, "Menu").click();
+// The plant's own actions sit in the ⋮ menu of the plant's top card.
+async function plantMenu(page: Page, item: string) {
+  await button(page, /^(More actions for|Weitere Aktionen für) /).click();
   await menuItem(page, item).focus(); await menuItem(page, item).press("Enter");
 }
 async function setEvaluation(page: Page, plant: number, evaluation: Partial<Evaluation>) {
@@ -139,21 +140,69 @@ test("a stopped moisture sensor raises an alert on the Sensors tab", async ({ pa
   await audit(page, info, "sensors-stale-alert");
 });
 
+// The plant menu button keeps the same 8px gap as the care buttons and never
+// covers them, in English, German and with a label longer than any
+// translation, at the narrowest supported width.
+async function heroLayout(page: Page) {
+  return page.evaluate(() => {
+    const root = document.querySelector("smart-plants-panel")!.shadowRoot!;
+    const box = (selector: string) => root.querySelector(selector)!.getBoundingClientRect().toJSON() as DOMRect;
+    return { card: box(".header-card"), menu: box(".plant-menu [slot=trigger]"), buttons: [...root.querySelectorAll(".hero-buttons .btn")].map(b => b.getBoundingClientRect().toJSON() as DOMRect) };
+  });
+}
+async function expectHeroFits(page: Page, label: string) {
+  const { card, menu, buttons } = await heroLayout(page);
+  for (const [index, b] of buttons.entries()) {
+    const name = `${label}, button ${index + 1}`;
+    expect(b.left, `${name} inside the card`).toBeGreaterThanOrEqual(card.left);
+    expect(b.right, `${name} inside the card`).toBeLessThanOrEqual(card.right);
+    const sameRow = b.top < menu.bottom && menu.top < b.bottom;
+    if (sameRow) expect(menu.left - b.right, `${name} keeps 8px from the menu button`).toBeGreaterThanOrEqual(7.5);
+  }
+  for (const [index, b] of buttons.slice(1).entries()) {
+    const previous = buttons[index]!;
+    if (b.top < previous.bottom && previous.top < b.bottom) expect(b.left - previous.right, `${label}: gap between the buttons`).toBeGreaterThanOrEqual(7.5);
+  }
+  expect(menu.right, `${label}: menu button inside the card`).toBeLessThanOrEqual(card.right);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${label}: no horizontal scroll`).toBe(true);
+}
+test("the plant menu button keeps its gap to Watered and Log care in any language", async ({ page }, info) => {
+  const widths = info.project.name === "mobile" ? [320, 375] : [1440];
+  for (const lang of ["en", "de"]) {
+    for (const width of widths) {
+      await page.setViewportSize({ width, height: 812 });
+      await page.goto(`${url}?seed&tz=UTC&lang=${lang}`);
+      await button(page, "Office Aloe").click();
+      await expect(button(page, /^(More actions for|Weitere Aktionen für) Office Aloe$/)).toBeVisible();
+      await expectHeroFits(page, `${lang} ${width}px`);
+    }
+  }
+  // A future translation with much longer labels still fits.
+  await page.evaluate(() => {
+    const root = document.querySelector("smart-plants-panel")!.shadowRoot!;
+    for (const b of root.querySelectorAll(".hero-buttons .btn")) {
+      const text = [...b.childNodes].reverse().find(n => n.nodeType === Node.TEXT_NODE && n.textContent!.trim());
+      if (text) text.textContent = "Pflegemaßnahmeneintragungsbestätigung und noch viel mehr Text";
+    }
+  });
+  await expectHeroFits(page, "long labels");
+});
+
 test("the overflow menu opens the device, downloads diagnostics and pauses monitoring", async ({ page }) => {
   await openPlant(page, "Office Aloe");
   const download = page.waitForEvent("download");
-  await menu(page, "Download diagnostics");
+  await plantMenu(page, "Download diagnostics");
   const file = await download;
   expect(file.suggestedFilename()).toBe(`smart-plants-${id(1)}-diagnostics.json`);
   const text = await (await file.createReadStream()).toArray().then(chunks => Buffer.concat(chunks).toString("utf8"));
   expect(JSON.parse(text)).toMatchObject({ plant: { id: id(1) }, device_id: `device-${id(1)}` });
   expect(text).not.toContain("Office Aloe");
-  await menu(page, "Pause monitoring");
+  await plantMenu(page, "Pause monitoring");
   await expect(header(page).locator("sp-status-chip")).toContainText("Paused");
   expect(await messages(page, "plants/disable")).toHaveLength(1);
-  await menu(page, "Resume monitoring");
+  await plantMenu(page, "Resume monitoring");
   expect(await messages(page, "plants/reenable")).toHaveLength(1);
-  await menu(page, "Open device");
+  await plantMenu(page, "Open device");
   await expect.poll(() => page.evaluate(() => location.pathname)).toBe(`/config/devices/device/device-${id(1)}`);
 });
 

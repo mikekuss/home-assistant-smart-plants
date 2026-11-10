@@ -103,7 +103,7 @@ describe("snoozing in the panel", () => {
   }
   const root = (el: SmartPlantsPanel) => el.shadowRoot!;
   const menuItem = (el: SmartPlantsPanel) => root(el).querySelector<HTMLElement>('ha-dropdown-item[value="snooze"]')!;
-  const openMenu = async (el: SmartPlantsPanel) => { root(el).querySelector(".panel-appbar ha-dropdown")!.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value: "snooze" } } })); await settle(el); };
+  const openMenu = async (el: SmartPlantsPanel) => { root(el).querySelector(".plant-menu")!.dispatchEvent(new CustomEvent("wa-select", { detail: { item: { value: "snooze" } } })); await settle(el); };
   const dialog = (el: SmartPlantsPanel) => root(el).querySelector<HTMLDialogElement>("dialog.snooze-dialog");
   const radio = (el: SmartPlantsPanel, value: string) => dialog(el)!.querySelector<HTMLInputElement>(`input[name=snooze-choice][value="${value}"]`)!;
   const dialogButton = (el: SmartPlantsPanel, name: string) => [...dialog(el)!.querySelectorAll("button")].find(b => b.textContent?.trim() === name)!;
@@ -128,6 +128,14 @@ describe("snoozing in the panel", () => {
     // The status chip stays as it was; a snooze only mutes alerts.
     expect(root(el).querySelector("sp-status-chip")!.status).toBe("no_sensors");
     expect(menuItem(el).textContent).toContain("Change snooze…");
+  });
+
+  it("returns focus to the plant card's menu button when the dialog closes", async () => {
+    const { el } = await mount(structuredClone(sample));
+    await openMenu(el);
+    dialogButton(el, "Cancel").click(); await settle(el);
+    expect(dialog(el)).toBeNull();
+    expect(root(el).activeElement).toBe(root(el).querySelector(".hero-actions .plant-menu [slot=trigger]"));
   });
 
   it("snoozes until a picked day and refuses days outside the range", async () => {

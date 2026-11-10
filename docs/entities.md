@@ -19,7 +19,7 @@ Your own edits on the device page, such as name, area and labels, stay.
 The friendly name is the plant name plus the entity name, for example *Monstera Needs water*.
 Home Assistant creates the entity ID from it once, for example
 `binary_sensor.monstera_needs_water`. Renaming the plant later keeps the entity IDs. Check the
-real IDs on the device page (**⋮ > Open device** in the panel).
+real IDs on the device page (**⋮ > Open device** in the plant's top card in the panel).
 
 ## When entities are created
 

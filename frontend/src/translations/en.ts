@@ -673,6 +673,7 @@ export const en = {
   "detail.log_care": "Log care",
   "detail.key_readings": "Key readings",
   "detail.menu_open_device": "Open device",
+  "detail.plant_menu": "More actions for {name}",
   "detail.menu_download": "Download diagnostics",
   "reading_state.ok": "In range",
   "reading_state.low": "Too low",
