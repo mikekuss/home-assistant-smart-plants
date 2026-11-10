@@ -7,7 +7,7 @@ diagnostics**. The file contains settings, counts and states, for example how ma
 sensors per role and care tasks exist. It doesn't contain plant names, entity IDs, readings,
 thresholds, care history, photos or credentials. Look through it before you post it.
 
-Each plant also has its own diagnostics. Open the plant and select **⋮ > Download diagnostics**.
+Each plant also has its own diagnostics. Open the plant and select **⋮ > Download diagnostics** in its top card.
 That file contains the plant's configuration, its sensor and automation entity IDs and its
 current evaluation, without the plant name, notes, photo or credentials. The **Sensors** tab
 shows the same evaluation under **Troubleshooting**.

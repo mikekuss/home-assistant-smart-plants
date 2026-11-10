@@ -31,6 +31,11 @@ async function openPlant(page: Page, query = "?seed&tz=UTC") {
   await button(page, "Office Aloe").click();
   await expect(header(page)).toBeVisible();
 }
+// The plant's own actions sit in the ⋮ menu of the plant's top card.
+async function plantMenu(page: Page, item: string) {
+  await button(page, /^(More actions for|Weitere Aktionen für) /).click();
+  await menuItem(page, item).focus(); await menuItem(page, item).press("Enter");
+}
 async function menu(page: Page, item: string) {
   await button(page, /^(Menu|Menü)$/).click();
   await menuItem(page, item).focus(); await menuItem(page, item).press("Enter");
@@ -39,10 +44,10 @@ async function menu(page: Page, item: string) {
 test.beforeEach(async ({ page }) => { page.on("pageerror", error => { throw error; }); });
 test.afterEach(async ({ page }) => { expect(await page.evaluate(() => (window as unknown as { __smartPlantsHarness?: SnoozeHarness }).__smartPlantsHarness?.unexpected ?? [])).toEqual([]); });
 
-test("snoozes a plant for a week from the header menu and resumes it", async ({ page }, info) => {
+test("snoozes a plant for a week from the plant menu and resumes it", async ({ page }, info) => {
   await openPlant(page);
   await expect(header(page).locator("sp-snooze-chip")).toHaveCount(0);
-  await menu(page, "Snooze alerts…");
+  await plantMenu(page, "Snooze alerts…");
   await expect(dialog(page)).toBeVisible();
   await expect(dialog(page).getByRole("heading", { name: "Snooze alerts for Office Aloe" })).toBeFocused();
   await expect(dialog(page).getByRole("radio", { name: /^1 day/ })).toBeChecked();
@@ -56,7 +61,7 @@ test("snoozes a plant for a week from the header menu and resumes it", async ({ 
   await expect(header(page).locator("sp-status-chip")).toContainText("Needs water");
   expect(await snoozes(page)).toEqual([{ type: "smart_plants/plants/snooze", plant_id: "00000000-0000-4000-8000-000000000001", expected_revision: 1, until: "2026-10-31T23:59:59+00:00" }]);
   await audit(page, info, "snooze-header");
-  await button(page, "Menu").click();
+  await button(page, "More actions for Office Aloe").click();
   await expect(menuItem(page, "Change snooze…")).toBeVisible();
   await page.keyboard.press("Escape");
   await button(page, "Resume alerts for Office Aloe").click();
@@ -66,7 +71,7 @@ test("snoozes a plant for a week from the header menu and resumes it", async ({ 
 
 test("snoozes until a picked day and explains a day out of range", async ({ page }) => {
   await openPlant(page);
-  await menu(page, "Snooze alerts…");
+  await plantMenu(page, "Snooze alerts…");
   await dialog(page).getByRole("radio", { name: "Until date…" }).check();
   const date = dialog(page).getByLabel("Last snoozed day");
   await expect(date).toHaveAttribute("min", "2026-10-25");
@@ -99,7 +104,7 @@ test("a snooze can be changed, and the dialog and chip read in German", async ({
   await openPlant(page, "?seed&snoozed&tz=UTC&lang=de");
   await expect(header(page).locator("sp-snooze-chip")).toHaveText("Stummgeschaltet bis Fr., 30. Okt.");
   await expect(button(page, "Hinweise für Office Aloe fortsetzen")).toBeVisible();
-  await menu(page, "Stummschaltung ändern…");
+  await plantMenu(page, "Stummschaltung ändern…");
   await expect(dialog(page).getByRole("heading", { name: "Stummschaltung für Office Aloe ändern" })).toBeVisible();
   await expect(dialog(page)).toContainText("Stummgeschaltet bis Fr., 30. Okt.");
   await expect(dialog(page).getByRole("radio", { name: "Bis Datum…" })).toBeChecked();
@@ -185,7 +190,7 @@ test("the Snooze all plants dialog reads in German", async ({ page }, info) => {
 
 test("a plant changed elsewhere reports the conflict instead of snoozing", async ({ page }) => {
   await openPlant(page);
-  await menu(page, "Snooze alerts…");
+  await plantMenu(page, "Snooze alerts…");
   await page.evaluate(() => { (window as unknown as HarnessWindow).__smartPlantsHarness.conflictNext = true; });
   await dialog(page).getByRole("button", { name: "Snooze", exact: true }).click();
   await expect(page.locator("smart-plants-panel p.error[role=alert]")).toContainText("This plant was changed somewhere else.");

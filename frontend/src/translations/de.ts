@@ -674,6 +674,7 @@ export const de: Catalog = {
   "detail.log_care": "Pflege eintragen",
   "detail.key_readings": "Wichtige Messwerte",
   "detail.menu_open_device": "Gerät öffnen",
+  "detail.plant_menu": "Weitere Aktionen für {name}",
   "detail.menu_download": "Diagnose herunterladen",
   "reading_state.ok": "Im Bereich",
   "reading_state.low": "Zu niedrig",

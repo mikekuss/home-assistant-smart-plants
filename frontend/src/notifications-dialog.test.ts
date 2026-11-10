@@ -378,8 +378,13 @@ describe("notifications from the plant page", () => {
     expect(itemLabel(menuItem(el))).toBe("Notifications");
     const menu = root(el).querySelector(".panel-appbar ha-dropdown")!;
     const order = [...menu.children].filter(child => child.slot !== "trigger").map(child => child.getAttribute("value") ?? child.tagName.toLowerCase());
-    expect(order).toEqual(["notifications", "snooze", "wa-divider", "open-device", "download-diagnostics", "wa-divider", "toggle-monitoring", "retire-plant", "delete-plant"]);
-    expect(menu.querySelector('[value="snooze"] ha-icon')!.getAttribute("icon")).toBe("mdi:alarm-snooze");
+    // The header keeps page-level items; the plant's own actions sit in the plant card's menu.
+    expect(order).toEqual(["add-plant", "wa-divider", "notifications", "wa-divider", "integration-options", "documentation"]);
+    const plantMenu = root(el).querySelector(".hero-actions .plant-menu")!;
+    const plantOrder = [...plantMenu.children].filter(child => child.slot !== "trigger").map(child => child.getAttribute("value") ?? child.tagName.toLowerCase());
+    expect(plantOrder).toEqual(["snooze", "wa-divider", "open-device", "download-diagnostics", "wa-divider", "toggle-monitoring", "retire-plant", "delete-plant"]);
+    expect(plantMenu.querySelector('[value="snooze"] ha-icon')!.getAttribute("icon")).toBe("mdi:alarm-snooze");
+    expect(plantMenu.querySelector("[slot=trigger]")!.getAttribute("aria-label")).toBe("More actions for Office Aloe");
     await openPage(el);
     expect(root(el).querySelector("h1")!.textContent).toBe("Notifications");
     root(el).querySelector<HTMLElement>(".panel-appbar .back")!.click(); await settle(el);

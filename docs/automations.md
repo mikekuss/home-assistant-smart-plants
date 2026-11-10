@@ -175,8 +175,8 @@ For Telegram, set the parse mode to plain text if a name contains one of them.
 
 A snooze mutes a plant's alerts, for example during a vacation. Every entity keeps its real
 state, and the binary sensors get `snoozed` and `snoozed_until` (see
-[Snoozed plants](entities.md#snoozed-plants)). In the panel, use **⋮ > Snooze alerts…** or
-**⋮ > Snooze all plants…**.
+[Snoozed plants](entities.md#snoozed-plants)). In the panel, use **⋮ > Snooze alerts…** in the plant's top
+card or **⋮ > Snooze all plants…** on the overview.
 
 `smart_plants.snooze` takes exactly one of:
 

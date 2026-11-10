@@ -8,7 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
-- Retire a plant that died or that you gave away: **⋮ > Retire plant…** on the plant page,
+- Retire a plant that died or that you gave away: **⋮ > Retire plant…** in the plant's top card,
   **Retire** under **Manage**, or **Retire instead** in the delete dialog. Its device and
   entities are removed and its sensors are free at once; its photo, species, dates, sensors and
   care history are kept. Afterwards you can start a new plant with the same sensors. Retired
@@ -17,11 +17,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   it for good. A dashboard card of a retired plant says so. See
   [Retired plants](docs/getting-started.md#retired-plants).
 
+### Changed
+
+- The plant page's own actions (**Snooze alerts…**, **Open device**, **Download diagnostics**,
+  **Pause monitoring**, **Retire plant…** and **Delete plant**) moved from the top bar's **⋮**
+  menu to a **⋮** button in the plant's top card, next to **Watered** and **Log care**. The top
+  bar's **⋮** menu on a plant page now has **Add plant**, **Notifications**, **Integration
+  options** and **Documentation**, like on the overview.
+
 ### Fixed
 
 - A change that was cancelled while Smart Plants was still updating the entities of several
   plants no longer stalls every later change. The update finishes for all plants, and later
-  changes reach entities and automations as before.
+  changes reach entities and automations as before. The same holds when an automation that
+  changed a plant is restarted or turned off while its change is being passed on.
 - A snooze ends on time even when Home Assistant cannot save that moment. The alerts'
   `snoozed` attribute and the plant report treat the plant as no longer snoozed at the end time,
   and Smart Plants keeps trying to save the ended snooze, first after 30 seconds and then less
