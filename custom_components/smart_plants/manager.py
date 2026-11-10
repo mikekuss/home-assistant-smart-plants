@@ -8,7 +8,7 @@ import inspect
 import logging
 import secrets
 import time
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -17,7 +17,10 @@ from uuid import uuid4
 
 from homeassistant.core import CALLBACK_TYPE, callback, valid_entity_id
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.event import async_track_point_in_utc_time
+from homeassistant.helpers.event import (
+    async_call_later,
+    async_track_point_in_utc_time,
+)
 from homeassistant.util import dt as dt_util
 
 from .care import (
@@ -117,6 +120,25 @@ class _Subscription:
         self.callback = callback
 
 
+class _EventDelivery:
+    """
+    One committed event on its way to the subscribers.
+
+    ``done`` resolves once the event was delivered or skipped, so a caller can
+    wait for it without owning the delivery.
+    """
+
+    __slots__ = ("done", "event", "nested", "started")
+
+    def __init__(
+        self, event: PlantEvent, done: asyncio.Future[None], *, nested: bool
+    ) -> None:
+        self.event = event
+        self.done = done
+        self.nested = nested
+        self.started = False
+
+
 _TAG_MAX_LEN = 60
 _NAME_MAX_LEN = 200
 _CATEGORY_MAX_LEN = 60
@@ -127,6 +149,10 @@ CARE_CLOCK_SKEW = timedelta(minutes=5)
 # Longest alert snooze, counted from the moment it is set.
 SNOOZE_MAX_AHEAD = timedelta(days=366)
 _SNOOZE_TIMESTAMP_MAX_LEN = 64
+# Saving the end of a snooze is retried after a storage failure, first after
+# this delay and then after twice the previous delay, up to the maximum.
+SNOOZE_END_RETRY_FIRST = timedelta(seconds=30)
+SNOOZE_END_RETRY_MAX = timedelta(hours=1)
 WIZARD_MAX_DRAFTS = 64
 WIZARD_MAX_AGE = 600
 WIZARD_ID_LENGTH = 36
@@ -237,10 +263,18 @@ class SmartPlantsManager:
         # object identity of the token returned to the subscriber so
         # duplicate callables can be tracked independently.
         self._subscribers: list[_Subscription] = []
-        self._event_tail: asyncio.Future[None] | None = None
-        self._event_tickets: dict[
-            int, tuple[asyncio.Future[None] | None, asyncio.Future[None] | None]
-        ] = {}
+        # Committed events wait here in commit order. One manager-owned task
+        # delivers them, so a caller that is cancelled while it waits cannot
+        # strand the events behind its own.
+        self._event_queue: deque[_EventDelivery] = deque()
+        self._event_worker: asyncio.Task[None] | None = None
+        # Events committed by a subscriber while it handles another event.
+        # They are delivered inline by the subscriber's own call, because the
+        # queue is still busy with the event that subscriber is handling.
+        self._nested_events: list[_EventDelivery] = []
+        # Undelivered events by ``id(event)`` so a caller can wait for its own.
+        self._event_deliveries: dict[int, _EventDelivery] = {}
+        # Tasks that are delivering a nested event right now.
         self._event_tasks: set[asyncio.Task[Any]] = set()
         # Platform → plant_id → role → entity. Populated by SmartPlantsEntity
         # on ``async_added_to_hass`` and cleared on removal so lookups
@@ -262,6 +296,9 @@ class SmartPlantsManager:
         # ``_sync_snooze_timers``.
         self._snooze_timers: dict[str, tuple[str, CALLBACK_TYPE]] = {}
         self._snooze_tasks: set[asyncio.Task[None]] = set()
+        # plant_id -> (snoozed_until, attempt, cancel) for a snooze that ended
+        # but whose cleared record could not be saved yet.
+        self._snooze_retries: dict[str, tuple[str, int, CALLBACK_TYPE]] = {}
 
     def wizard_start(self) -> dict[str, Any]:
         """Reserve a bounded capability without writing inventory or registries."""
@@ -358,32 +395,114 @@ class SmartPlantsManager:
         return _unsubscribe
 
     async def _dispatch_event(self, event: PlantEvent) -> None:
+        """
+        Wait until ``event``, committed by this caller, reached the subscribers.
+
+        Delivery does not depend on this wait: cancelling the caller only
+        stops the waiting, the event and every event committed after it are
+        still delivered in order.
+        """
+        delivery = self._event_deliveries.get(id(event))
+        if delivery is None or delivery.event is not event:
+            # Already delivered, or skipped because the manager unloaded.
+            return
+        if delivery.nested and not delivery.started:
+            await self._async_deliver_nested(until=delivery)
+            return
+        await asyncio.shield(delivery.done)
+
+    def _queue_event(self, event: PlantEvent) -> None:
+        """Hand a committed event to ordered delivery; call under the lock."""
+        nested = _IN_DISPATCH.get() or (
+            self._event_worker is not None
+            and asyncio.current_task() is self._event_worker
+        )
+        delivery = _EventDelivery(event, self._hass.loop.create_future(), nested=nested)
+        self._event_deliveries[id(event)] = delivery
+        if self._unavailable:
+            self._finish_delivery(delivery)
+        elif nested:
+            self._nested_events.append(delivery)
+        else:
+            self._event_queue.append(delivery)
+            if self._event_worker is None:
+                self._event_worker = self._hass.async_create_task(
+                    self._async_run_event_queue(),
+                    "smart_plants event delivery",
+                    eager_start=False,
+                )
+
+    def _prepare_event(self, event: PlantEvent) -> None:
+        self._queue_event(event)
+
+    def _finish_delivery(self, delivery: _EventDelivery) -> None:
+        delivery.started = True
+        if self._event_deliveries.get(id(delivery.event)) is delivery:
+            del self._event_deliveries[id(delivery.event)]
+        with contextlib.suppress(ValueError):
+            self._nested_events.remove(delivery)
+        if not delivery.done.done():
+            delivery.done.set_result(None)
+
+    async def _async_run_event_queue(self) -> None:
+        """Deliver queued events one after another until the queue is empty."""
+        try:
+            while self._event_queue:
+                delivery = self._event_queue[0]
+                await self._async_deliver(delivery)
+                self._event_queue.popleft()
+                # A nested event whose writer stopped waiting for it is
+                # delivered before the next queued event.
+                await self._async_deliver_nested()
+        finally:
+            self._event_worker = None
+            # The loop ends early only when this task itself is cancelled,
+            # which happens when Home Assistant stops. Release the waiters.
+            while self._event_queue:
+                self._finish_delivery(self._event_queue.popleft())
+
+    async def _async_deliver_nested(self, until: _EventDelivery | None = None) -> None:
+        """Deliver nested events in commit order, up to and including ``until``."""
         task = asyncio.current_task()
         if task is not None:
             self._event_tasks.add(task)
-        completion: asyncio.Future[None] | None = None
-        token: contextvars.Token[bool] | None = None
         try:
-            previous, completion = self._event_tickets.pop(id(event), (None, None))
-            if previous is not None:
-                await previous
-            if self._closing or self._unavailable:
-                return
-            # Apply the event only when its ordered ticket is current. Doing
-            # this before waiting can let an older concurrent dispatch roll a
-            # controller backward after a newer commit has already synced it.
-            self._sync_controllers_for(event)
-            if self._reading_tracker is not None:
-                self._reading_tracker.handle_event(event)
-            token = _IN_DISPATCH.set(True)
-            await self._async_notify_subscribers(event)
+            for delivery in tuple(self._nested_events):
+                if not delivery.started:
+                    await self._async_deliver(delivery)
+                if delivery is until:
+                    break
         finally:
-            if completion is not None and not completion.done():
-                completion.set_result(None)
-            if token is not None:
-                _IN_DISPATCH.reset(token)
             if task is not None:
                 self._event_tasks.discard(task)
+        if until is not None and not until.done.done():
+            # Another task started it first; wait for that delivery.
+            await asyncio.shield(until.done)
+
+    async def _async_deliver(self, delivery: _EventDelivery) -> None:
+        delivery.started = True
+        try:
+            await self._async_apply_event(delivery.event)
+        except Exception:
+            # The change is already durable; a failed consumer must not turn
+            # it into a failed mutation or stop the events after it.
+            _LOGGER.exception("Smart Plants failed to deliver %s", delivery.event.kind)
+        finally:
+            self._finish_delivery(delivery)
+
+    async def _async_apply_event(self, event: PlantEvent) -> None:
+        if self._closing or self._unavailable:
+            return
+        # Controllers follow the events in commit order, so an older event
+        # can never roll a controller back after a newer one synced it.
+        self._sync_controllers_for(event)
+        if self._reading_tracker is not None:
+            self._reading_tracker.handle_event(event)
+        token = _IN_DISPATCH.set(True)
+        try:
+            await self._async_notify_subscribers(event)
+        finally:
+            _IN_DISPATCH.reset(token)
 
     async def _async_notify_subscribers(self, event: PlantEvent) -> None:
         # Snapshot the subscriber list before iterating so an
@@ -399,22 +518,19 @@ class SmartPlantsManager:
                 result = subscription.callback(event)
                 if inspect.isawaitable(result):
                     await result
+            except asyncio.CancelledError:
+                task = asyncio.current_task()
+                if task is not None and task.cancelling():
+                    raise
+                # Something the subscriber awaited was cancelled, not this
+                # delivery; the remaining subscribers still get the event.
+                _LOGGER.exception(
+                    "Smart Plants event subscriber was cancelled for %s", event.kind
+                )
             except Exception:
                 _LOGGER.exception(
                     "Smart Plants event subscriber raised for %s", event.kind
                 )
-
-    def _queue_event(self, event: PlantEvent) -> None:
-        """Reserve top-level callback order while allowing callback reentrancy."""
-        if _IN_DISPATCH.get():
-            self._event_tickets[id(event)] = (None, None)
-            return
-        completion = self._hass.loop.create_future()
-        self._event_tickets[id(event)] = (self._event_tail, completion)
-        self._event_tail = completion
-
-    def _prepare_event(self, event: PlantEvent) -> None:
-        self._queue_event(event)
 
     # --- Entity index ----------------------------------------------------
 
@@ -598,20 +714,19 @@ class SmartPlantsManager:
             await asyncio.gather(*tasks, return_exceptions=True)
         self._registry_tasks.clear()
         self._snooze_tasks.clear()
-        # A process interruption may occur after a mutation reserves ordering
-        # but before dispatch starts. Those tickets are not owned by an event
-        # task and must not leave unload waiting on an impossible completion.
-        for _previous, completion in self._event_tickets.values():
-            if completion is not None and not completion.done():
-                completion.set_result(None)
-        event_tail = self._event_tail
-        if event_tail is not None and not event_tail.done():
-            await event_tail
-        event_tasks = [
-            task for task in self._event_tasks if task is not asyncio.current_task()
-        ]
+        # Drain event delivery. Every committed event is owned by the queue
+        # or by a nested delivery, so this wait is finite: the events that
+        # have not started yet are skipped now that the manager is closing.
+        current = asyncio.current_task()
+        worker = self._event_worker
+        if worker is not None and worker is not current:
+            await asyncio.wait({worker})
+        for delivery in tuple(self._nested_events):
+            if not delivery.started:
+                self._finish_delivery(delivery)
+        event_tasks = [task for task in self._event_tasks if task is not current]
         if event_tasks:
-            await asyncio.gather(*event_tasks, return_exceptions=True)
+            await asyncio.wait(event_tasks)
         # Detach controllers so their source-state subscriptions do not
         # outlive the unload; entity teardown then runs against a manager
         # that is already quiescent.
@@ -625,7 +740,7 @@ class SmartPlantsManager:
             self._close_all_controllers()
         except Exception:
             _LOGGER.exception("Smart Plants role controller close failed")
-        self._event_tickets.clear()
+        self._event_deliveries.clear()
         self._subscribers.clear()
         self._registry_subscribers.clear()
         self._entity_index.clear()
@@ -1224,6 +1339,13 @@ class SmartPlantsManager:
             if plant is None or plant.snoozed_until != until:
                 cancel()
                 del self._snooze_timers[plant_id]
+        # A retry only saves the exact end it was armed for; a newer snooze,
+        # or a save that already cleared it, makes it obsolete.
+        for plant_id, (until, _attempt, cancel) in tuple(self._snooze_retries.items()):
+            plant = plants.get(plant_id)
+            if plant is None or plant.snoozed_until != until:
+                cancel()
+                del self._snooze_retries[plant_id]
         for plant in plants.values():
             snoozed_until = plant.snoozed_until
             if snoozed_until is None or plant.id in self._snooze_timers:
@@ -1239,6 +1361,9 @@ class SmartPlantsManager:
         for _until, cancel in self._snooze_timers.values():
             cancel()
         self._snooze_timers.clear()
+        for _until, _attempt, cancel in self._snooze_retries.values():
+            cancel()
+        self._snooze_retries.clear()
 
     def _make_snooze_end_callback(
         self, plant_id: str, until: str
@@ -1275,10 +1400,51 @@ class SmartPlantsManager:
                 change = await self._async_publish_plant_change(current, updated)
         except SmartPlantsManagerUnavailableError:
             return
-        except SmartPlantsStorageError:
-            _LOGGER.exception("Smart Plants could not end the snooze of a plant")
+        except SmartPlantsStorageError as err:
+            self._snooze_end_not_saved(plant_id, until, err)
             return
         await self._dispatch_event(change)
+
+    def _snooze_end_not_saved(
+        self, plant_id: str, until: str, err: SmartPlantsStorageError
+    ) -> None:
+        """
+        Publish an ended snooze whose save failed, and retry the save later.
+
+        Entities read the snooze against the clock, so writing their state
+        shows that it ended even though the stored record still has the end.
+        """
+        previous = self._snooze_retries.pop(plant_id, None)
+        attempt = 1
+        if previous is not None:
+            previous[2]()
+            if previous[0] == until:
+                attempt = previous[1] + 1
+        delay = min(SNOOZE_END_RETRY_FIRST * 2 ** (attempt - 1), SNOOZE_END_RETRY_MAX)
+        if attempt == 1:
+            _LOGGER.error(
+                "Smart Plants could not save the end of a snooze (%s); retrying in %s",
+                err,
+                delay,
+            )
+        else:
+            _LOGGER.warning(
+                "Smart Plants still could not save the end of a snooze (%s); "
+                "retrying in %s",
+                err,
+                delay,
+            )
+        for entity in self.entities_for_plant_on_platform("binary_sensor", plant_id):
+            try:
+                entity.async_write_ha_state()
+            except Exception:
+                _LOGGER.exception("Smart Plants could not update an alert entity")
+        if self._closing:
+            return
+        cancel = async_call_later(
+            self._hass, delay, self._make_snooze_end_callback(plant_id, until)
+        )
+        self._snooze_retries[plant_id] = (until, attempt, cancel)
 
     async def _async_change_care_task(
         self,
@@ -3324,8 +3490,7 @@ def _free_name(name: str, taken: set[str]) -> str:
 
 
 def _snooze_ended(plant: PlantRecord, now: datetime) -> bool:
-    until = plant.snoozed_until
-    return until is not None and parse_utc_timestamp(until, "snoozed_until") <= now
+    return plant.snoozed_until is not None and plant.active_snoozed_until(now) is None
 
 
 def _validate_snooze_until(value: object, now: datetime) -> str | None:

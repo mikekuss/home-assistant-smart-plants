@@ -17,6 +17,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   it for good. A dashboard card of a retired plant says so. See
   [Retired plants](docs/getting-started.md#retired-plants).
 
+### Fixed
+
+- A change that was cancelled while Smart Plants was still updating the entities of several
+  plants no longer stalls every later change. The update finishes for all plants, and later
+  changes reach entities and automations as before.
+- A snooze ends on time even when Home Assistant cannot save that moment. The alerts'
+  `snoozed` attribute and the plant report treat the plant as no longer snoozed at the end time,
+  and Smart Plants keeps trying to save the ended snooze, first after 30 seconds and then less
+  often, up to once an hour. A snooze you set in the meantime is kept.
+
 ## [0.17.0] - 2026-11-06
 
 ### Added

@@ -703,7 +703,7 @@ def _with_manager_state(
     return replace(
         plant,
         paused=record.lifecycle_state == "disabled",
-        snoozed=record.snoozed_until is not None,
+        snoozed=record.active_snoozed_until(dt_util.utcnow()) is not None,
     )
 
 

@@ -135,7 +135,9 @@ async def test_platform_lifecycle_dynamic_add_exactly_once(
 
     # A duplicate PlantAddedEvent (as would occur under a buggy replay or
     # a test that re-emits) must not double-add.
-    await manager._dispatch_event(PlantAddedEvent(kind="plant_added", plant=plant))
+    duplicate = PlantAddedEvent(kind="plant_added", plant=plant)
+    manager._prepare_event(duplicate)
+    await manager._dispatch_event(duplicate)
     assert len(added) == 1
 
 
