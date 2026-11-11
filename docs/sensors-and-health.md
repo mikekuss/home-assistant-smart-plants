@@ -60,7 +60,10 @@ and nothing more urgent applies. The plant page names the sensor, for example
 
 - **Battery** never counts, because many battery sensors report only on a change.
 - **Light** doesn't count from 18:00 to 08:00. In the morning it counts once its window has
-  passed since 08:00, so with 6 hours, a quiet light sensor counts from 14:00.
+  passed since 08:00, so with 6 hours, a quiet light sensor counts from 14:00. A window of 10
+  hours or more covers the whole day, so it gets that morning only after a day on which the
+  sensor reported or was assigned: a light sensor that stays silent through such a day counts
+  from 08:00 the next morning.
 
 For soil moisture, *Sensor stale* turns on while any moisture sensor is not updating. For the
 other readings, the problem sensor becomes unavailable instead. If a sensor reports only on a
@@ -81,8 +84,10 @@ Unavailable doesn't mean healthy.
 - A stress sensor turns off at its clear value, or when the reading reaches the opposite
   limit.
 - **Low light** uses the brightest reading of the last two hours between 08:00 and 18:00, from
-  at least two different minutes. Until then it's unavailable. At night it's off, or
-  unavailable while the light sensor is not updating.
+  at least two different minutes. Until then it's unavailable. A reading leaves the two hours
+  on time even when the sensor doesn't report again, so a bright reading in the morning doesn't
+  hold off *Low light* for longer than two hours. At night it's off, or unavailable while the
+  light sensor is not updating.
 
 After you log a watering, *Needs water* stays off for 24 hours from the time of the entry.
 This holds for the panel, the card, the *Watered* button and the `smart_plants.log_care` action.

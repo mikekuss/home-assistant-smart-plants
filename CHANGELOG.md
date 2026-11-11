@@ -35,6 +35,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   `snoozed` attribute and the plant report treat the plant as no longer snoozed at the end time,
   and Smart Plants keeps trying to save the ended snooze, first after 30 seconds and then less
   often, up to once an hour. A snooze you set in the meantime is kept.
+- *Low light* turns on, or becomes unavailable, as soon as a bright reading is more than two
+  hours old, even when the light sensor doesn't report again. Before, it could stay off for
+  hours on an old bright reading.
+- A light sensor with a **Not updating after** window of 10 hours or more that stops reporting
+  now shows as not reporting from 08:00 on the morning after a silent day. Before, the morning
+  exemption covered the whole day, every day, so the plant could stay *Healthy* for days.
+  Shorter windows behave as before.
 
 ## [0.17.0] - 2026-11-06
 

@@ -29,6 +29,11 @@ _LOGGER = logging.getLogger(__name__)
 # minute for the low-light window instead of one per report.
 LIGHT_SAMPLE_BUCKET_SECONDS = 60
 
+# The low-light window keeps a sample while it is at most the window length
+# old, so a sample leaves it just after that. The controller wakes this long
+# after the boundary to re-evaluate without the sample.
+SAMPLE_EXPIRY_MARGIN = timedelta(seconds=1)
+
 
 def next_daytime_edge(
     now_local: datetime, stale_after: timedelta | None = None
@@ -75,6 +80,7 @@ class IlluminancePlantController:
         self._listeners: list[Callable[[], None]] = []
         self._active = False
         self._unsub_edge: Callable[[], None] | None = None
+        self._wake_at: datetime | None = None
         self._tracker = SourceTracker(
             hass,
             is_valid=adapter.is_valid,
@@ -112,7 +118,6 @@ class IlluminancePlantController:
             return
         self._active = True
         self._tracker.start()
-        self._schedule_next_edge()
         self._recompute_and_notify(dt_util.utcnow())
 
     def stop(self) -> None:
@@ -129,35 +134,59 @@ class IlluminancePlantController:
         if self._unsub_edge is not None:
             self._unsub_edge()
             self._unsub_edge = None
+        self._wake_at = None
 
-    def _schedule_next_edge(self) -> None:
-        # Wake at the next 08:00/18:00 local edge so low_light re-evaluates the
-        # daytime window without waiting for a source state change. Only roles
-        # with sources need this; an unconfigured role is unavailable regardless
-        # of day or night, so it schedules no timer.
-        self._cancel_edge()
+    def _next_sample_expiry(self) -> datetime | None:
+        """Return when the oldest kept light sample leaves the window."""
+        if not self._light_samples:
+            return None
+        oldest = min(sample.observed_at for sample in self._light_samples)
+        boundary = oldest + illuminance_evaluator.LOW_LIGHT_WINDOW_SECONDS
+        return datetime.fromtimestamp(boundary, tz=UTC) + SAMPLE_EXPIRY_MARGIN
+
+    def _schedule_wakeup(self) -> None:
+        # Wake at the next 08:00/18:00 local edge, or earlier when the oldest
+        # light sample leaves the window, so low_light re-evaluates without
+        # waiting for a source state change. Only roles with sources need
+        # this; an unconfigured role is unavailable regardless of the time, so
+        # it schedules no timer. An unchanged target keeps its timer, so
+        # frequent sensor reports do not re-arm it.
         if not self._active or not self._config.sources:
+            self._cancel_edge()
             return
         when = next_daytime_edge(
-            dt_util.now(), timedelta(seconds=self._config.stale_after_seconds)
+            dt_util.as_local(self._evaluation_now),
+            timedelta(seconds=self._config.stale_after_seconds),
         )
-        self._unsub_edge = async_track_point_in_time(self._hass, self._on_edge, when)
+        expiry = self._next_sample_expiry()
+        if expiry is not None and expiry < when:
+            when = expiry
+        if self._unsub_edge is not None and self._wake_at == when:
+            return
+        self._cancel_edge()
+        self._wake_at = when
+        self._unsub_edge = async_track_point_in_time(self._hass, self._on_wake, when)
 
     @callback
-    def _on_edge(self, _now: datetime) -> None:
-        # Fired by async_track_point_in_time at the day/night edge. Recompute
-        # against the current time and schedule the following edge.
-        self._recompute_and_notify(dt_util.utcnow())
-        self._schedule_next_edge()
+    def _on_wake(self, _now: datetime) -> None:
+        # Fired by async_track_point_in_time. Recompute against the current
+        # time, never earlier than the target so a sample due to leave the
+        # window has left it, and schedule the following wake-up.
+        wake_at = self._wake_at
+        self._unsub_edge = None
+        self._wake_at = None
+        now = dt_util.utcnow()
+        if wake_at is not None and now < wake_at:
+            now = wake_at
+        self._recompute_and_notify(now)
 
     def reconfigure(self, config: IlluminanceConfig) -> None:
         self._config = config
         self._tracker.configure(
             config.sources, stale_after=timedelta(seconds=config.stale_after_seconds)
         )
-        # Adding the first source starts the edge timer; removing all sources
-        # cancels it.
-        self._schedule_next_edge()
+        # Adding the first source starts the wake-up timer; removing all
+        # sources cancels it.
         self._recompute_and_notify(dt_util.utcnow())
 
     def _evaluate_now(self) -> illuminance_evaluator.IlluminanceEvaluation:
@@ -253,12 +282,14 @@ class IlluminancePlantController:
         previous = self._evaluation
         self._evaluation_now = now
         self._evaluation = self._evaluate_now()
+        self._schedule_wakeup()
         if self._evaluation != previous:
             self._notify()
 
     def _recompute_and_notify(self, now: datetime) -> None:
         self._evaluation_now = now
         self._evaluation = self._evaluate_now()
+        self._schedule_wakeup()
         self._notify()
 
     def _notify(self) -> None:

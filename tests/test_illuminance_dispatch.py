@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import pytest
 from custom_components.smart_plants import binary_sensor
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.illuminance_evaluator import LIGHT_LUX
@@ -200,3 +201,190 @@ def test_low_light_sample_count_stays_out_of_the_recorder() -> None:
     unrecorded = binary_sensor._LowLightBinary._unrecorded_attributes
     assert "sample_count" in unrecorded
     assert {"snoozed", "snoozed_until"} <= unrecorded
+
+
+async def test_low_light_turns_on_when_a_bright_sample_leaves_the_window(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    # A bright morning reading, then two dim ones and silence. Without a new
+    # report, Low light must still turn on once the bright reading is older
+    # than the two-hour window, and turn unavailable once too few remain.
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to(datetime(2026, 6, 1, 9, tzinfo=UTC))
+    manager = await _setup(hass)
+    hass.states.async_set("sensor.mock_lux", "1000", LUX)
+    plant_id = await _plant_with_light(manager)
+    await hass.async_block_till_done()
+
+    await _move_to(hass, freezer, datetime(2026, 6, 1, 10, tzinfo=UTC))
+    hass.states.async_set("sensor.mock_lux", "100", LUX)
+    await _move_to(hass, freezer, datetime(2026, 6, 1, 10, 30, tzinfo=UTC))
+    hass.states.async_set("sensor.mock_lux", "101", LUX)
+    await hass.async_block_till_done()
+    state = _low_light_state(hass, plant_id)
+    assert state.state == "off"
+    assert state.attributes["reason"] == "enough_light"
+
+    # The window includes its start: at exactly 11:00 the 09:00 reading counts.
+    await _move_to(hass, freezer, datetime(2026, 6, 1, 11, tzinfo=UTC))
+    assert _low_light_state(hass, plant_id).state == "off"
+
+    await _move_to(hass, freezer, datetime(2026, 6, 1, 11, 0, 1, tzinfo=UTC))
+    state = _low_light_state(hass, plant_id)
+    assert state.state == "on"
+    assert state.attributes["reason"] == "low_light"
+
+    # At 12:00 the 10:00 reading leaves too; one reading is not enough.
+    await _move_to(hass, freezer, datetime(2026, 6, 1, 12, 0, 1, tzinfo=UTC))
+    assert _low_light_state(hass, plant_id).state == "unavailable"
+    controller = manager.get_role_controller(plant_id, "illuminance")
+    assert controller is not None
+    low_light = controller.current_evaluation.low_light
+    assert low_light.reason == "insufficient_daytime_samples"
+    assert low_light.sample_count == 1
+
+
+async def test_unloading_cancels_a_pending_sample_expiry(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to(datetime(2026, 6, 1, 9, tzinfo=UTC))
+    manager = await _setup(hass)
+    hass.states.async_set("sensor.mock_lux", "1000", LUX)
+    plant_id = await _plant_with_light(manager)
+    await hass.async_block_till_done()
+    controller = manager.get_role_controller(plant_id, "illuminance")
+    assert controller is not None
+    assert controller._wake_at == datetime(2026, 6, 1, 11, 0, 1, tzinfo=UTC)
+
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert controller._unsub_edge is None
+    await _move_to(hass, freezer, datetime(2026, 6, 1, 11, 0, 1, tzinfo=UTC))
+
+
+_DAY = datetime(2026, 12, 1, 10, tzinfo=UTC)
+
+
+@pytest.mark.parametrize(
+    ("stale_hours", "checks"),
+    [
+        # Below ten hours, every morning still hides a quiet sensor until
+        # 08:00 plus the window, as before.
+        (
+            6,
+            [
+                (_DAY.replace(hour=16, second=1), "stale"),
+                (_DAY + timedelta(days=1, hours=-1), None),
+                (_DAY + timedelta(days=1, hours=4, seconds=1), "stale"),
+                (_DAY + timedelta(days=2, hours=-1), None),
+                (_DAY + timedelta(days=2, hours=4, seconds=1), "stale"),
+            ],
+        ),
+        # From ten hours, the morning after the last report hides the whole
+        # day, but the morning after a silent day no longer does.
+        (
+            10,
+            [
+                (_DAY.replace(hour=17), None),
+                (_DAY + timedelta(days=1, hours=2), None),
+                (_DAY + timedelta(days=1, hours=7, minutes=59), None),
+                (_DAY + timedelta(days=2, hours=-2, seconds=1), "stale"),
+            ],
+        ),
+        (
+            12,
+            [
+                (_DAY + timedelta(days=1, hours=2), None),
+                (_DAY + timedelta(days=1, hours=7, minutes=59), None),
+                (_DAY + timedelta(days=2, hours=-2, seconds=1), "stale"),
+            ],
+        ),
+        (
+            72,
+            [
+                (_DAY + timedelta(days=1, hours=2), None),
+                (_DAY + timedelta(days=2, hours=2), None),
+                (_DAY + timedelta(days=3, seconds=1), "stale"),
+                (_DAY + timedelta(days=3, hours=8, seconds=1), None),
+                (_DAY + timedelta(days=4, hours=-2, seconds=1), "stale"),
+            ],
+        ),
+    ],
+)
+async def test_failed_light_sensor_counts_with_long_windows(
+    hass: HomeAssistant,
+    freezer: Any,
+    stale_hours: int,
+    checks: list[tuple[datetime, str | None]],
+) -> None:
+    # The sensor reports once at 10:00 and then never again.
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to(_DAY)
+    manager = await _setup(hass)
+    hass.states.async_set("sensor.mock_lux", "300", LUX)
+    plant_id = await _plant_with_light(manager)
+    plant = manager.get_plant(plant_id)
+    await manager.async_set_role_stale_after(
+        plant_id,
+        role="illuminance",
+        expected_revision=plant.revision,
+        stale_after_seconds=stale_hours * 3600,
+    )
+    await hass.async_block_till_done()
+    assert _input_problems(hass, plant_id) == {}
+
+    for when, expected in checks:
+        await _move_to(hass, freezer, when)
+        problems = _input_problems(hass, plant_id)
+        assert problems == ({"illuminance": expected} if expected else {}), when
+
+
+async def test_sample_expiry_wake_up_follows_reports_and_reconfiguration(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    await hass.config.async_set_time_zone("UTC")
+    freezer.move_to(datetime(2026, 6, 1, 9, tzinfo=UTC))
+    manager = await _setup(hass)
+    hass.states.async_set("sensor.mock_lux", "1000", LUX)
+    plant_id = await _plant_with_light(manager)
+    await hass.async_block_till_done()
+    controller = manager.get_role_controller(plant_id, "illuminance")
+    assert controller is not None
+    first_expiry = datetime(2026, 6, 1, 11, 0, 1, tzinfo=UTC)
+    assert controller._wake_at == first_expiry
+
+    # More reports in later minutes keep the wake-up of the oldest sample and
+    # its timer.
+    timer = controller._unsub_edge
+    for minute in (5, 10):
+        await _move_to(hass, freezer, datetime(2026, 6, 1, 9, minute, tzinfo=UTC))
+        hass.states.async_set("sensor.mock_lux", "1000", LUX)
+        await hass.async_block_till_done()
+    assert controller._wake_at == first_expiry
+    assert controller._unsub_edge is timer
+
+    # A new stale window keeps the samples and their wake-up.
+    plant = manager.get_plant(plant_id)
+    await manager.async_set_role_stale_after(
+        plant_id,
+        role="illuminance",
+        expected_revision=plant.revision,
+        stale_after_seconds=3600,
+    )
+    await hass.async_block_till_done()
+    assert controller._wake_at == first_expiry
+
+    # After the wake-up, the next oldest sample sets the next one.
+    await _move_to(hass, freezer, first_expiry)
+    assert controller._wake_at == datetime(2026, 6, 1, 11, 5, 1, tzinfo=UTC)
+
+    # Removing the sensor cancels the timer.
+    plant = manager.get_plant(plant_id)
+    await manager.async_set_role_sources(
+        plant_id, role="illuminance", expected_revision=plant.revision, sources=[]
+    )
+    await hass.async_block_till_done()
+    assert controller._unsub_edge is None
+    assert controller._wake_at is None

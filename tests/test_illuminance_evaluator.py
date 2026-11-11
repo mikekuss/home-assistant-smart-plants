@@ -10,11 +10,14 @@ from custom_components.smart_plants.illuminance_evaluator import (
     LIGHT_LUX,
     IlluminanceReading,
     LightSample,
+    earns_morning_grace,
     evaluate,
     light_quiet_expected,
 )
 from custom_components.smart_plants.models import IlluminanceConfig, SensorSource
 from homeassistant.const import PERCENTAGE
+
+BERLIN_TZ = ZoneInfo("Europe/Berlin")
 
 
 def _config(**kwargs: object) -> IlluminanceConfig:
@@ -339,3 +342,85 @@ def test_evaluation_reports_a_quiet_sensor_as_expected_in_the_morning() -> None:
         now_datetime=afternoon,
     )
     assert late.quiet_expected is False
+
+
+TWELVE_HOURS = 12 * 3600
+
+
+@pytest.mark.parametrize(
+    ("heard_at", "expected"),
+    [
+        (datetime(2026, 12, 1, 8, tzinfo=BERLIN_TZ), True),
+        (datetime(2026, 12, 1, 23, tzinfo=BERLIN_TZ), True),
+        (datetime(2026, 12, 1, 7, 59, tzinfo=BERLIN_TZ), False),
+        (None, False),
+    ],
+)
+def test_long_window_morning_grace_needs_a_report_since_yesterday_morning(
+    heard_at: datetime | None, *, expected: bool
+) -> None:
+    now = datetime(2026, 12, 2, 9, tzinfo=BERLIN_TZ)
+    stamp = heard_at.timestamp() if heard_at is not None else None
+    assert earns_morning_grace(stamp, now, TWELVE_HOURS) is expected
+
+
+def test_short_window_keeps_the_morning_grace_every_day() -> None:
+    now = datetime(2026, 12, 9, 9, tzinfo=BERLIN_TZ)
+    long_ago = datetime(2026, 12, 1, 10, tzinfo=BERLIN_TZ).timestamp()
+    assert earns_morning_grace(long_ago, now, 6 * 3600) is True
+    assert earns_morning_grace(None, now, 6 * 3600) is True
+    # Ten hours is the first window whose morning grace reaches 18:00.
+    assert earns_morning_grace(long_ago, now, 10 * 3600) is False
+
+
+def test_morning_grace_uses_local_wall_clock_across_dst() -> None:
+    # Europe/Berlin springs forward on 2026-03-29; yesterday's 08:00 is CET.
+    now = datetime(2026, 3, 29, 9, tzinfo=BERLIN_TZ)
+    start = datetime(2026, 3, 28, 7, tzinfo=UTC)  # 08:00 CET
+    assert earns_morning_grace(start.timestamp(), now, TWELVE_HOURS) is True
+    assert earns_morning_grace(start.timestamp() - 1, now, TWELVE_HOURS) is False
+
+
+def test_long_window_hides_a_silent_light_sensor_for_one_day_only() -> None:
+    config = _config(stale_after_seconds=TWELVE_HOURS)
+    reading = IlluminanceReading(
+        entity_id="sensor.a",
+        value="300",
+        unit_of_measurement=LIGHT_LUX,
+        last_valid_at=datetime(2026, 12, 1, 10, tzinfo=UTC).timestamp(),
+    )
+    next_day = datetime(2026, 12, 2, 17, tzinfo=UTC)
+    first = evaluate(
+        config, {"sensor.a": reading}, now=next_day.timestamp(), now_datetime=next_day
+    )
+    assert first.sensor_stale is True
+    assert first.quiet_expected is True
+    day_after = datetime(2026, 12, 3, 8, 30, tzinfo=UTC)
+    second = evaluate(
+        config,
+        {"sensor.a": reading},
+        now=day_after.timestamp(),
+        now_datetime=day_after,
+    )
+    assert second.sensor_stale is True
+    assert second.quiet_expected is False
+
+
+def test_assignment_earns_the_morning_grace_without_a_report() -> None:
+    # A new assignment that never reported gets the first morning, measured
+    # from the assignment, but not a second one.
+    config = _config(stale_after_seconds=TWELVE_HOURS)
+    assigned = datetime(2026, 12, 1, 20, tzinfo=UTC).timestamp()
+    reading = IlluminanceReading(
+        entity_id="sensor.a",
+        value="unavailable",
+        grace_until=assigned + TWELVE_HOURS,
+    )
+    morning = datetime(2026, 12, 2, 10, tzinfo=UTC)
+    assert evaluate(
+        config, {"sensor.a": reading}, now=morning.timestamp(), now_datetime=morning
+    ).quiet_expected
+    later = datetime(2026, 12, 3, 10, tzinfo=UTC)
+    assert not evaluate(
+        config, {"sensor.a": reading}, now=later.timestamp(), now_datetime=later
+    ).quiet_expected
