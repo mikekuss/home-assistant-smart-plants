@@ -23,7 +23,8 @@ The overview has:
 Each plant shows one status, the most urgent first: *Needs water*, *Too wet*, a named problem
 such as *Too little light*, *No recent data*, *No main sensor*, *No sensors*, then *Healthy*.
 A paused plant shows *Paused*. A soil moisture sensor is optional: a plant with only other
-sensors gets its status from those. *No sensors* means no sensor is assigned at all.
+sensors gets its status from those. *No sensors* means no sensor is assigned, or only a
+battery sensor, because the battery level says nothing about the plant.
 
 The **⋮** menu has **Add plant**, **Notifications**, **Snooze all plants…** and links to the
 integration options and this documentation.

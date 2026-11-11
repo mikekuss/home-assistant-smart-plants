@@ -17,8 +17,10 @@ Status priority, highest first:
    covers moisture and every other reading except the battery. A light
    sensor is not checked at night, nor in the morning until it had its stale
    time to report.
-6. ``no_sensors`` -- no role has sources. Moisture is optional: a plant
-   with other sensors but none for soil moisture is judged on those.
+6. ``no_sensors`` -- no role other than the battery has sources. Moisture is
+   optional: a plant with other sensors but none for soil moisture is judged
+   on those. A battery level says nothing about the plant, so a battery
+   sensor alone doesn't count.
 7. ``healthy`` -- none of the above.
 
 ``problems`` lists every active issue in the same order, so for any status
@@ -237,7 +239,12 @@ def evaluate_plant_status(
         *input_problems(evaluations),
     ]
     problems.extend(reading_problems)
-    no_sensors = not any(_has_sources(e) for e in evaluations.values())
+    # A battery level says nothing about the plant, so a battery sensor alone
+    # doesn't count as a plant sensor.
+    no_sensors = not any(
+        _has_sources(evaluations.get(role))
+        for role in (MOISTURE_ROLE, *INPUT_ROLE_ORDER)
+    )
     if no_sensors:
         problems.append(RoleProblem(MOISTURE_ROLE, "no_sensors"))
 

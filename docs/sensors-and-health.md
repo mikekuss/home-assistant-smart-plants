@@ -26,8 +26,8 @@ names for some: *Temperature*, *Humidity*, *Light* and *Fertilizer level*.
 - Smart Plants' own sensors can't be sources. A plant that already uses one keeps it, and the
   **Sensors** tab marks it *Smart Plants sensor, replace it*.
 - Every role is optional. Without a soil moisture sensor there are no watering alerts, and the
-  plant's status comes from its other readings. A plant shows *No sensors* only while no
-  sensor is assigned at all.
+  plant's status comes from its other readings. A plant shows *No sensors* while no sensor is
+  assigned, or only a battery sensor, because the battery level says nothing about the plant.
 
 ## Use several sensors for one reading
 

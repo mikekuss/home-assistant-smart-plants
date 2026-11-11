@@ -153,7 +153,9 @@ export function deriveStatus(input: StatusInput): StatusResult {
   const inputProblems = inputProblemsOf(input, openVerdicts);
   problems.push(...inputProblems);
   // Soil moisture is optional: a plant with other sensors is judged on those.
-  const noSensors = !hasSources && !STRESS_SIGNALS.some(({ role }) => hasOtherSources(input, role));
+  // A battery level says nothing about the plant, so a battery sensor alone
+  // doesn't count, as in the backend.
+  const noSensors = !hasSources && !STRESS_SIGNALS.some(({ role }) => role !== "battery" && hasOtherSources(input, role));
   if (noSensors) problems.push({ role: "moisture", kind: "no_sensors" });
 
   let status: PlantStatus;

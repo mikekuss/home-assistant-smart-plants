@@ -3800,7 +3800,7 @@ function Nt(e) {
 	});
 	let u = Lt(e, i);
 	t.push(...u);
-	let d = !s && !X.some(({ role: t }) => It(e, t));
+	let d = !s && !X.some(({ role: t }) => t !== "battery" && It(e, t));
 	d && t.push({
 		role: "moisture",
 		kind: "no_sensors"

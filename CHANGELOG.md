@@ -43,7 +43,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A plant with sensors but none for soil moisture no longer stays under **Sensor issues** with
   *No moisture sensor*. Soil moisture is optional: such a plant now gets its status from its
   other readings, for example *Healthy* or *Too cold*. *No sensors* now means that no sensor
-  is assigned at all.
+  is assigned, or only a battery sensor, since a battery level alone says nothing about the
+  plant.
 
 ## [0.17.0] - 2026-11-06
 

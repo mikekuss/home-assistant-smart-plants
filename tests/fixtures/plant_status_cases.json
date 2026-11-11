@@ -1192,6 +1192,161 @@
       "problems": []
     },
     {
+      "name": "battery sensor only",
+      "disabled": false,
+      "moisture": {
+        "percent": null,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [
+          "no_sources"
+        ],
+        "sources": 0
+      },
+      "stress": {
+        "battery": {
+          "available": true,
+          "on": false,
+          "reason": "battery_ok",
+          "reading": 87
+        }
+      },
+      "entities": {
+        "allUnavailable": false,
+        "moisture": "unavailable",
+        "needs_water": "unavailable",
+        "too_wet": "unavailable",
+        "sensor_stale": "off",
+        "stress": {
+          "battery": {
+            "state": "off",
+            "reason": "battery_ok"
+          }
+        },
+        "sources": 0,
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {
+          "battery": "87"
+        }
+      },
+      "status": "no_sensors",
+      "problems": [
+        {
+          "role": "moisture",
+          "kind": "no_sensors"
+        }
+      ]
+    },
+    {
+      "name": "low battery with no other sensor",
+      "disabled": false,
+      "moisture": {
+        "percent": null,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [
+          "no_sources"
+        ],
+        "sources": 0
+      },
+      "stress": {
+        "battery": {
+          "available": true,
+          "on": true,
+          "reason": "low_battery",
+          "reading": 8
+        }
+      },
+      "entities": {
+        "allUnavailable": false,
+        "moisture": "unavailable",
+        "needs_water": "unavailable",
+        "too_wet": "unavailable",
+        "sensor_stale": "off",
+        "stress": {
+          "battery": {
+            "state": "on",
+            "reason": "low_battery"
+          }
+        },
+        "sources": 0,
+        "input_problems": {},
+        "stress_problems": {
+          "battery": "battery_low"
+        },
+        "readings": {
+          "battery": "8"
+        }
+      },
+      "status": "problem",
+      "problems": [
+        {
+          "role": "battery",
+          "kind": "battery_low"
+        },
+        {
+          "role": "moisture",
+          "kind": "no_sensors"
+        }
+      ]
+    },
+    {
+      "name": "battery and temperature without a moisture sensor",
+      "disabled": false,
+      "moisture": {
+        "percent": null,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [
+          "no_sources"
+        ],
+        "sources": 0
+      },
+      "stress": {
+        "temperature": {
+          "available": true,
+          "on": false,
+          "reason": "temperature_ok"
+        },
+        "battery": {
+          "available": true,
+          "on": false,
+          "reason": "battery_ok",
+          "reading": 87
+        }
+      },
+      "entities": {
+        "allUnavailable": false,
+        "moisture": "unavailable",
+        "needs_water": "unavailable",
+        "too_wet": "unavailable",
+        "sensor_stale": "off",
+        "stress": {
+          "temperature": {
+            "state": "off",
+            "reason": "temperature_ok"
+          },
+          "battery": {
+            "state": "off",
+            "reason": "battery_ok"
+          }
+        },
+        "sources": 0,
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {
+          "temperature": "20.0",
+          "battery": "87"
+        }
+      },
+      "status": "healthy",
+      "problems": []
+    },
+    {
       "name": "cold temperature without a moisture sensor",
       "disabled": false,
       "moisture": {

@@ -236,7 +236,8 @@ function overviewOf(p) {
   const e = p.lifecycle_state === "disabled" ? unavailable : state.evaluations[p.id] ?? unavailable;
   const sources = p.roles.moisture?.sources ?? [];
   // Soil moisture is optional: without it, a plant with other sensors is healthy here.
-  const otherSources = Object.entries(p.roles ?? {}).some(([role, r]) => role !== "moisture" && r?.sources?.length);
+  // A battery sensor alone doesn't count as a plant sensor.
+  const otherSources = Object.entries(p.roles ?? {}).some(([role, r]) => role !== "moisture" && role !== "battery" && r?.sources?.length);
   const status = p.lifecycle_state === "disabled" ? "paused" : !sources.length ? (otherSources ? "healthy" : "no_sensors") : e.needs_water ? "needs_water" : e.too_wet ? "too_wet" : e.sensor_stale || !e.computed_available ? "stale" : "healthy";
   const kind = { needs_water: "needs_water", too_wet: "too_wet", stale: e.sensor_stale ? "stale" : "unavailable", no_sensors: "no_sensors" }[status];
   const d = p.roles.moisture?.threshold_defaults ?? defaults(); const o = p.roles.moisture?.threshold_overrides ?? {};
