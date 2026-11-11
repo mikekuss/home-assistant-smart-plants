@@ -62,8 +62,9 @@ and nothing more urgent applies. The plant page names the sensor, for example
 - **Light** doesn't count from 18:00 to 08:00. In the morning it counts once its window has
   passed since 08:00, so with 6 hours, a quiet light sensor counts from 14:00. A window of 10
   hours or more covers the whole day, so it gets that morning only after a day on which the
-  sensor reported or was assigned: a light sensor that stays silent through such a day counts
-  from 08:00 the next morning.
+  sensor reported or was assigned. A light sensor that stays silent through such a day is no
+  longer hidden from 08:00 the next morning, so it counts as not updating as soon as its window
+  has passed.
 
 For soil moisture, *Sensor stale* turns on while any moisture sensor is not updating. For the
 other readings, the problem sensor becomes unavailable instead. If a sensor reports only on a

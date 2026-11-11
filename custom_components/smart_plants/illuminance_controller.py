@@ -137,20 +137,41 @@ class IlluminancePlantController:
         self._wake_at = None
 
     def _next_sample_expiry(self) -> datetime | None:
-        """Return when the oldest kept light sample leaves the window."""
-        if not self._light_samples:
+        """
+        Return when a kept light sample leaving the window changes the result.
+
+        Only two expiries can: the newest sample holding the brightest reading
+        (the brightest reading can only fall then), and the one that leaves
+        fewer than the minimum number of samples (the result turns
+        unavailable). Other expiries only lower ``sample_count``; waking for
+        them would write the Low light state once a minute, so the count is
+        refreshed by the next report instead. At night the samples don't
+        matter, and by the next morning they have all left the window.
+        """
+        if not illuminance_evaluator.is_daytime(dt_util.as_local(self._evaluation_now)):
             return None
-        oldest = min(sample.observed_at for sample in self._light_samples)
-        boundary = oldest + illuminance_evaluator.LOW_LIGHT_WINDOW_SECONDS
+        samples = sorted(self._light_samples, key=lambda sample: sample.observed_at)
+        minimum = illuminance_evaluator.LOW_LIGHT_MIN_SAMPLES
+        if len(samples) < minimum:
+            return None
+        brightest = max(sample.lux for sample in samples)
+        brightest_until = max(
+            sample.observed_at for sample in samples if sample.lux == brightest
+        )
+        enough_until = samples[len(samples) - minimum].observed_at
+        boundary = (
+            min(brightest_until, enough_until)
+            + illuminance_evaluator.LOW_LIGHT_WINDOW_SECONDS
+        )
         return datetime.fromtimestamp(boundary, tz=UTC) + SAMPLE_EXPIRY_MARGIN
 
     def _schedule_wakeup(self) -> None:
-        # Wake at the next 08:00/18:00 local edge, or earlier when the oldest
-        # light sample leaves the window, so low_light re-evaluates without
-        # waiting for a source state change. Only roles with sources need
-        # this; an unconfigured role is unavailable regardless of the time, so
-        # it schedules no timer. An unchanged target keeps its timer, so
-        # frequent sensor reports do not re-arm it.
+        # Wake at the next 08:00/18:00 local edge, or earlier when a light
+        # sample leaving the window changes the result, so low_light
+        # re-evaluates without waiting for a source state change. Only roles
+        # with sources need this; an unconfigured role is unavailable
+        # regardless of the time, so it schedules no timer. An unchanged target
+        # keeps its timer, so frequent sensor reports do not re-arm it.
         if not self._active or not self._config.sources:
             self._cancel_edge()
             return

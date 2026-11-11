@@ -252,16 +252,21 @@ async def test_unloading_cancels_a_pending_sample_expiry(
     manager = await _setup(hass)
     hass.states.async_set("sensor.mock_lux", "1000", LUX)
     plant_id = await _plant_with_light(manager)
+    await _move_to(hass, freezer, datetime(2026, 6, 1, 9, 5, tzinfo=UTC))
+    hass.states.async_set("sensor.mock_lux", "100", LUX)
     await hass.async_block_till_done()
     controller = manager.get_role_controller(plant_id, "illuminance")
     assert controller is not None
-    assert controller._wake_at == datetime(2026, 6, 1, 11, 0, 1, tzinfo=UTC)
+    expiry = datetime(2026, 6, 1, 11, 0, 1, tzinfo=UTC)
+    assert controller._wake_at == expiry
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
-    assert controller._unsub_edge is None
-    await _move_to(hass, freezer, datetime(2026, 6, 1, 11, 0, 1, tzinfo=UTC))
+    evaluations: list[datetime] = []
+    controller._recompute_and_notify = evaluations.append
+    await _move_to(hass, freezer, expiry + timedelta(minutes=1))
+    assert evaluations == []
 
 
 _DAY = datetime(2026, 12, 1, 10, tzinfo=UTC)
@@ -352,17 +357,24 @@ async def test_sample_expiry_wake_up_follows_reports_and_reconfiguration(
     await hass.async_block_till_done()
     controller = manager.get_role_controller(plant_id, "illuminance")
     assert controller is not None
-    first_expiry = datetime(2026, 6, 1, 11, 0, 1, tzinfo=UTC)
-    assert controller._wake_at == first_expiry
+    # One sample: no expiry can change the result, so only the edge is due.
+    assert controller._wake_at == datetime(2026, 6, 1, 14, tzinfo=UTC)
 
-    # More reports in later minutes keep the wake-up of the oldest sample and
-    # its timer.
+    # A second, dimmer sample: the bright one leaving the window changes the
+    # result.
+    await _move_to(hass, freezer, datetime(2026, 6, 1, 9, 5, tzinfo=UTC))
+    hass.states.async_set("sensor.mock_lux", "100", LUX)
+    await hass.async_block_till_done()
+    bright_expiry = datetime(2026, 6, 1, 11, 0, 1, tzinfo=UTC)
+    assert controller._wake_at == bright_expiry
+
+    # Another dim report keeps that target and its timer.
     timer = controller._unsub_edge
-    for minute in (5, 10):
-        await _move_to(hass, freezer, datetime(2026, 6, 1, 9, minute, tzinfo=UTC))
-        hass.states.async_set("sensor.mock_lux", "1000", LUX)
-        await hass.async_block_till_done()
-    assert controller._wake_at == first_expiry
+    await _move_to(hass, freezer, datetime(2026, 6, 1, 9, 10, tzinfo=UTC))
+    hass.states.async_set("sensor.mock_lux", "100", LUX)
+    await hass.async_block_till_done()
+    assert len(controller._light_samples) == 3
+    assert controller._wake_at == bright_expiry
     assert controller._unsub_edge is timer
 
     # A new stale window keeps the samples and their wake-up.
@@ -371,13 +383,13 @@ async def test_sample_expiry_wake_up_follows_reports_and_reconfiguration(
         plant_id,
         role="illuminance",
         expected_revision=plant.revision,
-        stale_after_seconds=3600,
+        stale_after_seconds=8 * 3600,
     )
     await hass.async_block_till_done()
-    assert controller._wake_at == first_expiry
+    assert controller._wake_at == bright_expiry
 
-    # After the wake-up, the next oldest sample sets the next one.
-    await _move_to(hass, freezer, first_expiry)
+    # After the wake-up, the next wake is when fewer than two samples remain.
+    await _move_to(hass, freezer, bright_expiry)
     assert controller._wake_at == datetime(2026, 6, 1, 11, 5, 1, tzinfo=UTC)
 
     # Removing the sensor cancels the timer.
@@ -388,3 +400,42 @@ async def test_sample_expiry_wake_up_follows_reports_and_reconfiguration(
     await hass.async_block_till_done()
     assert controller._unsub_edge is None
     assert controller._wake_at is None
+
+
+async def test_steady_reports_write_no_low_light_state(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    # A sensor that changes its value once a minute. Once the window is full,
+    # each report adds one sample and one leaves, so Low light is not written
+    # again while its result stays the same.
+    await hass.config.async_set_time_zone("UTC")
+    now = datetime(2026, 6, 1, 9, tzinfo=UTC)
+    freezer.move_to(now)
+    manager = await _setup(hass)
+    hass.states.async_set("sensor.mock_lux", "1000", LUX)
+    plant_id = await _plant_with_light(manager)
+    await hass.async_block_till_done()
+    entity_id = _low_light_state(hass, plant_id).entity_id
+
+    async def report_for(minutes: int) -> None:
+        nonlocal now
+        for _ in range(minutes):
+            now += timedelta(minutes=1)
+            await _move_to(hass, freezer, now)
+            value = "1001" if now.minute % 2 else "1000"
+            hass.states.async_set("sensor.mock_lux", value, LUX)
+            await hass.async_block_till_done()
+
+    await report_for(130)
+    assert _low_light_state(hass, plant_id).state == "off"
+    changes: list[Any] = []
+    unsub = hass.bus.async_listen(
+        "state_changed",
+        lambda event: (
+            changes.append(event) if event.data["entity_id"] == entity_id else None
+        ),
+    )
+    await report_for(60)
+    unsub()
+    assert changes == []
+    assert _low_light_state(hass, plant_id).state == "off"
