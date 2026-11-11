@@ -3159,6 +3159,18 @@ class PlantRecord:
     def care_task(self, task_id: str) -> CareTask | None:
         return next((task for task in self.care_tasks if task.id == task_id), None)
 
+    def active_snoozed_until(self, now: datetime) -> str | None:
+        """
+        Return the snooze end while it lies after ``now``.
+
+        A snooze ends at its end time even before the cleared record is saved,
+        so readers use this instead of the stored ``snoozed_until``.
+        """
+        until = self.snoozed_until
+        if until is None or parse_utc_timestamp(until, "plant snoozed_until") <= now:
+            return None
+        return until
+
     def role_config(self, role: str) -> Any | None:
         if role == "moisture":
             return self.moisture

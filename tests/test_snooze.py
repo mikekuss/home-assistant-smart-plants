@@ -907,3 +907,178 @@ def test_snooze_attributes_stay_out_of_the_recorder() -> None:
     for cls in classes:
         assert {"snoozed", "snoozed_until"} <= cls._unrecorded_attributes, cls
     assert "reading" in binary_sensor._CareTaskDueBinary._unrecorded_attributes
+
+
+# --- Snooze end when storage fails ------------------------------------------
+
+
+def _fail_saves(manager: SmartPlantsManager, failures: int) -> list[int]:
+    """Make the next ``failures`` inventory saves fail; count every call."""
+    original = manager._store.async_save
+    calls: list[int] = []
+
+    async def save(*args: Any, **kwargs: Any) -> Any:
+        calls.append(1)
+        if len(calls) <= failures:
+            raise OSError("synthetic storage failure")
+        return await original(*args, **kwargs)
+
+    manager._store.async_save = save  # type: ignore[method-assign]
+    return calls
+
+
+async def _report(hass: HomeAssistant, device_id: str) -> dict[str, Any]:
+    response = await hass.services.async_call(
+        DOMAIN,
+        "get_report",
+        {"device_id": device_id},
+        blocking=True,
+        return_response=True,
+    )
+    assert response is not None
+    return dict(response)
+
+
+async def _snoozed_with_due_task(
+    hass: HomeAssistant, entry: MockConfigEntry
+) -> tuple[PlantRecord, str]:
+    manager = _manager(entry)
+    plant = await _plant(entry)
+    plant, task = await manager.async_create_care_task(
+        plant.id,
+        expected_revision=plant.revision,
+        task_type="fertilize",
+        name=None,
+        schedule=INTERVAL,
+        instructions=None,
+        baseline_done_on=None,
+    )
+    plant = await manager.async_snooze_plant(
+        plant.id, expected_revision=None, until=NOW + timedelta(hours=1)
+    )
+    await hass.async_block_till_done()
+    return plant, f"care_task:{task.id}:due"
+
+
+async def test_snooze_end_takes_effect_when_its_save_fails(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    freezer.move_to(NOW)
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    plant, role = await _snoozed_with_due_task(hass, entry)
+    device = plant_device(dr.async_get(hass), plant.id)
+    assert device is not None
+    device_id = device.id
+    assert _state(hass, manager, plant.id, role).state == "on"
+    assert (await _report(hass, device_id))["snoozed"] == 1
+    end = plant.snoozed_until
+    calls = _fail_saves(manager, 1)
+
+    freezer.tick(timedelta(hours=1, seconds=1))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    # The save failed, so the stored end stays, but the snooze is over.
+    assert len(calls) == 1
+    assert manager.get_plant(plant.id).snoozed_until == end
+    attributes = _state_attributes(hass, manager, plant.id, role)
+    assert attributes["snoozed"] is False
+    assert attributes["snoozed_until"] is None
+    report = await _report(hass, device_id)
+    assert report["snoozed"] == 0
+    assert [row["plant"] for row in report["plants"]] == ["Aloe"]
+
+    # Storage works again; the end is saved without another edit.
+    freezer.tick(timedelta(seconds=31))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(calls) == 2
+    assert manager.get_plant(plant.id).snoozed_until is None
+    assert hass_storage[STORAGE_KEY]["data"]["plants"][0]["snoozed_until"] is None
+    assert _state_attributes(hass, manager, plant.id, role)["snoozed"] is False
+
+
+async def test_snooze_end_retries_with_growing_delays(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(NOW)
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    plant, _role = await _snoozed_with_due_task(hass, entry)
+    calls = _fail_saves(manager, 3)
+
+    freezer.tick(timedelta(hours=1, seconds=1))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(calls) == 1
+    for delay, expected in ((30, 2), (60, 3), (120, 4)):
+        freezer.tick(timedelta(seconds=delay - 1))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+        assert len(calls) == expected - 1
+        freezer.tick(timedelta(seconds=2))
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+        assert len(calls) == expected
+    assert manager.get_plant(plant.id).snoozed_until is None
+
+
+async def test_newer_snooze_wins_over_a_pending_end_retry(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    freezer.move_to(NOW)
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    plant, role = await _snoozed_with_due_task(hass, entry)
+    calls = _fail_saves(manager, 1)
+
+    freezer.tick(timedelta(hours=1, seconds=1))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(calls) == 1
+
+    later = _iso(NOW + timedelta(hours=3))
+    await manager.async_snooze_plant(plant.id, expected_revision=None, until=later)
+    await hass.async_block_till_done()
+    assert _state_attributes(hass, manager, plant.id, role)["snoozed_until"] == later
+    revision = manager.get_plant(plant.id).revision
+
+    freezer.tick(timedelta(minutes=5))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert manager.get_plant(plant.id).snoozed_until == later
+    assert manager.get_plant(plant.id).revision == revision
+    assert hass_storage[STORAGE_KEY]["data"]["plants"][0]["snoozed_until"] == later
+    assert _state_attributes(hass, manager, plant.id, role)["snoozed"] is True
+
+    freezer.tick(timedelta(hours=2))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert manager.get_plant(plant.id).snoozed_until is None
+
+
+async def test_unload_cancels_a_pending_snooze_end_retry(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(NOW)
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    await _snoozed_with_due_task(hass, entry)
+    calls = _fail_saves(manager, 1)
+
+    freezer.tick(timedelta(hours=1, seconds=1))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(calls) == 1
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    freezer.tick(timedelta(hours=1))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(calls) == 1

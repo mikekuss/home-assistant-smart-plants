@@ -327,3 +327,307 @@ async def test_event_fires_only_after_durable_publish(hass: HomeAssistant) -> No
         await manager.async_create_plant(name="Ghost")
 
     assert recorder.events == []
+
+
+def _rename(name: str) -> Any:
+    return lambda current: current.with_next_revision(name=name)
+
+
+async def test_cancelled_batch_still_delivers_every_committed_event(
+    hass: HomeAssistant,
+) -> None:
+    manager = await _loaded_manager(hass)
+    first = await manager.async_create_plant(name="Aloe")
+    second = await manager.async_create_plant(name="Fern")
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    delivered: list[str] = []
+
+    async def slow(event: PlantEvent) -> None:
+        if isinstance(event, PlantUpdatedEvent) and event.plant.name == "Aloe 2":
+            entered.set()
+            await release.wait()
+
+    def record(event: PlantEvent) -> None:
+        if isinstance(event, PlantUpdatedEvent):
+            delivered.append(event.plant.name)
+
+    unsubscribe = manager.subscribe(slow)
+    manager.subscribe(record)
+    batch = asyncio.create_task(
+        manager.async_apply_plant_changes(
+            [(first.id, _rename("Aloe 2")), (second.id, _rename("Fern 2"))]
+        )
+    )
+    await entered.wait()
+    batch.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await batch
+
+    # Both changes are durable even though the caller went away.
+    assert manager.get_plant(first.id).name == "Aloe 2"
+    assert manager.get_plant(second.id).name == "Fern 2"
+    unsubscribe()
+    release.set()
+
+    async with asyncio.timeout(5):
+        await manager.async_apply_plant_changes([(first.id, _rename("Aloe 3"))])
+    assert delivered == ["Aloe 2", "Fern 2", "Aloe 3"]
+    async with asyncio.timeout(5):
+        await manager.async_unload()
+
+
+async def test_cancelled_wait_for_an_earlier_event_still_delivers(
+    hass: HomeAssistant,
+) -> None:
+    manager = await _loaded_manager(hass)
+    plant = await manager.async_create_plant(name="Aloe")
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    delivered: list[str] = []
+
+    async def slow(event: PlantEvent) -> None:
+        if isinstance(event, PlantUpdatedEvent) and event.plant.name == "Aloe 2":
+            entered.set()
+            await release.wait()
+
+    def record(event: PlantEvent) -> None:
+        if isinstance(event, PlantUpdatedEvent):
+            delivered.append(event.plant.name)
+
+    manager.subscribe(slow)
+    manager.subscribe(record)
+    earlier = asyncio.create_task(
+        manager.async_apply_plant_changes([(plant.id, _rename("Aloe 2"))])
+    )
+    await entered.wait()
+    waiting = asyncio.create_task(
+        manager.async_apply_plant_changes([(plant.id, _rename("Aloe 3"))])
+    )
+    for _ in range(5):
+        await asyncio.sleep(0)
+    assert manager.get_plant(plant.id).name == "Aloe 3"
+    waiting.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await waiting
+    release.set()
+
+    async with asyncio.timeout(5):
+        await earlier
+        await manager.async_apply_plant_changes([(plant.id, _rename("Aloe 4"))])
+    assert delivered == ["Aloe 2", "Aloe 3", "Aloe 4"]
+
+
+async def test_subscriber_cancellation_does_not_cancel_the_mutation(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    manager = await _loaded_manager(hass)
+    recorder = _Recorder()
+
+    async def cancelled(_event: PlantEvent) -> None:
+        raise asyncio.CancelledError
+
+    manager.subscribe(cancelled)
+    manager.subscribe(recorder)
+
+    async with asyncio.timeout(5):
+        plant = await manager.async_create_plant(name="Aloe")
+        await manager.async_apply_plant_changes([(plant.id, _rename("Aloe 2"))])
+    assert [type(event) for event in recorder.events] == [
+        PlantAddedEvent,
+        PlantUpdatedEvent,
+    ]
+    assert "subscriber was cancelled" in caplog.text
+
+
+async def test_subscriber_can_write_while_handling_an_event(
+    hass: HomeAssistant,
+) -> None:
+    manager = await _loaded_manager(hass)
+    recorder = _Recorder()
+
+    async def follow_up(event: PlantEvent) -> None:
+        if isinstance(event, PlantAddedEvent) and event.plant.name == "Aloe":
+            await manager.async_create_plant(name="Fern")
+            await manager.async_apply_plant_changes(
+                [(event.plant.id, _rename("Aloe 2"))]
+            )
+
+    manager.subscribe(follow_up)
+    manager.subscribe(recorder)
+
+    async with asyncio.timeout(5):
+        await manager.async_create_plant(name="Aloe")
+        await manager.async_create_plant(name="Ivy")
+    names = [
+        event.plant.name
+        for event in recorder.events
+        if isinstance(event, (PlantAddedEvent, PlantUpdatedEvent))
+    ]
+    # The nested writes are delivered while the subscriber handles the outer
+    # event, so they reach later subscribers first; the next write follows.
+    assert names == ["Fern", "Aloe 2", "Aloe", "Ivy"]
+
+
+async def test_unload_waits_for_a_running_delivery(hass: HomeAssistant) -> None:
+    manager = await _loaded_manager(hass)
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    finished: list[str] = []
+
+    async def slow(event: PlantEvent) -> None:
+        if isinstance(event, PlantAddedEvent):
+            entered.set()
+            await release.wait()
+            finished.append(event.plant.name)
+
+    manager.subscribe(slow)
+    create = asyncio.create_task(manager.async_create_plant(name="Aloe"))
+    await entered.wait()
+    unload = asyncio.create_task(manager.async_unload())
+    for _ in range(5):
+        await asyncio.sleep(0)
+    assert not unload.done()
+    release.set()
+    async with asyncio.timeout(5):
+        await unload
+        await create
+    assert finished == ["Aloe"]
+
+
+async def test_cancelled_writer_started_by_a_subscriber_still_delivers(
+    hass: HomeAssistant,
+) -> None:
+    manager = await _loaded_manager(hass)
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    writers: list[asyncio.Task[None]] = []
+    delivered: list[str] = []
+
+    async def write(plant_id: str) -> None:
+        await manager.async_apply_plant_changes([(plant_id, _rename("Aloe 2"))])
+
+    async def spawn(event: PlantEvent) -> None:
+        if isinstance(event, PlantAddedEvent) and event.plant.name == "Aloe":
+            # The writer commits while this event is still being delivered.
+            writers.append(asyncio.create_task(write(event.plant.id)))
+            await entered.wait()
+
+    async def slow(event: PlantEvent) -> None:
+        if isinstance(event, PlantUpdatedEvent):
+            entered.set()
+            await release.wait()
+
+    def record(event: PlantEvent) -> None:
+        if isinstance(event, PlantUpdatedEvent):
+            delivered.append(event.plant.name)
+
+    manager.subscribe(spawn)
+    manager.subscribe(slow)
+    manager.subscribe(record)
+    async with asyncio.timeout(5):
+        await manager.async_create_plant(name="Aloe")
+    (writer,) = writers
+    writer.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await writer
+    release.set()
+
+    async with asyncio.timeout(5):
+        plant = await manager.async_create_plant(name="Fern")
+        await manager.async_apply_plant_changes([(plant.id, _rename("Fern 2"))])
+    assert delivered == ["Aloe 2", "Fern 2"]
+
+
+async def test_late_writer_started_by_a_subscriber_waits_its_turn(
+    hass: HomeAssistant,
+) -> None:
+    manager = await _loaded_manager(hass)
+    fern = await manager.async_create_plant(name="Fern")
+    go = asyncio.Event()
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    writers: list[asyncio.Task[None]] = []
+    delivered: list[str] = []
+
+    async def write_later(plant_id: str) -> None:
+        await go.wait()
+        await manager.async_apply_plant_changes([(plant_id, _rename("Aloe 2"))])
+
+    def spawn(event: PlantEvent) -> None:
+        if isinstance(event, PlantAddedEvent) and event.plant.name == "Aloe":
+            writers.append(asyncio.create_task(write_later(event.plant.id)))
+
+    async def slow(event: PlantEvent) -> None:
+        if isinstance(event, PlantUpdatedEvent) and event.plant.name == "Fern 2":
+            entered.set()
+            await release.wait()
+
+    def record(event: PlantEvent) -> None:
+        if isinstance(event, PlantUpdatedEvent):
+            delivered.append(event.plant.name)
+
+    manager.subscribe(spawn)
+    manager.subscribe(slow)
+    manager.subscribe(record)
+    aloe = await manager.async_create_plant(name="Aloe")
+    earlier = asyncio.create_task(
+        manager.async_apply_plant_changes([(fern.id, _rename("Fern 2"))])
+    )
+    await entered.wait()
+    go.set()
+    for _ in range(10):
+        await asyncio.sleep(0)
+    # Committed, but queued behind the event that is still being delivered.
+    assert manager.get_plant(aloe.id).name == "Aloe 2"
+    assert delivered == []
+    release.set()
+    async with asyncio.timeout(5):
+        await earlier
+        await writers[0]
+    assert delivered == ["Fern 2", "Aloe 2"]
+
+
+async def test_older_event_does_not_roll_controllers_back(
+    hass: HomeAssistant,
+) -> None:
+    manager = await _loaded_manager(hass)
+    plant = await manager.async_create_plant(name="Aloe")
+    first = await manager.async_set_moisture_thresholds(
+        plant.id,
+        expected_revision=1,
+        moisture_min=20,
+        moisture_target=40,
+        moisture_max=60,
+    )
+    second = await manager.async_set_moisture_thresholds(
+        plant.id,
+        expected_revision=first.revision,
+        moisture_min=25,
+        moisture_target=45,
+        moisture_max=65,
+    )
+    controller = manager.get_moisture_controller(plant.id)
+    assert controller is not None
+    assert controller.config.moisture_min == 25
+
+    manager._sync_controllers_for(
+        PlantUpdatedEvent(kind="plant_updated", plant=first, previous=plant)
+    )
+    assert controller.config.moisture_min == 25
+    assert manager.get_plant(plant.id) == second
+
+
+async def test_subscribers_get_the_event_when_a_controller_update_fails(
+    hass: HomeAssistant, caplog: pytest.LogCaptureFixture
+) -> None:
+    manager = await _loaded_manager(hass)
+    recorder = _Recorder()
+    manager.subscribe(recorder)
+
+    with patch.object(
+        manager, "_sync_controllers_for", side_effect=RuntimeError("synthetic")
+    ):
+        await manager.async_create_plant(name="Aloe")
+    assert [type(event) for event in recorder.events] == [PlantAddedEvent]
+    assert "failed to update controllers" in caplog.text

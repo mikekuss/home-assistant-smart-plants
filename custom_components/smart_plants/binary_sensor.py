@@ -37,6 +37,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.const import EVENT_STATE_CHANGED, EntityCategory
 from homeassistant.core import Event, EventStateChangedData, callback
 from homeassistant.helpers import entity_registry as er
+from homeassistant.util import dt as dt_util
 
 from .automation_targets import (
     ALL_PLANTS_SUGGESTED_ENTITY_ID,
@@ -114,7 +115,9 @@ class SmartPlantsBinarySensorEntity(SmartPlantsEntity, BinarySensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         plant = self._manager.snapshot.plants.get(self._plant_id)
-        snoozed_until = None if plant is None else plant.snoozed_until
+        snoozed_until = (
+            None if plant is None else plant.active_snoozed_until(dt_util.utcnow())
+        )
         return {
             **self._alert_attributes(),
             "snoozed": snoozed_until is not None,
