@@ -14,6 +14,7 @@ from custom_components.smart_plants import sensor as sensor_module
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.manager import SmartPlantsManager
 from custom_components.smart_plants.storage import (
+    SmartPlantsPendingOperationsFullError,
     SmartPlantsStorageError,
     SmartPlantsStorageFullError,
 )
@@ -350,6 +351,7 @@ async def test_paused_plant_buttons_are_unavailable(hass: HomeAssistant) -> None
     ("error", "key"),
     [
         (SmartPlantsStorageFullError("full"), "storage_full"),
+        (SmartPlantsPendingOperationsFullError(), "pending_operations_full"),
         (SmartPlantsStorageError("failed"), "storage_failed"),
     ],
 )

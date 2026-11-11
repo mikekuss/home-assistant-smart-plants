@@ -89,7 +89,11 @@ from .report import (
     report_language,
 )
 from .schema_library import vol
-from .storage import SmartPlantsStorageError, SmartPlantsStorageFullError
+from .storage import (
+    SmartPlantsPendingOperationsFullError,
+    SmartPlantsStorageError,
+    SmartPlantsStorageFullError,
+)
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -349,6 +353,9 @@ async def _async_apply(
         raise _error("unknown_target", target=targets.get(plant_id, plant_id)) from err
     except SmartPlantsManagerUnavailableError as err:
         raise _error("integration_not_loaded") from err
+    except SmartPlantsPendingOperationsFullError:
+        # Already translated: it asks for a restart, not for freeing space.
+        raise
     except SmartPlantsStorageFullError as err:
         raise HomeAssistantError(
             translation_domain=DOMAIN, translation_key="storage_full"

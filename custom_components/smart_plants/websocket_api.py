@@ -139,6 +139,12 @@ Error codes:
   record.
 * ``invalid_format`` -- a client-supplied field failed server validation
   (``SmartPlantsValidationError``).
+* ``limit``, ``busy``, ``conflict`` -- a retire or restore cannot run now.
+* ``storage_full`` -- the change would make the stored inventory too large;
+  deleting old care log entries or notes frees space.
+* ``pending_operations_full`` -- too many unfinished changes wait to be
+  completed; a restart completes them.
+* ``storage_failed`` -- the change could not be saved; nothing was changed.
 * ``unknown_error`` -- an unhandled error surfaced from the manager;
   full detail is logged, only the message is returned.
 
@@ -203,6 +209,11 @@ from .provider import (
 )
 from .roles import role_definitions
 from .schema_library import vol
+from .storage import (
+    SmartPlantsPendingOperationsFullError,
+    SmartPlantsStorageError,
+    SmartPlantsStorageFullError,
+)
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -223,6 +234,9 @@ ERR_PROVIDER_RATE_LIMIT = "provider_rate_limit"
 ERR_PROVIDER_TIMEOUT = "provider_timeout"
 ERR_PROVIDER_OUTAGE = "provider_outage"
 ERR_PROVIDER_MALFORMED = "provider_malformed_response"
+ERR_STORAGE_FULL = "storage_full"
+ERR_PENDING_OPERATIONS_FULL = "pending_operations_full"
+ERR_STORAGE_FAILED = "storage_failed"
 
 _UNKNOWN_ERROR_MESSAGE = "internal error"
 _PLANT_ID_MAX_LEN = 200
@@ -318,6 +332,54 @@ def _reply_not_loaded(connection: ActiveConnection, msg_id: int) -> None:
         ERR_INTEGRATION_NOT_LOADED,
         "Smart Plants is not loaded",
     )
+
+
+def _manager_error(err: Exception) -> tuple[str, str] | None:
+    """
+    Return the WebSocket error code and message for a typed manager error.
+
+    Storage errors carry fixed messages: the panel shows its own text for
+    each code, and the exception text may name sizes or file details.
+    ``None`` means the error is not one the manager raises on purpose.
+    """
+    result: tuple[str, str] | None = None
+    if isinstance(err, SmartPlantsPlantNotFoundError):
+        result = (ERR_NOT_FOUND, "plant not found")
+    elif isinstance(err, SmartPlantsRevisionConflictError):
+        result = (ERR_REVISION_CONFLICT, str(err))
+    elif isinstance(err, SmartPlantsArchiveBusyError):
+        result = (ERR_BUSY, str(err))
+    elif isinstance(err, SmartPlantsRestoreConflictError):
+        result = (ERR_CONFLICT, str(err))
+    elif isinstance(err, (SmartPlantsArchiveFullError, SmartPlantsPlantLimitError)):
+        result = (ERR_LIMIT, str(err))
+    elif isinstance(err, SmartPlantsValidationError):
+        result = (ERR_INVALID_FORMAT, str(err))
+    elif isinstance(err, SmartPlantsPendingOperationsFullError):
+        result = (ERR_PENDING_OPERATIONS_FULL, "too many unfinished changes")
+    elif isinstance(err, SmartPlantsStorageFullError):
+        result = (ERR_STORAGE_FULL, "storage is full")
+    elif isinstance(err, SmartPlantsStorageError):
+        result = (ERR_STORAGE_FAILED, "the change could not be saved")
+    return result
+
+
+def _send_manager_error(
+    connection: ActiveConnection, msg: dict[str, Any], err: Exception
+) -> None:
+    """Reply to a failed write with the error code the panel can explain."""
+    if isinstance(err, SmartPlantsManagerUnavailableError):
+        _reply_not_loaded(connection, msg["id"])
+        return
+    mapped = _manager_error(err)
+    if mapped is None:
+        _LOGGER.error("Unhandled error in %s", msg["type"], exc_info=err)
+        mapped = (ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    elif mapped[0] == ERR_STORAGE_FAILED:
+        # Nothing was saved and the panel only says to check the log, so
+        # the log needs the cause.
+        _LOGGER.error("Could not save %s", msg["type"], exc_info=err)
+    connection.send_error(msg["id"], *mapped)
 
 
 def _species_from_msg(value: Any) -> PlantSpecies | None:
@@ -456,15 +518,8 @@ async def _handle_create(
             category=msg.get("category"),
             area_id=msg.get("area_id"),
         )
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-        return
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-        return
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/plants/create")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {"plant": _plant_view(plant)})
 
@@ -526,21 +581,8 @@ async def _handle_update(
         if "placement" in msg:
             kwargs["placement"] = _placement_from_msg(msg["placement"])
         plant = await manager.async_update_plant(msg["plant_id"], **kwargs)
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-        return
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-        return
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-        return
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-        return
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/plants/update")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {"plant": _plant_view(plant)})
 
@@ -572,18 +614,8 @@ def _make_lifecycle_handler(
             plant = await method(
                 msg["plant_id"], expected_revision=msg["expected_revision"]
             )
-        except SmartPlantsPlantNotFoundError:
-            connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-            return
-        except SmartPlantsRevisionConflictError as err:
-            connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-            return
-        except SmartPlantsManagerUnavailableError:
-            _reply_not_loaded(connection, msg["id"])
-            return
-        except Exception:
-            _LOGGER.exception("Unhandled error in %s", command_type)
-            connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+        except Exception as err:  # noqa: BLE001
+            _send_manager_error(connection, msg, err)
             return
         connection.send_result(msg["id"], {"plant": _plant_view(plant)})
 
@@ -649,17 +681,8 @@ async def _handle_care_add_watering(
             occurred_at=msg["occurred_at"],
             note=msg["note"],
         )
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/care/add_watering")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
     else:
         connection.send_result(
             msg["id"],
@@ -707,17 +730,8 @@ async def _handle_care_add(
             occurred_at=msg["occurred_at"],
             payload=msg["payload"],
         )
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/care/add")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
     else:
         connection.send_result(
             msg["id"],
@@ -768,17 +782,8 @@ async def _handle_care_edit(
             occurred_at=msg["occurred_at"],
             payload=msg["payload"],
         )
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/care/edit")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
     else:
         connection.send_result(
             msg["id"],
@@ -813,17 +818,8 @@ async def _handle_care_delete(
             expected_revision=msg["expected_revision"],
             event_id=msg["event_id"],
         )
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/care/delete")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
     else:
         connection.send_result(
             msg["id"],
@@ -862,17 +858,8 @@ async def _run_mutation(
         return
     try:
         result = await mutate(manager)
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-    except Exception:
-        _LOGGER.exception("Unhandled error in %s", msg["type"])
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
     else:
         connection.send_result(msg["id"], result)
 
@@ -1208,21 +1195,8 @@ async def _handle_set_area(
             expected_revision=msg["expected_revision"],
             area_id=msg["area_id"],
         )
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-        return
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-        return
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-        return
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-        return
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/plants/set_area")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {"plant": _plant_view(plant)})
 
@@ -1308,23 +1282,8 @@ async def _handle_role_set_threshold_overrides(
             expected_revision=msg["expected_revision"],
             values=msg["values"],
         )
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-        return
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-        return
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-        return
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-        return
-    except Exception:
-        _LOGGER.exception(
-            "Unhandled error in smart_plants/roles/set_threshold_overrides"
-        )
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {"plant": _plant_view(plant)})
 
@@ -1356,21 +1315,8 @@ async def _handle_role_set_sources(
             expected_revision=msg["expected_revision"],
             sources=msg["sources"],
         )
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-        return
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-        return
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-        return
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-        return
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/roles/set_sources")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {"plant": _plant_view(plant)})
 
@@ -1402,21 +1348,8 @@ async def _handle_role_set_primary(
             expected_revision=msg["expected_revision"],
             primary_entity_id=msg["primary_entity_id"],
         )
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-        return
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-        return
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-        return
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-        return
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/roles/set_primary")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {"plant": _plant_view(plant)})
 
@@ -1448,21 +1381,8 @@ async def _handle_role_set_aggregation(
             expected_revision=msg["expected_revision"],
             aggregation=msg["aggregation"],
         )
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-        return
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-        return
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-        return
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-        return
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/roles/set_aggregation")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {"plant": _plant_view(plant)})
 
@@ -1494,21 +1414,8 @@ async def _handle_role_set_stale_after(
             expected_revision=msg["expected_revision"],
             stale_after_seconds=msg["stale_after_seconds"],
         )
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-        return
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-        return
-    except SmartPlantsValidationError as err:
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-        return
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-        return
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/roles/set_stale_after")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {"plant": _plant_view(plant)})
 
@@ -1657,18 +1564,8 @@ async def _handle_delete(
         await manager.async_delete_plant(
             msg["plant_id"], expected_revision=msg["expected_revision"]
         )
-    except SmartPlantsPlantNotFoundError:
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-        return
-    except SmartPlantsRevisionConflictError as err:
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-        return
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-        return
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/plants/delete")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {})
 
@@ -1884,12 +1781,8 @@ async def _handle_species_apply(
     except (SmartPlantsValidationError, ValueError) as err:
         connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
         return
-    except SmartPlantsManagerUnavailableError:
-        _reply_not_loaded(connection, msg["id"])
-        return
-    except Exception:
-        _LOGGER.exception("Unhandled error in smart_plants/species/apply")
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+    except Exception as err:  # noqa: BLE001
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {"plant": _plant_view(plant)})
 
@@ -2017,10 +1910,19 @@ def _panel_handler(command: str, fields: dict[vol.Marker | str, Any]) -> Any:
                 _reply_not_loaded(connection, msg["id"])
             else:
                 _provider_error(connection, msg["id"], err)
-        except Exception:  # noqa: BLE001
-            # Do not log request fields, capabilities, or provider exception bodies.
-            _LOGGER.error("Unhandled error in %s", command)  # noqa: TRY400
-            connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+        except Exception as err:  # noqa: BLE001
+            mapped = _manager_error(err)
+            if mapped is None:
+                # Do not log request fields, capabilities, or provider
+                # exception bodies.
+                _LOGGER.error("Unhandled error in %s", command)  # noqa: TRY400
+                mapped = (ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
+            elif mapped[0] == ERR_STORAGE_FAILED:
+                # Name only the error type, as above.
+                _LOGGER.error(  # noqa: TRY400
+                    "Could not save %s: %s", command, type(err).__name__
+                )
+            connection.send_error(msg["id"], *mapped)
         else:
             connection.send_result(msg["id"], result)
 
@@ -2097,31 +1999,6 @@ def _archived_view(record: ArchivedPlant) -> dict[str, Any]:
     }
 
 
-def _send_archive_error(
-    connection: ActiveConnection, msg: dict[str, Any], err: Exception
-) -> None:
-    """Reply with the error code of a failed retire, restore or delete."""
-    if isinstance(err, SmartPlantsPlantNotFoundError):
-        connection.send_error(msg["id"], ERR_NOT_FOUND, "plant not found")
-    elif isinstance(err, SmartPlantsRevisionConflictError):
-        connection.send_error(msg["id"], ERR_REVISION_CONFLICT, str(err))
-    elif isinstance(err, SmartPlantsArchiveBusyError):
-        connection.send_error(msg["id"], ERR_BUSY, str(err))
-    elif isinstance(err, SmartPlantsRestoreConflictError):
-        connection.send_error(msg["id"], ERR_CONFLICT, str(err))
-    elif isinstance(err, (SmartPlantsArchiveFullError, SmartPlantsPlantLimitError)):
-        connection.send_error(msg["id"], ERR_LIMIT, str(err))
-    elif isinstance(err, SmartPlantsValidationError):
-        connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
-    elif isinstance(err, SmartPlantsManagerUnavailableError):
-        _reply_not_loaded(connection, msg["id"])
-    else:
-        _LOGGER.error(
-            "Unhandled error in %s", msg["type"], exc_info=(type(err), err, None)
-        )
-        connection.send_error(msg["id"], ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
-
-
 @websocket_command(
     {
         vol.Required("type"): "smart_plants/plants/archive",
@@ -2145,7 +2022,7 @@ async def _handle_archive(
             msg["plant_id"], expected_revision=msg["expected_revision"]
         )
     except Exception as err:  # noqa: BLE001
-        _send_archive_error(connection, msg, err)
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {"archived": _archived_summary(record)})
 
@@ -2253,7 +2130,7 @@ async def _handle_archive_restore(
             expected_sources_in_use=msg["expected_sources_in_use"],
         )
     except Exception as err:  # noqa: BLE001
-        _send_archive_error(connection, msg, err)
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {"plant": _plant_view(plant)})
 
@@ -2281,7 +2158,7 @@ async def _handle_archive_delete(
             msg["plant_id"], expected_revision=msg["expected_revision"]
         )
     except Exception as err:  # noqa: BLE001
-        _send_archive_error(connection, msg, err)
+        _send_manager_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {})
 

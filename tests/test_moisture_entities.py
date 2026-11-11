@@ -23,6 +23,7 @@ from custom_components.smart_plants.manager import (
 )
 from custom_components.smart_plants.number import SmartPlantsNumberEntity
 from custom_components.smart_plants.storage import (
+    SmartPlantsPendingOperationsFullError,
     SmartPlantsStorageError,
     SmartPlantsStorageFullError,
 )
@@ -803,6 +804,7 @@ async def test_number_write_reports_a_second_revision_conflict(
         (SmartPlantsManagerUnavailableError(), "integration_not_loaded"),
         (SmartPlantsStorageError("disk"), "storage_failed"),
         (SmartPlantsStorageFullError("full"), "storage_full"),
+        (SmartPlantsPendingOperationsFullError(), "pending_operations_full"),
     ],
 )
 async def test_number_write_translates_manager_errors(

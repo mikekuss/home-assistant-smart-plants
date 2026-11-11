@@ -40,7 +40,11 @@ from .manager import (
 )
 from .models import MOISTURE_MIN_SPAN
 from .roles import EntityRole, RoleDefinition, entity_factories
-from .storage import SmartPlantsStorageError, SmartPlantsStorageFullError
+from .storage import (
+    SmartPlantsPendingOperationsFullError,
+    SmartPlantsStorageError,
+    SmartPlantsStorageFullError,
+)
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -82,6 +86,9 @@ def _write_errors() -> Iterator[None]:
         raise _error("plant_not_found") from err
     except SmartPlantsManagerUnavailableError as err:
         raise _error("integration_not_loaded") from err
+    except SmartPlantsPendingOperationsFullError:
+        # Already translated: it asks for a restart, not for freeing space.
+        raise
     except SmartPlantsStorageFullError as err:
         raise _error("storage_full") from err
     except SmartPlantsStorageError as err:

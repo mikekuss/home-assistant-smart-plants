@@ -274,7 +274,7 @@ async def test_snooze_many_refused_save_changes_nothing(
     response = await _snooze_many(client, until=WEEK_END)
 
     assert response["success"] is False
-    assert response["error"]["code"] == "unknown_error"
+    assert response["error"]["code"] == "storage_full"
     assert manager.snapshot.revision == revision
     assert manager.get_plant(aloe.id) == aloe
     assert manager.get_plant(office.id) == office

@@ -312,6 +312,13 @@ class SmartPlantsDeviceReconciler:
             for op in pending_operations
             if op.kind in _IMAGE_OPERATION_KINDS
         }
+        # Likewise only the newest area intent of a plant may move its
+        # device; replaying an older one would undo a later move.
+        latest_area_op: dict[str, str] = {
+            op.plant_id: op.op_id
+            for op in pending_operations
+            if op.kind == "update_area"
+        }
 
         def _current(plant_id: str) -> PlantRecord | None:
             # Read-through the in-flight updates so two ops touching the
@@ -347,7 +354,7 @@ class SmartPlantsDeviceReconciler:
                 # Payload was strictly validated at load time, so we can
                 # trust ``target_area_id`` (string or null).
                 plant = _current(op.plant_id)
-                if plant is None:
+                if plant is None or latest_area_op[op.plant_id] != op.op_id:
                     completed_ops.add(op.op_id)
                     continue
                 target = op.payload.get("target_area_id") if op.payload else None

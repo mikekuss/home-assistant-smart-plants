@@ -1715,7 +1715,9 @@ class SmartPlantsManager:
             intent_snapshot = replace(
                 self._snapshot.with_plant(updated),
                 pending_operations=(
-                    *self._snapshot.pending_operations,
+                    *_without_area_operations(
+                        self._snapshot.pending_operations, plant_id
+                    ),
                     pending_op,
                 ),
             )
@@ -3451,6 +3453,22 @@ def _without_image_operations(
         op
         for op in operations
         if op.plant_id != plant_id or op.kind not in _IMAGE_OPERATION_KINDS
+    )
+
+
+def _without_area_operations(
+    operations: tuple[PendingOperation, ...], plant_id: str
+) -> tuple[PendingOperation, ...]:
+    """
+    Drop the unfinished area intents of ``plant_id``.
+
+    An area intent stays pending when the save that clears it fails, even
+    though the device already moved. A newer area change for the same
+    plant supersedes it. Replaying the older one after a restart would
+    move the device back to an area the user already left.
+    """
+    return tuple(
+        op for op in operations if op.plant_id != plant_id or op.kind != "update_area"
     )
 
 

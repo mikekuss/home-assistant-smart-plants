@@ -206,6 +206,18 @@ describe("Snooze all plants", () => {
     expect(menuItem(el)!.hasAttribute("disabled")).toBe(false);
   });
 
+  it.each([
+    ["en", "storage_full", "Smart Plants storage is full, so the change wasn't saved. Delete old care log entries or notes, then try again."],
+    ["en", "pending_operations_full", "Smart Plants has too many unfinished changes, so the change wasn't saved. Restart Home Assistant to complete them, then try again."],
+    ["de", "storage_full", "Der Speicher von Smart Plants ist voll, deshalb wurde die Änderung nicht gespeichert. Lösche alte Einträge oder Notizen im Pflegeprotokoll und versuche es erneut."],
+    ["de", "storage_failed", "Smart Plants konnte die Änderung nicht speichern. Es wurde nichts geändert. Prüfe das Home-Assistant-Protokoll und versuche es dann erneut."],
+  ])("explains a refused save (%s, %s)", async (language, code, text) => {
+    const { el } = await mount(three(), { language, snoozeMany: () => Promise.reject(new ApiError(code, "Refused")) });
+    await openMenu(el);
+    dialogButton(el, language === "de" ? "Stummschalten" : "Snooze")!.click(); await settle(el);
+    expect(root(el).querySelector("p.error[role=alert]")!.textContent).toBe(text);
+  });
+
   it("shows a failed Undo and keeps the snooze", async () => {
     const { el, toasts } = await mount(three(), { restore: () => Promise.reject(new ApiError("unknown_error", "Refused")) });
     await openMenu(el);
