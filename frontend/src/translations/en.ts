@@ -570,7 +570,6 @@ export const en = {
   "plant_status.problem": "Problem",
   "plant_status.stale": "No recent data",
   "plant_status.no_sensors": "No sensors",
-  "plant_status.no_moisture": "No moisture sensor",
   "plant_status.no_main_sensor": "No main sensor",
   "plant_status.healthy": "Healthy",
   "plant_status.paused": "Paused",

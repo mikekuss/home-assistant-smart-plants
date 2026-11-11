@@ -1,5 +1,5 @@
 {
-  "description": "Plant status cases shared by tests/test_plant_status_cases.py and frontend/src/card/plant-state.test.ts. Each case gives the role evaluations, the entity states Home Assistant shows for them, and the status. Python checks the status and the entity states; the dashboard card derives the status from the entity states. 'card' records where the entity states don't carry enough to match: they don't say that several moisture sensors wait for a main sensor, so the card reports them as not reporting. 'input_problems' is the attribute of the same name on the stale sensor.",
+  "description": "Plant status cases shared by tests/test_plant_status_cases.py and frontend/src/card/plant-state.test.ts. Each case gives the role evaluations, the entity states Home Assistant shows for them, and the status. Python checks the status and the entity states; the dashboard card derives the status from the entity states. 'disabled_entities' lists entities the user disabled, which the card cannot read. 'card' records where the entity states don't carry enough to match: they don't say that several moisture sensors wait for a main sensor, so the card reports them as not reporting, and without the stale sensor and a reading's problem sensor the card can't tell that reading's verdict, so it reports it as not reporting rather than healthy. 'input_problems' and 'stress_problems' are the attributes of the same name on the stale sensor; 'readings' are the states of the plant's other reading sensors.",
   "cases": [
     {
       "name": "healthy",
@@ -32,7 +32,11 @@
           }
         },
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {
+          "temperature": "20.0"
+        }
       },
       "status": "healthy",
       "problems": []
@@ -68,7 +72,13 @@
           }
         },
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {
+          "temperature": "too_hot"
+        },
+        "readings": {
+          "temperature": "20.0"
+        }
       },
       "status": "needs_water",
       "problems": [
@@ -102,7 +112,9 @@
         "sensor_stale": "off",
         "stress": {},
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {}
       },
       "status": "too_wet",
       "problems": [
@@ -161,7 +173,16 @@
           }
         },
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {
+          "temperature": "too_hot",
+          "humidity": "too_dry"
+        },
+        "readings": {
+          "temperature": "20.0",
+          "humidity": "20.0",
+          "illuminance": "20.0"
+        }
       },
       "status": "problem",
       "problems": [
@@ -233,7 +254,19 @@
           }
         },
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {
+          "conductivity": "high_conductivity",
+          "soil_temperature": "too_cold",
+          "co2": "high_co2",
+          "battery": "battery_low"
+        },
+        "readings": {
+          "conductivity": "20.0",
+          "soil_temperature": "20.0",
+          "co2": "20",
+          "battery": "20"
+        }
       },
       "status": "problem",
       "problems": [
@@ -286,7 +319,13 @@
           }
         },
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {
+          "temperature": "stress"
+        },
+        "readings": {
+          "temperature": "20.0"
+        }
       },
       "status": "problem",
       "problems": [
@@ -327,7 +366,11 @@
           }
         },
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {
+          "illuminance": "20.0"
+        }
       },
       "status": "healthy",
       "problems": []
@@ -354,7 +397,9 @@
         "sensor_stale": "on",
         "stress": {},
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {}
       },
       "status": "stale",
       "problems": [
@@ -386,7 +431,9 @@
         "sensor_stale": "on",
         "stress": {},
         "sources": 2,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {}
       },
       "status": "stale",
       "problems": [
@@ -418,7 +465,9 @@
         "sensor_stale": "on",
         "stress": {},
         "sources": 2,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {}
       },
       "status": "needs_water",
       "problems": [
@@ -465,7 +514,13 @@
           }
         },
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {
+          "temperature": "too_cold"
+        },
+        "readings": {
+          "temperature": "20.0"
+        }
       },
       "status": "problem",
       "problems": [
@@ -501,7 +556,9 @@
         "sensor_stale": "off",
         "stress": {},
         "sources": 0,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {}
       },
       "status": "no_sensors",
       "problems": [
@@ -544,17 +601,19 @@
           }
         },
         "sources": 0,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {
+          "illuminance": "low_light"
+        },
+        "readings": {
+          "illuminance": "20.0"
+        }
       },
       "status": "problem",
       "problems": [
         {
           "role": "illuminance",
           "kind": "low_light"
-        },
-        {
-          "role": "moisture",
-          "kind": "no_sensors"
         }
       ]
     },
@@ -581,7 +640,9 @@
         "sensor_stale": "off",
         "stress": {},
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {}
       },
       "status": "stale",
       "problems": [
@@ -613,7 +674,9 @@
         "sensor_stale": "off",
         "stress": {},
         "sources": 2,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {}
       },
       "status": "stale",
       "problems": [
@@ -670,6 +733,10 @@
         "sources": 1,
         "input_problems": {
           "temperature": "stale"
+        },
+        "stress_problems": {},
+        "readings": {
+          "temperature": "unavailable"
         }
       },
       "status": "stale",
@@ -717,6 +784,10 @@
         "sources": 1,
         "input_problems": {
           "humidity": "stale"
+        },
+        "stress_problems": {},
+        "readings": {
+          "humidity": "20.0"
         }
       },
       "status": "stale",
@@ -773,6 +844,13 @@
         "sources": 1,
         "input_problems": {
           "conductivity": "unavailable"
+        },
+        "stress_problems": {
+          "temperature": "too_hot"
+        },
+        "readings": {
+          "temperature": "20.0",
+          "conductivity": "unavailable"
         }
       },
       "status": "problem",
@@ -824,7 +902,11 @@
           }
         },
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {
+          "illuminance": "unavailable"
+        }
       },
       "status": "healthy",
       "problems": []
@@ -867,6 +949,10 @@
         "sources": 1,
         "input_problems": {
           "illuminance": "stale"
+        },
+        "stress_problems": {},
+        "readings": {
+          "illuminance": "unavailable"
         }
       },
       "status": "stale",
@@ -913,7 +999,11 @@
           }
         },
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {
+          "battery": "unavailable"
+        }
       },
       "status": "healthy",
       "problems": []
@@ -953,7 +1043,11 @@
           }
         },
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {
+          "temperature": "unavailable"
+        }
       },
       "status": "healthy",
       "problems": []
@@ -995,7 +1089,11 @@
           }
         },
         "sources": 1,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {
+          "illuminance": "unavailable"
+        }
       },
       "status": "healthy",
       "problems": []
@@ -1037,6 +1135,10 @@
         "sources": 1,
         "input_problems": {
           "illuminance": "stale"
+        },
+        "stress_problems": {},
+        "readings": {
+          "illuminance": "20.0"
         }
       },
       "status": "stale",
@@ -1046,6 +1148,247 @@
           "kind": "stale"
         }
       ]
+    },
+    {
+      "name": "temperature sensor without a moisture sensor",
+      "disabled": false,
+      "moisture": {
+        "percent": null,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [
+          "no_sources"
+        ],
+        "sources": 0
+      },
+      "stress": {
+        "temperature": {
+          "available": true,
+          "on": false,
+          "reason": "temperature_ok"
+        }
+      },
+      "entities": {
+        "allUnavailable": false,
+        "moisture": "unavailable",
+        "needs_water": "unavailable",
+        "too_wet": "unavailable",
+        "sensor_stale": "off",
+        "stress": {
+          "temperature": {
+            "state": "off",
+            "reason": "temperature_ok"
+          }
+        },
+        "sources": 0,
+        "input_problems": {},
+        "stress_problems": {},
+        "readings": {
+          "temperature": "20.0"
+        }
+      },
+      "status": "healthy",
+      "problems": []
+    },
+    {
+      "name": "cold temperature without a moisture sensor",
+      "disabled": false,
+      "moisture": {
+        "percent": null,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [
+          "no_sources"
+        ],
+        "sources": 0
+      },
+      "stress": {
+        "temperature": {
+          "available": true,
+          "on": true,
+          "reason": "cold_stress",
+          "reading": 4.0
+        }
+      },
+      "entities": {
+        "allUnavailable": false,
+        "moisture": "unavailable",
+        "needs_water": "unavailable",
+        "too_wet": "unavailable",
+        "sensor_stale": "off",
+        "stress": {
+          "temperature": {
+            "state": "on",
+            "reason": "cold_stress"
+          }
+        },
+        "sources": 0,
+        "input_problems": {},
+        "stress_problems": {
+          "temperature": "too_cold"
+        },
+        "readings": {
+          "temperature": "4.0"
+        }
+      },
+      "status": "problem",
+      "problems": [
+        {
+          "role": "temperature",
+          "kind": "too_cold"
+        }
+      ]
+    },
+    {
+      "name": "cold reading with its stress sensor disabled",
+      "disabled": false,
+      "moisture": {
+        "percent": 41.0,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
+      },
+      "stress": {
+        "temperature": {
+          "available": true,
+          "on": true,
+          "reason": "cold_stress",
+          "reading": 4.0
+        }
+      },
+      "entities": {
+        "allUnavailable": false,
+        "moisture": "41.0",
+        "needs_water": "off",
+        "too_wet": "off",
+        "sensor_stale": "off",
+        "stress": {},
+        "sources": 1,
+        "input_problems": {},
+        "stress_problems": {
+          "temperature": "too_cold"
+        },
+        "readings": {
+          "temperature": "4.0"
+        }
+      },
+      "status": "problem",
+      "problems": [
+        {
+          "role": "temperature",
+          "kind": "too_cold"
+        }
+      ],
+      "disabled_entities": [
+        "temperature_stress"
+      ]
+    },
+    {
+      "name": "cold reading with the stale sensor disabled",
+      "disabled": false,
+      "moisture": {
+        "percent": 41.0,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
+      },
+      "stress": {
+        "temperature": {
+          "available": true,
+          "on": true,
+          "reason": "cold_stress",
+          "reading": 4.0
+        }
+      },
+      "entities": {
+        "allUnavailable": false,
+        "moisture": "41.0",
+        "needs_water": "off",
+        "too_wet": "off",
+        "sensor_stale": null,
+        "stress": {
+          "temperature": {
+            "state": "on",
+            "reason": "cold_stress"
+          }
+        },
+        "sources": null,
+        "input_problems": {},
+        "stress_problems": null,
+        "readings": {
+          "temperature": "4.0"
+        }
+      },
+      "status": "problem",
+      "problems": [
+        {
+          "role": "temperature",
+          "kind": "too_cold"
+        }
+      ],
+      "disabled_entities": [
+        "sensor_stale"
+      ]
+    },
+    {
+      "name": "cold reading with its stress sensor and the stale sensor disabled",
+      "disabled": false,
+      "moisture": {
+        "percent": 41.0,
+        "stale": false,
+        "needs_water": false,
+        "too_wet": false,
+        "reasons": [],
+        "sources": 1
+      },
+      "stress": {
+        "temperature": {
+          "available": true,
+          "on": true,
+          "reason": "cold_stress",
+          "reading": 4.0
+        }
+      },
+      "entities": {
+        "allUnavailable": false,
+        "moisture": "41.0",
+        "needs_water": "off",
+        "too_wet": "off",
+        "sensor_stale": null,
+        "stress": {},
+        "sources": null,
+        "input_problems": {},
+        "stress_problems": null,
+        "readings": {
+          "temperature": "4.0"
+        }
+      },
+      "status": "problem",
+      "problems": [
+        {
+          "role": "temperature",
+          "kind": "too_cold"
+        }
+      ],
+      "disabled_entities": [
+        "temperature_stress",
+        "sensor_stale"
+      ],
+      "card": {
+        "status": "stale",
+        "problems": [
+          {
+            "role": "temperature",
+            "kind": "unavailable"
+          }
+        ]
+      }
     },
     {
       "name": "paused",
@@ -1078,7 +1421,11 @@
           }
         },
         "sources": null,
-        "input_problems": {}
+        "input_problems": {},
+        "stress_problems": null,
+        "readings": {
+          "temperature": "unavailable"
+        }
       },
       "status": "paused",
       "problems": []

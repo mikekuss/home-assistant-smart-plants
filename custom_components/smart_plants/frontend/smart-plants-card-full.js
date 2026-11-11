@@ -34,7 +34,7 @@ var e = globalThis, t = e.ShadowRoot && (e.ShadyCSS === void 0 || e.ShadyCSS.nat
 	let t = "";
 	for (let n of e.cssRules) t += n.cssText;
 	return a(t);
-})(e) : e, l, { is: u, defineProperty: d, getOwnPropertyDescriptor: f, getOwnPropertyNames: p, getOwnPropertySymbols: ee, getPrototypeOf: m } = Object, h = globalThis, g = h.trustedTypes, te = g ? g.emptyScript : "", ne = h.reactiveElementPolyfillSupport, _ = (e, t) => e, v = {
+})(e) : e, l, { is: u, defineProperty: d, getOwnPropertyDescriptor: f, getOwnPropertyNames: p, getOwnPropertySymbols: ee, getPrototypeOf: m } = Object, h = globalThis, g = h.trustedTypes, _ = g ? g.emptyScript : "", te = h.reactiveElementPolyfillSupport, v = (e, t) => e, y = {
 	toAttribute(e, t) {
 		/**
 		* @license
@@ -43,7 +43,7 @@ var e = globalThis, t = e.ShadowRoot && (e.ShadyCSS === void 0 || e.ShadyCSS.nat
 		*/
 		switch (t) {
 			case Boolean:
-				e = e ? te : null;
+				e = e ? _ : null;
 				break;
 			case Object:
 			case Array: e = e == null ? e : JSON.stringify(e);
@@ -68,23 +68,23 @@ var e = globalThis, t = e.ShadowRoot && (e.ShadyCSS === void 0 || e.ShadyCSS.nat
 		}
 		return n;
 	}
-}, y = (e, t) => !u(e, t), b = {
+}, b = (e, t) => !u(e, t), x = {
 	attribute: !0,
 	type: String,
-	converter: v,
+	converter: y,
 	reflect: !1,
 	useDefault: !1,
-	hasChanged: y
+	hasChanged: b
 };
 (l = Symbol).metadata ?? (l.metadata = Symbol("metadata")), h.litPropertyMetadata ?? (h.litPropertyMetadata = /* @__PURE__ */ new WeakMap());
-var x = class extends HTMLElement {
+var S = class extends HTMLElement {
 	static addInitializer(e) {
 		this._$Ei(), (this.l ?? (this.l = [])).push(e);
 	}
 	static get observedAttributes() {
 		return this.finalize(), this._$Eh && [...this._$Eh.keys()];
 	}
-	static createProperty(e, t = b) {
+	static createProperty(e, t = x) {
 		if (t.state && (t.attribute = !1), this._$Ei(), this.prototype.hasOwnProperty(e) && ((t = Object.create(t)).wrapped = !0), this.elementProperties.set(e, t), !t.noAccessor) {
 			let n = Symbol(), r = this.getPropertyDescriptor(e, n, t);
 			r !== void 0 && d(this.prototype, e, r);
@@ -110,16 +110,16 @@ var x = class extends HTMLElement {
 		};
 	}
 	static getPropertyOptions(e) {
-		return this.elementProperties.get(e) ?? b;
+		return this.elementProperties.get(e) ?? x;
 	}
 	static _$Ei() {
-		if (this.hasOwnProperty(_("elementProperties"))) return;
+		if (this.hasOwnProperty(v("elementProperties"))) return;
 		let e = m(this);
 		e.finalize(), e.l !== void 0 && (this.l = [...e.l]), this.elementProperties = new Map(e.elementProperties);
 	}
 	static finalize() {
-		if (this.hasOwnProperty(_("finalized"))) return;
-		if (this.finalized = !0, this._$Ei(), this.hasOwnProperty(_("properties"))) {
+		if (this.hasOwnProperty(v("finalized"))) return;
+		if (this.finalized = !0, this._$Ei(), this.hasOwnProperty(v("properties"))) {
 			let e = this.properties, t = [...p(e), ...ee(e)];
 			for (let n of t) this.createProperty(n, e[n]);
 		}
@@ -181,14 +181,14 @@ var x = class extends HTMLElement {
 	_$ET(e, t) {
 		let n = this.constructor.elementProperties.get(e), r = this.constructor._$Eu(e, n);
 		if (r !== void 0 && !0 === n.reflect) {
-			let i = (n.converter?.toAttribute === void 0 ? v : n.converter).toAttribute(t, n.type);
+			let i = (n.converter?.toAttribute === void 0 ? y : n.converter).toAttribute(t, n.type);
 			this._$Em = e, i == null ? this.removeAttribute(r) : this.setAttribute(r, i), this._$Em = null;
 		}
 	}
 	_$AK(e, t) {
 		let n = this.constructor, r = n._$Eh.get(e);
 		if (r !== void 0 && this._$Em !== r) {
-			let e = n.getPropertyOptions(r), i = typeof e.converter == "function" ? { fromAttribute: e.converter } : e.converter?.fromAttribute === void 0 ? v : e.converter;
+			let e = n.getPropertyOptions(r), i = typeof e.converter == "function" ? { fromAttribute: e.converter } : e.converter?.fromAttribute === void 0 ? y : e.converter;
 			this._$Em = r;
 			let a = i.fromAttribute(t, e.type);
 			this[r] = a ?? this._$Ej?.get(r) ?? a, this._$Em = null;
@@ -197,7 +197,7 @@ var x = class extends HTMLElement {
 	requestUpdate(e, t, n, r = !1, i) {
 		if (e !== void 0) {
 			let a = this.constructor;
-			if (!1 === r && (i = this[e]), n ?? (n = a.getPropertyOptions(e)), !((n.hasChanged ?? y)(i, t) || n.useDefault && n.reflect && i === this._$Ej?.get(e) && !this.hasAttribute(a._$Eu(e, n)))) return;
+			if (!1 === r && (i = this[e]), n ?? (n = a.getPropertyOptions(e)), !((n.hasChanged ?? b)(i, t) || n.useDefault && n.reflect && i === this._$Ej?.get(e) && !this.hasAttribute(a._$Eu(e, n)))) return;
 			this.C(e, t, n);
 		}
 		!1 === this.isUpdatePending && (this._$ES = this._$EP());
@@ -261,14 +261,14 @@ var x = class extends HTMLElement {
 	updated(e) {}
 	firstUpdated(e) {}
 };
-x.elementStyles = [], x.shadowRootOptions = { mode: "open" }, x[_("elementProperties")] = /* @__PURE__ */ new Map(), x[_("finalized")] = /* @__PURE__ */ new Map(), ne?.({ ReactiveElement: x }), (h.reactiveElementVersions ?? (h.reactiveElementVersions = [])).push("2.1.2");
+S.elementStyles = [], S.shadowRootOptions = { mode: "open" }, S[v("elementProperties")] = /* @__PURE__ */ new Map(), S[v("finalized")] = /* @__PURE__ */ new Map(), te?.({ ReactiveElement: S }), (h.reactiveElementVersions ?? (h.reactiveElementVersions = [])).push("2.1.2");
 // node_modules/lit-html/lit-html.js
 /**
 * @license
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
 */
-var S = globalThis, re = (e) => e, C = S.trustedTypes, ie = C ? C.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, ae = "$lit$", w = `lit$${Math.random().toFixed(9).slice(2)}$`, oe = "?" + w, se = `<${oe}>`, T = document, E = () => T.createComment(""), D = (e) => e === null || typeof e != "object" && typeof e != "function", ce = Array.isArray, le = (e) => ce(e) || typeof e?.[Symbol.iterator] == "function", ue = "[ 	\n\f\r]", O = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, de = /-->/g, fe = />/g, k = RegExp(`>|${ue}(?:([^\\s"'>=/]+)(${ue}*=${ue}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`, "g"), pe = /'/g, me = /"/g, he = /^(?:script|style|textarea|title)$/i, A = ((e) => (t, ...n) => ({
+var ne = globalThis, re = (e) => e, C = ne.trustedTypes, ie = C ? C.createPolicy("lit-html", { createHTML: (e) => e }) : void 0, ae = "$lit$", w = `lit$${Math.random().toFixed(9).slice(2)}$`, oe = "?" + w, se = `<${oe}>`, T = document, E = () => T.createComment(""), D = (e) => e === null || typeof e != "object" && typeof e != "function", ce = Array.isArray, le = (e) => ce(e) || typeof e?.[Symbol.iterator] == "function", ue = "[ 	\n\f\r]", O = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, de = /-->/g, fe = />/g, k = RegExp(`>|${ue}(?:([^\\s"'>=/]+)(${ue}*=${ue}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`, "g"), pe = /'/g, me = /"/g, he = /^(?:script|style|textarea|title)$/i, A = ((e) => (t, ...n) => ({
 	_$litType$: e,
 	strings: t,
 	values: n
@@ -304,7 +304,7 @@ var ve = (e, t) => {
 						index: a,
 						name: r[2],
 						strings: n,
-						ctor: r[1] === "." ? Se : r[1] === "?" ? Ce : r[1] === "@" ? we : F
+						ctor: r[1] === "." ? Ce : r[1] === "?" ? we : r[1] === "@" ? Te : Se
 					}), i.removeAttribute(e);
 				} else e.startsWith(w) && (c.push({
 					type: 6,
@@ -364,7 +364,7 @@ var be = class {
 		for (; s !== void 0;) {
 			if (a === s.index) {
 				let t;
-				s.type === 2 ? t = new xe(i, i.nextSibling, this, e) : s.type === 1 ? t = new s.ctor(i, s.name, s.strings, this, e) : s.type === 6 && (t = new Te(i, this, e)), this._$AV.push(t), s = n[++o];
+				s.type === 2 ? t = new xe(i, i.nextSibling, this, e) : s.type === 1 ? t = new s.ctor(i, s.name, s.strings, this, e) : s.type === 6 && (t = new Ee(i, this, e)), this._$AV.push(t), s = n[++o];
 			}
 			a !== s?.index && (i = N.nextNode(), a++);
 		}
@@ -430,7 +430,7 @@ var be = class {
 	setConnected(e) {
 		this._$AM === void 0 && (this._$Cv = e, this._$AP?.(e));
 	}
-}, F = class {
+}, Se = class {
 	get tagName() {
 		return this.element.tagName;
 	}
@@ -452,21 +452,21 @@ var be = class {
 	j(e) {
 		e === M ? this.element.removeAttribute(this.name) : this.element.setAttribute(this.name, e ?? "");
 	}
-}, Se = class extends F {
+}, Ce = class extends Se {
 	constructor() {
 		super(...arguments), this.type = 3;
 	}
 	j(e) {
 		this.element[this.name] = e === M ? void 0 : e;
 	}
-}, Ce = class extends F {
+}, we = class extends Se {
 	constructor() {
 		super(...arguments), this.type = 4;
 	}
 	j(e) {
 		this.element.toggleAttribute(this.name, !!e && e !== M);
 	}
-}, we = class extends F {
+}, Te = class extends Se {
 	constructor(e, t, n, r, i) {
 		super(e, t, n, r, i), this.type = 5;
 	}
@@ -478,7 +478,7 @@ var be = class {
 	handleEvent(e) {
 		typeof this._$AH == "function" ? this._$AH.call(this.options?.host ?? this.element, e) : this._$AH.handleEvent(e);
 	}
-}, Te = class {
+}, Ee = class {
 	constructor(e, t, n) {
 		this.element = e, this.type = 6, this._$AN = void 0, this._$AM = t, this.options = n;
 	}
@@ -488,16 +488,16 @@ var be = class {
 	_$AI(e) {
 		P(this, e);
 	}
-}, Ee = S.litHtmlPolyfillSupport;
-Ee?.(ye, xe), (S.litHtmlVersions ?? (S.litHtmlVersions = [])).push("3.3.3");
-var De = (e, t, n) => {
+}, De = ne.litHtmlPolyfillSupport;
+De?.(ye, xe), (ne.litHtmlVersions ?? (ne.litHtmlVersions = [])).push("3.3.3");
+var Oe = (e, t, n) => {
 	let r = n?.renderBefore ?? t, i = r._$litPart$;
 	if (i === void 0) {
 		let e = n?.renderBefore ?? null;
 		r._$litPart$ = i = new xe(t.insertBefore(E(), e), e, void 0, n ?? {});
 	}
 	return i._$AI(e), i;
-}, I = globalThis, L = class extends x {
+}, ke = globalThis, F = class extends S {
 	constructor() {
 		/**
 		* @license
@@ -513,7 +513,7 @@ var De = (e, t, n) => {
 	}
 	update(e) {
 		let t = this.render();
-		this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(e), this._$Do = De(t, this.renderRoot, this.renderOptions);
+		this.hasUpdated || (this.renderOptions.isConnected = this.isConnected), super.update(e), this._$Do = Oe(t, this.renderRoot, this.renderOptions);
 	}
 	connectedCallback() {
 		super.connectedCallback(), this._$Do?.setConnected(!0);
@@ -525,21 +525,21 @@ var De = (e, t, n) => {
 		return j;
 	}
 };
-L._$litElement$ = !0, L.finalized = !0, I.litElementHydrateSupport?.({ LitElement: L });
-var Oe = I.litElementPolyfillSupport;
-Oe?.({ LitElement: L }), (I.litElementVersions ?? (I.litElementVersions = [])).push("4.2.2");
+F._$litElement$ = !0, F.finalized = !0, ke.litElementHydrateSupport?.({ LitElement: F });
+var Ae = ke.litElementPolyfillSupport;
+Ae?.({ LitElement: F }), (ke.litElementVersions ?? (ke.litElementVersions = [])).push("4.2.2");
 // node_modules/@lit/reactive-element/decorators/property.js
 /**
 * @license
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
-*/ var ke = {
+*/ var je = {
 	attribute: !0,
 	type: String,
-	converter: v,
+	converter: y,
 	reflect: !1,
-	hasChanged: y
-}, Ae = (e = ke, t, n) => {
+	hasChanged: b
+}, Me = (e = je, t, n) => {
 	let { kind: r, metadata: i } = n, a = globalThis.litPropertyMetadata.get(i);
 	if (a === void 0 && globalThis.litPropertyMetadata.set(i, a = /* @__PURE__ */ new Map()), r === "setter" && ((e = Object.create(e)).wrapped = !0), a.set(n.name, e), r === "accessor") {
 		let { name: r } = n;
@@ -562,8 +562,8 @@ Oe?.({ LitElement: L }), (I.litElementVersions ?? (I.litElementVersions = [])).p
 	}
 	throw Error("Unsupported decorator location: " + r);
 };
-function R(e) {
-	return (t, n) => typeof n == "object" ? Ae(e, t, n) : ((e, t, n) => {
+function I(e) {
+	return (t, n) => typeof n == "object" ? Me(e, t, n) : ((e, t, n) => {
 		let r = t.hasOwnProperty(n);
 		return t.constructor.createProperty(n, e), r ? Object.getOwnPropertyDescriptor(t, n) : void 0;
 	})(e, t, n);
@@ -573,15 +573,15 @@ function R(e) {
 * @license
 * Copyright 2017 Google LLC
 * SPDX-License-Identifier: BSD-3-Clause
-*/ function je(e) {
-	return R({
+*/ function L(e) {
+	return I({
 		...e,
 		state: !0,
 		attribute: !1
 	});
 }
 // src/translations/de.ts
-var Me = {
+var Ne = {
 	"format.percent": "{value} %",
 	"format.recorded_date_time": "{datetime} (UTC{offset})",
 	"common.cancel": "Abbrechen",
@@ -1123,7 +1123,6 @@ var Me = {
 	"plant_status.problem": "Problem",
 	"plant_status.stale": "Keine aktuellen Daten",
 	"plant_status.no_sensors": "Keine Sensoren",
-	"plant_status.no_moisture": "Kein Feuchtesensor",
 	"plant_status.no_main_sensor": "Kein Hauptsensor",
 	"plant_status.healthy": "Gesund",
 	"plant_status.paused": "Pausiert",
@@ -1805,7 +1804,7 @@ var Me = {
 	"plant_card.editor_show_readings_help": "Feuchtebalken und Messwert-Chips",
 	"plant_card.editor_show_watering": "Schaltfläche „Gegossen“ anzeigen",
 	"plant_card.editor_show_watering_help": "Trägt Gießen für diese Pflanze ein"
-}, Ne = {
+}, Pe = {
 	"format.percent": "{value}%",
 	"format.recorded_date_time": "{datetime} (UTC{offset})",
 	"common.cancel": "Cancel",
@@ -2347,7 +2346,6 @@ var Me = {
 	"plant_status.problem": "Problem",
 	"plant_status.stale": "No recent data",
 	"plant_status.no_sensors": "No sensors",
-	"plant_status.no_moisture": "No moisture sensor",
 	"plant_status.no_main_sensor": "No main sensor",
 	"plant_status.healthy": "Healthy",
 	"plant_status.paused": "Paused",
@@ -3029,15 +3027,15 @@ var Me = {
 	"plant_card.editor_show_readings_help": "Moisture bar and reading chips",
 	"plant_card.editor_show_watering": "Show Watered button",
 	"plant_card.editor_show_watering_help": "Logs a watering for this plant"
-}, Pe = ["en", "de"], Fe = {
-	en: Ne,
-	de: Me
+}, Fe = ["en", "de"], Ie = {
+	en: Pe,
+	de: Ne
 };
-function Ie(e, t = Pe) {
+function Le(e, t = Fe) {
 	let n = (e?.locale?.language || e?.language || "en").toLowerCase().split(/[-_]/)[0] ?? "en";
 	return t.includes(n) ? n : "en";
 }
-function Le(e) {
+function Re(e) {
 	if (!e) return;
 	let t = e.replaceAll("_", "-");
 	try {
@@ -3046,7 +3044,7 @@ function Le(e) {
 		return;
 	}
 }
-function Re(e, t) {
+function ze(e, t) {
 	switch (e?.number_format) {
 		case "system": return {
 			locales: void 0,
@@ -3082,87 +3080,87 @@ function Re(e, t) {
 		};
 	}
 }
-function ze(e) {
+function Be(e) {
 	if (e?.time_format === "12") return !0;
 	if (e?.time_format === "24") return !1;
 }
-function Be(e, t, n) {
+function Ve(e, t, n) {
 	return t ? e.replace(/\{(\w+)\}/g, (e, r) => {
 		if (!Object.hasOwn(t, r)) return e;
 		let i = t[r];
 		return typeof i == "number" ? n(i) : i;
 	}) : e;
 }
-var Ve = /* @__PURE__ */ new Map();
-function He(e, t = Fe) {
-	let n = Ie(e, Object.keys(t)), r = e?.locale, i = t === Fe ? JSON.stringify([
+var He = /* @__PURE__ */ new Map();
+function Ue(e, t = Ie) {
+	let n = Le(e, Object.keys(t)), r = e?.locale, i = t === Ie ? JSON.stringify([
 		n,
 		e?.language,
 		r?.language,
 		r?.number_format,
 		r?.time_format,
 		r?.date_format
-	]) : null, a = i ? Ve.get(i) : void 0;
+	]) : null, a = i ? He.get(i) : void 0;
 	if (a) return a;
-	let o = Le(r?.language || e?.language) ?? n, { locales: s, grouping: c } = Re(r, o), l = c ? "min2" : !1, u = r?.date_format === "system" ? void 0 : [o], d = /* @__PURE__ */ new Map(), f = (e, t = {}) => {
+	let o = Re(r?.language || e?.language) ?? n, { locales: s, grouping: c } = ze(r, o), l = c ? "min2" : !1, u = r?.date_format === "system" ? void 0 : [o], d = /* @__PURE__ */ new Map(), f = (e, t = {}) => {
 		let n = JSON.stringify(t), r = d.get(n);
 		return r || (r = new Intl.NumberFormat(s, {
 			maximumFractionDigits: 2,
 			useGrouping: l,
 			...t
 		}), d.set(n, r)), r.format(e);
-	}, p = t[n] ?? t.en, ee = t.en, m = (e, t) => Be(p[e] ?? ee[e] ?? e, t, (e) => f(e)), h = new Intl.PluralRules(n), g = new Intl.PluralRules("en"), te = (e, t, n, r) => {
+	}, p = t[n] ?? t.en, ee = t.en, m = (e, t) => Ve(p[e] ?? ee[e] ?? e, t, (e) => f(e)), h = new Intl.PluralRules(n), g = new Intl.PluralRules("en"), _ = (e, t, n, r) => {
 		let i = {
 			...r,
 			count: e
 		}, a = h.select(e), o = n.endsWith("_other") ? n.slice(0, -6) : null, s = (o !== null && t === `${o}_one` ? p[`${o}_${a}`] : p[a === "one" ? t : n]) ?? p[n];
-		return s === void 0 ? m(g.select(e) === "one" ? t : n, i) : Be(s, i, (e) => f(e));
-	}, ne = new Intl.DateTimeFormat(u, {
+		return s === void 0 ? m(g.select(e) === "one" ? t : n, i) : Ve(s, i, (e) => f(e));
+	}, te = new Intl.DateTimeFormat(u, {
 		dateStyle: "medium",
 		timeZone: "UTC"
-	}), _ = {
+	}), v = {
 		hour: "numeric",
 		minute: "2-digit"
-	}, v = ze(r);
-	v !== void 0 && (_.hour12 = v);
-	let y = new Intl.DateTimeFormat(u, {
-		..._,
+	}, y = Be(r);
+	y !== void 0 && (v.hour12 = y);
+	let b = new Intl.DateTimeFormat(u, {
+		...v,
 		year: "numeric",
 		month: "short",
 		day: "numeric",
 		timeZone: "UTC"
-	}), b = new Intl.DateTimeFormat(u, {
-		..._,
+	}), x = new Intl.DateTimeFormat(u, {
+		...v,
 		year: "numeric",
 		month: "short",
 		day: "numeric"
-	}), x = {
+	}), S = {
 		language: n,
 		t: m,
-		tn: te,
+		tn: _,
 		number: f,
 		percent: (e) => m("format.percent", { value: e }),
 		date: (e) => {
 			let t = /^(\d{4})-(\d\d)-(\d\d)$/.exec(e);
-			return t ? ne.format(Date.UTC(Number(t[1]), Number(t[2]) - 1, Number(t[3]))) : e;
+			return t ? te.format(Date.UTC(Number(t[1]), Number(t[2]) - 1, Number(t[3]))) : e;
 		},
 		recordedDateTime: (e) => {
 			let t = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)(?::\d\d(?:\.\d+)?)?(Z|[+-]\d\d:\d\d)$/.exec(e);
 			if (!t) return e;
 			let n = Date.UTC(Number(t[1]), Number(t[2]) - 1, Number(t[3]), Number(t[4]), Number(t[5]));
 			return m("format.recorded_date_time", {
-				datetime: y.format(n),
+				datetime: b.format(n),
 				offset: t[6] === "Z" ? "+00:00" : t[6]
 			});
 		},
 		dateTime: (e) => {
 			let t = Date.parse(e);
-			return Number.isFinite(t) ? b.format(t) : e;
+			return Number.isFinite(t) ? x.format(t) : e;
 		}
 	};
-	return i && Ve.set(i, x), x;
+	return i && He.set(i, S), S;
 }
-var z = He(), B = {
+var R = Ue(), z = {
 	needs_water: {
 		icon: "mdi:water-alert",
 		color: "--warning-color",
@@ -3199,10 +3197,10 @@ var z = He(), B = {
 		label: "plant_status.paused"
 	}
 };
-function Ue(e, t) {
-	return e.t(B[t].label);
+function We(e, t) {
+	return e.t(z[t].label);
 }
-var We = [
+var Ge = [
 	"moisture",
 	"temperature",
 	"humidity",
@@ -3211,7 +3209,7 @@ var We = [
 	"soil_temperature",
 	"co2",
 	"battery"
-], V = {
+], B = {
 	moisture: {
 		icon: "mdi:water",
 		label: "reading.moisture"
@@ -3245,24 +3243,24 @@ var We = [
 		label: "reading.battery"
 	}
 };
-function Ge(e) {
-	return typeof e == "string" && We.includes(e);
+function Ke(e) {
+	return typeof e == "string" && Ge.includes(e);
 }
-function Ke(e, t) {
-	return e.t(V[t].label);
+function qe(e, t) {
+	return e.t(B[t].label);
 }
-function H(e, t, n) {
+function V(e, t, n) {
 	return n === "%" ? e.percent(t) : n ? `${e.number(t)} ${n}` : e.number(t);
 }
-function qe(e, t, n, r) {
+function Je(e, t, n, r) {
 	if (!n) return "";
 	let { min: i, max: a } = n;
-	return t === "battery" && i !== null ? e.t("range.low_below", { value: H(e, i, r) }) : i !== null && a !== null ? e.t("range.between", {
+	return t === "battery" && i !== null ? e.t("range.low_below", { value: V(e, i, r) }) : i !== null && a !== null ? e.t("range.between", {
 		min: e.number(i),
-		max: H(e, a, r)
-	}) : i === null ? a === null ? "" : e.t("range.at_most", { value: H(e, a, r) }) : e.t("range.at_least", { value: H(e, i, r) });
+		max: V(e, a, r)
+	}) : i === null ? a === null ? "" : e.t("range.at_most", { value: V(e, a, r) }) : e.t("range.at_least", { value: V(e, i, r) });
 }
-var Je = [
+var Ye = [
 	["second", 60],
 	["minute", 60],
 	["hour", 24],
@@ -3271,18 +3269,18 @@ var Je = [
 	["month", 12],
 	["year", Infinity]
 ];
-function U(e, t, n = Date.now()) {
+function H(e, t, n = Date.now()) {
 	let r = Date.parse(t);
 	if (!Number.isFinite(r)) return t;
 	let i = new Intl.RelativeTimeFormat(e.language, { numeric: "auto" }), a = (r - n) / 1e3;
-	for (let [e, t] of Je) {
+	for (let [e, t] of Ye) {
 		if (Math.abs(a) < t) return i.format(Math.round(a), e);
 		a /= t;
 	}
 	return t;
 }
 // src/components/shared-styles.ts
-var W = o`
+var U = o`
   :host {
     --sp-success: var(--success-color, #4caf50);
     --sp-warning: var(--warning-color, #ff9800);
@@ -3296,10 +3294,10 @@ var W = o`
     /* Care reminders have their own colour, apart from the watering palette. */
     --sp-care: var(--purple-color, #8f5bd1);
   }
-`, Ye = o`
+`, Xe = o`
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 `;
-function Xe(e) {
+function Ze(e) {
 	switch (e) {
 		case "--success-color": return "var(--sp-success)";
 		case "--warning-color": return "var(--sp-warning)";
@@ -3317,16 +3315,16 @@ o`
   @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
 `;
 // \0@oxc-project+runtime@0.156.0/helpers/esm/decorate.js
-function G(e, t, n, r) {
+function W(e, t, n, r) {
 	var i = arguments.length, a = i < 3 ? t : r === null ? r = Object.getOwnPropertyDescriptor(t, n) : r, o;
 	if (typeof Reflect == "object" && typeof Reflect.decorate == "function") a = Reflect.decorate(e, t, n, r);
 	else for (var s = e.length - 1; s >= 0; s--) (o = e[s]) && (a = (i < 3 ? o(a) : i > 3 ? o(t, n, a) : o(t, n)) || a);
 	return i > 3 && a && Object.defineProperty(t, n, a), a;
 }
 // src/components/sp-moisture-bar.ts
-var Ze, Qe = (e) => Math.min(100, Math.max(0, e)), K = class extends L {
+var Qe, $e = (e) => Math.min(100, Math.max(0, e)), G = class extends F {
 	constructor(...e) {
-		super(...e), this.value = null, this.range = null, this.state = "ok", this.lastReported = null, this.now = void 0, this.l = z;
+		super(...e), this.value = null, this.range = null, this.state = "ok", this.lastReported = null, this.now = void 0, this.l = R;
 	}
 	willUpdate() {
 		this.toggleAttribute("dimmed", this.state === "stale" || this.state === "unavailable");
@@ -3335,23 +3333,23 @@ var Ze, Qe = (e) => Math.min(100, Math.max(0, e)), K = class extends L {
 		return this.range?.min !== null && this.range?.min !== void 0 && this.range.max !== null && this.range.max !== void 0;
 	}
 	render() {
-		let e = this.l, t = this.range, n = this.value, r = qe(e, "moisture", t, "%"), i = n === null ? "—" : H(e, n, "%"), a = n === null ? e.t("moisture_bar.label_no_value") : r ? e.t("moisture_bar.label", {
+		let e = this.l, t = this.range, n = this.value, r = Je(e, "moisture", t, "%"), i = n === null ? "—" : V(e, n, "%"), a = n === null ? e.t("moisture_bar.label_no_value") : r ? e.t("moisture_bar.label", {
 			value: i,
 			range: r
-		}) : e.t("moisture_bar.label_no_range", { value: i }), o = this._hasRange(), s = o ? Qe(t.min) : 0, c = o ? Qe(t.max) : 0, l = t?.target ?? null, u = this.state === "stale" && this.lastReported;
+		}) : e.t("moisture_bar.label_no_range", { value: i }), o = this._hasRange(), s = o ? $e(t.min) : 0, c = o ? $e(t.max) : 0, l = t?.target ?? null, u = this.state === "stale" && this.lastReported;
 		return A`
-      <div class="top"><span class="name"><ha-icon aria-hidden="true" .icon=${V.moisture.icon}></ha-icon>${Ke(e, "moisture")}</span>
+      <div class="top"><span class="name"><ha-icon aria-hidden="true" .icon=${B.moisture.icon}></ha-icon>${qe(e, "moisture")}</span>
         <span class="value ${this.state}" aria-hidden="true">${i}</span></div>
       <div class="track" role="img" aria-label=${a}>
         ${o ? A`<div class="band" style="left:${s}%;width:${Math.max(0, c - s)}%"></div>` : M}
-        ${l === null ? M : A`<div class="tick" style="left:${Qe(l)}%"></div>`}
+        ${l === null ? M : A`<div class="tick" style="left:${$e(l)}%"></div>`}
         ${n === null ? M : A`<div class="dot ${this.state}" style="left:${Math.min(98, Math.max(2, n))}%"></div>`}
       </div>
       <div class="scale" aria-hidden="true"><span class="end">${e.t("moisture_bar.dry")}</span>${r ? A`<span>${e.t("moisture_bar.target", { range: r })}</span>` : M}<span class="end">${e.t("moisture_bar.wet")}</span></div>
-      ${u ? A`<div class="age"><ha-icon aria-hidden="true" icon="mdi:clock-outline"></ha-icon>${e.t("moisture_bar.last_update", { age: U(e, this.lastReported, this.now) })}</div>` : M}`;
+      ${u ? A`<div class="age"><ha-icon aria-hidden="true" icon="mdi:clock-outline"></ha-icon>${e.t("moisture_bar.last_update", { age: H(e, this.lastReported, this.now) })}</div>` : M}`;
 	}
 };
-Ze = K, Ze.styles = [W, o`
+Qe = G, Qe.styles = [U, o`
     :host { display: block; font-size: 13px; color: var(--sp-text); }
     .top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; column-gap: 8px; }
     .name { display: inline-flex; align-items: center; gap: 4px; color: var(--sp-text-secondary); }
@@ -3378,20 +3376,20 @@ Ze = K, Ze.styles = [W, o`
     }
     .age { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
     .age ha-icon { --mdc-icon-size: 15px; }
-  `], G([R({ type: Number })], K.prototype, "value", void 0), G([R({ attribute: !1 })], K.prototype, "range", void 0), G([R({ reflect: !0 })], K.prototype, "state", void 0), G([R({ attribute: !1 })], K.prototype, "lastReported", void 0), G([R({ attribute: !1 })], K.prototype, "now", void 0), G([R({ attribute: !1 })], K.prototype, "l", void 0), customElements.get("sp-moisture-bar") || customElements.define("sp-moisture-bar", K);
-function $e() {
+  `], W([I({ type: Number })], G.prototype, "value", void 0), W([I({ attribute: !1 })], G.prototype, "range", void 0), W([I({ reflect: !0 })], G.prototype, "state", void 0), W([I({ attribute: !1 })], G.prototype, "lastReported", void 0), W([I({ attribute: !1 })], G.prototype, "now", void 0), W([I({ attribute: !1 })], G.prototype, "l", void 0), customElements.get("sp-moisture-bar") || customElements.define("sp-moisture-bar", G);
+function et() {
 	return typeof window.matchMedia == "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
-function et(e, t = 180) {
-	e && typeof e.animate == "function" && !$e() && e.animate([{ opacity: 0 }, { opacity: 1 }], {
+function tt(e, t = 180) {
+	e && typeof e.animate == "function" && !et() && e.animate([{ opacity: 0 }, { opacity: 1 }], {
 		duration: t,
 		easing: "ease-out"
 	});
 }
 // src/components/sp-plant-avatar.ts
-var tt, nt = /* @__PURE__ */ new Set(), q = class extends L {
+var nt, rt = /* @__PURE__ */ new Set(), K = class extends F {
 	constructor(...e) {
-		super(...e), this.src = null, this.name = "", this.size = "small", this.l = z;
+		super(...e), this.src = null, this.name = "", this.size = "small", this.l = R;
 	}
 	render() {
 		return A`<div class="tile" part="tile">${this.src ? A`<img src=${this.src} alt=${this.l.t("photo.alt", { name: this.name })} @load=${(e) => this._loaded(e.currentTarget)} @error=${() => this.dispatchEvent(new CustomEvent("photo-error", {
@@ -3401,10 +3399,10 @@ var tt, nt = /* @__PURE__ */ new Set(), q = class extends L {
 	}
 	_loaded(e) {
 		let t = e.getAttribute("src");
-		t && !nt.has(t) && (nt.add(t), et(e, 150));
+		t && !rt.has(t) && (rt.add(t), tt(e, 150));
 	}
 };
-tt = q, tt.styles = [W, o`
+nt = K, nt.styles = [U, o`
     :host { --sp-avatar-size: 56px; --sp-avatar-radius: 12px; display: inline-block; flex: none; width: var(--sp-avatar-size); height: var(--sp-avatar-size); max-width: 100%; }
     :host([size="large"]) { --sp-avatar-size: 132px; --sp-avatar-radius: 16px; }
     @media (max-width: 600px) { :host([size="large"]) { --sp-avatar-size: 76px; --sp-avatar-radius: 12px; } }
@@ -3412,25 +3410,25 @@ tt = q, tt.styles = [W, o`
       background: color-mix(in srgb, var(--sp-primary) 12%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); }
     img { width: 100%; height: 100%; object-fit: cover; display: block; }
     ha-icon { --mdc-icon-size: calc(var(--sp-avatar-size) * .54); }
-  `], G([R({ attribute: !1 })], q.prototype, "src", void 0), G([R()], q.prototype, "name", void 0), G([R({ reflect: !0 })], q.prototype, "size", void 0), G([R({ attribute: !1 })], q.prototype, "l", void 0), customElements.get("sp-plant-avatar") || customElements.define("sp-plant-avatar", q);
+  `], W([I({ attribute: !1 })], K.prototype, "src", void 0), W([I()], K.prototype, "name", void 0), W([I({ reflect: !0 })], K.prototype, "size", void 0), W([I({ attribute: !1 })], K.prototype, "l", void 0), customElements.get("sp-plant-avatar") || customElements.define("sp-plant-avatar", K);
 // src/components/sp-reading-chip.ts
-var rt, J = class extends L {
+var it, q = class extends F {
 	constructor(...e) {
-		super(...e), this.role = "temperature", this.value = null, this.unit = "", this.state = "ok", this.range = null, this.l = z;
+		super(...e), this.role = "temperature", this.value = null, this.unit = "", this.state = "ok", this.range = null, this.l = R;
 	}
 	render() {
-		let e = this.l, t = V[this.role] ?? V.temperature, n = Ke(e, this.role in V ? this.role : "temperature"), r = qe(e, this.role, this.range, this.unit), i = (this.state === "low" || this.state === "high") && r;
+		let e = this.l, t = B[this.role] ?? B.temperature, n = qe(e, this.role in B ? this.role : "temperature"), r = Je(e, this.role, this.range, this.unit), i = (this.state === "low" || this.state === "high") && r;
 		return A`<span class="chip" part="chip" title=${r ? `${n}: ${r}` : n}>
       <ha-icon aria-hidden="true" .icon=${t.icon}></ha-icon><span class="sr-only">${n}</span>
-      ${this.value === null ? e.t("reading.no_value") : H(e, this.value, this.unit)}
+      ${this.value === null ? e.t("reading.no_value") : V(e, this.value, this.unit)}
       ${i ? A`<span class="sr-only">, ${e.t("reading.outside_target", { range: r })}</span>` : M}
       ${this.state === "stale" ? A`<span class="sr-only">, ${e.t("reading.not_updating")}</span>` : M}
     </span>`;
 	}
 };
-rt = J, rt.styles = [
-	W,
-	Ye,
+it = q, it.styles = [
+	U,
+	Xe,
 	o`
     :host { display: inline-flex; }
     .chip {
@@ -3446,9 +3444,9 @@ rt = J, rt.styles = [
     :host([state="low"]) ha-icon, :host([state="high"]) ha-icon { color: inherit; }
     :host([state="stale"]) .chip, :host([state="unavailable"]) .chip { opacity: .6; }
   `
-], G([R()], J.prototype, "role", void 0), G([R({ type: Number })], J.prototype, "value", void 0), G([R()], J.prototype, "unit", void 0), G([R({ reflect: !0 })], J.prototype, "state", void 0), G([R({ attribute: !1 })], J.prototype, "range", void 0), G([R({ attribute: !1 })], J.prototype, "l", void 0), customElements.get("sp-reading-chip") || customElements.define("sp-reading-chip", J);
+], W([I()], q.prototype, "role", void 0), W([I({ type: Number })], q.prototype, "value", void 0), W([I()], q.prototype, "unit", void 0), W([I({ reflect: !0 })], q.prototype, "state", void 0), W([I({ attribute: !1 })], q.prototype, "range", void 0), W([I({ attribute: !1 })], q.prototype, "l", void 0), customElements.get("sp-reading-chip") || customElements.define("sp-reading-chip", q);
 // src/components/sp-snooze-chip.ts
-var it, at = class extends L {
+var at, ot = class extends F {
 	constructor(...e) {
 		super(...e), this.label = "";
 	}
@@ -3456,7 +3454,7 @@ var it, at = class extends L {
 		return A`<span class="chip" part="chip"><ha-icon aria-hidden="true" icon="mdi:bell-sleep-outline"></ha-icon><span class="label">${this.label}</span></span>`;
 	}
 };
-it = at, it.styles = [W, o`
+at = ot, at.styles = [U, o`
     :host { display: inline-flex; max-width: 100%; }
     .chip {
       display: inline-flex; align-items: center; gap: 5px; min-height: 26px; max-width: 100%;
@@ -3466,24 +3464,24 @@ it = at, it.styles = [W, o`
     }
     ha-icon { --mdc-icon-size: 17px; flex: none; }
     .label { overflow-wrap: anywhere; hyphens: auto; }
-  `], G([R()], at.prototype, "label", void 0), customElements.get("sp-snooze-chip") || customElements.define("sp-snooze-chip", at);
+  `], W([I()], ot.prototype, "label", void 0), customElements.get("sp-snooze-chip") || customElements.define("sp-snooze-chip", ot);
 // src/components/sp-status-chip.ts
-var ot, Y = class extends L {
+var st, J = class extends F {
 	constructor(...e) {
-		super(...e), this.status = "healthy", this.label = "", this.more = 0, this.l = z;
+		super(...e), this.status = "healthy", this.label = "", this.more = 0, this.l = R;
 	}
 	willUpdate() {
-		let e = B[this.status]?.color ?? "--disabled-text-color";
-		this.toggleAttribute("muted", e === "--disabled-text-color"), this.style.setProperty("--sp-status", Xe(e));
+		let e = z[this.status]?.color ?? "--disabled-text-color";
+		this.toggleAttribute("muted", e === "--disabled-text-color"), this.style.setProperty("--sp-status", Ze(e));
 	}
 	render() {
-		let e = B[this.status] ?? B.healthy, t = this.label || Ue(this.l, this.status in B ? this.status : "healthy");
+		let e = z[this.status] ?? z.healthy, t = this.label || We(this.l, this.status in z ? this.status : "healthy");
 		return A`<span class="chip" part="chip"><ha-icon aria-hidden="true" .icon=${e.icon}></ha-icon><span class="label">${t}</span>${this.more > 0 ? A`<span aria-hidden="true">${this.l.t("plant_status.more", { count: this.more })}</span><span class="sr-only">${this.l.t("plant_status.more_label", { count: this.more })}</span>` : M}</span>`;
 	}
 };
-ot = Y, ot.styles = [
-	W,
-	Ye,
+st = J, st.styles = [
+	U,
+	Xe,
 	o`
     :host { display: inline-flex; max-width: 100%; }
     .chip {
@@ -3496,9 +3494,9 @@ ot = Y, ot.styles = [
     ha-icon { --mdc-icon-size: 17px; flex: none; }
     .label { overflow-wrap: anywhere; hyphens: auto; }
   `
-], G([R({ reflect: !0 })], Y.prototype, "status", void 0), G([R()], Y.prototype, "label", void 0), G([R({ type: Number })], Y.prototype, "more", void 0), G([R({ attribute: !1 })], Y.prototype, "l", void 0), customElements.get("sp-status-chip") || customElements.define("sp-status-chip", Y);
+], W([I({ reflect: !0 })], J.prototype, "status", void 0), W([I()], J.prototype, "label", void 0), W([I({ type: Number })], J.prototype, "more", void 0), W([I({ attribute: !1 })], J.prototype, "l", void 0), customElements.get("sp-status-chip") || customElements.define("sp-status-chip", J);
 // src/overview-model.ts
-var st = {
+var ct = {
 	too_cold: "problem_kind.too_cold",
 	too_hot: "problem_kind.too_hot",
 	too_dry: "problem_kind.too_dry",
@@ -3508,35 +3506,32 @@ var st = {
 	high_conductivity: "problem_kind.high_conductivity",
 	high_co2: "problem_kind.high_co2",
 	battery_low: "problem_kind.battery_low"
-}, ct = {
+}, lt = {
 	too_cold: "problem_kind.soil_too_cold",
 	too_hot: "problem_kind.soil_too_hot"
 };
-function lt(e, t) {
+function ut(e, t) {
 	let n = t.problems[0], r = t.status === "healthy" || t.status === "paused" ? 0 : Math.max(0, t.problems.length - 1);
 	if (t.status === "problem" && n) {
-		let t = (n.role === "soil_temperature" ? ct[n.kind] : void 0) ?? st[n.kind];
+		let t = (n.role === "soil_temperature" ? lt[n.kind] : void 0) ?? ct[n.kind];
 		return {
-			label: t ? e.t(t) : Ue(e, "problem"),
+			label: t ? e.t(t) : We(e, "problem"),
 			more: r
 		};
 	}
-	return t.status === "no_sensors" && Object.keys(t.roles).length ? {
-		label: e.t("plant_status.no_moisture"),
-		more: r
-	} : t.status === "stale" && n?.kind === "no_main_sensor" ? {
+	return t.status === "stale" && n?.kind === "no_main_sensor" ? {
 		label: e.t("plant_status.no_main_sensor"),
 		more: r
 	} : {
-		label: Ue(e, t.status),
+		label: We(e, t.status),
 		more: r
 	};
 }
-function ut(e, t) {
-	return t && t.value !== null ? H(e, t.value, t.unit) : null;
+function dt(e, t) {
+	return t && t.value !== null ? V(e, t.value, t.unit) : null;
 }
-function dt(e, t, n, r) {
-	let i = Ge(n.role) ? n.role : null, a = i ? t.roles[i] : void 0, o = i ? Ke(e, i) : n.role, s = ut(e, a), c = (t) => t == null || !a ? null : H(e, t, a.unit), l = (t) => {
+function ft(e, t, n, r) {
+	let i = Ke(n.role) ? n.role : null, a = i ? t.roles[i] : void 0, o = i ? qe(e, i) : n.role, s = dt(e, a), c = (t) => t == null || !a ? null : V(e, t, a.unit), l = (t) => {
 		let n = a?.range[t];
 		if (!a || a.value === null || !s || n == null || (t === "min" ? a.value < n : a.value > n) && s !== c(n)) return null;
 		let r = c(a.clear[t]);
@@ -3549,7 +3544,7 @@ function dt(e, t, n, r) {
 	switch (n.kind) {
 		case "stale": return a?.last_reported ? e.t("reason.stale", {
 			role: o,
-			age: U(e, a.last_reported, r)
+			age: H(e, a.last_reported, r)
 		}) : e.t("reason.not_reporting", { role: o });
 		case "unavailable": return e.t("reason.not_reporting", { role: o });
 		case "no_main_sensor": return e.t("reason.no_main_sensor", { role: o });
@@ -3593,18 +3588,18 @@ function dt(e, t, n, r) {
 	}
 	return e.t("reason.outside_target", { role: o });
 }
-function ft(e, t, n) {
-	return t.status === "healthy" || t.status === "paused" || t.status === "no_sensors" ? "" : t.problems.slice(0, 2).map((r) => dt(e, t, r, n)).join(" · ");
+function pt(e, t, n) {
+	return t.status === "healthy" || t.status === "paused" || t.status === "no_sensors" ? "" : t.problems.slice(0, 2).map((r) => ft(e, t, r, n)).join(" · ");
 }
-function pt(e, t, n = Date.now()) {
+function mt(e, t, n = Date.now()) {
 	if (!t) return e.t("card.never_watered");
 	let r = Date.parse(t);
-	return Number.isFinite(r) && Math.abs(n - r) < 6e4 ? e.t("card.watered_just_now") : e.t("card.watered", { age: U(e, t, n) });
+	return Number.isFinite(r) && Math.abs(n - r) < 6e4 ? e.t("card.watered_just_now") : e.t("card.watered", { age: H(e, t, n) });
 }
-function mt(e) {
-	return Object.keys(V).filter((t) => t !== "moisture" && e.roles[t]).map((t) => [t, e.roles[t]]);
+function ht(e) {
+	return Object.keys(B).filter((t) => t !== "moisture" && e.roles[t]).map((t) => [t, e.roles[t]]);
 }
-function ht(e, t) {
+function gt(e, t) {
 	let n = Date.parse(e);
 	if (!Number.isFinite(n)) return null;
 	let r;
@@ -3626,8 +3621,8 @@ function ht(e, t) {
 	return `${i.year}-${i.month}-${i.day}`;
 }
 // src/snooze.ts
-var gt = /^(\d{4})-(\d\d)-(\d\d)$/;
-function _t(e, t) {
+var _t = /^(\d{4})-(\d\d)-(\d\d)$/;
+function vt(e, t) {
 	let n = {
 		year: "numeric",
 		month: "2-digit",
@@ -3647,19 +3642,19 @@ function _t(e, t) {
 	}
 	return Object.fromEntries(r.formatToParts(e).filter((e) => e.type !== "literal").map((e) => [e.type, Number(e.value)]));
 }
-function vt(e, t = Date.now()) {
+function yt(e, t = Date.now()) {
 	if (!e) return null;
 	let n = Date.parse(e);
 	return Number.isFinite(n) && n > t ? e : null;
 }
-function yt(e, t) {
+function bt(e, t) {
 	let n = Date.parse(e);
 	if (!Number.isFinite(n)) return null;
-	let r = _t(n - 1e3, t);
+	let r = vt(n - 1e3, t);
 	return `${String(r.year).padStart(4, "0")}-${String(r.month).padStart(2, "0")}-${String(r.day).padStart(2, "0")}`;
 }
-function bt(e, t, n) {
-	let r = gt.exec(t);
+function xt(e, t, n) {
+	let r = _t.exec(t);
 	if (!r) return t;
 	let i = t.slice(0, 4) === n.slice(0, 4);
 	return new Intl.DateTimeFormat(e.language, {
@@ -3670,12 +3665,12 @@ function bt(e, t, n) {
 		timeZone: "UTC"
 	}).format(Date.UTC(Number(r[1]), Number(r[2]) - 1, Number(r[3])));
 }
-function xt(e, t, n, r, i = Date.now()) {
-	let a = vt(t, i), o = a ? yt(a, r) : null;
-	return o ? e.t("snooze.chip", { date: bt(e, o, n).replace(/\s/g, "\xA0") }) : null;
+function St(e, t, n, r, i = Date.now()) {
+	let a = yt(t, i), o = a ? bt(a, r) : null;
+	return o ? e.t("snooze.chip", { date: xt(e, o, n).replace(/\s/g, "\xA0") }) : null;
 }
 // src/card/plant-state.ts
-var X = "smart_plants", Z = [
+var Y = "smart_plants", X = [
 	{
 		role: "temperature",
 		sensor: "temperature_stress",
@@ -3723,14 +3718,14 @@ var X = "smart_plants", Z = [
 		sensor: "low_battery",
 		kinds: { low_battery: "battery_low" }
 	}
-], St = "stress", Ct = /* @__PURE__ */ new Set([
+], Ct = "stress", wt = /* @__PURE__ */ new Set([
 	"needs_water",
 	"too_cold",
 	"too_dry",
 	"low_light",
 	"low_conductivity",
 	"battery_low"
-]), wt = {
+]), Tt = {
 	temperature: {
 		range: ["cold_threshold_celsius", "hot_threshold_celsius"],
 		clear: ["cold_clear_celsius", "hot_clear_celsius"]
@@ -3759,8 +3754,8 @@ var X = "smart_plants", Z = [
 		range: ["threshold_percent", null],
 		clear: ["clear_percent", null]
 	}
-}, Tt = /* @__PURE__ */ new Set(["unavailable", "unknown"]), Et = /* @__PURE__ */ new Set(["on", "off"]), Q = (e) => typeof e == "number" && Number.isFinite(e) ? e : null, Dt = (e) => {
-	if (Tt.has(e)) return null;
+}, Z = /* @__PURE__ */ new Set(["unavailable", "unknown"]), Et = /* @__PURE__ */ new Set(["on", "off"]), Q = (e) => typeof e == "number" && Number.isFinite(e) ? e : null, Dt = (e) => {
+	if (Z.has(e)) return null;
 	let t = Number(e);
 	return e.trim() !== "" && Number.isFinite(t) ? t : null;
 }, Ot = (e) => e ? Dt(e.state) : null;
@@ -3790,61 +3785,77 @@ function Nt(e) {
 		role: "moisture",
 		kind: n
 	});
-	let r = !1;
-	for (let n of Z) {
-		let i = e.stress[n.role];
-		i?.state === "on" && (t.push({
+	let r = !1, i = /* @__PURE__ */ new Set();
+	for (let n of X) {
+		let a = Ft(e, n);
+		a ? (t.push({
 			role: n.role,
-			kind: n.kinds[i.reason ?? ""] ?? St
-		}), r = !0);
+			kind: a
+		}), r = !0) : a === void 0 && Dt(e.readings[n.role] ?? "") !== null && i.add(n.role);
 	}
-	let i = e.moisture !== null && !Tt.has(e.moisture), a = e.sensor_stale === "on", o = e.sources === null ? i || a : e.sources > 0, s = n !== null || Et.has(e.needs_water ?? "") && Et.has(e.too_wet ?? ""), c = o ? a ? "stale" : i && s ? null : "unavailable" : null;
-	c && t.push({
+	let a = e.moisture !== null && !Z.has(e.moisture), o = e.sensor_stale === "on", s = Pt(e), c = n !== null || Et.has(e.needs_water ?? "") && Et.has(e.too_wet ?? ""), l = s ? o ? "stale" : a && c ? null : "unavailable" : null;
+	l && t.push({
 		role: "moisture",
-		kind: c
+		kind: l
 	});
-	let l = Pt(e);
-	t.push(...l), o || t.push({
+	let u = Lt(e, i);
+	t.push(...u);
+	let d = !s && !X.some(({ role: t }) => It(e, t));
+	d && t.push({
 		role: "moisture",
 		kind: "no_sensors"
 	});
-	let u;
-	return u = n || (r ? "problem" : c || l.length ? "stale" : o ? "healthy" : "no_sensors"), {
-		status: u,
+	let f;
+	return f = n || (r ? "problem" : l || u.length ? "stale" : d ? "no_sensors" : "healthy"), {
+		status: f,
 		problems: t
 	};
 }
 function Pt(e) {
-	let t = [];
-	for (let { role: n } of Z) {
-		let r = e.input_problems[n];
-		r !== void 0 && t.push({
-			role: n,
-			kind: r === "stale" ? "stale" : "unavailable"
-		});
-	}
-	return t;
+	return e.sources === null ? e.moisture !== null && !Z.has(e.moisture) || e.sensor_stale === "on" : e.sources > 0;
 }
 function Ft(e, t) {
+	if (e.stress_problems) return e.stress_problems[t.role] ?? null;
+	let n = e.stress[t.role];
+	return n?.state === "on" ? t.kinds[n.reason ?? ""] ?? Ct : n?.state === "off" ? null : void 0;
+}
+function It(e, t) {
+	return Dt(e.readings[t] ?? "") !== null || Et.has(e.stress[t]?.state ?? "") || e.input_problems[t] !== void 0 || e.stress_problems?.[t] !== void 0;
+}
+function Lt(e, t) {
+	let n = [];
+	for (let { role: r } of X) {
+		let i = e.input_problems[r];
+		i === void 0 ? t.has(r) && n.push({
+			role: r,
+			kind: "unavailable"
+		}) : n.push({
+			role: r,
+			kind: i === "stale" ? "stale" : "unavailable"
+		});
+	}
+	return n;
+}
+function Rt(e, t) {
 	let n = (n) => {
 		let r = t.get(n);
 		return r ? e.states[r] : void 0;
 	}, r = {};
-	for (let e of Z) {
+	for (let e of X) {
 		let t = n(`binary_sensor.${e.sensor}`);
 		t && (r[e.role] = {
 			state: t.state,
 			reason: typeof t.attributes.reason == "string" ? t.attributes.reason : null
 		});
 	}
-	let i = {}, a = n("binary_sensor.sensor_stale")?.attributes.input_problems;
-	if (typeof a == "object" && a) for (let { role: e } of Z) {
-		let t = a[e];
-		typeof t == "string" && (i[e] = t);
+	let i = n("binary_sensor.sensor_stale"), a = i && !Z.has(i.state) ? i.attributes : {}, o = {};
+	for (let { role: e } of X) {
+		let t = n(`sensor.${e}`);
+		t && (o[e] = t.state);
 	}
-	let o = [...t.values()];
+	let s = [...t.values()];
 	return {
-		allUnavailable: o.length > 0 && o.every((t) => {
+		allUnavailable: s.length > 0 && s.every((t) => {
 			let n = e.states[t];
 			return !n || n.state === "unavailable";
 		}),
@@ -3854,14 +3865,25 @@ function Ft(e, t) {
 		sensor_stale: n("binary_sensor.sensor_stale")?.state ?? null,
 		sources: Q(n("binary_sensor.sensor_stale")?.attributes.sources),
 		stress: r,
-		input_problems: i
+		input_problems: zt(a.input_problems) ?? {},
+		stress_problems: zt(a.stress_problems),
+		readings: o
 	};
 }
-var It = /* @__PURE__ */ new Set(["temperature", "soil_temperature"]), Lt = (e, t) => t === "°F" ? Math.round((e * 9 / 5 + 32) * 10) / 10 : t === "K" ? Math.round((e + 273.15) * 100) / 100 : e;
-function Rt(e, t, n) {
-	let r = wt[e], i = (r) => {
-		let i = r && t && !Tt.has(t.state) ? Q(t.attributes[r]) : null;
-		return i !== null && It.has(e) ? Lt(i, n) : i;
+function zt(e) {
+	if (typeof e != "object" || !e || Array.isArray(e)) return null;
+	let t = {};
+	for (let { role: n } of X) {
+		let r = e[n];
+		typeof r == "string" && (t[n] = r);
+	}
+	return t;
+}
+var Bt = /* @__PURE__ */ new Set(["temperature", "soil_temperature"]), Vt = (e, t) => t === "°F" ? Math.round((e * 9 / 5 + 32) * 10) / 10 : t === "K" ? Math.round((e + 273.15) * 100) / 100 : e;
+function Ht(e, t, n) {
+	let r = Tt[e], i = (r) => {
+		let i = r && t && !Z.has(t.state) ? Q(t.attributes[r]) : null;
+		return i !== null && Bt.has(e) ? Vt(i, n) : i;
 	};
 	return {
 		range: {
@@ -3875,22 +3897,22 @@ function Rt(e, t, n) {
 		}
 	};
 }
-function zt(e, t, n) {
-	return n ? "stale" : e === null ? "unavailable" : t ? Ct.has(t.kind) ? "low" : "high" : "ok";
+function Ut(e, t, n) {
+	return n ? "stale" : e === null ? "unavailable" : t ? wt.has(t.kind) ? "low" : "high" : "ok";
 }
-function Bt(e, t) {
+function Wt(e, t) {
 	let n = e.devices?.[t], r = At(n);
 	if (!n || !r) return { kind: "missing" };
 	let i = kt(e, t), a = (t) => {
 		let n = i.get(t);
 		return n ? e.states[n] : void 0;
-	}, o = Ft(e, i), { status: s, problems: c } = Nt(o), l = s === "paused", u = {}, d = a("sensor.moisture"), f = Ot(d), p = o.sensor_stale === "on", ee = c.every((e) => e.kind !== "no_sensors");
+	}, o = Rt(e, i), { status: s, problems: c } = Nt(o), l = s === "paused", u = {}, d = a("sensor.moisture"), f = Ot(d), p = o.sensor_stale === "on", ee = Pt(o);
 	if (!l && (f !== null || ee)) {
 		let e = d?.attributes ?? {}, t = Q(e.min_threshold_percent), n = Q(e.max_threshold_percent);
 		u.moisture = {
 			value: f,
 			unit: "%",
-			state: zt(f, c.find((e) => e.role === "moisture" && (e.kind === "needs_water" || e.kind === "too_wet")), p),
+			state: Ut(f, c.find((e) => e.role === "moisture" && (e.kind === "needs_water" || e.kind === "too_wet")), p),
 			range: {
 				min: t,
 				target: Q(e.target_threshold_percent),
@@ -3904,15 +3926,15 @@ function Bt(e, t) {
 			sources: []
 		};
 	}
-	for (let e of We) {
+	for (let e of Ge) {
 		if (e === "moisture" || l) continue;
 		let t = a(`sensor.${e}`), n = Ot(t), r = c.find((t) => t.role === e), i = r?.kind === "stale" || r?.kind === "unavailable";
 		if (n === null && !i) continue;
-		let o = Z.find((t) => t.role === e), s = typeof t?.attributes.unit_of_measurement == "string" ? t.attributes.unit_of_measurement : "", { range: d, clear: f } = Rt(e, o ? a(`binary_sensor.${o.sensor}`) : void 0, s);
+		let o = X.find((t) => t.role === e), s = typeof t?.attributes.unit_of_measurement == "string" ? t.attributes.unit_of_measurement : "", { range: d, clear: f } = Ht(e, o ? a(`binary_sensor.${o.sensor}`) : void 0, s);
 		u[e] = {
 			value: n,
 			unit: s,
-			state: zt(n, i ? void 0 : r, r?.kind === "stale"),
+			state: Ut(n, i ? void 0 : r, r?.kind === "stale"),
 			range: d,
 			clear: f,
 			last_reported: null,
@@ -3922,8 +3944,8 @@ function Bt(e, t) {
 	let m = a("binary_sensor.needs_water"), h = m && "last_watered" in m.attributes ? typeof m.attributes.last_watered == "string" ? m.attributes.last_watered : null : void 0, g = [
 		a("binary_sensor.sensor_stale"),
 		m,
-		...Z.map((e) => a(`binary_sensor.${e.sensor}`))
-	].find((e) => e && typeof e.attributes.snoozed_until == "string"), te = We.filter((e) => e !== "moisture").map((e) => i.get(`sensor.${e}`)).find((t) => t !== void 0 && Ot(e.states[t]) !== null), ne = i.get("sensor.moisture") ?? null, _ = a("binary_sensor.sensor_stale")?.attributes, v = _ && "photo_id" in _ ? typeof _.photo_id == "string" && _.photo_id ? _.photo_id : null : void 0, y = n.model?.trim(), b = {
+		...X.map((e) => a(`binary_sensor.${e.sensor}`))
+	].find((e) => e && typeof e.attributes.snoozed_until == "string"), _ = Ge.filter((e) => e !== "moisture").map((e) => i.get(`sensor.${e}`)).find((t) => t !== void 0 && Ot(e.states[t]) !== null), te = i.get("sensor.moisture") ?? null, v = a("binary_sensor.sensor_stale")?.attributes, y = v && "photo_id" in v ? typeof v.photo_id == "string" && v.photo_id ? v.photo_id : null : void 0, b = n.model?.trim(), x = {
 		plant_id: r,
 		revision: 0,
 		lifecycle_state: l ? "disabled" : "active",
@@ -3943,25 +3965,25 @@ function Bt(e, t) {
 		plantId: r,
 		name: Mt(n),
 		area: n.area_id && e.areas?.[n.area_id]?.name || null,
-		species: y && y !== "Plant" ? y : null,
-		overview: b,
+		species: b && b !== "Plant" ? b : null,
+		overview: x,
 		careDue: !l && a("binary_sensor.care_due")?.state === "on",
 		lastWatered: h,
-		moreInfoEntity: f !== null || !te ? ne : te,
-		photoId: v
+		moreInfoEntity: f !== null || !_ ? te : _,
+		photoId: y
 	};
 }
 // src/card/plant-card.ts
-var Vt, Ht = "smart-plants-plant-card-content", Ut = "/smart-plants";
-function Wt(e, t) {
+var Gt, Kt = "smart-plants-plant-card-content", qt = "/smart-plants";
+function Jt(e, t) {
 	let n = e?.response?.events, r = Array.isArray(n) ? n.find((e) => e?.plant_id === t && e.kind === "watering") : void 0;
 	return typeof r?.event_id == "string" ? r.event_id : null;
 }
-function Gt(e) {
+function Yt(e) {
 	let t = -e.getTimezoneOffset(), n = (e) => String(Math.trunc(Math.abs(e))).padStart(2, "0");
 	return `${new Date(e.getTime() + t * 6e4).toISOString().slice(0, 19)}${t < 0 ? "-" : "+"}${n(t / 60)}:${n(t % 60)}`;
 }
-var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code : null, qt = () => He({ language: document.documentElement.lang || "en" }), $ = class extends L {
+var Xt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code : null, Zt = () => Ue({ language: document.documentElement.lang || "en" }), $ = class extends F {
 	constructor(...e) {
 		super(...e), this._config = null, this._busy = !1, this._photo = null, this._photoFor = null, this._photoRequest = 0, this._retired = null, this._retiredFor = null;
 	}
@@ -3982,13 +4004,13 @@ var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		this._syncPhoto();
 	}
 	get _l() {
-		return He(this.hass);
+		return Ue(this.hass);
 	}
 	get _admin() {
 		return this.hass?.user?.is_admin === !0;
 	}
 	_plant() {
-		return !this.hass || !this._config?.device_id ? null : Bt(this.hass, this._config.device_id);
+		return !this.hass || !this._config?.device_id ? null : Wt(this.hass, this._config.device_id);
 	}
 	_syncPhoto() {
 		let e = this._plant();
@@ -4000,7 +4022,7 @@ var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		if (r && r.photoId === void 0 && this._photoFor?.startsWith(`${r.plantId}/`)) return;
 		let i = r?.photoId ? `${r.plantId}/${r.photoId}` : null;
 		if (i === this._photoFor || (this._clearPhoto(), this._photoFor = i, !r?.photoId || !this.hass)) return;
-		let a = ++this._photoRequest, o = this.hass, s = `/api/${X}/plants/${encodeURIComponent(r.plantId)}/image?v=${encodeURIComponent(r.photoId)}`;
+		let a = ++this._photoRequest, o = this.hass, s = `/api/${Y}/plants/${encodeURIComponent(r.plantId)}/image?v=${encodeURIComponent(r.photoId)}`;
 		(o.fetchWithAuth ? o.fetchWithAuth(s) : fetch(s, { credentials: "same-origin" })).then(async (e) => {
 			if (!e.ok) return;
 			let t = await e.blob();
@@ -4013,7 +4035,7 @@ var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		this._retiredFor = t, this._retired = null;
 		let n = this.hass;
 		t && n?.callWS && n.callWS({
-			type: `${X}/archive/card_info`,
+			type: `${Y}/archive/card_info`,
 			device_id: t
 		}).then((e) => {
 			this._retiredFor === t && typeof e?.plant_id == "string" && typeof e.name == "string" && (this._retired = {
@@ -4045,7 +4067,7 @@ var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		history.pushState(null, "", e), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
 	}
 	_open(e, t) {
-		this._admin ? this._navigate(`${Ut}/plant/${encodeURIComponent(e.plantId)}${t ? `/${t}` : ""}`) : e.moreInfoEntity && this.dispatchEvent(new CustomEvent("hass-more-info", {
+		this._admin ? this._navigate(`${qt}/plant/${encodeURIComponent(e.plantId)}${t ? `/${t}` : ""}`) : e.moreInfoEntity && this.dispatchEvent(new CustomEvent("hass-more-info", {
 			bubbles: !0,
 			composed: !0,
 			detail: { entityId: e.moreInfoEntity }
@@ -4053,19 +4075,19 @@ var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 	}
 	async _logWatering(e) {
 		if (!this.hass || this._busy) return;
-		let t = this.hass, n = this._l, r = Gt(/* @__PURE__ */ new Date());
+		let t = this.hass, n = this._l, r = Yt(/* @__PURE__ */ new Date());
 		this._busy = !0;
 		try {
 			let i = {
 				kind: "watering",
 				occurred_at: r
-			}, a = { device_id: e.deviceId }, o = this._admin && !!t.callWS, s = o ? await t.callService(X, "log_care", i, a, !1, !0) : await t.callService(X, "log_care", i, a, !1), c = o ? Wt(s, e.plantId) : null, l = n.t("watering.logged", { name: e.name });
+			}, a = { device_id: e.deviceId }, o = this._admin && !!t.callWS, s = o ? await t.callService(Y, "log_care", i, a, !1, !0) : await t.callService(Y, "log_care", i, a, !1), c = o ? Jt(s, e.plantId) : null, l = n.t("watering.logged", { name: e.name });
 			c ? this._toast(l, {
 				text: n.t("watering.undo"),
 				action: () => void this._undo(e, c)
 			}) : this._toast(l);
 		} catch (t) {
-			this._toast(Kt(t) === "unauthorized" ? n.t("plant_card.unauthorized") : n.t("plant_card.log_failed", { name: e.name }));
+			this._toast(Xt(t) === "unauthorized" ? n.t("plant_card.unauthorized") : n.t("plant_card.log_failed", { name: e.name }));
 		} finally {
 			this._busy = !1;
 		}
@@ -4074,12 +4096,12 @@ var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		let n = this.hass, r = this._l;
 		if (n?.callWS) try {
 			let i = await n.callWS({
-				type: `${X}/care/list`,
+				type: `${Y}/care/list`,
 				plant_id: e.plantId
 			});
 			if (!i.events.some((e) => e.id === t)) throw Error("not found");
 			await n.callWS({
-				type: `${X}/care/delete`,
+				type: `${Y}/care/delete`,
 				plant_id: e.plantId,
 				expected_revision: i.revision,
 				event_id: t
@@ -4100,7 +4122,7 @@ var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		return A`<ha-card><div class="warning" role="alert"><ha-icon aria-hidden="true" icon="mdi:alert-outline"></ha-icon><div><strong>${e}</strong><p>${t}</p></div></div></ha-card>`;
 	}
 	_renderPlant(e, t) {
-		let n = this._config, r = e.overview, i = r.status === "paused", a = lt(t, r), o = i ? t.t("plant_card.paused") : ft(t, r), s = Date.now(), c = typeof this.hass?.config?.time_zone == "string" ? this.hass.config.time_zone : void 0, l = i ? null : xt(t, r.snoozed_until, ht(new Date(s).toISOString(), c) ?? "", c, s), u = this._admin || e.moreInfoEntity !== null, d = t.t(this._admin ? "plant_card.open_label" : "plant_card.details_label", { name: e.name });
+		let n = this._config, r = e.overview, i = r.status === "paused", a = ut(t, r), o = i ? t.t("plant_card.paused") : pt(t, r), s = Date.now(), c = typeof this.hass?.config?.time_zone == "string" ? this.hass.config.time_zone : void 0, l = i ? null : St(t, r.snoozed_until, gt(new Date(s).toISOString(), c) ?? "", c, s), u = this._admin || e.moreInfoEntity !== null, d = t.t(this._admin ? "plant_card.open_label" : "plant_card.details_label", { name: e.name });
 		return A`<ha-card>
       <div class="head"><sp-plant-avatar .src=${this._photo} .name=${e.name} .l=${t} @photo-error=${() => this._dropPhoto()}></sp-plant-avatar>
         <div class="title"><h2>${u ? A`<button type="button" class="name" title=${d} @click=${() => this._open(e)}>${e.name}</button>` : e.name}</h2>
@@ -4113,20 +4135,20 @@ var Kt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
     </ha-card>`;
 	}
 	_renderWatered(e, t, n) {
-		let r = pt(e, t, n), i = t ? Date.parse(t) : NaN;
+		let r = mt(e, t, n), i = t ? Date.parse(t) : NaN;
 		if (!Number.isFinite(i)) return A`<span class="last"><ha-icon aria-hidden="true" icon="mdi:history"></ha-icon><span>${r}</span></span>`;
-		let a = Math.abs(n - i) < 6e4 ? e.t("card.watered_short_just_now") : U(e, t, n);
+		let a = Math.abs(n - i) < 6e4 ? e.t("card.watered_short_just_now") : H(e, t, n);
 		return A`<span class="last" title=${r}><ha-icon aria-hidden="true" icon="mdi:history"></ha-icon><span class="long">${r}</span><span class="short" aria-hidden="true">${a.charAt(0).toLocaleUpperCase(e.language) + a.slice(1)}</span></span>`;
 	}
 	_renderReadings(e, t) {
-		let n = e.overview, r = n.roles.moisture, i = mt(n);
+		let n = e.overview, r = n.roles.moisture, i = ht(n);
 		return n.status === "no_sensors" && !i.length ? A`<div class="empty-box"><span>${t.t("card.no_sensors")}</span>${this._admin ? A`<button type="button" class="text-button" aria-label=${t.t("card.assign_label", { name: e.name })} @click=${() => this._open(e, "sensors")}>${t.t("card.assign")}</button>` : M}</div>` : !r && !i.length ? M : A`<div class="readings">
       ${r ? A`<sp-moisture-bar .value=${r.value} .range=${r.range} .state=${r.state} .l=${t}></sp-moisture-bar>` : M}
       ${i.length ? A`<div class="chips">${i.map(([e, n]) => A`<sp-reading-chip .role=${e} .value=${n.value} .unit=${n.unit} .state=${n.state} .range=${n.range} .l=${t}></sp-reading-chip>`)}</div>` : M}
     </div>`;
 	}
 };
-Vt = $, Vt.styles = [W, o`
+Gt = $, Gt.styles = [U, o`
     :host { display: block; container-type: inline-size; }
     ha-card { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; color: var(--sp-text);
       background: var(--ha-card-background, var(--sp-card)); border-radius: var(--ha-card-border-radius, 12px);
@@ -4191,9 +4213,9 @@ Vt = $, Vt.styles = [W, o`
       .foot { padding: 6px 6px 8px 12px; }
       .warning { padding: 12px; }
     }
-  `], G([R({ attribute: !1 })], $.prototype, "hass", void 0), G([je()], $.prototype, "_config", void 0), G([je()], $.prototype, "_busy", void 0), G([je()], $.prototype, "_photo", void 0), G([je()], $.prototype, "_retired", void 0), customElements.get("smart-plants-plant-card-content") || customElements.define(Ht, $);
-function Jt() {
-	let e = qt(), t = {
+  `], W([I({ attribute: !1 })], $.prototype, "hass", void 0), W([L()], $.prototype, "_config", void 0), W([L()], $.prototype, "_busy", void 0), W([L()], $.prototype, "_photo", void 0), W([L()], $.prototype, "_retired", void 0), customElements.get("smart-plants-plant-card-content") || customElements.define(Kt, $);
+function Qt() {
+	let e = Zt(), t = {
 		device_id: "plant_card.editor_plant",
 		show_readings: "plant_card.editor_show_readings",
 		show_watering: "plant_card.editor_show_watering"
@@ -4206,7 +4228,7 @@ function Jt() {
 			{
 				name: "device_id",
 				required: !0,
-				selector: { device: { filter: { integration: X } } }
+				selector: { device: { filter: { integration: Y } } }
 			},
 			{
 				name: "show_readings",
@@ -4223,9 +4245,9 @@ function Jt() {
 		computeHelper: (t) => n[t.name] ? e.t(n[t.name]) : void 0
 	};
 }
-function Yt(e) {
+function $t(e) {
 	let t = jt(e), n = t.find((t) => {
-		let n = Bt(e, t.id);
+		let n = Wt(e, t.id);
 		return n.kind === "plant" && n.overview.status === "needs_water";
 	}) ?? t[0];
 	return {
@@ -4234,4 +4256,4 @@ function Yt(e) {
 		show_watering: !0
 	};
 }
-export { Ht as CONTENT_ELEMENT, Ut as PANEL_PATH, $ as SmartPlantsPlantCardContent, Jt as getConfigForm, Yt as getStubConfig };
+export { Kt as CONTENT_ELEMENT, qt as PANEL_PATH, $ as SmartPlantsPlantCardContent, Qt as getConfigForm, $t as getStubConfig };

@@ -103,6 +103,13 @@ export interface StatusInput {
   // The `input_problems` attribute of the stale sensor: the other assigned
   // sensors that give no usable value, by role, as the backend counts them.
   input_problems: Partial<Record<ReadingRole, string>>;
+  // The `stress_problems` attribute of the stale sensor: the other readings
+  // whose problem sensor is on, by role and kind, as the backend counts them,
+  // also while that problem sensor is disabled. null while the stale sensor
+  // is missing, unavailable or doesn't say.
+  stress_problems: Partial<Record<ReadingRole, string>> | null;
+  // The states of the plant's other reading sensors, such as sensor.temperature.
+  readings: Partial<Record<ReadingRole, string>>;
 }
 
 export interface StatusResult { status: PlantStatus; problems: PlantProblem[] }
@@ -112,49 +119,86 @@ export interface StatusResult { status: PlantStatus; problems: PlantProblem[] }
 // the card reports them as not reporting, also when they went stale or when
 // several of them wait for a main sensor to be chosen (the panel names those
 // cases). Other sensors waiting for a main sensor also show as not reporting.
+//
+// The status is only Healthy when the verdict of every reading is known. The
+// stale sensor reports the other readings' problems, so a disabled problem
+// sensor doesn't matter while it reports. Without it the card reads each
+// problem sensor, and a reading with a value whose problem sensor is
+// disabled, missing or unavailable leaves the status open: the card reports
+// that reading as not reporting rather than guess its verdict.
 export function deriveStatus(input: StatusInput): StatusResult {
   if (input.allUnavailable) return { status: "paused", problems: [] };
   const problems: PlantProblem[] = [];
   const valueProblem = input.needs_water === "on" ? "needs_water" : input.too_wet === "on" ? "too_wet" : null;
   if (valueProblem) problems.push({ role: "moisture", kind: valueProblem });
   let stressed = false;
+  const openVerdicts = new Set<ReadingRole>();
   for (const signal of STRESS_SIGNALS) {
-    const stress = input.stress[signal.role];
-    if (stress?.state === "on") {
-      problems.push({ role: signal.role, kind: signal.kinds[stress.reason ?? ""] ?? GENERIC_STRESS_KIND });
+    const kind = stressVerdict(input, signal);
+    if (kind) {
+      problems.push({ role: signal.role, kind });
       stressed = true;
+    } else if (kind === undefined && numeric(input.readings[signal.role] ?? "") !== null) {
+      openVerdicts.add(signal.role);
     }
   }
   const moistureAvailable = input.moisture !== null && !UNAVAILABLE.has(input.moisture);
   const stale = input.sensor_stale === "on";
-  // Without the count (an older backend) a reading or a stale sensor still shows there are sources.
-  const hasSources = input.sources !== null ? input.sources > 0 : moistureAvailable || stale;
+  const hasSources = moistureHasSources(input);
   // A reading only counts as healthy when Needs water and Too wet both say
   // "off". A missing, disabled or unknown alert sensor leaves the verdict open.
   const verdictKnown = valueProblem !== null || (ALERT_STATES.has(input.needs_water ?? "") && ALERT_STATES.has(input.too_wet ?? ""));
   const readingProblem = !hasSources ? null : stale ? "stale" : moistureAvailable && verdictKnown ? null : "unavailable";
   if (readingProblem) problems.push({ role: "moisture", kind: readingProblem });
-  const inputProblems = inputProblemsOf(input);
+  const inputProblems = inputProblemsOf(input, openVerdicts);
   problems.push(...inputProblems);
-  if (!hasSources) problems.push({ role: "moisture", kind: "no_sensors" });
+  // Soil moisture is optional: a plant with other sensors is judged on those.
+  const noSensors = !hasSources && !STRESS_SIGNALS.some(({ role }) => hasOtherSources(input, role));
+  if (noSensors) problems.push({ role: "moisture", kind: "no_sensors" });
 
   let status: PlantStatus;
   if (valueProblem) status = valueProblem;
   else if (stressed) status = "problem";
   else if (readingProblem || inputProblems.length) status = "stale";
-  else if (!hasSources) status = "no_sensors";
+  else if (noSensors) status = "no_sensors";
   else status = "healthy";
   return { status, problems };
 }
 
-// Other assigned sensors that give no usable value. The backend decides which
-// count, so a removed sensor or a light sensor that is quiet at night or early
-// in the morning is no problem here either.
-function inputProblemsOf(input: StatusInput): PlantProblem[] {
+// Whether the plant has soil moisture sensors. Without the count (an older
+// backend) a reading or a stale sensor still shows there are some.
+export function moistureHasSources(input: StatusInput): boolean {
+  if (input.sources !== null) return input.sources > 0;
+  return (input.moisture !== null && !UNAVAILABLE.has(input.moisture)) || input.sensor_stale === "on";
+}
+
+// A reading's problem kind, null when it has none, undefined when no entity
+// the card can read says.
+function stressVerdict(input: StatusInput, signal: (typeof STRESS_SIGNALS)[number]): string | null | undefined {
+  if (input.stress_problems) return input.stress_problems[signal.role] ?? null;
+  const stress = input.stress[signal.role];
+  if (stress?.state === "on") return signal.kinds[stress.reason ?? ""] ?? GENERIC_STRESS_KIND;
+  return stress?.state === "off" ? null : undefined;
+}
+
+// Whether the entities show sensors assigned to another reading: a value, a
+// problem sensor that is on or off (it needs a value), or a problem the
+// backend reports for it.
+function hasOtherSources(input: StatusInput, role: ReadingRole): boolean {
+  return numeric(input.readings[role] ?? "") !== null || ALERT_STATES.has(input.stress[role]?.state ?? "")
+    || input.input_problems[role] !== undefined || input.stress_problems?.[role] !== undefined;
+}
+
+// Other assigned sensors that give no usable value, and readings whose verdict
+// is open. The backend decides which sensors count, so a removed sensor or a
+// light sensor that is quiet at night or early in the morning is no problem
+// here either.
+function inputProblemsOf(input: StatusInput, openVerdicts: ReadonlySet<ReadingRole>): PlantProblem[] {
   const found: PlantProblem[] = [];
   for (const { role } of STRESS_SIGNALS) {
     const kind = input.input_problems[role];
     if (kind !== undefined) found.push({ role, kind: kind === "stale" ? "stale" : "unavailable" });
+    else if (openVerdicts.has(role)) found.push({ role, kind: "unavailable" });
   }
   return found;
 }
@@ -166,13 +210,12 @@ export function statusInput(hass: CardHassData, entities: Map<string, string>): 
     const s = state(`binary_sensor.${signal.sensor}`);
     if (s) stress[signal.role] = { state: s.state, reason: typeof s.attributes.reason === "string" ? s.attributes.reason : null };
   }
-  const inputProblems: StatusInput["input_problems"] = {};
-  const reported = state("binary_sensor.sensor_stale")?.attributes.input_problems;
-  if (typeof reported === "object" && reported !== null) {
-    for (const { role } of STRESS_SIGNALS) {
-      const kind = (reported as Record<string, unknown>)[role];
-      if (typeof kind === "string") inputProblems[role] = kind;
-    }
+  const staleSensor = state("binary_sensor.sensor_stale");
+  const staleAttrs = staleSensor && !UNAVAILABLE.has(staleSensor.state) ? staleSensor.attributes : {};
+  const readings: StatusInput["readings"] = {};
+  for (const { role } of STRESS_SIGNALS) {
+    const s = state(`sensor.${role}`);
+    if (s) readings[role] = s.state;
   }
   const ids = [...entities.values()];
   return {
@@ -183,8 +226,21 @@ export function statusInput(hass: CardHassData, entities: Map<string, string>): 
     sensor_stale: state("binary_sensor.sensor_stale")?.state ?? null,
     sources: num(state("binary_sensor.sensor_stale")?.attributes.sources),
     stress,
-    input_problems: inputProblems,
+    input_problems: roleKinds(staleAttrs.input_problems) ?? {},
+    stress_problems: roleKinds(staleAttrs.stress_problems),
+    readings,
   };
+}
+
+// A {role: kind} attribute of the stale sensor, or null when it is no such map.
+function roleKinds(reported: unknown): Partial<Record<ReadingRole, string>> | null {
+  if (typeof reported !== "object" || reported === null || Array.isArray(reported)) return null;
+  const kinds: Partial<Record<ReadingRole, string>> = {};
+  for (const { role } of STRESS_SIGNALS) {
+    const kind = (reported as Record<string, unknown>)[role];
+    if (typeof kind === "string") kinds[role] = kind;
+  }
+  return kinds;
 }
 
 // Temperature thresholds are stored in °C, but Home Assistant shows
@@ -252,7 +308,7 @@ export function plantView(hass: CardHassData, deviceId: string): CardPlant {
   const moistureState = state("sensor.moisture");
   const moistureValue = numState(moistureState);
   const stale = input.sensor_stale === "on";
-  const hasMoistureSources = problems.every(p => p.kind !== "no_sensors");
+  const hasMoistureSources = moistureHasSources(input);
   if (!paused && (moistureValue !== null || hasMoistureSources)) {
     const attrs = moistureState?.attributes ?? {};
     const min = num(attrs.min_threshold_percent); const max = num(attrs.max_threshold_percent);

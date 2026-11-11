@@ -21,8 +21,9 @@ The overview has:
   last watering and a **Watered** button. **Watered** logs a watering now and offers **Undo**.
 
 Each plant shows one status, the most urgent first: *Needs water*, *Too wet*, a named problem
-such as *Too little light*, *No recent data*, *No main sensor*, *No moisture sensor* (or
-*No sensors*), then *Healthy*. A paused plant shows *Paused*.
+such as *Too little light*, *No recent data*, *No main sensor*, *No sensors*, then *Healthy*.
+A paused plant shows *Paused*. A soil moisture sensor is optional: a plant with only other
+sensors gets its status from those. *No sensors* means no sensor is assigned at all.
 
 The **⋮** menu has **Add plant**, **Notifications**, **Snooze all plants…** and links to the
 integration options and this documentation.

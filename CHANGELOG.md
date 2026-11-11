@@ -35,6 +35,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   `snoozed` attribute and the plant report treat the plant as no longer snoozed at the end time,
   and Smart Plants keeps trying to save the ended snooze, first after 30 seconds and then less
   often, up to once an hour. A snooze you set in the meantime is kept.
+- The dashboard card no longer shows a plant as *Healthy* while one of its readings is out of
+  range and that reading's problem sensor, such as *Temperature stress*, is disabled. The card
+  now shows the same problem as the panel. *Sensor stale* has a new `stress_problems`
+  attribute for this. If *Sensor stale* is disabled too, the card shows *No recent data* for
+  that reading instead of *Healthy*.
+- A plant with sensors but none for soil moisture no longer stays under **Sensor issues** with
+  *No moisture sensor*. Soil moisture is optional: such a plant now gets its status from its
+  other readings, for example *Healthy* or *Too cold*. *No sensors* now means that no sensor
+  is assigned at all.
 
 ## [0.17.0] - 2026-11-06
 
