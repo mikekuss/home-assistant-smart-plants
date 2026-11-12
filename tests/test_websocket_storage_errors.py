@@ -8,11 +8,16 @@ with their own code instead of a generic internal error.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any
 from unittest.mock import patch
 
 import pytest
+from custom_components.smart_plants.api_errors import (
+    ERR_PENDING_OPERATIONS_FULL,
+    ERR_STORAGE_FAILED,
+    ERR_STORAGE_FULL,
+)
 from custom_components.smart_plants.manager import (
     SmartPlantsManager,
     SmartPlantsManagerUnavailableError,
@@ -20,6 +25,7 @@ from custom_components.smart_plants.manager import (
     SmartPlantsValidationError,
 )
 from custom_components.smart_plants.models import MoistureConfig, PlantRecord
+from custom_components.smart_plants.provider import SpeciesProviderService
 from custom_components.smart_plants.storage import (
     SmartPlantsPendingOperationsFullError,
     SmartPlantsStorageError,
@@ -28,9 +34,6 @@ from custom_components.smart_plants.storage import (
 from custom_components.smart_plants.websocket_api import (
     ERR_INVALID_FORMAT,
     ERR_NOT_FOUND,
-    ERR_PENDING_OPERATIONS_FULL,
-    ERR_STORAGE_FAILED,
-    ERR_STORAGE_FULL,
     ERR_UNKNOWN,
     _manager_error,
 )
@@ -86,14 +89,109 @@ def _commands(plant: PlantRecord) -> dict[str, dict[str, Any]]:
             **target,
             "moisture": _moisture(),
         },
+        "care_add": {
+            "type": "smart_plants/care/add",
+            **target,
+            "kind": "watering",
+            "occurred_at": "2026-09-05T08:00:00+00:00",
+            "payload": {"note": None},
+        },
         "archive": {"type": "smart_plants/plants/archive", **target},
         "delete": {"type": "smart_plants/plants/delete", **target},
+        # The provider service does the work; the test fails it directly.
+        "species_apply": {
+            "type": "smart_plants/species/apply",
+            **target,
+            "preview_token": "t" * 32,
+            "provider": "synthetic",
+            "operation": "select",
+            "confirmed": True,
+        },
     }
 
 
-_COMMAND_NAMES = list(
-    _commands(PlantRecord(id="p", revision=1, name="p", created_at=""))
-)
+Prepare = Callable[[SmartPlantsManager, PlantRecord], Awaitable[dict[str, Any]]]
+
+
+async def _watered(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str, Any]:
+    updated, event = await manager.async_add_watering(
+        plant.id,
+        expected_revision=plant.revision,
+        occurred_at="2026-09-05T08:00:00+00:00",
+        note=None,
+    )
+    return {
+        "plant_id": plant.id,
+        "expected_revision": updated.revision,
+        "event_id": event.id,
+    }
+
+
+async def _care_edit(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str, Any]:
+    return {
+        "type": "smart_plants/care/edit",
+        **await _watered(manager, plant),
+        "kind": "watering",
+        "occurred_at": "2026-09-05T09:00:00+00:00",
+        "payload": {"note": "Rain water"},
+    }
+
+
+async def _care_delete(
+    manager: SmartPlantsManager, plant: PlantRecord
+) -> dict[str, Any]:
+    return {"type": "smart_plants/care/delete", **await _watered(manager, plant)}
+
+
+async def _reenable(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str, Any]:
+    paused = await manager.async_disable_plant(
+        plant.id, expected_revision=plant.revision
+    )
+    return {
+        "type": "smart_plants/plants/reenable",
+        "plant_id": plant.id,
+        "expected_revision": paused.revision,
+    }
+
+
+async def _retired(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str, Any]:
+    record = await manager.async_archive_plant(
+        plant.id, expected_revision=plant.revision
+    )
+    return {"plant_id": record.id, "expected_revision": record.revision}
+
+
+async def _archive_restore(
+    manager: SmartPlantsManager, plant: PlantRecord
+) -> dict[str, Any]:
+    return {
+        "type": "smart_plants/archive/restore",
+        **await _retired(manager, plant),
+        "name": "Aloe",
+        "expected_name_taken": False,
+        "expected_sources_in_use": [],
+    }
+
+
+async def _archive_delete(
+    manager: SmartPlantsManager, plant: PlantRecord
+) -> dict[str, Any]:
+    return {"type": "smart_plants/archive/delete", **await _retired(manager, plant)}
+
+
+# Commands that need a care entry, a paused plant or a retired plant first.
+_PREPARED: dict[str, Prepare] = {
+    "care_edit": _care_edit,
+    "care_delete": _care_delete,
+    "reenable": _reenable,
+    "archive_restore": _archive_restore,
+    "archive_delete": _archive_delete,
+}
+
+_COMMAND_NAMES = [
+    *_commands(PlantRecord(id="p", revision=1, name="p", created_at="")),
+    *_PREPARED,
+]
 
 
 @pytest.mark.parametrize("command", _COMMAND_NAMES)
@@ -109,10 +207,20 @@ async def test_write_commands_report_storage_errors(
     entry = await _setup(hass)
     manager: SmartPlantsManager = entry.runtime_data.manager
     plant = await manager.async_create_plant(name="Aloe")
+    if command in _PREPARED:
+        message = await _PREPARED[command](manager, plant)
+    else:
+        message = _commands(plant)[command]
     revision = manager.snapshot.revision
 
-    with patch.object(manager._store, "async_save", side_effect=make_error()):
-        await client.send_json_auto_id(_commands(plant)[command])
+    if command == "species_apply":
+        failing = patch.object(
+            SpeciesProviderService, "async_apply", side_effect=make_error()
+        )
+    else:
+        failing = patch.object(manager._store, "async_save", side_effect=make_error())
+    with failing:
+        await client.send_json_auto_id(message)
         response = await client.receive_json()
 
     assert response["success"] is False, response

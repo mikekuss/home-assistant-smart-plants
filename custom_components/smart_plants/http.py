@@ -32,6 +32,7 @@ from aiohttp import web
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers.http import HomeAssistantView
 
+from .api_errors import ERR_STORAGE_FAILED, ERR_STORAGE_FULL, storage_error_reply
 from .const import DOMAIN, IMAGE_MAX_UPLOAD_BYTES, IMAGE_OUTPUT_CONTENT_TYPE
 from .images import (
     ImageNotFoundError,
@@ -95,6 +96,27 @@ def _error_response(status: HTTPStatus, code: str, message: str) -> web.Response
         {"error": {"code": code, "message": message}},
         status=status,
     )
+
+
+# A full inventory is the server's storage limit (507); a full queue of
+# unfinished changes clears after a restart (503).
+_STORAGE_ERROR_STATUS = {
+    ERR_STORAGE_FULL: HTTPStatus.INSUFFICIENT_STORAGE,
+    ERR_STORAGE_FAILED: HTTPStatus.INTERNAL_SERVER_ERROR,
+}
+
+
+def _storage_error_response(err: Exception, action: str) -> web.Response | None:
+    """Reply to a failed photo save with its own code, else ``None``."""
+    reply = storage_error_reply(err)
+    if reply is None:
+        return None
+    code, message = reply
+    if code == ERR_STORAGE_FAILED:
+        # Nothing was saved and the panel only says to check the log.
+        _LOGGER.error("Could not save the %s", action, exc_info=err)
+    status = _STORAGE_ERROR_STATUS.get(code, HTTPStatus.SERVICE_UNAVAILABLE)
+    return _error_response(status, code, message)
 
 
 def _require_admin(request: web.Request) -> web.Response | None:
@@ -302,7 +324,10 @@ class SmartPlantsImageView(HomeAssistantView):
             return _error_response(HTTPStatus.BAD_REQUEST, ERR_INVALID_FORMAT, str(err))
         except SmartPlantsManagerUnavailableError:
             return _not_loaded_response()
-        except Exception:
+        except Exception as err:
+            stored = _storage_error_response(err, "image upload")
+            if stored is not None:
+                return stored
             _LOGGER.exception("Unhandled error in image upload")
             return _error_response(
                 HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -343,7 +368,10 @@ class SmartPlantsImageView(HomeAssistantView):
             return _error_response(HTTPStatus.BAD_REQUEST, ERR_INVALID_FORMAT, str(err))
         except SmartPlantsManagerUnavailableError:
             return _not_loaded_response()
-        except Exception:
+        except Exception as err:
+            stored = _storage_error_response(err, "image removal")
+            if stored is not None:
+                return stored
             _LOGGER.exception("Unhandled error in image delete")
             return _error_response(
                 HTTPStatus.INTERNAL_SERVER_ERROR,

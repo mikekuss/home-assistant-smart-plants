@@ -169,6 +169,7 @@ from homeassistant.components.websocket_api.decorators import (
 )
 from homeassistant.config_entries import ConfigEntryState
 
+from .api_errors import ERR_STORAGE_FAILED, storage_error_reply
 from .care import CARE_TASK_TYPES, care_summary, ordered_events
 from .const import DOMAIN
 from .manager import (
@@ -209,11 +210,6 @@ from .provider import (
 )
 from .roles import role_definitions
 from .schema_library import vol
-from .storage import (
-    SmartPlantsPendingOperationsFullError,
-    SmartPlantsStorageError,
-    SmartPlantsStorageFullError,
-)
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -234,9 +230,6 @@ ERR_PROVIDER_RATE_LIMIT = "provider_rate_limit"
 ERR_PROVIDER_TIMEOUT = "provider_timeout"
 ERR_PROVIDER_OUTAGE = "provider_outage"
 ERR_PROVIDER_MALFORMED = "provider_malformed_response"
-ERR_STORAGE_FULL = "storage_full"
-ERR_PENDING_OPERATIONS_FULL = "pending_operations_full"
-ERR_STORAGE_FAILED = "storage_failed"
 
 _UNKNOWN_ERROR_MESSAGE = "internal error"
 _PLANT_ID_MAX_LEN = 200
@@ -338,9 +331,8 @@ def _manager_error(err: Exception) -> tuple[str, str] | None:
     """
     Return the WebSocket error code and message for a typed manager error.
 
-    Storage errors carry fixed messages: the panel shows its own text for
-    each code, and the exception text may name sizes or file details.
-    ``None`` means the error is not one the manager raises on purpose.
+    Failed saves map through ``storage_error_reply``, shared with the HTTP
+    photo endpoints. ``None`` means the error is not one the manager raises on purpose.
     """
     result: tuple[str, str] | None = None
     if isinstance(err, SmartPlantsPlantNotFoundError):
@@ -355,12 +347,8 @@ def _manager_error(err: Exception) -> tuple[str, str] | None:
         result = (ERR_LIMIT, str(err))
     elif isinstance(err, SmartPlantsValidationError):
         result = (ERR_INVALID_FORMAT, str(err))
-    elif isinstance(err, SmartPlantsPendingOperationsFullError):
-        result = (ERR_PENDING_OPERATIONS_FULL, "too many unfinished changes")
-    elif isinstance(err, SmartPlantsStorageFullError):
-        result = (ERR_STORAGE_FULL, "storage is full")
-    elif isinstance(err, SmartPlantsStorageError):
-        result = (ERR_STORAGE_FAILED, "the change could not be saved")
+    else:
+        result = storage_error_reply(err)
     return result
 
 
