@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- *Low light* turns on, or becomes unavailable, as soon as a bright reading is more than two
+  hours old, even when the light sensor doesn't report again. Before, it could stay off for
+  hours on an old bright reading.
+- A light sensor with a **Not updating after** window of 10 hours or more that stops reporting
+  is no longer hidden from 08:00 on the morning after a silent day, so it shows as not reporting
+  as soon as its window has passed. Before, the morning exemption covered the whole day, every
+  day, so the plant could stay *Healthy* for days.
+  Shorter windows behave as before.
+
 ## [0.18.0] - 2026-11-12
 
 ### Added
