@@ -5,7 +5,7 @@ import { api, ApiError } from "./api.js";
 import { placementLabel, snapshotView } from "./editors.js";
 import { isDefined } from "./ha-elements.js";
 import type { HaElement } from "./ha-elements.js";
-import { createLocalizer } from "./localize.js";
+import { createLocalizer, isMessageKey } from "./localize.js";
 import type { Localizer } from "./localize.js";
 import { builtin, canonicalMoisture, emptyMoisture, keys, manualSpecies, placements, resolveSource, roleSourceSpec, speciesCommonName, tags, validateMoisture, validateTaxonomy } from "./model.js";
 import type { SourceRole } from "./model.js";
@@ -25,6 +25,7 @@ const WIZARD_ELEMENTS: readonly HaElement[] = ["ha-area-picker", "ha-entity-pick
 const EXTRA_ROLES = READING_ROLES.filter((role): role is SourceRole => role !== "moisture");
 const INTEGRATION_OPTIONS = "/config/integrations/integration/smart_plants";
 const CREDENTIALS_URL = "https://open.plantbook.io/apikey/";
+const STORAGE_ERROR_KEYS = new Set(["api_error.storage_full", "api_error.pending_operations_full", "api_error.storage_failed"]);
 
 // The create-plant flow: name, area and photo; sensors; review with optional
 // species, targets and details. Nothing is stored before "Create plant". The
@@ -290,6 +291,9 @@ export class SmartPlantsWizard extends LitElement {
     return name && name !== snapshot.latin_name ? name : null;
   }
   private message(e: unknown): string {
+    // A failed save has its own advice; the generic text would say to retry.
+    const saveKey = e instanceof ApiError ? `api_error.${e.code}` : "";
+    if (STORAGE_ERROR_KEYS.has(saveKey) && isMessageKey(saveKey)) return this.l.t(saveKey);
     const codes = ["integration_not_loaded", "unauthorized", "invalid_format", "invalid_response", "provider_disabled", "provider_authentication", "provider_rate_limit", "provider_timeout", "provider_outage", "provider_malformed_response", "not_found"];
     return e instanceof ApiError && codes.includes(e.code) ? this.l.t("wizard.error_code", { code: e.code }) : this.l.t("wizard.error_generic");
   }

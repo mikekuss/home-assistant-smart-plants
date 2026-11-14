@@ -39,6 +39,9 @@ export const en = {
   "api_error.invalid_response": "Smart Plants got an unexpected answer. Refresh the page and try again.",
   "api_error.invalid_format": "Some of the details couldn't be saved. Check the fields and try again. If you were choosing a species, search for it again.",
   "api_error.invalid_image": "The photo couldn't be saved. Photos must be JPEG, PNG or WebP, at most 5 MiB and 2048 × 2048 pixels.",
+  "api_error.storage_full": "Smart Plants storage is full, so the change wasn't saved. Delete old care log entries or notes, then try again.",
+  "api_error.pending_operations_full": "Smart Plants has too many unfinished changes, so the change wasn't saved. Restart Home Assistant to complete them, then try again.",
+  "api_error.storage_failed": "Smart Plants couldn't save the change. Nothing was changed. Check the Home Assistant log, then try again.",
 
   "error.disconnected": "Disconnected. Local edits and creation retries are retained. Reconnect before saving.",
   "error.registry_updates": "Registry updates unavailable; reconnect to retry native changes.",

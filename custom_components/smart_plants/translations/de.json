@@ -49,6 +49,7 @@
           "openplantbook_client_secret": "OpenPlantBook Client-Secret"
         },
         "data_description": {
+          "preserve_inventory_on_removal": "Ist diese Option aus, löscht das Entfernen der Integration Smart Plants auch alle Pflanzen, ihren Pflegeverlauf und ihre Fotos endgültig. Schalte sie vor dem Entfernen ein, wenn du die Integration vielleicht wieder installierst.",
           "forecast_refresh_minutes": "Wie oft Smart Plants die Vorhersage einer Wetter-Entität abruft, die eine Aufgabe mit Wettervorhersage beobachtet, zwischen 15 und 180 Minuten. Ändert sich die Wetter-Entität, wird die Vorhersage zusätzlich erneut abgerufen, höchstens alle 5 Minuten."
         },
         "description": "OpenPlantBook-API-Zugangsdaten sind optional. Erstelle ein Konto und Client-Zugangsdaten. [OpenPlantBook-API-Zugangsdaten abrufen]({openplantbook_credentials_url}). Smart Plants verbindet sich direkt; die separate Home-Assistant-OpenPlantBook-Integration ist nicht erforderlich. Anbieterfehler deaktivieren nie das lokale Inventar."

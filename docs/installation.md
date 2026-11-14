@@ -67,7 +67,7 @@ integration.
 
 | Option | Default | Description |
 | --- | --- | --- |
-| Preserve inventory when the integration is removed | Off | Keeps plant data and photos on disk when you delete the integration, so a reinstall finds them again. |
+| Preserve inventory when the integration is removed | Off | Keeps plant data and photos on disk when you delete the integration, so a reinstall finds them again. While it is off, deleting the integration deletes all plants, their care history and photos for good; the options form says so below the switch. |
 | Forecast refresh interval | 30 min | How often forecast reading tasks fetch the weather forecast, from 15 to 180 minutes. A change of the weather entity also fetches it, at most once every 5 minutes. |
 | Enable direct OpenPlantBook provider | Off | Turns species search on or off. |
 | OpenPlantBook client ID | Empty | Your client ID. |
@@ -155,6 +155,10 @@ part of this data. A missing sensor shows up in **Settings > System > Repairs** 
 [When a sensor disappears](sensors-and-health.md#when-a-sensor-disappears)).
 
 ## Remove Smart Plants
+
+> [!WARNING]
+> With the default options, deleting the integration deletes all your plants, retired plants,
+> care history and photos for good. Only a Home Assistant backup brings them back.
 
 1. To keep your plants for a later reinstall, first turn on **Preserve inventory when the
    integration is removed** in the [options](#options).

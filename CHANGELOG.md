@@ -26,6 +26,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   other readings, for example *Healthy* or *Too cold*. *No sensors* now means that no sensor
   is assigned, or only a battery sensor, since a battery level alone says nothing about the
   plant.
+- A plant's device no longer moves back to an earlier area after a restart. This happened when
+  Home Assistant could not finish saving one area change and you then picked another area.
+- When Smart Plants can't save a change made in the panel, the panel now says why: storage is
+  full (delete old care log entries or notes), too many unfinished changes wait (restart Home
+  Assistant), or the save failed (check the log). Before, it showed "Something went wrong".
+  Actions, buttons and number entities now also ask for a restart when too many unfinished
+  changes wait, instead of only saying the save failed.
+- The option **Preserve inventory when the integration is removed** now warns that, while it is
+  off, deleting the integration deletes all plants, their care history and photos for good. See
+  [Remove Smart Plants](docs/installation.md#remove-smart-plants).
 
 ## [0.18.0] - 2026-11-12
 

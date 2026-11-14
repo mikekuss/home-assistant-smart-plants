@@ -30,6 +30,7 @@ from custom_components.smart_plants.services import (
     SERVICE_UNSNOOZE,
     async_setup_services,
 )
+from custom_components.smart_plants.storage import SmartPlantsPendingOperationsFullError
 from homeassistant.auth.const import GROUP_ID_ADMIN, GROUP_ID_USER
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import Context, HomeAssistant
@@ -801,6 +802,28 @@ async def test_failed_save_is_reported_and_changes_nothing(
         )
     assert info.value.translation_domain == DOMAIN
     assert info.value.translation_key == "storage_failed"
+    assert _plant_record(entry, plant_id).care_events == ()
+
+
+async def test_full_change_queue_asks_for_a_restart(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    plant_id = await _plant(hass, entry, "Aloe")
+    with (
+        patch.object(
+            manager._store,
+            "async_save",
+            side_effect=SmartPlantsPendingOperationsFullError(),
+        ),
+        pytest.raises(HomeAssistantError) as info,
+    ):
+        await _call(
+            hass,
+            SERVICE_LOG_CARE,
+            {"device_id": _device_id(hass, plant_id), "kind": "watering"},
+        )
+    assert info.value.translation_domain == DOMAIN
+    assert info.value.translation_key == "pending_operations_full"
     assert _plant_record(entry, plant_id).care_events == ()
 
 

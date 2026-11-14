@@ -27,6 +27,11 @@ from custom_components.smart_plants.manager import (
     SmartPlantsManagerUnavailableError,
 )
 from custom_components.smart_plants.roles import source_accepting_roles
+from custom_components.smart_plants.storage import (
+    SmartPlantsPendingOperationsFullError,
+    SmartPlantsStorageError,
+    SmartPlantsStorageFullError,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
@@ -633,3 +638,72 @@ async def test_delete_rejects_invalid_plant_id(
     resp = await client.delete(f"{_url('x' * 201)}?expected_revision=1")
     assert resp.status == 400
     assert (await resp.json())["error"]["code"] == "invalid_format"
+
+
+_SAVE_ERRORS = [
+    (lambda: SmartPlantsStorageFullError("over the size limit"), 507, "storage_full"),
+    (SmartPlantsPendingOperationsFullError, 503, "pending_operations_full"),
+    (lambda: SmartPlantsStorageError("disk failure"), 500, "storage_failed"),
+]
+_SAVE_ERROR_IDS = ["storage_full", "pending_operations_full", "storage_failed"]
+
+
+def _assert_save_error(body: dict[str, Any], code: str) -> None:
+    assert body["error"]["code"] == code
+    # The panel shows its own text; the reply never carries storage details.
+    assert "limit" not in body["error"]["message"]
+    assert "disk" not in body["error"]["message"]
+
+
+@pytest.mark.parametrize(
+    ("make_error", "status", "code"), _SAVE_ERRORS, ids=_SAVE_ERROR_IDS
+)
+async def test_upload_reports_a_failed_save(
+    hass: HomeAssistant,
+    hass_client: ClientSessionGenerator,
+    make_error: Any,
+    status: int,
+    code: str,
+) -> None:
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    client = await hass_client()
+    with patch.object(manager._store, "async_save", side_effect=make_error()):
+        resp = await client.post(
+            f"{_url(plant.id)}?expected_revision={plant.revision}",
+            data=_jpeg(),
+            headers={"Content-Type": "image/jpeg"},
+        )
+    assert resp.status == status
+    _assert_save_error(await resp.json(), code)
+    assert manager.get_plant(plant.id).image is None
+
+
+@pytest.mark.parametrize(
+    ("make_error", "status", "code"), _SAVE_ERRORS, ids=_SAVE_ERROR_IDS
+)
+async def test_delete_reports_a_failed_save(
+    hass: HomeAssistant,
+    hass_client: ClientSessionGenerator,
+    make_error: Any,
+    status: int,
+    code: str,
+) -> None:
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    with_photo = await manager.async_upsert_image(
+        plant.id,
+        expected_revision=plant.revision,
+        raw_bytes=_jpeg(),
+        declared_content_type="image/jpeg",
+    )
+    client = await hass_client()
+    with patch.object(manager._store, "async_save", side_effect=make_error()):
+        resp = await client.delete(
+            f"{_url(plant.id)}?expected_revision={with_photo.revision}"
+        )
+    assert resp.status == status
+    _assert_save_error(await resp.json(), code)
+    assert manager.get_plant(plant.id).image == with_photo.image
