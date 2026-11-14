@@ -3665,12 +3665,13 @@ def restore_snooze_if_unchanged(
     ``expected`` is the end the undone change set. A plant whose end is a
     different one now was snoozed or resumed since; it keeps that end and
     ``on_skip`` is called. An expected end that has passed and been cleared
-    still counts as unchanged.
+    counts as unchanged only when the end to restore has passed too, so the
+    undo changes nothing; a snooze resumed on purpose never comes back.
     """
     restore = restore_snooze_change(until)
 
     def change(current: PlantRecord) -> PlantRecord:
-        if not _same_snooze_end(current.snoozed_until, expected):
+        if not _same_snooze_end(current.snoozed_until, expected, until):
             on_skip()
             return current
         return restore(current)
@@ -3678,14 +3679,17 @@ def restore_snooze_if_unchanged(
     return change
 
 
-def _same_snooze_end(current: str | None, expected: str | None) -> bool:
+def _same_snooze_end(
+    current: str | None, expected: str | None, restoring: str | None
+) -> bool:
     """Return whether a stored snooze end is ``expected``, compared as instants."""
-    if current is None or expected is None:
-        return current == expected or (
-            current is None
-            and expected is not None
-            and _timestamp_passed(expected, dt_util.utcnow())
+    if current is None and expected is not None:
+        now = dt_util.utcnow()
+        return _timestamp_passed(expected, now) and (
+            restoring is None or _timestamp_passed(restoring, now)
         )
+    if current is None or expected is None:
+        return current == expected
     try:
         return datetime.fromisoformat(current) == datetime.fromisoformat(expected)
     except ValueError:

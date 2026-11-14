@@ -135,6 +135,7 @@ export const de: Catalog = {
   "species.manual_hint": "Speichern ersetzt die Art durch deine eigenen Angaben. Lass beide Namen leer, um die Art zu entfernen.",
   "species.save_manual": "Manuelle Art speichern",
   "species.search": "Art suchen",
+  "species.error_query_length": "Suche mit höchstens 100 Zeichen.",
   "species.no_matches": "Keine passende Art gefunden. Versuche eine andere Suche oder gib die Art manuell ein.",
 
   "snapshot.species": "Art",
@@ -900,6 +901,7 @@ export const de: Catalog = {
   "archive.restore_name": "Name",
   "archive.restore_name_taken": "Es gibt schon eine Pflanze namens {name}.",
   "archive.restore_name_required": "Gib einen Namen ein.",
+  "archive.restore_name_length": "Gib einen Namen mit höchstens 200 Zeichen ein.",
   "archive.restore_in_use": "Diese Sensoren nutzen jetzt andere Pflanzen:",
   "archive.restore_share": "Auch für diese Pflanze verwenden",
   "archive.restore_missing": "Diese Sensoren gibt es nicht mehr, sie werden weggelassen:",

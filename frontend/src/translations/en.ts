@@ -134,6 +134,7 @@ export const en = {
   "species.manual_hint": "Save replaces the species with user-supplied data. Leave both names blank to clear species.",
   "species.save_manual": "Save manual species",
   "species.search": "Search species",
+  "species.error_query_length": "Search with up to 100 characters.",
   "species.no_matches": "No species matches. Try another search or manual entry.",
 
   "snapshot.species": "Species",
@@ -899,6 +900,7 @@ export const en = {
   "archive.restore_name": "Name",
   "archive.restore_name_taken": "A plant named {name} already exists.",
   "archive.restore_name_required": "Enter a name.",
+  "archive.restore_name_length": "Enter a name of up to 200 characters.",
   "archive.restore_in_use": "These sensors are used by other plants now:",
   "archive.restore_share": "Use them for this plant too",
   "archive.restore_missing": "These sensors no longer exist and are left out:",

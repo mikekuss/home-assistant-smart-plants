@@ -19,3 +19,6 @@ export const sliceChars = (value: string, max: number): string => charCount(valu
 // every text the backend accepts be typed or kept; the save checks count
 // characters and name the limit.
 export const inputMaxLength = (max: number): number => max * 2;
+
+// The longest species search the backend accepts, in characters.
+export const SPECIES_QUERY_MAX = 100;

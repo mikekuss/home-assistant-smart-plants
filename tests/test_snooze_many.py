@@ -382,6 +382,55 @@ async def test_restore_snoozes_keeps_a_snooze_set_after_resume_all(
     }
 
 
+async def test_restore_snoozes_after_the_bulk_end_passed_changes_nothing(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    client = await _connect(hass, hass_ws_client)
+    freezer.move_to(NOW)
+    entry = await _setup(hass)
+    (aloe,) = await _plants(entry, "Aloe")
+    snoozed = await _snooze_many(client, until="2026-06-15T11:00:00Z")
+    # The bulk end passes and the snooze is cleared.
+    freezer.move_to(NOW + timedelta(hours=2))
+    await _manager(entry).async_unsnooze_plant(aloe.id, expected_revision=None)
+    aloe = _manager(entry).get_plant(aloe.id)
+
+    response = await _send(client, _restore(snoozed))
+
+    assert response["success"], response
+    assert response["result"] == {"plants": [], "skipped": []}
+    assert _manager(entry).get_plant(aloe.id) == aloe
+
+
+async def test_restore_snoozes_keeps_a_resume_after_the_bulk_end_passed(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    client = await _connect(hass, hass_ws_client)
+    freezer.move_to(NOW)
+    entry = await _setup(hass)
+    (aloe,) = await _plants(entry, "Aloe")
+    await _snooze(entry, aloe, NOW + timedelta(days=30))
+    # A shorter bulk end replaces the 30-day snooze.
+    snoozed = await _snooze_many(
+        client, until="2026-06-15T11:00:00Z", plant_ids=[aloe.id], keep_later=False
+    )
+    assert snoozed["result"]["previous"] == {aloe.id: "2026-07-15T10:00:00Z"}
+    # The user resumes the plant on purpose, then the bulk end passes.
+    await _manager(entry).async_unsnooze_plant(aloe.id, expected_revision=None)
+    freezer.move_to(NOW + timedelta(hours=2))
+    aloe = _manager(entry).get_plant(aloe.id)
+
+    response = await _send(client, _restore(snoozed))
+
+    assert response["success"], response
+    assert response["result"] == {"plants": [], "skipped": [aloe.id]}
+    assert _manager(entry).get_plant(aloe.id) == aloe
+
+
 async def test_restore_snoozes_compares_ends_as_instants(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
 ) -> None:

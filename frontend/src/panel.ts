@@ -148,7 +148,7 @@ import { RELATED_LIMIT, automationDetail, capRows, relatedAutomations } from "./
 import type { AutomationRow, RelatedAutomations } from "./related-automations.js";
 import type { PlantOverview } from "./overview-model.js";
 import type { CareEvent, CareHistory, CareTask, Evaluation, HAArea, HADevice, HAEntity, HAState, HealthEvaluation, HomeAssistantLike, MoistureInput, PanelCapabilities, PanelInfo, PlantPlacement, PlantRecord, RoleSourceInput, SpeciesPreview, SpeciesSearchResult } from "./types.js";
-import { inputMaxLength, withinChars } from "./text.js";
+import { SPECIES_QUERY_MAX, inputMaxLength, withinChars } from "./text.js";
 
 // The Notifications page remembers the plant it was opened from, so Back returns there.
 type View = { kind: "list" } | { kind: "create" } | { kind: "detail"; plantId: string } | { kind: "notifications"; from: string | null } | { kind: "archive"; plantId: string | null };
@@ -1251,6 +1251,7 @@ export class SmartPlantsPanel extends LitElement {
   private async _searchSpecies(): Promise<void> {
     if (!this.hass || this._formBusy || this._blocked || this._query.trim().length < 3) return;
     const context = this._context;
+    if (!withinChars(this._query.trim(), SPECIES_QUERY_MAX)) { this._error = this._l.t("species.error_query_length"); return; }
     const request = ++this._providerRequest; this._formBusy = true; this._error = ""; this._preview = null;
     try { const results = await api.searchSpecies(this.hass, this._provider, this._query.trim(), this.hass.language ?? "en"); if (request === this._providerRequest) { this._results = results; if (!results.length) this._notice = this._l.t("species.no_matches"); } }
     catch (e) { if (request === this._providerRequest) this._error = this._friendly(e); }
@@ -2439,7 +2440,7 @@ export class SmartPlantsPanel extends LitElement {
           ${plant.species?.snapshot.provider_ref ? html`<button type="button" @click=${() => void this._previewSpecies()}>${l.t("species.preview_refresh")}</button>` : nothing}
           ${selectField(l, l.t("species.provider"), this._provider, [{ value: "manual", label: l.t("species.manual") }, ...(this._capabilities?.providers.filter(p => p.available && p.search_supported).map(p => ({ value: p.provider, label: p.provider === "openplantbook" ? "OpenPlantBook" : p.provider })) ?? [])], v => { this._providerRequest++; this._provider = v; this._preview = null; this._results = []; })}
           ${this._provider === "manual" ? html`${textField(l.t("species.common_name"), edit.common, v => this._edit({ common: v }))}${textField(l.t("species.scientific_name"), edit.latin, v => this._edit({ latin: v }))}<p class="small muted">${l.t("species.manual_hint")}</p><div class="actions">${this._saveButton("species", l.t("species.save_manual"))}</div>`
-            : html`${textField(l.t("species.search"), this._query, v => { this._query = v; this._providerRequest++; this._results = []; this._preview = null; })}<div class="actions"><button type="button" @click=${() => void this._searchSpecies()}>${l.t("species.search")}</button></div><ul class="result-list">${this._results.map(r => html`<li><button type="button" @click=${() => void this._previewSpecies(r)}>${r.common_name ?? r.latin_name} · ${r.latin_name}</button><small>${r.attribution}</small></li>`)}</ul><button type="button" @click=${() => { this._provider = "manual"; this._providerRequest++; this._preview = null; }}>${l.t("common.continue_manually")}</button>`}</fieldset>`)}
+            : html`${textField(l.t("species.search"), this._query, v => { this._query = v; this._providerRequest++; this._results = []; this._preview = null; }, "text", SPECIES_QUERY_MAX)}<div class="actions"><button type="button" @click=${() => void this._searchSpecies()}>${l.t("species.search")}</button></div><ul class="result-list">${this._results.map(r => html`<li><button type="button" @click=${() => void this._previewSpecies(r)}>${r.common_name ?? r.latin_name} · ${r.latin_name}</button><small>${r.attribution}</small></li>`)}</ul><button type="button" @click=${() => { this._provider = "manual"; this._providerRequest++; this._preview = null; }}>${l.t("common.continue_manually")}</button>`}</fieldset>`)}
       </section>
       <section class="sp-card" aria-labelledby="targets-heading"><div class="card-h"><h3 id="targets-heading">${l.t("targets.heading")}</h3></div>
         <div class="card-b">${m && edit.moisture ? html`<p class="small muted">${targetLine}</p>

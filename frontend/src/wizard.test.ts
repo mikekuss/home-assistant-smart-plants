@@ -201,6 +201,14 @@ describe("three-step creation wizard", () => {
     expect(h.calls.at(-1)).toMatchObject({ species: { provider: "manual", snapshot: { common_name: "My species", attribution: "User supplied" } } });
   });
 
+  it("refuses a species search over 100 characters before asking Home Assistant", async () => {
+    const h = harness([]); const el = await mount(h.hass);
+    await toReview(el, "Aloe"); await open(el, "species");
+    await fill(el, "Search OpenPlantBook", "a".repeat(101)); await click(el, "Search");
+    expect(text(el)).toContain("Search with up to 100 characters.");
+    expect(h.calls.some(c => c.type === "smart_plants/species/search")).toBe(false);
+  });
+
   it("explains how to set up OpenPlantBook when it is unavailable and never blocks manual creation", async () => {
     const h = harness([]);
     const el = await mount(h.hass, { ...capabilities, providers: [capabilities.providers[0]!, { provider: "openplantbook", available: false, search_supported: true }] });

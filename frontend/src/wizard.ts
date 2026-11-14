@@ -14,7 +14,7 @@ import { READING_ROLES, ROLE_META, formatValue, readingLabel } from "./status.js
 import type { ReadingRole } from "./status.js";
 import { srOnly, themeFallbacks } from "./components/shared-styles.js";
 import type { HAArea, HADevice, HAEntity, HAState, HomeAssistantLike, MoistureInput, PanelCapabilities, PlantPlacement, PlantRecord, SensorSource, SpeciesSearchResult, SpeciesSnapshot, WizardCreateInput, WizardDraft, WizardPreview } from "./types.js";
-import { inputMaxLength, withinChars } from "./text.js";
+import { SPECIES_QUERY_MAX, inputMaxLength, withinChars } from "./text.js";
 
 // Steps of the add-plant flow; 4 is the confirmation shown after creation.
 type Step = 1 | 2 | 3 | 4;
@@ -312,6 +312,7 @@ export class SmartPlantsWizard extends LitElement {
   private async search(): Promise<void> {
     if (this.busy || this.blocked || this.query.trim().length < 3) return;
     const lifecycle = this.lifecycle;
+    if (!withinChars(this.query.trim(), SPECIES_QUERY_MAX)) { this.speciesError = this.l.t("species.error_query_length"); return; }
     const generation = ++this.generation; this.busy = true; this.speciesError = ""; this.preview = null; this.accepted = false;
     try { const result = await api.searchSpecies(this.hass, "openplantbook", this.query.trim(), this.hass.language ?? "en"); if (generation === this.generation) { this.results = result; this.searched = true; } }
     catch (e) { if (generation === this.generation) this.fail(e, true); }
@@ -662,7 +663,7 @@ export class SmartPlantsWizard extends LitElement {
     const search = provider?.available ? this.accepted && this.preview ? html`<div class="species-chip"><ha-icon aria-hidden="true" icon="mdi:leaf"></ha-icon>
         <div class="grow"><div><i>${this.preview.snapshot.latin_name}</i>${this.commonName(this.preview.snapshot) ? ` · ${this.commonName(this.preview.snapshot)}` : ""}</div><div class="small muted">${this.preview.snapshot.attribution}</div></div>
         <button type="button" class="btn text sm" @click=${() => this.manual()}>${l.t("wizard.remove_species")}</button></div>`
-      : html`<div class="search"><label class="field">${l.t("wizard.species_search")}<input type="search" autocomplete="off" aria-describedby="search-hint" .value=${this.query}
+      : html`<div class="search"><label class="field">${l.t("wizard.species_search")}<input type="search" autocomplete="off" maxlength=${inputMaxLength(SPECIES_QUERY_MAX)} aria-describedby="search-hint" .value=${this.query}
           @input=${(e: Event) => { this.query = (e.target as HTMLInputElement).value; this.generation++; this.results = []; this.searched = false; this.preview = null; this.accepted = false; }}
           @keydown=${(e: KeyboardEvent) => { if (e.key === "Enter") { e.preventDefault(); void this.search(); } }}></label>
           <button type="button" class="btn outline" ?disabled=${this.busy || this.query.trim().length < 3} @click=${() => void this.search()}><ha-icon aria-hidden="true" icon="mdi:magnify"></ha-icon>${l.t("wizard.search_button")}</button></div>

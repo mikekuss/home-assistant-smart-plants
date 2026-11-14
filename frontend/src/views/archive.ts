@@ -15,7 +15,7 @@ import { themeFallbacks } from "../components/shared-styles.js";
 import "../components/index.js";
 import { CARE_ICONS, careDetails, plantStyles } from "./plant.js";
 import type { ArchivedPlantSummary, ArchivedPlantView, HomeAssistantLike, PlantRecord, RestoreCheck } from "../types.js";
-import { inputMaxLength } from "../text.js";
+import { inputMaxLength, withinChars } from "../text.js";
 
 // Whole months from `start` to `end`, for "Monitored for 2 years, 3 months".
 export function monthsBetween(start: string, end: string): number {
@@ -183,6 +183,7 @@ export class SmartPlantsArchive extends LitElement {
     const hass = this.hass; const detail = this._detail; const check = this._check; if (!hass || !detail || !check || this._busy) return;
     const name = this._name.trim();
     if (!name) { this._dialogError = this.l.t("archive.restore_name_required"); return; }
+    if (!withinChars(name, 200)) { this._dialogError = this.l.t("archive.restore_name_length"); return; }
     this._busy = true; this._dialogError = "";
     try {
       const plant: PlantRecord = await api.restore(hass, detail.id, detail.revision, name, this._shareSensors, check);

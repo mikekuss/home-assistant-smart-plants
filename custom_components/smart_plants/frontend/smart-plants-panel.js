@@ -2082,6 +2082,7 @@ var Hn = {
 	"species.manual_hint": "Speichern ersetzt die Art durch deine eigenen Angaben. Lass beide Namen leer, um die Art zu entfernen.",
 	"species.save_manual": "Manuelle Art speichern",
 	"species.search": "Art suchen",
+	"species.error_query_length": "Suche mit höchstens 100 Zeichen.",
 	"species.no_matches": "Keine passende Art gefunden. Versuche eine andere Suche oder gib die Art manuell ein.",
 	"snapshot.species": "Art",
 	"snapshot.provider": "Anbieter",
@@ -2822,6 +2823,7 @@ var Hn = {
 	"archive.restore_name": "Name",
 	"archive.restore_name_taken": "Es gibt schon eine Pflanze namens {name}.",
 	"archive.restore_name_required": "Gib einen Namen ein.",
+	"archive.restore_name_length": "Gib einen Namen mit höchstens 200 Zeichen ein.",
 	"archive.restore_in_use": "Diese Sensoren nutzen jetzt andere Pflanzen:",
 	"archive.restore_share": "Auch für diese Pflanze verwenden",
 	"archive.restore_missing": "Diese Sensoren gibt es nicht mehr, sie werden weggelassen:",
@@ -3314,6 +3316,7 @@ var Hn = {
 	"species.manual_hint": "Save replaces the species with user-supplied data. Leave both names blank to clear species.",
 	"species.save_manual": "Save manual species",
 	"species.search": "Search species",
+	"species.error_query_length": "Search with up to 100 characters.",
 	"species.no_matches": "No species matches. Try another search or manual entry.",
 	"snapshot.species": "Species",
 	"snapshot.provider": "Provider",
@@ -4054,6 +4057,7 @@ var Hn = {
 	"archive.restore_name": "Name",
 	"archive.restore_name_taken": "A plant named {name} already exists.",
 	"archive.restore_name_required": "Enter a name.",
+	"archive.restore_name_length": "Enter a name of up to 200 characters.",
 	"archive.restore_in_use": "These sensors are used by other plants now:",
 	"archive.restore_share": "Use them for this plant too",
 	"archive.restore_missing": "These sensors no longer exist and are left out:",
@@ -7769,7 +7773,12 @@ var cc = o`
 	}
 	async search() {
 		if (this.busy || this.blocked || this.query.trim().length < 3) return;
-		let e = this.lifecycle, t = ++this.generation;
+		let e = this.lifecycle;
+		if (!E(this.query.trim(), 100)) {
+			this.speciesError = this.l.t("species.error_query_length");
+			return;
+		}
+		let t = ++this.generation;
 		this.busy = !0, this.speciesError = "", this.preview = null, this.accepted = !1;
 		try {
 			let e = await L.searchSpecies(this.hass, "openplantbook", this.query.trim(), this.hass.language ?? "en");
@@ -8208,7 +8217,7 @@ var cc = o`
 		};
 		return x`${t?.available ? this.accepted && this.preview ? x`<div class="species-chip"><ha-icon aria-hidden="true" icon="mdi:leaf"></ha-icon>
         <div class="grow"><div><i>${this.preview.snapshot.latin_name}</i>${this.commonName(this.preview.snapshot) ? ` · ${this.commonName(this.preview.snapshot)}` : ""}</div><div class="small muted">${this.preview.snapshot.attribution}</div></div>
-        <button type="button" class="btn text sm" @click=${() => this.manual()}>${e.t("wizard.remove_species")}</button></div>` : x`<div class="search"><label class="field">${e.t("wizard.species_search")}<input type="search" autocomplete="off" aria-describedby="search-hint" .value=${this.query}
+        <button type="button" class="btn text sm" @click=${() => this.manual()}>${e.t("wizard.remove_species")}</button></div>` : x`<div class="search"><label class="field">${e.t("wizard.species_search")}<input type="search" autocomplete="off" maxlength=${D(100)} aria-describedby="search-hint" .value=${this.query}
           @input=${(e) => {
 			this.query = e.target.value, this.generation++, this.results = [], this.searched = !1, this.preview = null, this.accepted = !1;
 		}}
@@ -9150,6 +9159,7 @@ var Z = class extends C {
 		if (!e || !t || !n || this._busy) return;
 		let r = this._name.trim();
 		if (!r) this._dialogError = this.l.t("archive.restore_name_required");
+		else if (!E(r, 200)) this._dialogError = this.l.t("archive.restore_name_length");
 		else {
 			this._busy = !0, this._dialogError = "";
 			try {
@@ -10805,7 +10815,12 @@ var $ = class e extends C {
 	}
 	async _searchSpecies() {
 		if (!this.hass || this._formBusy || this._blocked || this._query.trim().length < 3) return;
-		let e = this._context, t = ++this._providerRequest;
+		let e = this._context;
+		if (!E(this._query.trim(), 100)) {
+			this._error = this._l.t("species.error_query_length");
+			return;
+		}
+		let t = ++this._providerRequest;
 		this._formBusy = !0, this._error = "", this._preview = null;
 		try {
 			let e = await L.searchSpecies(this.hass, this._provider, this._query.trim(), this.hass.language ?? "en");
@@ -12069,7 +12084,7 @@ var $ = class e extends C {
 		})}
           ${this._provider === "manual" ? x`${zi(t.t("species.common_name"), n.common, (e) => this._edit({ common: e }))}${zi(t.t("species.scientific_name"), n.latin, (e) => this._edit({ latin: e }))}<p class="small muted">${t.t("species.manual_hint")}</p><div class="actions">${this._saveButton("species", t.t("species.save_manual"))}</div>` : x`${zi(t.t("species.search"), this._query, (e) => {
 			this._query = e, this._providerRequest++, this._results = [], this._preview = null;
-		})}<div class="actions"><button type="button" @click=${() => void this._searchSpecies()}>${t.t("species.search")}</button></div><ul class="result-list">${this._results.map((e) => x`<li><button type="button" @click=${() => void this._previewSpecies(e)}>${e.common_name ?? e.latin_name} · ${e.latin_name}</button><small>${e.attribution}</small></li>`)}</ul><button type="button" @click=${() => {
+		}, "text", 100)}<div class="actions"><button type="button" @click=${() => void this._searchSpecies()}>${t.t("species.search")}</button></div><ul class="result-list">${this._results.map((e) => x`<li><button type="button" @click=${() => void this._previewSpecies(e)}>${e.common_name ?? e.latin_name} · ${e.latin_name}</button><small>${e.attribution}</small></li>`)}</ul><button type="button" @click=${() => {
 			this._provider = "manual", this._providerRequest++, this._preview = null;
 		}}>${t.t("common.continue_manually")}</button>`}</fieldset>`)}
       </section>
