@@ -8,6 +8,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- An emoji or other character outside the Basic Multilingual Plane in a note, plant name, tag,
+  task name or instructions no longer makes the plant disappear from the panel. The panel now
+  counts characters the same way as Home Assistant, so a 500-character note with an emoji is
+  valid everywhere, and its text fields no longer stop early when you type emoji. If the panel
+  ever can't read a plant's data, it says so instead of hiding the plant or reporting it as
+  deleted.
+- **Undo** after **Snooze all plants…** or **Resume all** no longer overwrites a snooze that was
+  changed in the meantime, for example extended in another browser. That plant keeps its newer
+  snooze, and the notice says so.
 - *Low light* turns on, or becomes unavailable, as soon as a bright reading is more than two
   hours old, even when the light sensor doesn't report again. Before, it could stay off for
   hours on an old bright reading.

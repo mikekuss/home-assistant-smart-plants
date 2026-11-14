@@ -321,6 +321,90 @@ async def test_restore_snoozes_undoes_snooze_many(
     }
 
 
+def _restore(snoozed: dict[str, Any]) -> dict[str, Any]:
+    """Build the undo of a ``snooze_many`` response, as the panel sends it."""
+    result = snoozed["result"]
+    return {
+        "type": "smart_plants/plants/restore_snoozes",
+        "snoozes": result["previous"],
+        "expected": {view["id"]: view["snoozed_until"] for view in result["plants"]},
+    }
+
+
+async def test_restore_snoozes_keeps_a_snooze_changed_after_the_bulk_change(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
+) -> None:
+    client = await _connect(hass, hass_ws_client)
+    freezer.move_to(NOW)
+    entry = await _setup(hass)
+    aloe, office, fern = await _plants(entry, "Aloe", "Office Aloe", "Fern")
+    snoozed = await _snooze_many(client, until=WEEK_END)
+    # Another session extends Office Aloe and resumes Fern before the undo.
+    await _snooze(entry, office, NOW + timedelta(days=30))
+    await _manager(entry).async_unsnooze_plant(fern.id, expected_revision=None)
+    office = _manager(entry).get_plant(office.id)
+
+    response = await _send(client, _restore(snoozed))
+
+    assert response["success"], response
+    result = response["result"]
+    assert [view["id"] for view in result["plants"]] == [aloe.id]
+    assert sorted(result["skipped"]) == sorted([office.id, fern.id])
+    assert _manager(entry).get_plant(office.id) == office
+    assert _ends(entry) == {
+        "Aloe": None,
+        "Office Aloe": "2026-07-15T10:00:00Z",
+        "Fern": None,
+    }
+
+
+async def test_restore_snoozes_keeps_a_snooze_set_after_resume_all(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
+) -> None:
+    client = await _connect(hass, hass_ws_client)
+    freezer.move_to(NOW)
+    entry = await _setup(hass)
+    aloe, office = await _plants(entry, "Aloe", "Office Aloe")
+    await _snooze(entry, aloe, NOW + timedelta(days=2))
+    await _snooze(entry, office, NOW + timedelta(days=3))
+    resumed = await _snooze_many(client, until=None)
+    # Office Aloe is snoozed again, for longer, before the undo.
+    await _snooze(entry, office, NOW + timedelta(days=30))
+
+    response = await _send(client, _restore(resumed))
+
+    assert response["success"], response
+    assert [view["id"] for view in response["result"]["plants"]] == [aloe.id]
+    assert response["result"]["skipped"] == [office.id]
+    assert _ends(entry) == {
+        "Aloe": "2026-06-17T10:00:00Z",
+        "Office Aloe": "2026-07-15T10:00:00Z",
+    }
+
+
+async def test_restore_snoozes_compares_ends_as_instants(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
+) -> None:
+    client = await _connect(hass, hass_ws_client)
+    freezer.move_to(NOW)
+    entry = await _setup(hass)
+    (aloe,) = await _plants(entry, "Aloe")
+    await _snooze_many(client, until=WEEK_END)
+
+    response = await _send(
+        client,
+        {
+            "type": "smart_plants/plants/restore_snoozes",
+            "snoozes": {aloe.id: None},
+            "expected": {aloe.id: "2026-06-22T12:00:00+02:00"},
+        },
+    )
+
+    assert response["success"], response
+    assert response["result"]["skipped"] == []
+    assert _ends(entry) == {"Aloe": None}
+
+
 async def test_restore_snoozes_skips_paused_plants_and_rejects_bad_ends(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
 ) -> None:

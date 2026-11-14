@@ -148,6 +148,7 @@ import { RELATED_LIMIT, automationDetail, capRows, relatedAutomations } from "./
 import type { AutomationRow, RelatedAutomations } from "./related-automations.js";
 import type { PlantOverview } from "./overview-model.js";
 import type { CareEvent, CareHistory, CareTask, Evaluation, HAArea, HADevice, HAEntity, HAState, HealthEvaluation, HomeAssistantLike, MoistureInput, PanelCapabilities, PanelInfo, PlantPlacement, PlantRecord, RoleSourceInput, SpeciesPreview, SpeciesSearchResult } from "./types.js";
+import { inputMaxLength, withinChars } from "./text.js";
 
 // The Notifications page remembers the plant it was opened from, so Back returns there.
 type View = { kind: "list" } | { kind: "create" } | { kind: "detail"; plantId: string } | { kind: "notifications"; from: string | null } | { kind: "archive"; plantId: string | null };
@@ -267,6 +268,8 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _dialog: "delete" | "retire" | "species" | "care_task" | "care_automate" | "care_rest" | "snooze" | "snooze_all" | null = null;
   // How many plants are retired. The archive menu item shows only above zero.
   @state() private _archivedCount = 0;
+  // Live plant records the panel could not read; never shown as deleted.
+  @state() private _rejected: string[] = [];
   // The plant this panel is deleting or retiring right now. The registry
   // events from removing its device refresh the panel before the call
   // returns; that refresh must not report the plant as deleted elsewhere.
@@ -562,9 +565,9 @@ export class SmartPlantsPanel extends LitElement {
     if (showLoading) this._loading = true;
     try {
       const info = await api.info(hass);
-      const { plants, archivedCount } = await api.listWithArchive(hass);
+      const { plants, rejected, archivedCount } = await api.listWithArchive(hass);
       if (request !== this._request || !this.isConnected) return;
-      this._capabilities = info; this._blocked = false; this._plants = plants; this._archivedCount = archivedCount;
+      this._capabilities = info; this._blocked = false; this._plants = plants; this._rejected = rejected; this._archivedCount = archivedCount;
       this._updateAvailable = bundleOutdated(SmartPlantsPanel.bundleVersion, info.bundle_version);
       if (showLoading) this._error = "";
       if (this._base) {
@@ -575,7 +578,8 @@ export class SmartPlantsPanel extends LitElement {
           if (careOnlyChange(this._base, latest) && !this._conflict) { if (!this._formBusy) this._rebaseEdits(this._base, latest); }
           else this._setConflict(this._base, latest);
         }
-        if (!latest && this._base.id !== this._removing) { this._context++; this._formBusy = false; this._closeDialog(); this._base = null; this._conflict = null; this._edits = null; this._notice = this._l.t("notice.deleted_elsewhere"); void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("h1")?.focus()); }
+        // A record the panel cannot read is not a deletion; the notice says which.
+        if (!latest && this._base.id !== this._removing) { const unreadable = rejected.includes(this._base.id); this._context++; this._formBusy = false; this._closeDialog(); this._base = null; this._conflict = null; this._edits = null; this._notice = this._l.t(unreadable ? "notice.unreadable_open" : "notice.deleted_elsewhere"); void this.updateComplete.then(() => this.shadowRoot?.querySelector<HTMLElement>("h1")?.focus()); }
       }
       this._syncImage();
       // Status and readings come from the backend in one call; the panel never
@@ -1004,15 +1008,15 @@ export class SmartPlantsPanel extends LitElement {
     const fields = this._careFields;
     const payload = this._carePayload();
     const note = typeof payload.note === "string" ? payload.note : null;
-    if (this._careKind !== "note" && note && note.length > 500) {
+    if (this._careKind !== "note" && note && !withinChars(note, 500)) {
       this._careError = this._l.t("care.error_note_length"); return;
     }
     if (this._careKind === "fertilizing" && payload.amount !== null && (!Number.isFinite(payload.amount) || Number(payload.amount) <= 0 || Number(payload.amount) > 100000 || !payload.unit)) {
       this._careError = this._l.t("care.error_amount"); return;
     }
-    if (this._careKind === "note" && (!String(payload.text).trim() || String(payload.text).length > 1000)) { this._careError = this._l.t("care.error_note_text"); return; }
+    if (this._careKind === "note" && (!String(payload.text).trim() || !withinChars(String(payload.text), 1000))) { this._careError = this._l.t("care.error_note_text"); return; }
     // Notes have their own limits above; only the short detail fields stop at 120.
-    if ((CARE_DETAIL_FIELDS[this._careKind] ?? []).some(key => (fields[key] ?? "").length > 120)) { this._careError = this._l.t("care.error_details_length"); return; }
+    if ((CARE_DETAIL_FIELDS[this._careKind] ?? []).some(key => !withinChars(fields[key] ?? "", 120))) { this._careError = this._l.t("care.error_details_length"); return; }
     const offset = -date.getTimezoneOffset();
     const suffix = `${offset < 0 ? "-" : "+"}${String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0")}:${String(Math.abs(offset) % 60).padStart(2, "0")}`;
     const occurredAt = `${this._careDate}:00${suffix}`; const hass = this.hass; this._careError = "";
@@ -1088,8 +1092,8 @@ export class SmartPlantsPanel extends LitElement {
           : html`<label>${l.t("care.type")}<select aria-label=${l.t("care.type")} .value=${this._careKind} @change=${(e: Event) => { this._careKind = (e.target as HTMLSelectElement).value as CareEvent["kind"]; this._careFields = {}; }}>${CARE_KINDS.map(kind => html`<option value=${kind} ?selected=${kind === this._careKind}>${kindLabel(kind)}</option>`)}</select></label>`}
         ${alsoCompletes ? html`<p class="small care-note"><ha-icon aria-hidden="true" .icon=${"mdi:check-circle-outline"}></ha-icon><span>${l.t("care_plan.form_also_marks", { name: taskName(l, alsoCompletes) })}</span></p>` : nothing}
         <label>${l.t("care.when")}<input type="datetime-local" .value=${this._careDate} @input=${(e: Event) => this._careDate = (e.target as HTMLInputElement).value}></label>
-        ${[...CARE_DETAIL_FIELDS[this._careKind] ?? [], ...this._careKind === "note" ? ["text"] : []].map(key => html`<label>${fieldLabel(key)}<input aria-label=${fieldLabel(key)} type=${key === "amount" ? "number" : "text"} maxlength=${key === "text" ? 1000 : 120} .value=${this._careFields[key] ?? ""} @input=${(e: Event) => this._careFields = { ...this._careFields, [key]: (e.target as HTMLInputElement).value }}></label>`)}
-        ${this._careKind !== "note" ? html`<label>${l.t("care.note_optional")}<input type="text" maxlength="500" .value=${this._careNote} @input=${(e: Event) => this._careNote = (e.target as HTMLInputElement).value}></label>` : nothing}
+        ${[...CARE_DETAIL_FIELDS[this._careKind] ?? [], ...this._careKind === "note" ? ["text"] : []].map(key => html`<label>${fieldLabel(key)}<input aria-label=${fieldLabel(key)} type=${key === "amount" ? "number" : "text"} maxlength=${inputMaxLength(key === "text" ? 1000 : 120)} .value=${this._careFields[key] ?? ""} @input=${(e: Event) => this._careFields = { ...this._careFields, [key]: (e.target as HTMLInputElement).value }}></label>`)}
+        ${this._careKind !== "note" ? html`<label>${l.t("care.note_optional")}<input type="text" maxlength=${inputMaxLength(500)} .value=${this._careNote} @input=${(e: Event) => this._careNote = (e.target as HTMLInputElement).value}></label>` : nothing}
         ${this._careKind === "fertilizing" ? html`<label>${l.t("care.unit")}<select aria-label=${l.t("care.unit")} .value=${this._careFields.unit ?? ""} @change=${(e: Event) => this._careFields = { ...this._careFields, unit: (e.target as HTMLSelectElement).value }}><option value="">${l.t("care.no_amount")}</option><option value="g">g</option><option value="mL">mL</option></select></label>` : nothing}
         ${this._careKind === "watering" ? html`<p class="small muted">${l.t("care.no_irrigation")}</p>` : nothing}
         <div class="actions"><button type="button" class="primary" @click=${() => void this._saveCare(plant)}>${this._careEditingId ? l.t("care.save_changes") : l.t("care.record")}</button>
@@ -1124,7 +1128,7 @@ export class SmartPlantsPanel extends LitElement {
     const hass = this.hass;
     const input: UpdatePlantInput = { plant_id: base.id, expected_revision: base.revision };
     if (kind === "identity") {
-      if (!edit.name.trim() || edit.name.trim().length > 200 || (edit.acquired && !Number.isFinite(Date.parse(edit.acquired)))) { this._error = this._l.t("error.identity"); return; }
+      if (!edit.name.trim() || !withinChars(edit.name.trim(), 200) || (edit.acquired && !Number.isFinite(Date.parse(edit.acquired)))) { this._error = this._l.t("error.identity"); return; }
       Object.assign(input, { name: edit.name.trim(), acquired_at: edit.acquired ? new Date(edit.acquired).toISOString() : null, placement: edit.placement });
     }
     if (kind === "taxonomy") {
@@ -2112,24 +2116,30 @@ export class SmartPlantsPanel extends LitElement {
     void this._snoozeMany(until);
   }
   // Snoozes every active plant, or resumes them all with null, in one save.
-  // The notice offers Undo, which puts back each plant's previous end.
+  // The notice offers Undo, which puts back each plant's previous end unless
+  // that plant's snooze changed again since.
   private async _snoozeMany(until: string | null): Promise<void> {
     if (!this.hass || this._formBusy || this._blocked) return;
     const hass = this.hass; const l = this._l;
     const result = await this._snoozeWrite(() => api.snoozeMany(hass, until));
     if (!result) return;
     const count = result.plants.length;
+    // The ends this change set; Undo restores only plants that still have them.
+    const applied = Object.fromEntries(result.plants.map(plant => [plant.id, plant.snoozed_until ?? null]));
     const date = until ? snoozeEndDate(until, this._timeZone()) : null;
     const message = !count ? l.t("snooze.all_unchanged")
       : date ? l.tn(count, "snooze.all_done_one", "snooze.all_done_other", { date: snoozeDateText(l, date, this._today()) })
       : l.tn(count, "snooze.all_resumed_one", "snooze.all_resumed_other");
-    this._toast(message, count ? { text: l.t("snooze.undo"), action: () => void this._restoreSnoozes(result.previous) } : undefined);
+    this._toast(message, count ? { text: l.t("snooze.undo"), action: () => void this._restoreSnoozes(result.previous, applied) } : undefined);
   }
-  private async _restoreSnoozes(previous: Record<string, string | null>): Promise<void> {
+  private async _restoreSnoozes(previous: Record<string, string | null>, applied: Record<string, string | null>): Promise<void> {
     if (!this.hass || this._formBusy || this._blocked) return;
-    const hass = this.hass;
-    const result = await this._snoozeWrite(async () => ({ plants: await api.restoreSnoozes(hass, previous) }));
-    if (result) this._toast(this._l.t("snooze.all_undone"));
+    const hass = this.hass; const l = this._l;
+    const result = await this._snoozeWrite(() => api.restoreSnoozes(hass, previous, applied));
+    if (!result) return;
+    const kept = result.skipped.length;
+    this._toast(!kept ? l.t("snooze.all_undone") : !result.plants.length ? l.t("snooze.all_undo_none")
+      : l.tn(kept, "snooze.all_undone_kept_one", "snooze.all_undone_kept_other"));
   }
   // Runs a write that changes several plants' snoozes in one save. A failed
   // write changed no plant; the error shows above the overview and the panel
@@ -2587,7 +2597,7 @@ export class SmartPlantsPanel extends LitElement {
          <ha-dropdown-item value="integration-options">${l.t("overview.integration_options")}<ha-icon slot="icon" icon="mdi:cog-outline"></ha-icon></ha-dropdown-item>
          <ha-dropdown-item value="documentation">${l.t("overview.documentation")}<ha-icon slot="icon" icon="mdi:help-circle-outline"></ha-icon></ha-dropdown-item>
        </ha-dropdown>
-       <div class="panel-content">${this._updateAvailable ? html`<div class="update-banner" role="status"><p>${l.t("panel.update_available")}</p><button type="button" @click=${() => this._reload()}>${l.t("panel.reload")}</button></div>` : nothing}${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}${this._notice ? html`<p class="notice" role="status">${this._notice}</p>` : nothing}${this._registryError ? html`<p class="notice" role="alert">${l.t("panel.registry_unavailable")}</p>` : nothing}
+       <div class="panel-content">${this._updateAvailable ? html`<div class="update-banner" role="status"><p>${l.t("panel.update_available")}</p><button type="button" @click=${() => this._reload()}>${l.t("panel.reload")}</button></div>` : nothing}${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}${this._notice ? html`<p class="notice" role="status">${this._notice}</p>` : nothing}${this._registryError ? html`<p class="notice" role="alert">${l.t("panel.registry_unavailable")}</p>` : nothing}${this._view.kind === "list" && this._rejected.length ? html`<p class="notice" role="status">${l.tn(this._rejected.length, "notice.unreadable_one", "notice.unreadable_other")}</p>` : nothing}
       ${this._creationNotice && this._view.kind !== "create" ? html`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && !(this._view.kind === "detail" && this._view.plantId === this._createdPlantId) ? html`<button ?disabled=${this._formBusy} @click=${() => { if (this._createdPlantId) this._show({ kind: "detail", plantId: this._createdPlantId }); }}>${l.t("panel.open_created")}</button>` : nothing}` : nothing}
       ${this._view.kind === "list" && this._overviewError ? this._renderStatusError() : nothing}
       <smart-plants-overview ?hidden=${this._view.kind !== "list"} .l=${l} .plants=${this._plants} .overview=${this._overview} .areaNames=${this._plantAreaNames()}

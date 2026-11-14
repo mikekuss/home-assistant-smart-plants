@@ -4,10 +4,11 @@ import type { RoleSourceSpec } from "./model.js";
 import { isMessageKey } from "./localize.js";
 import type { Localizer } from "./localize.js";
 import type { HAArea, HAEntity, HAState, MoistureInput, PlantPlacement, RoleSourceInput, SpeciesPreview, SpeciesSnapshot } from "./types.js";
+import { charCount, inputMaxLength, sliceChars } from "./text.js";
 
 export const value = (event: Event): string => (event.target as HTMLInputElement).value;
 export function textField(label: string, current: string, change: (v: string) => void, type = "text", max = 200) {
-  return html`<label>${label}<input type=${type} maxlength=${max} .value=${current} @input=${(e: Event) => change(value(e))}></label>`;
+  return html`<label>${label}<input type=${type} maxlength=${inputMaxLength(max)} .value=${current} @input=${(e: Event) => change(value(e))}></label>`;
 }
 export function selectField(l: Localizer, label: string, current: string, options: { value: string; label: string }[], change: (v: string) => void) {
   const visible = current && !options.some(o => o.value === current) ? [...options, { value: current, label: l.t("editor.current_value", { value: current }) }] : options;
@@ -113,7 +114,7 @@ export function snapshotView(l: Localizer, snapshot: SpeciesSnapshot, preview?: 
   const care = Object.entries(snapshot.care_text);
   const shortValue = (value: unknown): string => {
     const text = value === null || value === undefined ? "—" : typeof value === "string" ? value : JSON.stringify(value);
-    return text.length > 80 ? `${text.slice(0, 79)}…` : text;
+    return charCount(text) > 80 ? `${sliceChars(text, 79)}…` : text;
   };
   const commonName = speciesCommonName(snapshot, l.language);
   return html`<article><h3>${commonName ?? snapshot.latin_name ?? l.t("snapshot.species")}</h3>${snapshot.latin_name && snapshot.latin_name !== commonName ? html`<p><i>${snapshot.latin_name}</i></p>` : nothing}

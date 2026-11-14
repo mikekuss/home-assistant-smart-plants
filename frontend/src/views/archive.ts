@@ -15,6 +15,7 @@ import { themeFallbacks } from "../components/shared-styles.js";
 import "../components/index.js";
 import { CARE_ICONS, careDetails, plantStyles } from "./plant.js";
 import type { ArchivedPlantSummary, ArchivedPlantView, HomeAssistantLike, PlantRecord, RestoreCheck } from "../types.js";
+import { inputMaxLength } from "../text.js";
 
 // Whole months from `start` to `end`, for "Monitored for 2 years, 3 months".
 export function monthsBetween(start: string, end: string): number {
@@ -279,7 +280,7 @@ export class SmartPlantsArchive extends LitElement {
       <p>${l.t("archive.restore_body")}</p>
       ${blocked ? html`<p class="error" role="alert">${blocked}</p>` : html`
         ${check.name_taken ? html`<div class="field"><label for="restore-name">${l.t("archive.restore_name")}</label>
-          <input id="restore-name" type="text" maxlength="200" .value=${this._name} aria-describedby="restore-name-help" @input=${(e: Event) => { this._name = (e.target as HTMLInputElement).value; }}>
+          <input id="restore-name" type="text" maxlength=${inputMaxLength(200)} .value=${this._name} aria-describedby="restore-name-help" @input=${(e: Event) => { this._name = (e.target as HTMLInputElement).value; }}>
           <span class="small muted" id="restore-name-help">${l.t("archive.restore_name_taken", { name: plant.name })}</span></div>` : nothing}
         ${check.sources_in_use.length ? html`<div><p class="small">${l.t("archive.restore_in_use")}</p>
           <ul class="sensor-list small">${check.sources_in_use.map(item => html`<li>${this._roleText(item.role)} · ${item.entity_id} → ${item.plants.join(", ")}</li>`)}</ul>

@@ -308,13 +308,15 @@ export const api = {
   },
 
   // The live plants, and how many plants are retired.
-  async listWithArchive(hass: HomeAssistantLike): Promise<{ plants: PlantRecord[]; archivedCount: number }> {
+  // `rejected` names the records the panel could not read.
+  async listWithArchive(hass: HomeAssistantLike): Promise<{ plants: PlantRecord[]; rejected: string[]; archivedCount: number }> {
     const result = await send<{ plants: PlantRecord[]; archived_count?: unknown }>(hass, {
       type: "smart_plants/plants/list",
     });
     const count = result.archived_count;
+    const { plants, rejected } = validPlantList(result.plants);
     return {
-      plants: validPlantList(result.plants) as PlantRecord[],
+      plants: plants as PlantRecord[], rejected,
       archivedCount: typeof count === "number" && Number.isInteger(count) && count > 0 ? count : 0,
     };
   },
@@ -425,16 +427,20 @@ export const api = {
     return send(hass, { type: "smart_plants/plants/snooze_many", until });
   },
 
-  // Puts back the snooze ends `snoozeMany` replaced.
+  // Puts back the snooze ends `snoozeMany` replaced. `expected` holds the
+  // ends it set: a plant whose end changed since keeps it and is listed in
+  // `skipped`.
   async restoreSnoozes(
     hass: HomeAssistantLike,
     snoozes: Record<string, string | null>,
-  ): Promise<PlantRecord[]> {
-    const result = await send<{ plants: PlantRecord[] }>(hass, {
+    expected: Record<string, string | null>,
+  ): Promise<{ plants: PlantRecord[]; skipped: string[] }> {
+    const result = await send<{ plants: PlantRecord[]; skipped?: string[] }>(hass, {
       type: "smart_plants/plants/restore_snoozes",
       snoozes,
+      expected,
     });
-    return result.plants;
+    return { plants: result.plants, skipped: result.skipped ?? [] };
   },
 
   async setArea(

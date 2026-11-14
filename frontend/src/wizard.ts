@@ -14,6 +14,7 @@ import { READING_ROLES, ROLE_META, formatValue, readingLabel } from "./status.js
 import type { ReadingRole } from "./status.js";
 import { srOnly, themeFallbacks } from "./components/shared-styles.js";
 import type { HAArea, HADevice, HAEntity, HAState, HomeAssistantLike, MoistureInput, PanelCapabilities, PlantPlacement, PlantRecord, SensorSource, SpeciesSearchResult, SpeciesSnapshot, WizardCreateInput, WizardDraft, WizardPreview } from "./types.js";
+import { inputMaxLength, withinChars } from "./text.js";
 
 // Steps of the add-plant flow; 4 is the confirmation shown after creation.
 type Step = 1 | 2 | 3 | 4;
@@ -437,7 +438,7 @@ export class SmartPlantsWizard extends LitElement {
   }
   private validate(): string | null {
     const l = this.l;
-    if (!this.name.trim() || this.name.trim().length > 200) return l.t("wizard.error_name_length");
+    if (!this.name.trim() || !withinChars(this.name.trim(), 200)) return l.t("wizard.error_name_length");
     if (this.area && !this.knownAreas.some(a => a.area_id === this.area)) return l.t("wizard.error_area");
     if (this.preview && !this.accepted) { this.toggle("species", true); return l.t("wizard.error_accept_preview"); }
     if (validateMoisture(this.moisture, this.defaults, l)) { this.toggle("species", true); return l.t("wizard.error_targets"); }
@@ -530,7 +531,7 @@ export class SmartPlantsWizard extends LitElement {
           ${this.knownAreas.map(a => html`<option value=${a.area_id} ?selected=${a.area_id === this.area}>${a.name}</option>`)}</select><ha-icon class="trail" aria-hidden="true" icon="mdi:menu-down"></ha-icon></div>`;
     return html`<h2 tabindex="-1">${l.t("wizard.plant_heading")}</h2><p class="intro">${l.t("wizard.plant_intro")}</p>
       <div class="stack">
-        <label class="field">${l.t("wizard.plant_name")}<input required maxlength="200" autocomplete="off" .value=${this.name} @input=${(e: Event) => { this.name = (e.target as HTMLInputElement).value; }} @keydown=${(e: KeyboardEvent) => { if (e.key === "Enter") void this.next(); }}></label>
+        <label class="field">${l.t("wizard.plant_name")}<input required maxlength=${inputMaxLength(200)} autocomplete="off" .value=${this.name} @input=${(e: Event) => { this.name = (e.target as HTMLInputElement).value; }} @keydown=${(e: KeyboardEvent) => { if (e.key === "Enter") void this.next(); }}></label>
         <div>${areaPicker}<div class="helper" id="area-helper">${l.t("wizard.area_helper")}</div></div>
         ${this.renderPhoto()}
       </div>`;
@@ -676,8 +677,8 @@ export class SmartPlantsWizard extends LitElement {
       : nothing;
     return html`${search}
       ${this.accepted || this.preview ? nothing : html`<h3>${l.t("wizard.manual_species")}</h3><div class="two">
-        <label class="field">${l.t("species.common_name")}<input maxlength="200" .value=${this.common} @input=${(e: Event) => { this.common = (e.target as HTMLInputElement).value; }}></label>
-        <label class="field">${l.t("species.scientific_name")}<input maxlength="200" .value=${this.latin} @input=${(e: Event) => { this.latin = (e.target as HTMLInputElement).value; }}></label></div>`}
+        <label class="field">${l.t("species.common_name")}<input maxlength=${inputMaxLength(200)} .value=${this.common} @input=${(e: Event) => { this.common = (e.target as HTMLInputElement).value; }}></label>
+        <label class="field">${l.t("species.scientific_name")}<input maxlength=${inputMaxLength(200)} .value=${this.latin} @input=${(e: Event) => { this.latin = (e.target as HTMLInputElement).value; }}></label></div>`}
       <fieldset class="thr"><legend>${l.t("wizard.targets_label")}</legend>
         ${keys.map(k => html`<div class="field"><label for="target-${k}">${labels[k]}</label><span class="suffix"><input id="target-${k}" type="number" min="1" max="99" step="1" inputmode="numeric" .value=${String(this.moisture.threshold_overrides[k] ?? d[k])}
           @input=${(e: Event) => this.setOverride(k, (e.target as HTMLInputElement).value)}
@@ -699,8 +700,8 @@ export class SmartPlantsWizard extends LitElement {
       <div class="field"><label for="placement">${l.t("placement.label")}</label><select id="placement" @change=${(e: Event) => { this.placement = (e.target as HTMLSelectElement).value; }}>
         <option value="" ?selected=${!this.placement}>${l.t("common.not_specified")}</option>
         ${placements.map(p => html`<option value=${p} ?selected=${p === this.placement}>${capital(placementLabel(l, p))}</option>`)}</select><ha-icon class="trail" aria-hidden="true" icon="mdi:menu-down"></ha-icon></div>
-      <label class="field">${l.t("taxonomy.category")}<input maxlength="60" .value=${this.category} @input=${(e: Event) => { this.category = (e.target as HTMLInputElement).value; }}></label>
-      <div><label class="field">${l.t("wizard.tags")}<input maxlength="2000" aria-describedby="tags-hint" .value=${this.tagText} @input=${(e: Event) => { this.tagText = (e.target as HTMLInputElement).value; }}></label><div class="helper" id="tags-hint">${l.t("wizard.tags_hint")}</div></div>
+      <label class="field">${l.t("taxonomy.category")}<input maxlength=${inputMaxLength(60)} .value=${this.category} @input=${(e: Event) => { this.category = (e.target as HTMLInputElement).value; }}></label>
+      <div><label class="field">${l.t("wizard.tags")}<input maxlength=${inputMaxLength(2000)} aria-describedby="tags-hint" .value=${this.tagText} @input=${(e: Event) => { this.tagText = (e.target as HTMLInputElement).value; }}></label><div class="helper" id="tags-hint">${l.t("wizard.tags_hint")}</div></div>
     </div>`;
   }
 

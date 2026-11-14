@@ -9,6 +9,7 @@ import type { Localizer } from "../localize.js";
 import type { PlantOverview } from "../overview-model.js";
 import { readingLabel } from "../status.js";
 import type { CareTask, CareTaskType, HAState, HomeAssistantLike, PlantRecord } from "../types.js";
+import { inputMaxLength } from "../text.js";
 
 export type TaskAction = "mark_done" | "skip" | "edit" | "automate" | "delete";
 
@@ -344,7 +345,7 @@ function detailsStep(ctx: TaskEditorContext): TemplateResult {
     <div class="task-summary"><ha-icon aria-hidden="true" .icon=${TASK_ICONS[draft.type]}></ha-icon>
       <span><span class="summary-name">${draft.name.trim() || typeName}</span> · ${draftSummary(l, draft, rest, ctx.states)}</span></div>
     <label>${custom ? l.t("care_plan.name") : l.t("care_plan.name_optional")}
-      <input type="text" maxlength=${TASK_NAME_MAX} .value=${draft.name} placeholder=${custom ? "" : typeName} ?required=${custom}
+      <input type="text" maxlength=${inputMaxLength(TASK_NAME_MAX)} .value=${draft.name} placeholder=${custom ? "" : typeName} ?required=${custom}
         aria-invalid=${errors.name ? "true" : "false"} aria-describedby=${errors.name ? "task-name-error" : nothing}
         @input=${(e: Event) => ctx.onChange({ name: input(e) })}></label>
     ${fieldError("task-name-error", err("name"))}
@@ -368,7 +369,7 @@ function detailsStep(ctx: TaskEditorContext): TemplateResult {
           ${Array.from({ length: 12 }, (_, index) => index + 1).map(month => html`<button type="button" aria-pressed=${selected.has(month) ? "true" : "false"} aria-description=${monthName(l, month)} @click=${() => ctx.onMonth(month)}>${monthName(l, month, "short")}</button>`)}</div>
         <span class="small muted" id="task-months-hint">${l.t("care_plan.months_hint")}</span>
         ${fieldError("task-months-error", err("months"))}</div>`}
-    <label>${l.t("care_plan.instructions")}<textarea rows=${draft.instructions.length > NOTE_CLAMP_CHARS ? 6 : 3} maxlength=${TASK_INSTRUCTIONS_MAX} .value=${draft.instructions} placeholder=${l.t("care_plan.instructions_placeholder")}
+    <label>${l.t("care_plan.instructions")}<textarea rows=${draft.instructions.length > NOTE_CLAMP_CHARS ? 6 : 3} maxlength=${inputMaxLength(TASK_INSTRUCTIONS_MAX)} .value=${draft.instructions} placeholder=${l.t("care_plan.instructions_placeholder")}
       aria-invalid=${errors.instructions ? "true" : "false"} aria-describedby=${errors.instructions ? "task-instructions-error" : nothing}
       @input=${(e: Event) => ctx.onChange({ instructions: (e.target as HTMLTextAreaElement).value })}></textarea></label>
     ${fieldError("task-instructions-error", err("instructions"))}

@@ -3656,6 +3656,42 @@ def restore_snooze_change(until: str | None) -> PlantChange:
     return change
 
 
+def restore_snooze_if_unchanged(
+    until: str | None, *, expected: str | None, on_skip: Callable[[], None]
+) -> PlantChange:
+    """
+    Return a change that undoes a snooze change unless the plant moved on.
+
+    ``expected`` is the end the undone change set. A plant whose end is a
+    different one now was snoozed or resumed since; it keeps that end and
+    ``on_skip`` is called. An expected end that has passed and been cleared
+    still counts as unchanged.
+    """
+    restore = restore_snooze_change(until)
+
+    def change(current: PlantRecord) -> PlantRecord:
+        if not _same_snooze_end(current.snoozed_until, expected):
+            on_skip()
+            return current
+        return restore(current)
+
+    return change
+
+
+def _same_snooze_end(current: str | None, expected: str | None) -> bool:
+    """Return whether a stored snooze end is ``expected``, compared as instants."""
+    if current is None or expected is None:
+        return current == expected or (
+            current is None
+            and expected is not None
+            and _timestamp_passed(expected, dt_util.utcnow())
+        )
+    try:
+        return datetime.fromisoformat(current) == datetime.fromisoformat(expected)
+    except ValueError:
+        return current == expected
+
+
 def _timestamp_passed(value: str, now: datetime) -> bool:
     """Return whether an ISO timestamp with an offset lies at or before ``now``."""
     try:

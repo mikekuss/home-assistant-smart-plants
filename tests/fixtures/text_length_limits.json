@@ -1,0 +1,14 @@
+{
+  "description": "Longest text the backend accepts per field, counted in Unicode code points. The panel reads the same file, so both sides agree on characters outside the Basic Multilingual Plane, which JavaScript stores as two UTF-16 units.",
+  "character": "🌱",
+  "limits": {
+    "plant_name": 200,
+    "tag": 60,
+    "category": 60,
+    "care_note": 500,
+    "note_text": 1000,
+    "care_detail": 120,
+    "task_name": 60,
+    "task_instructions": 4000
+  }
+}

@@ -52,6 +52,9 @@ export const en = {
   "error.remove_main_sensor": "{name} is the main sensor. Use another sensor as main sensor first.",
 
   "notice.deleted_elsewhere": "This plant was deleted in another session.",
+  "notice.unreadable_one": "{count} plant can't be shown because the panel can't read its data. Reload the page; if that doesn't help, check the Home Assistant log.",
+  "notice.unreadable_other": "{count} plants can't be shown because the panel can't read their data. Reload the page; if that doesn't help, check the Home Assistant log.",
+  "notice.unreadable_open": "The panel can't read this plant's data any more. Reload the page; if that doesn't help, check the Home Assistant log.",
   "notice.area_changed_retained": "Home Assistant area changed from {from} to {to}. Your area selection is retained; review it before saving.",
   "notice.area_changed_synced": "Home Assistant area changed from {from} to {to}. The area selector now reflects the native area.",
   "notice.related_failed": "Related automations could not be loaded.",
@@ -1196,6 +1199,9 @@ export const en = {
   "snooze.all_resumed_other": "Alerts resumed for {count} plants",
   "snooze.all_unchanged": "No plant changed",
   "snooze.all_undone": "Previous snoozes restored",
+  "snooze.all_undone_kept_one": "Previous snoozes restored. {count} plant was changed since and keeps its snooze.",
+  "snooze.all_undone_kept_other": "Previous snoozes restored. {count} plants were changed since and keep their snooze.",
+  "snooze.all_undo_none": "Nothing restored: every plant was changed since and keeps its snooze.",
   "snooze.undo": "Undo",
 
   "notifications.title": "Notifications",
