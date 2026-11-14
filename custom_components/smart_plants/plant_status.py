@@ -17,7 +17,10 @@ Status priority, highest first:
    covers moisture and every other reading except the battery. A light
    sensor is not checked at night, nor in the morning until it had its stale
    time to report.
-6. ``no_sensors`` -- the moisture role has no sources.
+6. ``no_sensors`` -- no role other than the battery has sources. Moisture is
+   optional: a plant with other sensors but none for soil moisture is judged
+   on those. A battery level says nothing about the plant, so a battery
+   sensor alone doesn't count.
 7. ``healthy`` -- none of the above.
 
 ``problems`` lists every active issue in the same order, so for any status
@@ -189,6 +192,15 @@ def _reading_problem(role: str, evaluation: Any) -> str | None:
     return None
 
 
+def stress_problems(evaluations: dict[str, Any]) -> tuple[RoleProblem, ...]:
+    """Return the stress problems of the roles other than moisture."""
+    return tuple(
+        RoleProblem(role, kind)
+        for role in STRESS_ROLE_ORDER
+        if (kind := stress_kind(role, evaluations.get(role))) is not None
+    )
+
+
 def input_problems(evaluations: dict[str, Any]) -> tuple[RoleProblem, ...]:
     """Return the reading problems of the assigned sensors other than moisture."""
     return tuple(
@@ -219,28 +231,30 @@ def evaluate_plant_status(
     value_problem = _moisture_value_problem(moisture)
     if value_problem is not None:
         problems.append(RoleProblem(MOISTURE_ROLE, value_problem))
-    stress_problems = [
-        RoleProblem(role, kind)
-        for role in STRESS_ROLE_ORDER
-        if (kind := stress_kind(role, evaluations.get(role))) is not None
-    ]
-    problems.extend(stress_problems)
+    stresses = stress_problems(evaluations)
+    problems.extend(stresses)
     moisture_problem = _reading_problem(MOISTURE_ROLE, moisture)
     reading_problems = [
         *([RoleProblem(MOISTURE_ROLE, moisture_problem)] if moisture_problem else []),
         *input_problems(evaluations),
     ]
     problems.extend(reading_problems)
-    if not _has_sources(moisture):
+    # A battery level says nothing about the plant, so a battery sensor alone
+    # doesn't count as a plant sensor.
+    no_sensors = not any(
+        _has_sources(evaluations.get(role))
+        for role in (MOISTURE_ROLE, *INPUT_ROLE_ORDER)
+    )
+    if no_sensors:
         problems.append(RoleProblem(MOISTURE_ROLE, "no_sensors"))
 
     if value_problem is not None:
         status: PlantStatus = value_problem  # type: ignore[assignment]
-    elif stress_problems:
+    elif stresses:
         status = "problem"
     elif reading_problems:
         status = "stale"
-    elif not _has_sources(moisture):
+    elif no_sensors:
         status = "no_sensors"
     else:
         status = "healthy"

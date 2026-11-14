@@ -220,6 +220,77 @@ async def test_overview_plant_with_several_roles_matches_entities(
     assert _binary_state(hass, plant.id, "low_battery") == "on"
 
 
+async def test_overview_judges_a_plant_without_moisture_on_its_other_sensors(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator
+) -> None:
+    # Soil moisture is optional. A plant with only a temperature sensor is
+    # healthy while the temperature is fine and shows its problem when not.
+    entry = await _setup(hass)
+    manager = entry.runtime_data.manager
+    hass.states.async_set("sensor.mock_air", "21", _CELSIUS)
+    plant = await manager.async_create_plant(name="Aloe")
+    await _assign(manager, plant.id, "temperature", "sensor.mock_air")
+    await hass.async_block_till_done()
+
+    overview = (await _plants(hass, hass_ws_client))[plant.id]
+    assert (overview["status"], overview["problems"]) == ("healthy", [])
+    assert set(overview["roles"]) == {"temperature"}
+
+    hass.states.async_set("sensor.mock_air", "4", _CELSIUS)
+    await hass.async_block_till_done()
+    overview = (await _plants(hass, hass_ws_client))[plant.id]
+    assert (overview["status"], overview["problems"]) == (
+        "problem",
+        [{"role": "temperature", "kind": "too_cold"}],
+    )
+
+
+async def test_stale_sensor_reports_stress_while_its_problem_sensor_is_disabled(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator
+) -> None:
+    # The dashboard card reads the status from entity states. With the
+    # temperature stress sensor disabled, the stale sensor still says that the
+    # temperature is too cold, so the card can't show the plant as healthy.
+    entry = await _setup(hass)
+    manager = entry.runtime_data.manager
+    hass.states.async_set("sensor.mock_soil", "45", _PERCENT)
+    hass.states.async_set("sensor.mock_air", "21", _CELSIUS)
+    plant = await manager.async_create_plant(name="Office Aloe")
+    await _assign(manager, plant.id, "moisture", "sensor.mock_soil", primary=True)
+    await _assign(manager, plant.id, "temperature", "sensor.mock_air")
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    stress_id = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:temperature_stress"
+    )
+    stale_id = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:sensor_stale"
+    )
+    assert stress_id is not None
+    assert stale_id is not None
+    registry.async_update_entity(stress_id, disabled_by=er.RegistryEntryDisabler.USER)
+    await hass.async_block_till_done()
+    assert hass.states.get(stress_id) is None
+
+    def stress_problems() -> Any:
+        state = hass.states.get(stale_id)
+        assert state is not None
+        return state.attributes["stress_problems"]
+
+    assert stress_problems() == {}
+    hass.states.async_set("sensor.mock_air", "4", _CELSIUS)
+    await hass.async_block_till_done()
+    assert stress_problems() == {"temperature": "too_cold"}
+    overview = (await _plants(hass, hass_ws_client))[plant.id]
+    assert overview["problems"] == [{"role": "temperature", "kind": "too_cold"}]
+
+    hass.states.async_set("sensor.mock_air", "21", _CELSIUS)
+    await hass.async_block_till_done()
+    assert stress_problems() == {}
+    assert (await _plants(hass, hass_ws_client))[plant.id]["status"] == "healthy"
+
+
 async def test_overview_needs_water_and_stale_follow_entities(
     hass: HomeAssistant, hass_ws_client: WebSocketGenerator
 ) -> None:

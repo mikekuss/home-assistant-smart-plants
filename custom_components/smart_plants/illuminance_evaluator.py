@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
@@ -60,7 +60,7 @@ class IlluminanceEvaluation:
     # A quiet light sensor is expected now, so the plant status ignores it:
     # outside the 08:00-18:00 daytime window, and in the morning until the
     # sensor had the stale time to report again. Many light sensors report only
-    # on change and sit at 0 lx all night.
+    # on change and sit at 0 lx all night. See ``light_quiet_expected``.
     quiet_expected: bool = False
 
 
@@ -118,7 +118,21 @@ def evaluate(  # noqa: PLR0912, PLR0913
     reasons: list[str] = []
     sources: tuple[SensorSource, ...] = config.sources
     thresholds = _effective_thresholds(config)
-    quiet_expected = light_quiet_expected(now_datetime, config.stale_after_seconds)
+    quiet_expected = light_quiet_expected(
+        now_datetime,
+        config.stale_after_seconds,
+        morning_grace=all(
+            earns_morning_grace(
+                _heard_at(
+                    readings.get(source.registry_id or source.entity_id),
+                    config.stale_after_seconds,
+                ),
+                now_datetime,
+                config.stale_after_seconds,
+            )
+            for source in sources
+        ),
+    )
     if not sources:
         return IlluminanceEvaluation(
             computed_lux=None,
@@ -325,14 +339,67 @@ def is_daytime(value: datetime) -> bool:
     return LOW_LIGHT_DAY_START_HOUR <= value.hour < LOW_LIGHT_DAY_END_HOUR
 
 
+def _heard_at(
+    reading: IlluminanceReading | None, stale_after_seconds: int
+) -> float | None:
+    """Return when a source last proved itself: a valid report or assignment."""
+    if reading is None:
+        return None
+    stamps = [
+        stamp
+        for stamp in (
+            reading.last_valid_at,
+            (
+                reading.grace_until - stale_after_seconds
+                if reading.grace_until is not None
+                else None
+            ),
+        )
+        if stamp is not None
+    ]
+    return max(stamps, default=None)
+
+
+def earns_morning_grace(
+    heard_at: float | None,
+    now_datetime: datetime | None,
+    stale_after_seconds: int,
+) -> bool:
+    """
+    Return whether a source still gets the morning grace of today.
+
+    With a stale time short enough that yesterday's morning grace ended before
+    18:00, every morning gets it. With a longer one, the morning grace covers
+    the whole daytime window, so it is only earned when the source reported (or
+    was assigned) at or after 08:00 yesterday. A sensor that stayed silent
+    through a whole hidden day then counts as not reporting from 08:00 instead
+    of being hidden again every day.
+    """
+    if now_datetime is None:
+        return True
+    yesterday_start = datetime.combine(
+        now_datetime.date() - timedelta(days=1),
+        time(LOW_LIGHT_DAY_START_HOUR),
+        tzinfo=now_datetime.tzinfo,
+    )
+    yesterday_end = yesterday_start.replace(hour=LOW_LIGHT_DAY_END_HOUR)
+    if yesterday_start + timedelta(seconds=stale_after_seconds) < yesterday_end:
+        return True
+    return heard_at is not None and heard_at >= yesterday_start.timestamp()
+
+
 def light_quiet_expected(
-    now_datetime: datetime | None, stale_after_seconds: int
+    now_datetime: datetime | None,
+    stale_after_seconds: int,
+    *,
+    morning_grace: bool = True,
 ) -> bool:
     """
     Return whether a quiet light sensor is expected at ``now_datetime``.
 
     That is the case at night, and during the day until ``stale_after_seconds``
-    have passed since 08:00. A sensor that last reported before 08:00 then gets
+    have passed since 08:00 when ``morning_grace`` holds (see
+    ``earns_morning_grace``). A sensor that last reported before 08:00 then gets
     the full stale time of daylight to report before it counts as not
     reporting; one that reported during the day only goes stale later anyway.
     """
@@ -340,6 +407,8 @@ def light_quiet_expected(
         return False
     if not is_daytime(now_datetime):
         return True
+    if not morning_grace:
+        return False
     day_start = now_datetime.replace(
         hour=LOW_LIGHT_DAY_START_HOUR, minute=0, second=0, microsecond=0
     )

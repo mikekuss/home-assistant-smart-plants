@@ -91,6 +91,11 @@ ones, also has `snoozed` and `snoozed_until` (see [Snoozed plants](#snoozed-plan
 - `input_problems`: the other sensors that make the plant show *No recent data*, by reading,
   for example `{"temperature": "stale"}`. Values are `stale`, `unavailable` and
   `no_main_sensor`. Battery and light at night never appear.
+- `stress_problems`: the other readings whose problem sensor is on, by reading, for example
+  `{"temperature": "too_cold"}`. Values are `too_cold`, `too_hot`, `too_dry`, `too_humid`,
+  `low_light`, `low_conductivity`, `high_conductivity`, `high_co2`, `battery_low`, and `stress`
+  for a problem without a direction. It lists a reading also while its problem sensor is
+  disabled, so the dashboard card shows the same status as the panel.
 - `photo_id`: the ID of the plant's photo, or `null`.
 - `reason`: why the sensor has its state. It's the problem while on, for example `cold_stress`,
   `dry_stress` or `low_light`. While off it's `temperature_ok`, `enough_light`, `nighttime` or
