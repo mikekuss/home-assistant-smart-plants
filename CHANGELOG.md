@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- *Low light* turns on, or becomes unavailable, as soon as a bright reading is more than two
+  hours old, even when the light sensor doesn't report again. Before, it could stay off for
+  hours on an old bright reading.
+- A light sensor with a **Not updating after** window of 10 hours or more that stops reporting
+  is no longer hidden from 08:00 on the morning after a silent day, so it shows as not reporting
+  as soon as its window has passed. Before, the morning exemption covered the whole day, every
+  day, so the plant could stay *Healthy* for days.
+  Shorter windows behave as before.
+
+## [0.18.0] - 2026-11-12
+
 ### Added
 
 - Retire a plant that died or that you gave away: **⋮ > Retire plant…** in the plant's top card,
@@ -24,6 +37,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   menu to a **⋮** button in the plant's top card, next to **Watered** and **Log care**. The top
   bar's **⋮** menu on a plant page now has **Add plant**, **Notifications**, **Integration
   options** and **Documentation**, like on the overview.
+- Storage moves to a new format that can hold retired plants. Existing data is migrated
+  automatically on the first start, and earlier versions cannot read the migrated data. To roll
+  back, restore `.storage/smart_plants.inventory.backup`.
 
 ### Fixed
 
@@ -692,7 +708,8 @@ First public release.
 - English and German translations for the integration's entities, setup, and repairs. The
   sidebar panel is English-only.
 
-[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.17.0...HEAD
+[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.18.0...HEAD
+[0.18.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.17.0...0.18.0
 [0.17.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.16.0...0.17.0
 [0.16.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.15.0...0.16.0
 [0.15.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.14.0...0.15.0
