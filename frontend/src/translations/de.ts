@@ -1160,7 +1160,7 @@ export const de: Catalog = {
   "care_plan.look_ahead_24": "Nächste 24 Stunden",
   "care_plan.look_ahead_48": "Nächste 2 Tage",
   "care_plan.look_ahead_72": "Nächste 3 Tage",
-  "care_plan.look_ahead_hint": "Der Tiefst- oder Höchstwert der Vorhersage gilt für diese Zeit ab jetzt. Kürzere Zeiträume sind verlässlicher. Die Vorhersage wird alle 30 Minuten aktualisiert.",
+  "care_plan.look_ahead_hint": "Der Tiefst- oder Höchstwert der Vorhersage gilt für diese Zeit ab jetzt. Kürzere Zeiträume sind verlässlicher. Die Vorhersage wird im Aktualisierungsintervall aus den Integrationsoptionen erneut abgerufen (standardmäßig 30 Minuten) und wenn sich die Wetter-Entität ändert.",
   "care_plan.more_options_forecast": "Vorausschau, wieder fällig",
   "overview.tile_care": "Pflege fällig",
   "card.care_due": "Pflege: {tasks}",

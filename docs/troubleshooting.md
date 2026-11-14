@@ -44,6 +44,12 @@ Your user isn't an administrator. Sign in as an administrator, or use the
 Someone saved the same plant in another tab or device. The panel keeps your edits. Check the
 latest values and save again.
 
+### "This task was changed somewhere else while you edited it"
+
+Someone changed the same field of the care task in another tab or device, or an action did. The
+editor keeps your value for the fields it names and shows the other change in every field you
+didn't touch. **Save** again to keep your value; fields you didn't touch keep the other change.
+
 ### A photo is rejected
 
 Photos must be JPEG, PNG or WebP, up to 40 MiB and 64 megapixels, and the content must match

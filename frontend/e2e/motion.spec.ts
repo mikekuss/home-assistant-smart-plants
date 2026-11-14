@@ -107,6 +107,21 @@ test("the history card keeps its height while a chart loads", async ({ page }, i
   await expect(page.locator(".history-plot")).toHaveCSS("opacity", "1");
 });
 
+// Fonts differ between systems and wrap the legend and the drying rate
+// differently; the placeholder wraps the same text, so it fits in any of them.
+for (const spacing of ["-0.06em", "0.08em"]) {
+  test(`the history card keeps its height with ${spacing} letter spacing`, async ({ page }) => {
+    await page.goto(`${url}?seed&history&hold=recorder/statistics_during_period`);
+    await page.addStyleTag({ content: `smart-plants-panel { letter-spacing: ${spacing}; }` });
+    await page.getByRole("button", { name: "Office Aloe", exact: true }).click();
+    await expect(page.locator(".history-skeleton")).toBeVisible();
+    const loading = await height(page, ".history-card");
+    await release(page, "recorder/statistics_during_period");
+    await expect(page.locator(".history-card sp-history-chart")).toBeVisible();
+    expect(Math.abs(await height(page, ".history-card") - loading)).toBeLessThanOrEqual(8);
+  });
+}
+
 test("a dashboard card holds its place until its content is loaded", async ({ page }) => {
   let resume: () => void = () => {};
   const loaded = new Promise<void>(resolve => { resume = resolve; });

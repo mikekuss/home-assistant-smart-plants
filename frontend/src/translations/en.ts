@@ -1159,7 +1159,7 @@ export const en = {
   "care_plan.look_ahead_24": "Next 24 hours",
   "care_plan.look_ahead_48": "Next 2 days",
   "care_plan.look_ahead_72": "Next 3 days",
-  "care_plan.look_ahead_hint": "The forecast low or high is taken over this time from now. Shorter times are more reliable. The forecast is refreshed every 30 minutes.",
+  "care_plan.look_ahead_hint": "The forecast low or high is taken over this time from now. Shorter times are more reliable. The forecast is fetched again at the forecast refresh interval from the integration options (30 minutes by default) and when the weather entity changes.",
   "care_plan.more_options_forecast": "look ahead, due again",
   "overview.tile_care": "Care due",
   "card.care_due": "Care: {tasks}",

@@ -589,6 +589,20 @@ export function mergeTaskChanges(baseline: CareTask, latest: CareTask, input: Ca
   return { changes, overlaps };
 }
 
+// The draft after a conflict was shown: fields the person did not change since
+// `baseline` take the values of `latest`, so the form shows the change made
+// elsewhere and saving again against `latest` sends only the person's edits.
+export function rebaseTaskDraft(draft: TaskDraft, baseline: CareTask, latest: CareTask, input: CareTaskInput): TaskDraft {
+  const mine = taskChanges(baseline, input);
+  const fresh = draftFromTask(latest);
+  const next = { ...draft };
+  if (!("name" in mine)) next.name = fresh.name;
+  if (!("instructions" in mine)) next.instructions = fresh.instructions;
+  if (!("baseline_done_on" in mine)) next.lastDone = fresh.lastDone;
+  if (!("schedule" in mine)) Object.assign(next, Object.fromEntries(Object.keys(DEFAULT_FIELDS).map(key => [key, fresh[key as keyof ScheduleFields]])));
+  return next;
+}
+
 // Live read-back of the draft's schedule for the editor's summary line.
 export function draftSummary(l: Localizer, draft: TaskDraft, restPeriod: RestPeriod | null, states?: Record<string, HAState>): string {
   if (draft.mode === "reading") return readingSummary(l, draft, states);
@@ -687,6 +701,10 @@ export interface RestDraft {
   endMonth: number | null;
   // Repeating tasks that wait during the rest period.
   off: ReadonlySet<string>;
+  // The repeating tasks that waited during rest when the editor opened. Saving
+  // changes only the tasks whose setting differs from it, so a task changed or
+  // added elsewhere meanwhile keeps its own setting.
+  stored: ReadonlySet<string>;
 }
 
 // A new rest period pauses fertilizing by default; an existing one shows the
@@ -694,7 +712,8 @@ export interface RestDraft {
 export function restDraft(rest: RestPeriod | null, tasks: readonly CareTask[]): RestDraft {
   const repeating = tasks.filter(task => task.schedule.kind === "interval");
   const off = repeating.filter(task => task.schedule.kind === "interval" && (task.schedule.growing_season_only || (!rest && task.type === "fertilize")));
-  return { startMonth: rest?.start_month ?? null, endMonth: rest?.end_month ?? null, off: new Set(off.map(task => task.id)) };
+  const stored = repeating.filter(task => task.schedule.kind === "interval" && task.schedule.growing_season_only);
+  return { startMonth: rest?.start_month ?? null, endMonth: rest?.end_month ?? null, off: new Set(off.map(task => task.id)), stored: new Set(stored.map(task => task.id)) };
 }
 
 export function validateRest(draft: RestDraft): { rest: RestPeriod; error: null } | { rest: null; error: MessageKey } {
@@ -703,8 +722,13 @@ export function validateRest(draft: RestDraft): { rest: RestPeriod; error: null 
   return { rest: { start_month: draft.startMonth, end_month: draft.endMonth }, error: null };
 }
 
-// Repeating tasks whose "off during rest" setting the draft changes.
-export function restTaskChanges(tasks: readonly CareTask[], off: ReadonlySet<string>): { task: CareTask; schedule: IntervalSchedule }[] {
-  return tasks.flatMap(task => task.schedule.kind === "interval" && task.schedule.growing_season_only !== off.has(task.id)
-    ? [{ task, schedule: { ...task.schedule, growing_season_only: off.has(task.id) } }] : []);
+// Repeating tasks whose "off during rest" setting the person changed in the
+// draft, applied to `tasks` as they are now: the rest of each schedule comes
+// from the current task, and a task already set that way needs no write.
+export function restTaskChanges(tasks: readonly CareTask[], draft: Pick<RestDraft, "off" | "stored">): { task: CareTask; schedule: IntervalSchedule }[] {
+  return tasks.flatMap(task => {
+    const off = draft.off.has(task.id);
+    if (off === draft.stored.has(task.id) || task.schedule.kind !== "interval" || task.schedule.growing_season_only === off) return [];
+    return [{ task, schedule: { ...task.schedule, growing_season_only: off } }];
+  });
 }

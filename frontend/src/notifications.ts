@@ -204,11 +204,12 @@ export function coverageText(l: Localizer, deviceIds: string[] | null, plants: r
 
 // Reads every automation's config, a few at a time, and keeps the ones made here.
 // An automation that can't be read (removed meanwhile, YAML errors) is skipped.
-export async function findNotifications(hass: HomeAssistantLike, entityIds: string[], concurrency = 8): Promise<FoundNotification[]> {
+// Once `signal` is aborted no further config is read; reads already sent finish.
+export async function findNotifications(hass: HomeAssistantLike, entityIds: string[], concurrency = 8, signal?: AbortSignal): Promise<FoundNotification[]> {
   const found: (FoundNotification | null)[] = new Array<FoundNotification | null>(entityIds.length).fill(null);
   let next = 0;
   const worker = async () => {
-    while (next < entityIds.length) {
+    while (!signal?.aborted && next < entityIds.length) {
       const index = next++; const entityId = entityIds[index]!;
       try {
         const result = await hass.connection.sendMessagePromise<{ config?: unknown }>({ type: "automation/config", entity_id: entityId });

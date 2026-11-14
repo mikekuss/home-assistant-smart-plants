@@ -8,6 +8,7 @@ import type { PlantOverview, RoleReading } from "../overview-model.js";
 import { ROLE_META, formatRange, formatValue, readingLabel, relativeTime } from "../status.js";
 import type { ReadingRole } from "../status.js";
 import type { CareEvent, HAState } from "../types.js";
+import { chartRowStyles, shownGroups } from "../components/sp-history-chart.js";
 import { HISTORY_RANGES, RANGE_SPECS, chartBand, dryingEstimate, dryingText, historySummary, withLiveValue } from "../history-model.js";
 import type { HistoryPoint, HistoryRange } from "../history-model.js";
 
@@ -196,14 +197,28 @@ export function renderHistoryCard(l: Localizer, card: HistoryCard) {
       </div>
       ${card.status === "error" ? html`<div class="row"><span class="error-text" role="alert">${l.t("history.error")}</span><button type="button" class="btn text sm" @click=${card.onRetry}>${l.t("history.retry")}</button></div>`
         : message ? html`<p class="muted history-message" role="status">${message}</p>`
-        : card.status === "loading" && !stale ? html`<div class="history-skeleton" aria-busy="true"><p class="sr-only" role="status">${l.t("history.loading")}</p>
-            <span class="sk sk-plot" aria-hidden="true"></span><span class="sk line sk-legend" aria-hidden="true"></span></div>
-          ${role === "moisture" ? html`<div class="history-skeleton-rate" aria-hidden="true"><span class="sk line"></span></div>` : nothing}`
+        : card.status === "loading" && !stale ? renderHistorySkeleton(l, card, role, markerGroups, markers, target, band.min)
         : html`<div class="history-plot ${stale ? "stale" : ""}" aria-busy=${stale ? "true" : "false"}>${stale ? html`<p class="sr-only" role="status">${l.t("history.loading")}</p>` : nothing}<sp-history-chart .points=${points} .start=${card.now - spec.spanMs} .end=${card.now} .periodMs=${spec.periodMs} .unit=${unit} .band=${band} .markers=${markers} .markerGroups=${markerGroups}
             .summary=${historySummary(l, readingLabel(l, role), range, points, unit)} .bandLabel=${target ? l.t("history.legend_target", { range: target }) : ""}
             .actions=${stale ? [] : actions} @point-action=${(e: CustomEvent<{ t: number; key: string }>) => card.onLogCare?.(e.detail.key === "watering" ? "watering" : null, e.detail.t)} .l=${l}></sp-history-chart></div>`}
       ${drying ? html`<p class="small history-rate"><strong>${drying.rate}</strong>${drying.forecast ? html` <span class="muted">${drying.forecast}</span>` : nothing}</p>` : nothing}
     </div></section>`;
+}
+
+// The chart's place while it loads. The rows below the plot hold the same
+// text the chart will show, unseen under the placeholder, so the card wraps
+// them alike in any font and does not move when the chart arrives. The
+// spread is assumed to show, as it does for most sensors, and soil moisture
+// reserves a drying rate sentence.
+function renderHistorySkeleton(l: Localizer, card: HistoryCard, role: ReadingRole, groups: readonly { key: string; label: string; color: string }[], markers: readonly { t: number; group: string }[], target: string, min: number | null) {
+  const spec = RANGE_SPECS[card.range];
+  const legend = [...(target ? [{ label: l.t("history.legend_target", { range: target }), key: "key" }] : []), { label: l.t("history.legend_spread"), key: "key" },
+    ...shownGroups(groups, markers, card.now - spec.spanMs, card.now).map(group => ({ label: group.label, key: "key marker" }))];
+  const drying = role === "moisture" ? dryingText(l, { ratePerDay: 2.5, sinceWatering: card.lastWatered !== null, daysToMin: 7 }, min) : null;
+  return html`<div class="history-skeleton" aria-busy="true"><p class="sr-only" role="status">${l.t("history.loading")}</p>
+      <span class="sk sk-plot" aria-hidden="true"></span><div class="readout-row" aria-hidden="true"></div>
+      <div class="legend sk-reserve" aria-hidden="true">${legend.map(item => html`<span><i class=${item.key}></i>${item.label}</span>`)}</div></div>
+    ${drying ? html`<p class="small history-rate history-skeleton-rate sk-reserve" aria-hidden="true"><strong>${drying.rate}</strong>${drying.forecast ? html` <span class="muted">${drying.forecast}</span>` : nothing}</p>` : nothing}`;
 }
 
 // "6 h", "30 min" or "90 s" for the not-updating window.
@@ -417,13 +432,17 @@ export const plantStyles = css`
   .pd .seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--sp-primary) 14%, transparent); color: color-mix(in srgb, var(--sp-primary) 60%, var(--sp-text)); font-weight: 500; }
   .pd .seg button:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: -2px; }
   .history-message { min-height: 120px; display: grid; place-items: center; text-align: center; }
-  /* The placeholder takes the chart's height: the plot, its readout row and one legend line. */
-  .history-skeleton { display: flex; flex-direction: column; }
+  /* The placeholder takes the chart's height: the plot, its readout row and the legend. */
+  ${chartRowStyles}
   .history-skeleton .sk-plot { height: 200px; border-radius: 4px; }
-  .history-skeleton .sk-legend { width: 60%; margin: 35px 0 5px; }
-  /* Soil moisture adds the drying rate below the chart. */
-  .history-skeleton-rate { height: 39px; padding-top: 4px; box-sizing: border-box; }
-  .history-skeleton-rate .sk { width: 50%; }
+  /* Text that only holds its place: unseen, with a pulsing bar over each line. */
+  .sk-reserve { position: relative; }
+  .sk-reserve > * { visibility: hidden; }
+  .sk-reserve::after { content: ""; position: absolute; inset: 3px 25% 3px 0; border-radius: 6px;
+    background: color-mix(in srgb, var(--primary-text-color, #212121) 8%, transparent);
+    background: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--primary-text-color, #212121) 8%, transparent) 0 calc(1lh - 8px), transparent calc(1lh - 8px) 1lh);
+    animation: sp-pulse 1.4s ease-in-out infinite alternate; }
+  @media (prefers-reduced-motion: reduce) { .sk-reserve::after { animation: none; } }
   .care-skeleton .sk-ic { width: 40px; height: 40px; }
   .care-skeleton .li-main { gap: 6px; }
   .care-skeleton .sk-title { width: 45%; height: 14px; }
@@ -438,9 +457,6 @@ export const plantStyles = css`
   .alert-title { font-weight: 500; }
 
   @container plant (max-width: 700px) {
-    /* The legend and the drying rate wrap to more lines on narrow pages. */
-    .history-skeleton .sk-legend { margin-bottom: 25px; }
-    .history-skeleton-rate { height: 78px; }
     .hero { grid-template-columns: auto minmax(0, 1fr); gap: 14px; padding: 14px; }
     .hero-name { font-size: 21px; }
     .hero-actions { grid-column: 1 / -1; }
