@@ -63,7 +63,7 @@ from .entity import (
     SmartPlantsEntity,
     async_setup_platform_lifecycle,
 )
-from .plant_status import INPUT_ROLE_ORDER, input_problems
+from .plant_status import STRESS_ROLE_ORDER, input_problems, stress_problems
 from .report import collect_plants, select_plants
 from .roles import EntityRole, RoleDefinition, entity_factories
 
@@ -232,7 +232,7 @@ class _SensorStaleBinary(_MoistureBinaryBase):
     def __init__(self, manager: SmartPlantsManager, plant_id: str) -> None:
         super().__init__(manager, plant_id, ROLE_SENSOR_STALE)
         self._unsub_inputs: list[Callable[[], None]] = []
-        self._written_input_problems: dict[str, str] | None = None
+        self._written_problems: tuple[dict[str, str], dict[str, str]] | None = None
 
     @property
     def is_on(self) -> bool | None:
@@ -245,7 +245,7 @@ class _SensorStaleBinary(_MoistureBinaryBase):
         super()._attach_controller_listener()
         if self._unsub_inputs:
             return
-        for role in INPUT_ROLE_ORDER:
+        for role in STRESS_ROLE_ORDER:
             controller = self._manager.get_role_controller(self._plant_id, role)
             if controller is not None:
                 self._unsub_inputs.append(controller.add_listener(self._on_input))
@@ -258,16 +258,20 @@ class _SensorStaleBinary(_MoistureBinaryBase):
 
     def _on_input(self) -> None:
         # Other roles update often; write only when their problems change.
-        if self._input_problems() != self._written_input_problems:
+        if self._problems() != self._written_problems:
             self.async_write_ha_state()
 
-    def _input_problems(self) -> dict[str, str]:
+    def _problems(self) -> tuple[dict[str, str], dict[str, str]]:
+        """Return the input problems and the stress problems of the other roles."""
         evaluations = {}
-        for role in INPUT_ROLE_ORDER:
+        for role in STRESS_ROLE_ORDER:
             controller = self._manager.get_role_controller(self._plant_id, role)
             if controller is not None:
                 evaluations[role] = controller.current_evaluation
-        return {problem.role: problem.kind for problem in input_problems(evaluations)}
+        return (
+            {problem.role: problem.kind for problem in input_problems(evaluations)},
+            {problem.role: problem.kind for problem in stress_problems(evaluations)},
+        )
 
     def _alert_attributes(self) -> dict[str, Any]:
         # How many moisture sensors are assigned. This sensor stays available
@@ -276,16 +280,21 @@ class _SensorStaleBinary(_MoistureBinaryBase):
         # The id of the plant photo, or None without one, so a dashboard card
         # only requests a photo that exists. A new photo gets a new id, which
         # the card also uses to keep the image in the browser cache.
-        # The other assigned sensors that give no usable value, by role, as
-        # the plant status counts them, so the card shows the same status.
+        # The other assigned sensors that give no usable value, and the other
+        # readings whose problem sensor is on, by role, as the plant status
+        # counts them. The card shows the same status from these even when a
+        # problem sensor is disabled. They name roles and problem kinds only,
+        # never the assigned sensors.
         plant = self._manager.snapshot.plants.get(self._plant_id)
         if plant is None:
             return {}
-        self._written_input_problems = self._input_problems()
+        self._written_problems = self._problems()
+        inputs, stresses = self._written_problems
         return {
             "sources": len(plant.moisture.sources),
             "photo_id": None if plant.image is None else plant.image.id,
-            "input_problems": self._written_input_problems,
+            "input_problems": inputs,
+            "stress_problems": stresses,
         }
 
 

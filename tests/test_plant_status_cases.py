@@ -32,7 +32,16 @@ from custom_components.smart_plants.binary_sensor import (
 )
 from custom_components.smart_plants.moisture_evaluator import MoistureEvaluation
 from custom_components.smart_plants.plant_status import evaluate_plant_status
-from custom_components.smart_plants.sensor import _MoistureSensor
+from custom_components.smart_plants.sensor import (
+    _BatterySensor,
+    _Co2Sensor,
+    _ConductivitySensor,
+    _HumiditySensor,
+    _IlluminanceSensor,
+    _MoistureSensor,
+    _SoilTemperatureSensor,
+    _TemperatureSensor,
+)
 
 _CASES = json.loads(
     (Path(__file__).parent / "fixtures" / "plant_status_cases.json").read_text(
@@ -62,6 +71,18 @@ _STRESS: dict[str, tuple[str, str, type]] = {
     ),
     "co2": ("co2_stress", "co2_stress", _Co2StressBinary),
     "battery": ("low_battery", "low_battery", _LowBatteryBinary),
+}
+
+
+# Role -> the reading sensor.
+_READING_SENSOR: dict[str, type] = {
+    "temperature": _TemperatureSensor,
+    "humidity": _HumiditySensor,
+    "illuminance": _IlluminanceSensor,
+    "conductivity": _ConductivitySensor,
+    "soil_temperature": _SoilTemperatureSensor,
+    "co2": _Co2Sensor,
+    "battery": _BatterySensor,
 }
 
 
@@ -157,7 +178,13 @@ def _binary_state(entity: Any) -> str:
     return "on" if entity.is_on else "off"
 
 
+def _sensor_state(entity: Any) -> str:
+    return str(entity.native_value) if entity.available else "unavailable"
+
+
 def _entity_states(manager: Any, case: dict[str, Any]) -> dict[str, Any]:
+    # A disabled entity has no state, so the card reads nothing for it.
+    disabled = set(case.get("disabled_entities", ()))
     moisture = _MoistureSensor(manager, _PLANT_ID)
     binaries = {
         key: cls(manager, _PLANT_ID)
@@ -167,11 +194,21 @@ def _entity_states(manager: Any, case: dict[str, Any]) -> dict[str, Any]:
             ("sensor_stale", _SensorStaleBinary),
         )
     }
-    stress = {role: _STRESS[role][2](manager, _PLANT_ID) for role in case["stress"]}
-    moisture_state = str(moisture.native_value) if moisture.available else "unavailable"
+    stress = {
+        role: entity
+        for role in case["stress"]
+        if (entity := _STRESS[role][2](manager, _PLANT_ID)).translation_key
+        not in disabled
+    }
+    readings = {
+        role: _READING_SENSOR[role](manager, _PLANT_ID) for role in case["stress"]
+    }
     states: dict[str, Any] = {
-        "moisture": moisture_state,
-        **{key: _binary_state(entity) for key, entity in binaries.items()},
+        "moisture": _sensor_state(moisture),
+        **{
+            key: None if key in disabled else _binary_state(entity)
+            for key, entity in binaries.items()
+        },
         "stress": {
             role: {
                 "state": _binary_state(entity),
@@ -185,12 +222,23 @@ def _entity_states(manager: Any, case: dict[str, Any]) -> dict[str, Any]:
         },
     }
     stale = binaries["sensor_stale"]
-    attributes = stale.extra_state_attributes if stale.available else {}
+    attributes = (
+        stale.extra_state_attributes
+        if stale.available and "sensor_stale" not in disabled
+        else {}
+    )
     states["sources"] = attributes.get("sources")
     states["input_problems"] = attributes.get("input_problems", {})
+    states["stress_problems"] = attributes.get("stress_problems")
+    states["readings"] = {
+        role: _sensor_state(entity) for role, entity in readings.items()
+    }
     every = [states["moisture"], *(states[key] for key in binaries)]
     every += [item["state"] for item in states["stress"].values()]
-    states["allUnavailable"] = all(state == "unavailable" for state in every)
+    every += list(states["readings"].values())
+    states["allUnavailable"] = all(
+        state == "unavailable" for state in every if state is not None
+    )
     return states
 
 
@@ -209,12 +257,23 @@ def test_entities_show_fixture_states(case: dict[str, Any]) -> None:
     assert _entity_states(_manager(case, evaluations), case) == case["entities"]
 
 
-def test_card_differs_only_where_no_main_sensor_is_chosen() -> None:
+def test_card_differs_only_where_the_entities_cannot_tell() -> None:
     # The entities don't say that several moisture sensors wait for a main
     # sensor; the card reports them as not reporting, with the same status.
-    # Other roles' problems reach the card through ``input_problems``.
-    differences = [case for case in _CASES if "card" in case]
-    assert [case["problems"] for case in differences] == [
-        [{"role": "moisture", "kind": "no_main_sensor"}]
+    # Other roles' problems reach the card through ``input_problems`` and
+    # ``stress_problems``. Only with both the stale sensor and a reading's
+    # problem sensor disabled can the card not tell that reading's verdict;
+    # it then reports the reading as not reporting, never as healthy.
+    differences = {case["name"]: case for case in _CASES if "card" in case}
+    assert list(differences) == [
+        "no main moisture sensor chosen",
+        "cold reading with its stress sensor and the stale sensor disabled",
     ]
-    assert differences[0]["card"]["status"] == differences[0]["status"]
+    main = differences["no main moisture sensor chosen"]
+    assert main["problems"] == [{"role": "moisture", "kind": "no_main_sensor"}]
+    assert main["card"]["status"] == main["status"]
+    unknown = differences[
+        "cold reading with its stress sensor and the stale sensor disabled"
+    ]
+    assert unknown["card"]["status"] == "stale"
+    assert {"temperature_stress", "sensor_stale"} <= set(unknown["disabled_entities"])

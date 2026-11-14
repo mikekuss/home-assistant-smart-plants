@@ -193,7 +193,9 @@ describe("card", () => {
   it("shows no sensors with an Assign link for admins only", async () => {
     const empty = { "sensor.office_aloe_soil_moisture": unavailable("sensor.office_aloe_soil_moisture"), "binary_sensor.office_aloe_needs_water": unavailable("binary_sensor.office_aloe_needs_water"),
       "binary_sensor.office_aloe_sensor_stale": { entity_id: "binary_sensor.office_aloe_sensor_stale", state: "off", attributes: { sources: 0 } },
-      "sensor.office_aloe_temperature": null, "sensor.office_aloe_illuminance": null, "sensor.office_aloe_battery": null };
+      "sensor.office_aloe_temperature": null, "sensor.office_aloe_illuminance": null, "sensor.office_aloe_battery": null,
+      // Problem sensors are unavailable without a reading.
+      "binary_sensor.office_aloe_temperature_stress": null, "binary_sensor.office_aloe_low_light": null, "binary_sensor.office_aloe_low_battery": null };
     const user = await mount(cardHass(empty));
     expect(deepText(user)).toContain("No sensors assigned yet");
     expect($(user, ".empty-box button")).toBeNull();

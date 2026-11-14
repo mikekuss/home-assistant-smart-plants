@@ -3,7 +3,7 @@ import fixture from "../../../tests/fixtures/plant_status_cases.json";
 import { deriveStatus, plantDevices, plantEntities, plantView, statusInput } from "./plant-state.js";
 import { cardReason } from "../overview-model.js";
 import { createLocalizer } from "../localize.js";
-import type { PlantView, StatusInput } from "./plant-state.js";
+import type { CardState, PlantView, StatusInput } from "./plant-state.js";
 import { DEVICE, PLANT_ID, cardHass } from "./card-test-helpers.js";
 
 interface Case { name: string; entities: StatusInput; status: string; problems: unknown[]; card?: { status: string; problems: unknown[] } }
@@ -79,7 +79,8 @@ describe("plant view", () => {
     expect(plant.careDue).toBe(true);
     expect(plant.overview.snoozed_until).toBe("2026-11-01T23:59:59+00:00");
     expect(plant.lastWatered).toBeUndefined();
-    expect(plant.overview.status).toBe("no_sensors");
+    // Without moisture sensors the plant is judged on its other readings.
+    expect(plant.overview).toMatchObject({ status: "healthy", problems: [] });
     expect(plant.overview.roles.moisture).toBeUndefined();
     expect(plant.moreInfoEntity).toBe("sensor.office_aloe_temperature");
   });
@@ -126,6 +127,74 @@ describe("open moisture verdict", () => {
   it("still reports needs water when Too wet is missing", () => {
     const hass = cardHass({ "binary_sensor.office_aloe_too_wet": null });
     expect(view(hass).overview).toMatchObject({ status: "needs_water", problems: [{ role: "moisture", kind: "needs_water" }] });
+  });
+});
+
+describe("a reading whose problem sensor is disabled", () => {
+  // The soil is fine, one moisture sensor, and the temperature reads 4 °C.
+  const cold = (staleAttributes: Record<string, unknown> | null) => {
+    const hass = cardHass({
+      "sensor.office_aloe_soil_moisture": { entity_id: "sensor.office_aloe_soil_moisture", state: "35.0", attributes: { unit_of_measurement: "%", min_threshold_percent: 20, target_threshold_percent: 40, max_threshold_percent: 60 } },
+      "binary_sensor.office_aloe_needs_water": { entity_id: "binary_sensor.office_aloe_needs_water", state: "off", attributes: {} },
+      "sensor.office_aloe_temperature": { entity_id: "sensor.office_aloe_temperature", state: "4.0", attributes: { unit_of_measurement: "°C" } },
+      "binary_sensor.office_aloe_temperature_stress": null,
+      "binary_sensor.office_aloe_sensor_stale": staleAttributes && { entity_id: "binary_sensor.office_aloe_sensor_stale", state: "off", attributes: staleAttributes },
+    });
+    // A disabled entity has neither a state nor a display registry entry.
+    delete hass.entities!["binary_sensor.office_aloe_temperature_stress"];
+    if (!staleAttributes) delete hass.entities!["binary_sensor.office_aloe_sensor_stale"];
+    return view(hass);
+  };
+  it("shows the problem the stale sensor reports", () => {
+    const plant = cold({ sources: 1, input_problems: {}, stress_problems: { temperature: "too_cold" } });
+    expect(plant.overview).toMatchObject({ status: "problem", problems: [{ role: "temperature", kind: "too_cold" }] });
+    expect(plant.overview.roles.temperature).toMatchObject({ value: 4, state: "low" });
+  });
+  it("is healthy when the stale sensor reports no problem", () => {
+    expect(cold({ sources: 1, input_problems: {}, stress_problems: {} }).overview).toMatchObject({ status: "healthy", problems: [] });
+  });
+  it.each([
+    ["an older backend", { sources: 1, input_problems: {} }],
+    ["a malformed attribute", { sources: 1, input_problems: {}, stress_problems: ["temperature"] }],
+    ["a disabled stale sensor", null],
+  ] as const)("is not healthy with %s", (_name, attributes) => {
+    const plant = cold(attributes);
+    expect(plant.overview.status).toBe("stale");
+    expect(plant.overview.problems).toEqual([{ role: "temperature", kind: "unavailable" }]);
+  });
+  it("trusts the stale sensor over a problem sensor that hasn't caught up", () => {
+    const hass = cardHass({
+      "binary_sensor.office_aloe_needs_water": { entity_id: "binary_sensor.office_aloe_needs_water", state: "off", attributes: {} },
+      "binary_sensor.office_aloe_sensor_stale": { entity_id: "binary_sensor.office_aloe_sensor_stale", state: "off", attributes: { sources: 1, input_problems: {}, stress_problems: { battery: "battery_low" } } },
+    });
+    expect(view(hass).overview).toMatchObject({ status: "problem", problems: [{ role: "battery", kind: "battery_low" }] });
+  });
+});
+
+describe("a plant without a moisture sensor", () => {
+  const noMoisture = (overrides: Record<string, CardState | null> = {}) => cardHass({
+    "sensor.office_aloe_soil_moisture": { entity_id: "sensor.office_aloe_soil_moisture", state: "unavailable", attributes: {} },
+    "binary_sensor.office_aloe_needs_water": { entity_id: "binary_sensor.office_aloe_needs_water", state: "unavailable", attributes: {} },
+    "binary_sensor.office_aloe_too_wet": { entity_id: "binary_sensor.office_aloe_too_wet", state: "unavailable", attributes: {} },
+    "binary_sensor.office_aloe_sensor_stale": { entity_id: "binary_sensor.office_aloe_sensor_stale", state: "off", attributes: { sources: 0, input_problems: {}, stress_problems: {} } },
+    ...overrides,
+  });
+  it("is judged on its other readings", () => {
+    const plant = view(noMoisture());
+    expect(plant.overview).toMatchObject({ status: "healthy", problems: [] });
+    expect(plant.overview.roles.moisture).toBeUndefined();
+    expect(Object.keys(plant.overview.roles)).toEqual(["temperature", "illuminance", "battery"]);
+    expect(plant.moreInfoEntity).toBe("sensor.office_aloe_temperature");
+  });
+  it("shows a problem of another reading", () => {
+    const plant = view(noMoisture({ "binary_sensor.office_aloe_sensor_stale": { entity_id: "binary_sensor.office_aloe_sensor_stale", state: "off", attributes: { sources: 0, input_problems: {}, stress_problems: { illuminance: "low_light" } } } }));
+    expect(plant.overview).toMatchObject({ status: "problem", problems: [{ role: "illuminance", kind: "low_light" }] });
+  });
+  it("has no sensors only when no reading has any", () => {
+    const hass = noMoisture();
+    for (const role of ["temperature", "illuminance", "battery"]) hass.states[`sensor.office_aloe_${role}`] = { entity_id: `sensor.office_aloe_${role}`, state: "unavailable", attributes: {} };
+    for (const alert of ["temperature_stress", "low_light", "low_battery"]) hass.states[`binary_sensor.office_aloe_${alert}`] = { entity_id: `binary_sensor.office_aloe_${alert}`, state: "unavailable", attributes: {} };
+    expect(view(hass).overview).toMatchObject({ status: "no_sensors", problems: [{ role: "moisture", kind: "no_sensors" }] });
   });
 });
 

@@ -295,10 +295,39 @@ def test_problem_outranks_stale_moisture() -> None:
     )
 
 
-def test_problem_outranks_missing_moisture_sources() -> None:
+def test_problem_without_moisture_sources() -> None:
     assert _status(
         moisture=_no_moisture_sources(), temperature=_temperature("hot_stress")
-    ) == ("problem", [("temperature", "too_hot"), ("moisture", "no_sensors")])
+    ) == ("problem", [("temperature", "too_hot")])
+
+
+def test_other_sensors_without_moisture_sources_are_healthy() -> None:
+    # Soil moisture is optional: a plant with only a temperature sensor is
+    # judged on its temperature, not reported as having no sensors.
+    assert _status(moisture=_no_moisture_sources(), temperature=_temperature()) == (
+        "healthy",
+        [],
+    )
+    assert _status(temperature=_temperature()) == ("healthy", [])
+
+
+def test_roles_without_sources_count_as_no_sensors() -> None:
+    temperature = TemperatureEvaluation(
+        computed_celsius=None,
+        sensor_stale=False,
+        computed_available=False,
+        temperature_stress=TemperatureStressEvaluation(
+            temperature_stress=False,
+            available=False,
+            confidence="none",
+            reason="temperature_unavailable",
+        ),
+        reasons=("no_sources",),
+    )
+    assert _status(moisture=_no_moisture_sources(), temperature=temperature) == (
+        "no_sensors",
+        [("moisture", "no_sensors")],
+    )
 
 
 def test_stale_moisture_with_a_usable_value() -> None:
@@ -383,7 +412,7 @@ def test_failed_secondary_inputs_follow_moisture_and_stress_problems() -> None:
     )
     assert _status(
         moisture=_no_moisture_sources(), temperature=_temperature(stale=True)
-    ) == ("stale", [("temperature", "stale"), ("moisture", "no_sensors")])
+    ) == ("stale", [("temperature", "stale")])
 
 
 def _stale_light(*, quiet_expected: bool) -> IlluminanceEvaluation:

@@ -56,6 +56,10 @@ The card works from the plant's entities, so it knows less than the panel:
   **No main sensor** or names the time of the last reading.
 - It shows **No recent data** when *Needs water* or *Too wet* is disabled, because it can't
   tell whether the soil is in range.
+- The problems of the other readings come from *Sensor stale*, so a disabled problem sensor
+  such as *Temperature stress* doesn't hide a cold reading. When *Sensor stale* is disabled
+  too, a reading whose problem sensor is disabled or unavailable shows **No recent data** with
+  "sensor is not reporting", because the card can't tell whether the reading is in range.
 - Without a current moisture reading, it shows no target band and no last watering.
 - A deleted plant shows "Plant not found". A retired plant shows its photo and name and says
   it was retired.

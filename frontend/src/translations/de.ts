@@ -571,7 +571,6 @@ export const de: Catalog = {
   "plant_status.problem": "Problem",
   "plant_status.stale": "Keine aktuellen Daten",
   "plant_status.no_sensors": "Keine Sensoren",
-  "plant_status.no_moisture": "Kein Feuchtesensor",
   "plant_status.no_main_sensor": "Kein Hauptsensor",
   "plant_status.healthy": "Gesund",
   "plant_status.paused": "Pausiert",
