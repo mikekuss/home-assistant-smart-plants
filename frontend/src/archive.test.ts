@@ -229,6 +229,21 @@ describe("the archive page", () => {
     expect(h.calls.find(c => c.type === "smart_plants/archive/restore")).toMatchObject({ plant_id: "old", expected_revision: 5, name: "Basil 2", include_sources_in_use: false });
   });
 
+  it("refuses a restore name over 200 characters before asking Home Assistant", async () => {
+    const h = archiveHarness(msg => msg.type === "smart_plants/archive/restore_check" ? { ...noConflicts, name_taken: true, suggested_name: "Basil 2" } : undefined);
+    const el = await mount(h.hass);
+    await choose(el, "archive");
+    let page = await archivePage(el);
+    page.shadowRoot!.querySelector<HTMLButtonElement>(".archive-row")!.click(); await settle(el); page = await archivePage(el);
+    button(page.shadowRoot!, "Restore").click(); await settle(page); await settle(page);
+    const input = page.shadowRoot!.querySelector<HTMLInputElement>("#restore-name")!;
+    // An emoji counts as one character; 200 of them are allowed.
+    input.value = String.fromCodePoint(0x1F331).repeat(201); input.dispatchEvent(new Event("input")); await settle(page);
+    page.shadowRoot!.querySelector<HTMLButtonElement>("dialog button.primary")!.click(); await settle(page);
+    expect(page.shadowRoot!.querySelector("dialog")!.textContent).toContain("Enter a name of up to 200 characters.");
+    expect(h.calls.some(c => c.type === "smart_plants/archive/restore")).toBe(false);
+  });
+
   it("deletes a retired plant for good after confirming", async () => {
     let deleted = false;
     const h = archiveHarness(msg => {

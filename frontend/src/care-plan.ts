@@ -7,6 +7,7 @@ import type { CareTaskSummary, PlantOverview } from "./overview-model.js";
 import { formatValue, readingLabel } from "./status.js";
 import type { ReadingRole } from "./status.js";
 import type { CareEvent, CareSchedule, CareTask, CareTaskChanges, CareTaskInput, CareTaskType, ForecastSource, HAState, IntervalSchedule, PlantRecord, ReadingSchedule, RestPeriod, YearlySchedule } from "./types.js";
+import { sliceChars, withinChars } from "./text.js";
 
 export const CARE_TASK_TYPES: readonly CareTaskType[] = ["fertilize", "prune", "repot", "pests", "winter_protection", "custom"];
 export const TASK_ICONS: Record<CareTaskType, string> = {
@@ -440,7 +441,7 @@ export function careNote(plant: PlantRecord, type: CareTaskType): string | null 
   const key = CARE_NOTE_KEYS[type];
   if (!snapshot || snapshot.provider !== "openplantbook" || !key) return null;
   const text = snapshot.care_text[key]?.trim();
-  return text ? text.slice(0, TASK_INSTRUCTIONS_MAX) : null;
+  return text ? sliceChars(text, TASK_INSTRUCTIONS_MAX) : null;
 }
 
 export interface CareSuggestion { type: CareTaskType; text: string }
@@ -538,12 +539,12 @@ export function validateDraft(draft: TaskDraft, today: string, states?: Record<s
   const errors: DraftErrors = {};
   const name = draft.name.trim();
   if (draft.type === "custom" && !name) errors.name = "care_plan.error_name_required";
-  else if (name.length > TASK_NAME_MAX) errors.name = "care_plan.error_name_length";
+  else if (!withinChars(name, TASK_NAME_MAX)) errors.name = "care_plan.error_name_length";
   const schedule = draftSchedule(draft, states);
   if (draft.mode === "reading") Object.assign(errors, readingErrors(draft, states));
   else if (!schedule) errors[draft.mode === "yearly" ? "months" : "every"] = draft.mode === "yearly" ? "care_plan.error_months" : "care_plan.error_every";
   const instructions = draft.instructions.trim();
-  if (instructions.length > TASK_INSTRUCTIONS_MAX) errors.instructions = "care_plan.error_instructions_length";
+  if (!withinChars(instructions, TASK_INSTRUCTIONS_MAX)) errors.instructions = "care_plan.error_instructions_length";
   // "Last done" only anchors date schedules.
   const lastDone = draft.mode === "reading" ? "" : draft.lastDone.trim();
   if (lastDone && (!/^\d{4}-\d\d-\d\d$/.test(lastDone) || !Number.isFinite(Date.parse(lastDone)))) errors.lastDone = "care_plan.error_last_done";

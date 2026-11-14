@@ -1,7 +1,10 @@
 // Validate untrusted wire data before it can enter reactive state. Optional role
 // editors have their own fail-closed validator; future roles remain opaque.
+import { withinChars } from "./text.js";
+
 export const object = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-const text = (v: unknown, max = 500): v is string => typeof v === "string" && v.length > 0 && v.length <= max;
+// Limits count characters (code points), as the backend does.
+const text = (v: unknown, max = 500): v is string => typeof v === "string" && v.length > 0 && withinChars(v, max);
 const nullableText = (v: unknown, max = 500) => v === null || text(v, max);
 const integer = (v: unknown, min: number, max: number) => typeof v === "number" && Number.isSafeInteger(v) && v >= min && v <= max;
 const timestamp = (v: unknown) => text(v, 64) && /^\d{4}-\d\d-\d\dT/.test(v) && Number.isFinite(Date.parse(v));
@@ -98,14 +101,18 @@ function validCareTasks(v: unknown): boolean {
   return new Set(tasks.map(task => task.id)).size === tasks.length && new Set(typed).size === typed.length;
 }
 // One malformed plant must not blank the whole panel: skip it with a console
-// warning and keep the rest of the inventory.
-export function validPlantList(plants: unknown[]): unknown[] {
-  return plants.filter((plant, index) => {
+// warning and keep the rest of the inventory. `rejected` names the skipped
+// records, so the panel can tell a record it cannot read from a deleted plant.
+export function validPlantList(plants: unknown[]): { plants: unknown[]; rejected: string[] } {
+  const rejected: string[] = [];
+  const valid = plants.filter((plant, index) => {
     if (validPlant(plant)) return true;
     const id = object(plant) && typeof plant.id === "string" ? plant.id.slice(0, 200) : `#${index}`;
     console.warn(`Smart Plants: skipping malformed plant record ${id}`);
+    rejected.push(id);
     return false;
   });
+  return { plants: valid, rejected };
 }
 export function validCareEvent(v: unknown): boolean {
   if (!object(v) || v.schema_version !== 2 || !text(v.id, 36) || !["watering", "fertilizing", "pruning", "repotting", "pest_control", "note", "task"].includes(String(v.kind)) ||
@@ -279,7 +286,8 @@ export function validResponse(msg: Record<string, unknown>, v: unknown): boolean
     if (!Array.isArray(v.plants) || !v.plants.every(p => validPlant(p) && object(p))) return false;
     const ids = (v.plants as Record<string, unknown>[]).map(p => p.id);
     if (new Set(ids).size !== ids.length) return false;
-    if (command === "smart_plants/plants/restore_snoozes") return true;
+    // Older backends do not report skipped plants.
+    if (command === "smart_plants/plants/restore_snoozes") return v.skipped === undefined || (Array.isArray(v.skipped) && v.skipped.every(id => typeof id === "string" && !ids.includes(id)));
     const previous = v.previous;
     return object(previous) && Object.keys(previous).length === ids.length && ids.every(id => typeof id === "string" && id in previous) &&
       Object.values(previous).every(until => until === null || timestamp(until));

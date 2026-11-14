@@ -5,6 +5,7 @@ import type { Localizer, MessageKey } from "./localize.js";
 import { ROLE_META, compareStatus, formatValue, isPlantStatus, isReadingRole, readingLabel, relativeTime, statusLabel } from "./status.js";
 import type { PlantStatus, ReadingRole, ReadingState, TargetRange } from "./status.js";
 import type { CareTaskStatus, CareTaskType, RestPeriod } from "./types.js";
+import { withinChars } from "./text.js";
 
 export interface RoleReading {
   value: number | null;
@@ -78,7 +79,7 @@ function parseCareTask(raw: unknown): CareTaskSummary | null {
   // Backends without reading tasks omit the reading fields.
   const { reading = null, unit = null, due_since = null, due_at = null, forecast = null, forecast_until = null } = raw;
   if (typeof task_id !== "string" || !/^[0-9a-f]{32}$/.test(task_id) || !CARE_TASK_TYPES.includes(type as CareTaskType)) return null;
-  if (!(name === null ? type !== "custom" : typeof name === "string" && name.length > 0 && name.length <= 60)) return null;
+  if (!(name === null ? type !== "custom" : typeof name === "string" && name.length > 0 && withinChars(name, 60))) return null;
   // A reading task that loses its reading keeps whether it was due, so
   // `no_reading` comes with either value.
   if (!CARE_TASK_STATUSES.includes(status as CareTaskStatus) || typeof is_due !== "boolean" || (status !== "no_reading" && is_due !== (status === "due" || status === "overdue"))) return null;

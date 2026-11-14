@@ -19,7 +19,9 @@ const three = () => [plant("p1", "Aloe"), plant("p2", "Basil"), plant("p3", "Cac
 const stored = (until: unknown) => until === null ? null : new Date(String(until)).toISOString().replace(".000", "");
 
 // A backend double with the snooze_many and restore_snoozes rules: paused
-// plants are skipped, a later end is kept, and only changed plants are listed.
+// plants are skipped, a later end is kept, only changed plants are listed, and
+// an undo leaves a plant whose end changed since. tests/test_snooze_many.py
+// checks the same rules against the real backend.
 async function mount(plants: PlantRecord[], options: { language?: string; snoozeMany?: (msg: Record<string, unknown>) => unknown; restore?: (msg: Record<string, unknown>) => unknown } = {}) {
   let current = plants;
   const h = harness(plants, msg => {
@@ -40,13 +42,15 @@ async function mount(plants: PlantRecord[], options: { language?: string; snooze
     }
     if (msg.type === "smart_plants/plants/restore_snoozes") {
       const custom = options.restore?.(msg); if (custom !== undefined) return custom;
-      const snoozes = msg.snoozes as Record<string, string | null>; const changed: PlantRecord[] = [];
+      const snoozes = msg.snoozes as Record<string, string | null>; const expected = msg.expected as Record<string, string | null>;
+      const changed: PlantRecord[] = []; const skipped: string[] = [];
       current = current.map(p => {
         if (!(p.id in snoozes)) return p;
+        if (p.id in expected && stored(expected[p.id]) !== (p.snoozed_until ?? null)) { skipped.push(p.id); return p; }
         const next = { ...p, revision: p.revision + 1, snoozed_until: snoozes[p.id] ?? null };
         changed.push(next); return next;
       });
-      return { plants: changed };
+      return { plants: changed, skipped };
     }
     return undefined;
   });
@@ -154,10 +158,34 @@ describe("Snooze all plants", () => {
     expect(chips(el)).toEqual([chip("Sat, Oct 31"), chip("Sat, Oct 31"), chip("Sat, Oct 31"), chip("Tue, Dec 1")]);
     expect(toasts.at(-1)!.action!.text).toBe("Undo");
     toasts.at(-1)!.action!.action(); await settle(el);
-    expect(bulkCalls(h).at(-1)).toEqual({ type: "smart_plants/plants/restore_snoozes", snoozes: { p1: null, p2: null, p3: null } });
+    expect(bulkCalls(h).at(-1)).toEqual({ type: "smart_plants/plants/restore_snoozes", snoozes: { p1: null, p2: null, p3: null }, expected: { p1: "2026-10-31T22:59:59Z", p2: "2026-10-31T22:59:59Z", p3: "2026-10-31T22:59:59Z" } });
     expect(toasts.at(-1)!.message).toBe("Previous snoozes restored");
     expect(current().map(p => p.snoozed_until ?? null)).toEqual([null, null, null, "2026-12-01T22:59:59Z"]);
     expect(chips(el)).toEqual([null, null, null, chip("Tue, Dec 1")]);
+  });
+
+  it("keeps a snooze another session changed before Undo", async () => {
+    const { el, h, toasts, current } = await mount(three());
+    await openMenu(el);
+    radio(el, "7").click(); await settle(el);
+    dialogButton(el, "Snooze")!.click(); await settle(el);
+    const undo = toasts.at(-1)!.action!;
+    // Basil is snoozed longer elsewhere before Undo is clicked.
+    const later = "2026-12-24T22:59:59Z";
+    const changed = current().find(p => p.id === "p2")!; changed.snoozed_until = later; changed.revision++;
+    undo.action(); await settle(el);
+    expect(bulkCalls(h).at(-1)).toMatchObject({ type: "smart_plants/plants/restore_snoozes", expected: { p2: "2026-10-31T22:59:59Z" } });
+    expect(toasts.at(-1)!.message).toBe("Previous snoozes restored. 1 plant was changed since and keeps its snooze.");
+    expect(current().map(p => p.snoozed_until ?? null)).toEqual([null, later, null]);
+    expect(chips(el)).toEqual([null, null, chip("Thu, Dec 24")]);
+  });
+
+  it("says when Undo has nothing left to restore", async () => {
+    const { el, toasts } = await mount(three(), { restore: msg => ({ plants: [], skipped: Object.keys(msg.snoozes as object) }) });
+    await openMenu(el);
+    dialogButton(el, "Snooze")!.click(); await settle(el);
+    toasts.at(-1)!.action!.action(); await settle(el);
+    expect(toasts.at(-1)!.message).toBe("Nothing restored: every plant was changed since and keeps its snooze.");
   });
 
   it("resumes every snooze, including ones set per plant", async () => {
@@ -173,7 +201,7 @@ describe("Snooze all plants", () => {
     expect(current().every(p => !p.snoozed_until)).toBe(true);
     expect(chips(el)).toEqual([null, null, null]);
     toasts.at(-1)!.action!.action(); await settle(el);
-    expect(bulkCalls(h).at(-1)).toEqual({ type: "smart_plants/plants/restore_snoozes", snoozes: { p1: "2026-10-30T22:59:59Z", p2: "2026-12-01T22:59:59Z" } });
+    expect(bulkCalls(h).at(-1)).toEqual({ type: "smart_plants/plants/restore_snoozes", snoozes: { p1: "2026-10-30T22:59:59Z", p2: "2026-12-01T22:59:59Z" }, expected: { p1: null, p2: null } });
     // Snoozed plants sort after the others.
     expect(chips(el)).toEqual([null, chip("Fri, Oct 30"), chip("Tue, Dec 1")]);
   });

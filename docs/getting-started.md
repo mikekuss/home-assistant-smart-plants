@@ -152,7 +152,8 @@ real. The tiles other than **All plants** leave it out of their counts.
 
 To snooze every plant, select **⋮ > Snooze all plants…** on the overview (shown from two active
 plants). A plant snoozed until later keeps its own end. **Resume all** ends every snooze. Both
-offer **Undo**.
+offer **Undo**. Undo leaves a plant whose snooze was changed since, for example in another
+browser, and the notice says how many kept their newer snooze.
 
 The Smart Plants triggers and the plant report skip snoozed plants. When the snooze ends and
 the plant still needs water, the trigger fires once. See [Snooze alerts](automations.md#snooze-alerts)

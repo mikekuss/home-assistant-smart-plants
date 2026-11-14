@@ -66,9 +66,13 @@ Commands (all admin-only):
   longer keeps its end. Paused plants are skipped. ``plants`` and
   ``previous`` list only the plants that changed; pass ``previous`` to
   ``smart_plants/plants/restore_snoozes`` as ``snoozes`` to undo.
-* ``smart_plants/plants/restore_snoozes`` -> ``{"plants": [PlantView, ...]}``;
-  sets each plant's snooze end from ``snoozes`` (``{plant_id: until | null}``).
-  An end that has passed counts as ``null``; paused plants are skipped.
+* ``smart_plants/plants/restore_snoozes`` -> ``{"plants": [PlantView, ...],
+  "skipped": [plant_id, ...]}``; sets each plant's snooze end from ``snoozes``
+  (``{plant_id: until | null}``). An end that has passed counts as ``null``;
+  paused plants are skipped. ``expected`` (``{plant_id: until | null}``, the
+  ends ``snooze_many`` set, as its ``plants`` list them) guards an undo: a
+  plant whose end is no longer the expected one was changed since and keeps
+  it, and its id is listed in ``skipped``.
 
 Both multi-plant snooze commands save once: if one plant fails validation or
 the save fails, no plant changes.
@@ -184,6 +188,7 @@ from .manager import (
     SmartPlantsRevisionConflictError,
     SmartPlantsValidationError,
     restore_snooze_change,
+    restore_snooze_if_unchanged,
     snooze_change,
 )
 from .models import (
@@ -1136,6 +1141,7 @@ async def _handle_snooze_many(
     {
         vol.Required("type"): "smart_plants/plants/restore_snoozes",
         vol.Required("snoozes"): {_plant_id: _SNOOZE_UNTIL_SCHEMA},
+        vol.Optional("expected"): {_plant_id: _SNOOZE_UNTIL_SCHEMA},
     }
 )
 @require_admin
@@ -1143,15 +1149,31 @@ async def _handle_snooze_many(
 async def _handle_restore_snoozes(
     hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
+    expected: dict[str, str | None] = msg.get("expected", {})
+
     async def mutate(manager: SmartPlantsManager) -> dict[str, Any]:
+        skipped: list[str] = []
+
+        def change(plant_id: str, until: str | None) -> PlantChange:
+            if plant_id not in expected:
+                return restore_snooze_change(until)
+            return restore_snooze_if_unchanged(
+                until,
+                expected=expected[plant_id],
+                on_skip=lambda: skipped.append(plant_id),
+            )
+
         plants, _previous = await _async_change_snoozes(
             manager,
             {
-                plant_id: restore_snooze_change(until)
+                plant_id: change(plant_id, until)
                 for plant_id, until in msg["snoozes"].items()
             },
         )
-        return {"plants": [_plant_view(plant) for plant in plants]}
+        return {
+            "plants": [_plant_view(plant) for plant in plants],
+            "skipped": skipped,
+        }
 
     await _run_mutation(hass, connection, msg, mutate)
 

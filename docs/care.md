@@ -17,7 +17,8 @@ set the date and time (not in the future), add details and select **Record care*
 | Pest control | Pest, product, note |
 | Note | Text, required, up to 1,000 characters |
 
-Notes take up to 500 characters, other details up to 120. The **⋮** menu of an entry edits or
+Notes take up to 500 characters, other details up to 120. Every limit in Smart Plants counts
+characters, so an emoji counts as one. The **⋮** menu of an entry edits or
 deletes it. Chips at the top of **Care history** filter by type once there is more than one.
 
 A **watering** keeps *Needs water* off for 24 hours from the time of the entry, so the soil

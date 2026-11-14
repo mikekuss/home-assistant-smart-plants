@@ -1,6 +1,7 @@
 import { ENGLISH, isMessageKey } from "./localize.js";
 import type { Localizer, MessageKey } from "./localize.js";
 import type { HADevice, HAEntity, HAState, MoistureInput, MoistureRoleConfig, PlantRecord, PlantSpecies, RoleSourceConfig, RoleSourceInput, SensorSource, SpeciesSnapshot } from "./types.js";
+import { withinChars } from "./text.js";
 
 export const keys = ["min", "target", "max"] as const;
 export const builtin = { min: 15, target: 35, max: 55 };
@@ -623,5 +624,5 @@ export function roleSourceWarning(source: SensorSource, entities: HAEntity[], st
 }
 export function tags(raw: string): string[] { return [...new Set(raw.split(",").map(s => s.trim()).filter(Boolean))]; }
 export function validateTaxonomy(category: string, values: string[], l: Localizer = ENGLISH): string | null {
-  return category.length > 60 || values.length > 32 || values.some(t => t.length > 60) ? l.t("validation.taxonomy") : null;
+  return !withinChars(category, 60) || values.length > 32 || values.some(t => !withinChars(t, 60)) ? l.t("validation.taxonomy") : null;
 }

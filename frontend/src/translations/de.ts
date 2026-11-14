@@ -53,6 +53,9 @@ export const de: Catalog = {
   "error.remove_main_sensor": "{name} ist der Hauptsensor. Verwende zuerst einen anderen Sensor als Hauptsensor.",
 
   "notice.deleted_elsewhere": "Diese Pflanze wurde in einer anderen Sitzung gelöscht.",
+  "notice.unreadable_one": "{count} Pflanze kann nicht angezeigt werden, weil das Panel ihre Daten nicht lesen kann. Lade die Seite neu; wenn das nicht hilft, prüfe das Home-Assistant-Protokoll.",
+  "notice.unreadable_other": "{count} Pflanzen können nicht angezeigt werden, weil das Panel ihre Daten nicht lesen kann. Lade die Seite neu; wenn das nicht hilft, prüfe das Home-Assistant-Protokoll.",
+  "notice.unreadable_open": "Das Panel kann die Daten dieser Pflanze nicht mehr lesen. Lade die Seite neu; wenn das nicht hilft, prüfe das Home-Assistant-Protokoll.",
   "notice.area_changed_retained": "Der Home-Assistant-Bereich wurde von {from} zu {to} geändert. Deine Bereichsauswahl bleibt erhalten; prüfe sie vor dem Speichern.",
   "notice.area_changed_synced": "Der Home-Assistant-Bereich wurde von {from} zu {to} geändert. Die Bereichsauswahl zeigt jetzt den nativen Bereich.",
   "notice.related_failed": "Zugehörige Automatisierungen konnten nicht geladen werden.",
@@ -132,6 +135,7 @@ export const de: Catalog = {
   "species.manual_hint": "Speichern ersetzt die Art durch deine eigenen Angaben. Lass beide Namen leer, um die Art zu entfernen.",
   "species.save_manual": "Manuelle Art speichern",
   "species.search": "Art suchen",
+  "species.error_query_length": "Suche mit höchstens 100 Zeichen.",
   "species.no_matches": "Keine passende Art gefunden. Versuche eine andere Suche oder gib die Art manuell ein.",
 
   "snapshot.species": "Art",
@@ -897,6 +901,7 @@ export const de: Catalog = {
   "archive.restore_name": "Name",
   "archive.restore_name_taken": "Es gibt schon eine Pflanze namens {name}.",
   "archive.restore_name_required": "Gib einen Namen ein.",
+  "archive.restore_name_length": "Gib einen Namen mit höchstens 200 Zeichen ein.",
   "archive.restore_in_use": "Diese Sensoren nutzen jetzt andere Pflanzen:",
   "archive.restore_share": "Auch für diese Pflanze verwenden",
   "archive.restore_missing": "Diese Sensoren gibt es nicht mehr, sie werden weggelassen:",
@@ -1197,6 +1202,9 @@ export const de: Catalog = {
   "snooze.all_resumed_other": "Hinweise für {count} Pflanzen fortgesetzt",
   "snooze.all_unchanged": "Keine Pflanze geändert",
   "snooze.all_undone": "Vorherige Stummschaltungen wiederhergestellt",
+  "snooze.all_undone_kept_one": "Vorherige Stummschaltungen wiederhergestellt. {count} Pflanze wurde inzwischen geändert und behält ihre Stummschaltung.",
+  "snooze.all_undone_kept_other": "Vorherige Stummschaltungen wiederhergestellt. {count} Pflanzen wurden inzwischen geändert und behalten ihre Stummschaltung.",
+  "snooze.all_undo_none": "Nichts wiederhergestellt: Jede Pflanze wurde inzwischen geändert und behält ihre Stummschaltung.",
   "snooze.undo": "Rückgängig",
 
   "notifications.title": "Benachrichtigungen",
