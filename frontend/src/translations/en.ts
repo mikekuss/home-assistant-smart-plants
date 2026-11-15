@@ -970,7 +970,7 @@ export const en = {
   "care_plan.error_last_done": "Enter a valid date.",
   "care_plan.error_last_done_future": "The date can't be in the future.",
   "care_plan.error_task_gone": "This task no longer exists. It may have been deleted somewhere else.",
-  "care_plan.error_overlap": "This task was changed somewhere else while you edited it: {fields}. The form still shows your values. Save again to keep them, or cancel to keep the other change.",
+  "care_plan.error_overlap": "This task was changed somewhere else while you edited it: {fields}. For these fields the form still shows your values; the other fields show the other change. Save again to keep your values, or cancel to keep the other change.",
   "care_plan.overlap_name": "name",
   "care_plan.overlap_schedule": "when it's due",
   "care_plan.overlap_instructions": "instructions",

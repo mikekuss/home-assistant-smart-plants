@@ -1,4 +1,5 @@
-import { LitElement, css, html, nothing, svg } from "lit";
+import { LitElement, css, html, nothing, svg, unsafeCSS } from "lit";
+import type { CSSResult } from "lit";
 import { property, state } from "lit/decorators.js";
 import { ENGLISH } from "../localize.js";
 import type { Localizer } from "../localize.js";
@@ -17,6 +18,25 @@ export interface ChartMarker { t: number; group: string }
 // A button offered for a pinned point; "point-action" carries its key.
 export interface ChartAction { key: string; label: string }
 
+// The rows below the plot, with every selector under `scope`. The History
+// card's loading placeholder uses the same rules with the same labels, so
+// both wrap alike in any font.
+export function chartRowStyles(scope = ""): CSSResult {
+  const at = scope ? `${scope} ` : "";
+  return unsafeCSS(`
+  ${at}.readout-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-height: 28px; margin-top: 2px; }
+  ${at}.legend { display: flex; flex-wrap: wrap; gap: 2px 16px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
+  ${at}.legend span { display: inline-flex; align-items: center; gap: 6px; }
+  ${at}.key { display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
+  ${at}.key.marker { width: 8px; border-radius: 50%; }
+`);
+}
+
+// The marker groups that have a marker between `start` and `end`, in legend order.
+export function shownGroups(groups: readonly ChartMarkerGroup[], markers: readonly ChartMarker[], start: number, end: number): ChartMarkerGroup[] {
+  return groups.filter(group => markers.some(m => m.group === group.key && m.t >= start && m.t <= end));
+}
+
 // One reading over time: the mean as a line, the spread of each period as a
 // faint area, the target range as a band and care events as vertical markers,
 // one colour per group.
@@ -25,21 +45,6 @@ export interface ChartAction { key: string; label: string }
 // pins that point until Escape, a click outside or a click on the same point;
 // with actions set, a pinned point offers a button for each that fires
 // "point-action" with the point's time and the action's key.
-// The rows below the plot. The History card's loading placeholder uses the
-// same rules with the same labels, so both wrap alike in any font.
-export const chartRowStyles = css`
-  .readout-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-height: 28px; margin-top: 2px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 2px 16px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .key { display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
-  .key.marker { width: 8px; border-radius: 50%; }
-`;
-
-// The marker groups that have a marker between `start` and `end`, in legend order.
-export function shownGroups(groups: readonly ChartMarkerGroup[], markers: readonly ChartMarker[], start: number, end: number): ChartMarkerGroup[] {
-  return groups.filter(group => markers.some(m => m.group === group.key && m.t >= start && m.t <= end));
-}
-
 export class SpHistoryChart extends LitElement {
   static styles = [themeFallbacks, srOnly, css`
     :host { display: block; color: var(--sp-text); }
@@ -56,7 +61,7 @@ export class SpHistoryChart extends LitElement {
     .marker { stroke-width: 1.5; stroke-dasharray: 2 3; }
     .cursor { stroke: color-mix(in srgb, var(--sp-text) 45%, transparent); stroke-width: 1; }
     .cursor-dot { fill: var(--sp-card); stroke: var(--sp-primary); stroke-width: 2; }
-    ${chartRowStyles}
+    ${chartRowStyles()}
     .readout { font-size: 13px; font-variant-numeric: tabular-nums; }
     .action { padding: 2px 6px; border: 0; border-radius: 4px; background: none; color: var(--sp-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
     .action:hover { background: color-mix(in srgb, var(--sp-primary) 10%, transparent); }

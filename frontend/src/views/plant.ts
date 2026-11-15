@@ -433,7 +433,7 @@ export const plantStyles = css`
   .pd .seg button:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: -2px; }
   .history-message { min-height: 120px; display: grid; place-items: center; text-align: center; }
   /* The placeholder takes the chart's height: the plot, its readout row and the legend. */
-  ${chartRowStyles}
+  ${chartRowStyles(".history-skeleton")}
   .history-skeleton .sk-plot { height: 200px; border-radius: 4px; }
   /* Text that only holds its place: unseen, with a pulsing bar over each line. */
   .sk-reserve { position: relative; }

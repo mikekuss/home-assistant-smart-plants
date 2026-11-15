@@ -2893,7 +2893,7 @@ var Hn = {
 	"care_plan.error_last_done": "Gib ein gültiges Datum ein.",
 	"care_plan.error_last_done_future": "Das Datum darf nicht in der Zukunft liegen.",
 	"care_plan.error_task_gone": "Diese Aufgabe gibt es nicht mehr. Sie wurde vielleicht an anderer Stelle gelöscht.",
-	"care_plan.error_overlap": "Diese Aufgabe wurde während deiner Bearbeitung an anderer Stelle geändert: {fields}. Das Formular zeigt weiterhin deine Werte. Speichere erneut, um sie zu übernehmen, oder brich ab, um die andere Änderung zu behalten.",
+	"care_plan.error_overlap": "Diese Aufgabe wurde während deiner Bearbeitung an anderer Stelle geändert: {fields}. Für diese Felder zeigt das Formular weiterhin deine Werte, die anderen Felder zeigen die andere Änderung. Speichere erneut, um deine Werte zu übernehmen, oder brich ab, um die andere Änderung zu behalten.",
 	"care_plan.overlap_name": "Name",
 	"care_plan.overlap_schedule": "Fälligkeit",
 	"care_plan.overlap_instructions": "Anleitung",
@@ -3082,7 +3082,7 @@ var Hn = {
 	"care_plan.look_ahead_24": "Nächste 24 Stunden",
 	"care_plan.look_ahead_48": "Nächste 2 Tage",
 	"care_plan.look_ahead_72": "Nächste 3 Tage",
-	"care_plan.look_ahead_hint": "Der Tiefst- oder Höchstwert der Vorhersage gilt für diese Zeit ab jetzt. Kürzere Zeiträume sind verlässlicher. Die Vorhersage wird im Aktualisierungsintervall aus den Integrationsoptionen erneut abgerufen (standardmäßig 30 Minuten) und wenn sich die Wetter-Entität ändert.",
+	"care_plan.look_ahead_hint": "Der Tiefst- oder Höchstwert der Vorhersage gilt für diese Zeit ab jetzt. Kürzere Zeiträume sind verlässlicher. Die Vorhersage wird im „Aktualisierungsintervall der Wettervorhersage“ aus den Integrationsoptionen erneut abgerufen (standardmäßig 30 Minuten) und wenn sich die Wetter-Entität ändert.",
 	"care_plan.more_options_forecast": "Vorausschau, wieder fällig",
 	"overview.tile_care": "Pflege fällig",
 	"card.care_due": "Pflege: {tasks}",
@@ -4127,7 +4127,7 @@ var Hn = {
 	"care_plan.error_last_done": "Enter a valid date.",
 	"care_plan.error_last_done_future": "The date can't be in the future.",
 	"care_plan.error_task_gone": "This task no longer exists. It may have been deleted somewhere else.",
-	"care_plan.error_overlap": "This task was changed somewhere else while you edited it: {fields}. The form still shows your values. Save again to keep them, or cancel to keep the other change.",
+	"care_plan.error_overlap": "This task was changed somewhere else while you edited it: {fields}. For these fields the form still shows your values; the other fields show the other change. Save again to keep your values, or cancel to keep the other change.",
 	"care_plan.overlap_name": "name",
 	"care_plan.overlap_schedule": "when it's due",
 	"care_plan.overlap_instructions": "instructions",
@@ -5786,13 +5786,17 @@ var va, ya = 200, q = {
 	right: 12,
 	bottom: 24,
 	left: 46
-}, ba = o`
-  .readout-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-height: 28px; margin-top: 2px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 2px 16px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .key { display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
-  .key.marker { width: 8px; border-radius: 50%; }
-`;
+};
+function ba(e = "") {
+	let t = e ? `${e} ` : "";
+	return a(`
+  ${t}.readout-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-height: 28px; margin-top: 2px; }
+  ${t}.legend { display: flex; flex-wrap: wrap; gap: 2px 16px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
+  ${t}.legend span { display: inline-flex; align-items: center; gap: 6px; }
+  ${t}.key { display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
+  ${t}.key.marker { width: 8px; border-radius: 50%; }
+`);
+}
 function xa(e, t, n, r) {
 	return e.filter((e) => t.some((t) => t.group === e.key && t.t >= n && t.t <= r));
 }
@@ -5923,7 +5927,7 @@ va = J, va.styles = [
     .marker { stroke-width: 1.5; stroke-dasharray: 2 3; }
     .cursor { stroke: color-mix(in srgb, var(--sp-text) 45%, transparent); stroke-width: 1; }
     .cursor-dot { fill: var(--sp-card); stroke: var(--sp-primary); stroke-width: 2; }
-    ${ba}
+    ${ba()}
     .readout { font-size: 13px; font-variant-numeric: tabular-nums; }
     .action { padding: 2px 6px; border: 0; border-radius: 4px; background: none; color: var(--sp-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
     .action:hover { background: color-mix(in srgb, var(--sp-primary) 10%, transparent); }
@@ -6317,7 +6321,7 @@ var qa = o`
   .pd .seg button:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: -2px; }
   .history-message { min-height: 120px; display: grid; place-items: center; text-align: center; }
   /* The placeholder takes the chart's height: the plot, its readout row and the legend. */
-  ${ba}
+  ${ba(".history-skeleton")}
   .history-skeleton .sk-plot { height: 200px; border-radius: 4px; }
   /* Text that only holds its place: unseen, with a pulsing bar over each line. */
   .sk-reserve { position: relative; }
