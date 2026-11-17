@@ -23,6 +23,7 @@ from .care import (
     CARE_TASK_TYPES,
     MAX_CARE_EVENTS,
     CareEvent,
+    care_summary,
     parse_utc_timestamp,
     validate_task_id,
 )
@@ -3150,11 +3151,35 @@ class PlantRecord:
     rest_period: RestPeriod | None = None
     # End of an alert snooze as a UTC timestamp; ``None`` when not snoozed.
     snoozed_until: str | None = None
+    # ``care_summary(care_events)``, derived on first use. Ordering the care
+    # history is the costly part, and every reader of one record (overview,
+    # entities, WebSocket replies) needs the same summary.
+    _care_summary: tuple[int, str | None, str | None] | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "extra_roles", _deep_freeze(self.extra_roles))
         object.__setattr__(self, "care_events", tuple(self.care_events))
         object.__setattr__(self, "care_tasks", tuple(self.care_tasks))
+
+    def care_summary(self) -> dict[str, Any]:
+        """Return the watering count and the latest watering of the history."""
+        cached = self._care_summary
+        if cached is None:
+            summary = care_summary(self.care_events)
+            cached = (
+                summary["watering_count"],
+                summary["last_watered_at"],
+                summary["last_watered_local_date"],
+            )
+            object.__setattr__(self, "_care_summary", cached)
+        count, last_watered_at, last_watered_local_date = cached
+        return {
+            "watering_count": count,
+            "last_watered_at": last_watered_at,
+            "last_watered_local_date": last_watered_local_date,
+        }
 
     def care_task(self, task_id: str) -> CareTask | None:
         return next((task for task in self.care_tasks if task.id == task_id), None)
@@ -3332,6 +3357,9 @@ class PlantRecord:
         )
 
     def as_storage(self) -> dict[str, Any]:
+        return self._serialize(care_events=True)
+
+    def _serialize(self, *, care_events: bool) -> dict[str, Any]:
         from .roles import ROLE_METADATA  # noqa: PLC0415
 
         extra_roles: dict[str, Any] = {}
@@ -3356,7 +3384,11 @@ class PlantRecord:
             "tags": list(self.tags),
             "category": self.category,
             "image": self.image.as_storage() if self.image is not None else None,
-            "care_events": [event.as_storage() for event in self.care_events],
+            **(
+                {"care_events": [event.as_storage() for event in self.care_events]}
+                if care_events
+                else {}
+            ),
             "care_tasks": [task.as_storage() for task in self.care_tasks],
             "rest_period": self.rest_period.as_storage()
             if self.rest_period is not None
@@ -3379,9 +3411,12 @@ class PlantRecord:
         manager falls back to the same default when mutating the role, so the
         view matches what a save would start from.
         """
+        return self._view(care_events=True)
+
+    def _view(self, *, care_events: bool) -> dict[str, Any]:
         from .roles import role_definitions  # noqa: PLC0415
 
-        view = self.as_storage()
+        view = self._serialize(care_events=care_events)
         roles: dict[str, Any] = view["roles"]
         for definition in role_definitions():
             if (
@@ -3394,6 +3429,15 @@ class PlantRecord:
                 definition.default_config()
             )
         return view
+
+    def as_list_view(self) -> dict[str, Any]:
+        """
+        Serialize for the plant list: the view without the care history.
+
+        The list is read on every panel refresh. The care history is read
+        separately for the plant page; the overview carries the last watering.
+        """
+        return self._view(care_events=False)
 
     def with_next_revision(self, **changes: Any) -> Self:
         return replace(self, revision=self.revision + 1, **changes)

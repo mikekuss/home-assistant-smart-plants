@@ -79,7 +79,6 @@ export const de: Catalog = {
   "conflict_field.image": "Foto",
   "conflict_field.lifecycle_state": "Status",
   "conflict_field.roles": "Sensoren",
-  "conflict_field.care_events": "Pflegeverlauf",
   "source_field.sources": "Sensoren",
   "source_field.primary_entity_id": "Hauptsensor",
   "source_field.aggregation": "Kombination der Messwerte",

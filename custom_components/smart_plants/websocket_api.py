@@ -6,8 +6,11 @@ compatibly):
 
 Commands (all admin-only):
 
-* ``smart_plants/plants/list`` -> ``{"plants": [PlantView, ...],
+* ``smart_plants/plants/list`` -> ``{"plants": [PlantListView, ...],
   "archived_count"}``; ``archived_count`` is the number of retired plants.
+  ``PlantListView`` is a ``PlantView`` without ``care_events``: the care
+  history comes from ``smart_plants/care/list``, the last watering from
+  ``smart_plants/plants/overview``.
 * ``smart_plants/plants/archive`` -> ``{"archived": ArchivedSummary}``;
   retires a plant: its device and entities are removed, its sensors are
   free, and a plain record with photo and care log stays.
@@ -461,7 +464,7 @@ async def _handle_list(
     connection.send_result(
         msg["id"],
         {
-            "plants": [_plant_view(plant) for plant in manager.list_plants()],
+            "plants": [plant.as_list_view() for plant in manager.list_plants()],
             "archived_count": len(manager.list_archived()),
         },
     )
@@ -682,7 +685,7 @@ async def _handle_care_add_watering(
             {
                 "plant": _plant_view(plant),
                 "event": event.as_storage(),
-                "summary": care_summary(plant.care_events),
+                "summary": plant.care_summary(),
             },
         )
 
@@ -731,7 +734,7 @@ async def _handle_care_add(
             {
                 "plant": _plant_view(plant),
                 "event": event.as_storage(),
-                "summary": care_summary(plant.care_events),
+                "summary": plant.care_summary(),
             },
         )
 
@@ -783,7 +786,7 @@ async def _handle_care_edit(
             {
                 "plant": _plant_view(plant),
                 "event": event.as_storage(),
-                "summary": care_summary(plant.care_events),
+                "summary": plant.care_summary(),
             },
         )
 
@@ -816,7 +819,7 @@ async def _handle_care_delete(
     else:
         connection.send_result(
             msg["id"],
-            {"plant": _plant_view(plant), "summary": care_summary(plant.care_events)},
+            {"plant": _plant_view(plant), "summary": plant.care_summary()},
         )
 
 

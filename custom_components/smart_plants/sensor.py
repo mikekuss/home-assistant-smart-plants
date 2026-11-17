@@ -36,7 +36,6 @@ from homeassistant.const import (
 )
 from homeassistant.util import dt as dt_util
 
-from .care import care_summary
 from .care_entities import (
     TASK_SUFFIX_LAST,
     TASK_SUFFIX_NEXT,
@@ -753,7 +752,7 @@ class _LastWateredSensor(SmartPlantsSensorEntity):
         plant = self._manager.snapshot.plants.get(self._plant_id)
         if plant is None:
             return None
-        last = care_summary(plant.care_events)["last_watered_at"]
+        last = plant.care_summary()["last_watered_at"]
         return None if last is None else dt_util.parse_datetime(last)
 
 

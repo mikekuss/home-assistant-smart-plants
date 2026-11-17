@@ -45,7 +45,6 @@ from .automation_targets import (
     ATTR_SNOOZED,
     plant_binary_sensor_filter,
 )
-from .care import care_summary
 from .care_entities import (
     ROLE_CARE_DUE,
     TASK_SUFFIX_DUE,
@@ -63,6 +62,7 @@ from .entity import (
     SmartPlantsEntity,
     async_setup_platform_lifecycle,
 )
+from .events import PlantUpdatedEvent
 from .plant_status import STRESS_ROLE_ORDER, input_problems, stress_problems
 from .report import collect_plants, select_plants
 from .roles import EntityRole, RoleDefinition, entity_factories
@@ -203,7 +203,7 @@ class _NeedsWaterBinary(_MoistureBinaryBase):
         plant = self._manager.snapshot.plants.get(self._plant_id)
         if plant is None:
             return {}
-        return {"last_watered": care_summary(plant.care_events)["last_watered_at"]}
+        return {"last_watered": plant.care_summary()["last_watered_at"]}
 
 
 class _TooWetBinary(_MoistureBinaryBase):
@@ -231,7 +231,8 @@ class _SensorStaleBinary(_MoistureBinaryBase):
 
     def __init__(self, manager: SmartPlantsManager, plant_id: str) -> None:
         super().__init__(manager, plant_id, ROLE_SENSOR_STALE)
-        self._unsub_inputs: list[Callable[[], None]] = []
+        # role -> (controller, unsubscribe) while attached; ``None`` detached.
+        self._inputs: dict[str, tuple[Any, Callable[[], None]]] | None = None
         self._written_problems: tuple[dict[str, str], dict[str, str]] | None = None
 
     @property
@@ -243,18 +244,38 @@ class _SensorStaleBinary(_MoistureBinaryBase):
 
     def _attach_controller_listener(self) -> None:
         super()._attach_controller_listener()
-        if self._unsub_inputs:
+        if self._inputs is None:
+            self._inputs = {}
+        self._sync_input_listeners()
+
+    def _sync_input_listeners(self) -> None:
+        """Listen to every other role's controller; one appears with its role."""
+        inputs = self._inputs
+        if inputs is None:
             return
         for role in STRESS_ROLE_ORDER:
             controller = self._manager.get_role_controller(self._plant_id, role)
+            current = inputs.get(role)
+            if current is not None and current[0] is controller:
+                continue
+            if current is not None:
+                current[1]()
+                del inputs[role]
             if controller is not None:
-                self._unsub_inputs.append(controller.add_listener(self._on_input))
+                inputs[role] = (controller, controller.add_listener(self._on_input))
 
     def _detach_controller_listener(self) -> None:
         super()._detach_controller_listener()
-        for unsubscribe in self._unsub_inputs:
+        for _controller, unsubscribe in (self._inputs or {}).values():
             unsubscribe()
-        self._unsub_inputs.clear()
+        self._inputs = None
+
+    def _handle_manager_event(self, event: PlantEvent) -> None:
+        # A role configured for the first time gets its controller with this
+        # event; the controllers are already in step when subscribers run.
+        if isinstance(event, PlantUpdatedEvent) and event.plant.id == self._plant_id:
+            self._sync_input_listeners()
+        super()._handle_manager_event(event)
 
     def _on_input(self) -> None:
         # Other roles update often; write only when their problems change.

@@ -243,6 +243,9 @@ class SmartPlantsPlatformLifecycle:
         self._unsub_manager: Callable[[], None] | None = None
         self._owner: EntityPlatform | None = None
         self._operation_lock = asyncio.Lock()
+        # Set while an event's entities have not all been added; the next
+        # event then checks every plant instead of only its own.
+        self._resync_all = False
         self._closing = False
         self._on_unload: list[Callable[[], Awaitable[None]]] = []
 
@@ -305,12 +308,20 @@ class SmartPlantsPlatformLifecycle:
                 await self._async_remove_plant_entities(event.plant_id)
                 self._forget_plant(event.plant_id)
                 return
-            # Every non-delete event is also a deterministic resync point. If
+            # Only the event's plant can need new entities. A write that
+            # changes many plants delivers one event per plant, so checking
+            # every plant each time would grow with the square of the count.
+            # Every non-delete event is also a deterministic resync point: if
             # an earlier platform callback failed, its dedupe claims were
-            # rolled back and the missing entities are retried here.
-            entities = self._build_new_entities_for_plants(
-                self._manager.snapshot.plants.values()
-            )
+            # rolled back and the next event retries every plant.
+            plants = self._manager.snapshot.plants
+            if self._resync_all:
+                scope = list(plants.values())
+            else:
+                plant = plants.get(event.plant.id)
+                scope = [] if plant is None else [plant]
+            self._resync_all = True
+            entities = self._build_new_entities_for_plants(scope)
             if entities:
                 try:
                     await self._async_add(entities)
@@ -318,6 +329,7 @@ class SmartPlantsPlatformLifecycle:
                     for entity in entities:
                         self._added.discard((entity.plant_id, entity.role))
                     raise
+            self._resync_all = False
 
     async def _async_add(self, entities: list[SmartPlantsEntity]) -> None:
         if self._closing:

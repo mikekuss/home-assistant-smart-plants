@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- Large plant collections cost much less. Snoozing or changing many plants at once checks each
+  changed plant's reading care tasks once, instead of every task of every plant for each changed
+  plant (with 200 plants, 200 checks instead of 40,000). The panel's plant list, read every 30
+  seconds, no longer carries each plant's care history, which the plant page reads on its own
+  (1.75 MB down to 0.56 MB with 200 plants that each have 20 waterings). Smart Plants now
+  watches the entity registry once instead of once per plant sensor role, and starts the
+  monitoring of an optional reading only once you assign it a sensor. States, attributes and
+  automations behave as before.
+
 ### Fixed
 
 - A hidden problem or care task sensor no longer turns on *All plants*, *Plants need attention*

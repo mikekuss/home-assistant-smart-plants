@@ -66,7 +66,7 @@ class MoisturePlantController:
             config.sources, stale_after=timedelta(seconds=config.stale_after_seconds)
         )
         self._evaluation_now = dt_util.utcnow()
-        self._evaluation = self._evaluate_now()
+        self._evaluation = self._evaluate_now(self._watering_grace_deadline())
 
     @property
     def plant_id(self) -> str:
@@ -124,7 +124,8 @@ class MoisturePlantController:
         )
         self._recompute_and_notify(dt_util.utcnow())
 
-    def _evaluate_now(self) -> MoistureEvaluation:
+    def _evaluate_now(self, grace_deadline: datetime | None) -> MoistureEvaluation:
+        """Evaluate at ``_evaluation_now``; ``grace_deadline`` as computed for it."""
         readings: dict[str, SourceReading] = {}
         for key, tracked in self._tracker.snapshots.items():
             state = tracked.state
@@ -154,7 +155,7 @@ class MoisturePlantController:
             now=self._evaluation_now.timestamp(),
             previous_needs_water=self._previous_needs_water,
             previous_too_wet=self._previous_too_wet,
-            watering_grace=self._watering_grace_active(self._evaluation_now),
+            watering_grace=grace_deadline is not None,
         )
 
     def _watering_grace_deadline(self) -> datetime | None:
@@ -171,9 +172,6 @@ class MoisturePlantController:
         ]
         return max(deadlines) if deadlines else None
 
-    def _watering_grace_active(self, _now: datetime) -> bool:
-        return self._watering_grace_deadline() is not None
-
     def _cancel_watering_deadline(self) -> None:
         if self._unsub_watering_deadline is not None:
             self._unsub_watering_deadline()
@@ -182,14 +180,16 @@ class MoisturePlantController:
     def _recompute_and_notify(self, now: datetime) -> None:
         self._cancel_watering_deadline()
         self._evaluation_now = now
-        result = self._evaluate_now()
+        # One pass over the care history gives both the grace verdict and the
+        # deadline at which it ends.
+        deadline = self._watering_grace_deadline()
+        result = self._evaluate_now(deadline)
         # Unavailability is observational, not a healthy sample. Keep latches
         # until a future valid aggregate crosses an explicit off boundary.
         if result.computed_available:
             self._previous_needs_water = result.needs_water
             self._previous_too_wet = result.too_wet
         self._evaluation = result
-        deadline = self._watering_grace_deadline()
         if self._active and deadline is not None:
             self._unsub_watering_deadline = async_track_point_in_time(
                 self._hass, self._handle_watering_deadline, deadline

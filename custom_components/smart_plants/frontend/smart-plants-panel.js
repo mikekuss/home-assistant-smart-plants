@@ -2031,7 +2031,6 @@ var Hn = {
 	"conflict_field.image": "Foto",
 	"conflict_field.lifecycle_state": "Status",
 	"conflict_field.roles": "Sensoren",
-	"conflict_field.care_events": "Pflegeverlauf",
 	"source_field.sources": "Sensoren",
 	"source_field.primary_entity_id": "Hauptsensor",
 	"source_field.aggregation": "Kombination der Messwerte",
@@ -3265,7 +3264,6 @@ var Hn = {
 	"conflict_field.image": "Photo",
 	"conflict_field.lifecycle_state": "Status",
 	"conflict_field.roles": "Sensors",
-	"conflict_field.care_events": "Care history",
 	"source_field.sources": "sensors",
 	"source_field.primary_entity_id": "main sensor",
 	"source_field.aggregation": "how readings are combined",
@@ -10203,8 +10201,7 @@ var $ = class e extends S {
 			"species",
 			"image",
 			"lifecycle_state",
-			"roles",
-			"care_events"
+			"roles"
 		].filter((n) => JSON.stringify(e[n]) !== JSON.stringify(t[n])).map((n) => n === "roles" ? this._l.t("conflict.roles_changed") : `${this._l.t(`conflict_field.${n}`)}: ${JSON.stringify(e[n])} → ${JSON.stringify(t[n])}`);
 		this._conflict = {
 			before: e,

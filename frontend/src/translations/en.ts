@@ -78,7 +78,6 @@ export const en = {
   "conflict_field.image": "Photo",
   "conflict_field.lifecycle_state": "Status",
   "conflict_field.roles": "Sensors",
-  "conflict_field.care_events": "Care history",
   "source_field.sources": "sensors",
   "source_field.primary_entity_id": "main sensor",
   "source_field.aggregation": "how readings are combined",

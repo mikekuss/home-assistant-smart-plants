@@ -312,6 +312,19 @@ describe("detail saves and conflict review", () => {
     expect(field(el.shadowRoot!, "Name").value).toBe("My edited name"); expect(field(el.shadowRoot!, "Category").value).toBe("Other category");
     conflict = false; await click(el, "Save name"); expect(writes[1]).toMatchObject({ expected_revision: 2, name: "My edited name" });
   });
+  it("does not report the care history as a conflict when the plant list leaves it out", async () => {
+    // The open plant can come from a save reply, which has the care history;
+    // the list read on refresh does not.
+    const events = [{ schema_version: 2, id: "11111111-1111-4111-8111-111111111111", kind: "watering", provenance: "manual", task_id: null, occurred_at: "2026-09-11T12:00:00Z", local_date: "2026-09-11", created_at: "2026-09-11T12:00:00Z", updated_at: "2026-09-11T12:00:00Z", payload: { note: null } }];
+    let plant = { ...structuredClone(sample), care_events: events } as PlantRecord;
+    const h = harness([sample], msg => msg.type === "smart_plants/plants/list" ? { plants: [plant] } : undefined);
+    const el = await detail(h.hass);
+    const { care_events: _history, ...listed } = plant;
+    plant = { ...listed, revision: plant.revision + 1, name: "Other name" };
+    await click(el, "Refresh");
+    expect(el.shadowRoot?.textContent).toContain("Other name");
+    expect(el.shadowRoot?.textContent).not.toContain(events[0].id);
+  });
   it("surfaces native registry area changes without writing them back", async () => {
     let area = "kitchen";
     const h = harness([sample], msg => msg.type === "config/device_registry/list" ? [{ id: "device", area_id: area, identifiers: [["smart_plants", sample.id]] }] : undefined); const el = await detail(h.hass);
