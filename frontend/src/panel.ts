@@ -19,7 +19,7 @@ import { RANGE_SPECS, isHistoryRange } from "./history-model.js";
 import type { HistoryPoint, HistoryRange } from "./history-model.js";
 import { CARE_ICONS, CARE_KINDS, DETAIL_SECTIONS, SECTION_LABELS, careDetails, expander, formatDuration, friendlyName, headerReason, readingPhrase, plantStyles, readingsInOrder, renderHistoryCard, renderKeyReadings, renderReadingRow, reportedAt } from "./views/plant.js";
 import type { DetailSection, HistoryStale, HistoryStatus } from "./views/plant.js";
-import { TASK_KINDS, careOnlyChange, draftFromTask, dueTasks, localDate, matchingTask, mergeTaskChanges, pickMonth, presetDraft, restDraft, restTaskChanges, suggestionDraft, summaryName, taskChip, taskEntityUniqueIds, taskName, validateDraft, validateRest } from "./care-plan.js";
+import { TASK_KINDS, careOnlyChange, draftFromTask, dueTasks, localDate, matchingTask, mergeTaskChanges, pickMonth, rebaseTaskDraft, presetDraft, restDraft, restTaskChanges, suggestionDraft, summaryName, taskChip, taskEntityUniqueIds, taskName, validateDraft, validateRest } from "./care-plan.js";
 import type { RestDraft, TaskDraft } from "./care-plan.js";
 import { carePlanStyles, renderAutomate, renderCarePlan, renderRestEditor, renderTaskEditor, taskEditorTitle } from "./views/care-plan.js";
 import type { AutomateRow, TaskAction, TaskEditorState } from "./views/care-plan.js";
@@ -177,6 +177,8 @@ function localTimestamp(date: Date): string {
 const HISTORY_ROLE_KEY = "smart_plants.history_role";
 const HISTORY_RANGE_KEY = "smart_plants.history_range";
 const HISTORY_REFRESH_MS = 5 * 60_000;
+// How often the plants are read again while the panel is shown.
+const POLL_MS = 30_000;
 // Care entity changes made elsewhere (an automation, another browser) are read
 // back after this delay, so a burst of state updates causes one refresh.
 const CARE_REFRESH_DELAY_MS = 400;
@@ -296,6 +298,8 @@ export class SmartPlantsPanel extends LitElement {
   // reads them again when Home Assistant reloads its automations.
   private _notificationsFor: string | null = null;
   private _notificationsRequest = 0;
+  // Stops the running read when the panel goes or a newer read starts.
+  private _notificationsAbort: AbortController | undefined;
   private _notificationsUnsubscribe: (() => void) | undefined;
   @state() private _creationNotice = "";
   // Photo part of the creation notice, shown on the wizard's confirmation.
@@ -344,6 +348,11 @@ export class SmartPlantsPanel extends LitElement {
   private _subscriptionGeneration = 0;
   private _focusReturn: HTMLElement | null = null;
   private _timer: ReturnType<typeof setInterval> | undefined;
+  // Set while a read of the areas, devices and entities is due: a newer, lighter
+  // refresh that replaces it reads them instead.
+  private _registriesDue = false;
+  // True while registry events are subscribed, so the regular read can leave the registries out.
+  private _registryLive = false;
   private _careTimer: ReturnType<typeof setTimeout> | undefined;
   private _ownWriteAt = Number.NEGATIVE_INFINITY;
   // What the related automations were last searched for: the plant, its device
@@ -393,11 +402,20 @@ export class SmartPlantsPanel extends LitElement {
     if (this.hasUpdated) { this._bind(); void this._refresh(); this._syncImage(); }
     // Home Assistant may register its tab and expansion elements after the panel first renders.
     for (const tag of ["ha-tab-group", "ha-expansion-panel", "ha-alert", "ha-area-picker", "ha-menu-button"]) void customElements.whenDefined(tag).then(() => this.requestUpdate());
-    // Bounded read refresh also catches integration lifecycle and other admin edits.
-    this._timer = setInterval(() => { if (!this._formBusy && !this._loading && this.isConnected) void this._refresh(false); }, 30000);
+    // A regular read of the plants catches edits made in another browser or by
+    // an action. Areas, devices and entities come with their registry events
+    // and states with `hass`, so the regular read leaves them out unless those
+    // events could not be subscribed. A hidden tab skips it and reads once it
+    // is shown again.
+    this._timer = setInterval(() => { if (!document.hidden) this._refreshQuietly(); }, POLL_MS);
+    document.addEventListener("visibilitychange", this._visible);
   }
   disconnectedCallback(): void {
-    this._context++; this._formBusy = false; this._request++; this._providerRequest++; this._clearImage(); this._clearThumbnails(); this._unbind(); clearInterval(this._timer); this._clearCareTimer(); super.disconnectedCallback();
+    this._context++; this._formBusy = false; this._request++; this._providerRequest++; this._clearImage(); this._clearThumbnails(); this._unbind(); clearInterval(this._timer); document.removeEventListener("visibilitychange", this._visible); this._clearCareTimer(); super.disconnectedCallback();
+  }
+  private readonly _visible = () => { if (!document.hidden) this._refreshQuietly(); };
+  private _refreshQuietly(): void {
+    if (!this._formBusy && !this._loading && this.isConnected) void this._refresh(false, !this._registryLive);
   }
   // Schedules one refresh when a care entity of the open plant changed state or
   // attributes, for example after the log_care or skip_care_task action, or
@@ -419,7 +437,8 @@ export class SmartPlantsPanel extends LitElement {
       if (!this.isConnected) return;
       // An editor dialog is saving; it refreshes when done, or this tries again.
       if (this._formBusy) { this._scheduleCareRefresh(); return; }
-      void this._refresh(false);
+      // A care change touches no registry.
+      void this._refresh(false, false);
     }, CARE_REFRESH_DELAY_MS);
   }
   private _clearCareTimer(): void { clearTimeout(this._careTimer); this._careTimer = undefined; }
@@ -467,7 +486,8 @@ export class SmartPlantsPanel extends LitElement {
     const generation = this._subscriptionGeneration;
     connection.addEventListener?.("ready", this._ready); connection.addEventListener?.("disconnected", this._disconnected);
     void api.subscribeRegistry(this.hass, this._ready).then(unsubscribe => {
-      if (this._connection !== connection || generation !== this._subscriptionGeneration || !this.isConnected) unsubscribe(); else this._unsubscribe = unsubscribe;
+      if (this._connection !== connection || generation !== this._subscriptionGeneration || !this.isConnected) unsubscribe();
+      else { this._unsubscribe = unsubscribe; this._registryLive = !!connection.subscribeEvents; }
     }).catch(() => { this._registryError = this._l.t("error.registry_updates"); });
     // Saving in the automation editor reloads automations; read them again then.
     void connection.subscribeEvents?.(() => { this._notificationsFor = null; this._syncNotifications(); }, "automation_reloaded").then(unsubscribe => {
@@ -484,7 +504,11 @@ export class SmartPlantsPanel extends LitElement {
     if (this._notificationsFor === key) return;
     this._notificationsFor = key;
     const request = ++this._notificationsRequest;
-    void findNotifications(hass, automations).then(found => { if (request === this._notificationsRequest) this._notifications = found; });
+    this._notificationsAbort?.abort(); const abort = new AbortController(); this._notificationsAbort = abort;
+    void findNotifications(hass, automations, undefined, abort.signal).then(found => {
+      if (request !== this._notificationsRequest || abort.signal.aborted || !this.isConnected) return;
+      this._notificationsAbort = undefined; this._notifications = found;
+    });
   }
   // The notifications that still have an automation; the dialog lists the same.
   private _notificationCount(): number {
@@ -494,8 +518,9 @@ export class SmartPlantsPanel extends LitElement {
     this._context++; this._formBusy = false;
     this._request++; this._providerRequest++; this._preview = null; this._blocked = true; this._clearImage(); this._clearThumbnails(); this._forgetRelated();
     this._subscriptionGeneration++;
-    this._unsubscribe?.(); this._unsubscribe = undefined;
+    this._unsubscribe?.(); this._unsubscribe = undefined; this._registryLive = false;
     this._notificationsUnsubscribe?.(); this._notificationsUnsubscribe = undefined; this._notificationsRequest++; this._notificationsFor = null;
+    this._notificationsAbort?.abort(); this._notificationsAbort = undefined;
     this._connection?.removeEventListener?.("ready", this._ready); this._connection?.removeEventListener?.("disconnected", this._disconnected); this._connection = undefined;
   }
   private _clearThumbnails(): void {
@@ -556,10 +581,14 @@ export class SmartPlantsPanel extends LitElement {
       if (!(e instanceof DOMException && e.name === "AbortError")) this._imageError = this._friendly(e);
     });
   }
-  private async _refresh(showLoading = true): Promise<void> {
+  // Reads the plants and their status, and with `registries` the areas,
+  // devices and entities too.
+  private async _refresh(showLoading = true, registries = true): Promise<void> {
     if (!this.isConnected) return;
     if (!this.hass || this.hass.user?.is_admin === false) return;
     const request = ++this._request; const hass = this.hass;
+    if (registries) this._registriesDue = true;
+    const readRegistries = this._registriesDue;
     // This read already covers any care change seen so far.
     this._clearCareTimer();
     if (showLoading) this._loading = true;
@@ -586,10 +615,12 @@ export class SmartPlantsPanel extends LitElement {
       // reconstructs hysteresis or grace from state timestamps. The read starts
       // together with the registry reads, so the overview needs one round trip less.
       const overviewRead = api.overview(hass).then(entries => ({ entries, error: null }), (error: unknown) => ({ entries: null, error }));
-      try {
-        const [areas, entities, devices, states] = await Promise.all([api.areas(hass), api.entities(hass), api.devices(hass), api.states(hass)]);
+      if (readRegistries) try {
+        // The states come with `hass`; only a host without them reads them here.
+        const [areas, entities, devices, states] = await Promise.all([api.areas(hass), api.entities(hass), api.devices(hass), hass.states ? null : api.states(hass)]);
         if (request !== this._request) return;
-        this._areas = areas; this._entities = entities; this._devices = devices; this._states = hass.states ? Object.fromEntries(Object.entries(hass.states).filter(([id, s]) => validState(s) && s.entity_id === id)) : Object.fromEntries(states.map(s => [s.entity_id, s])); this._registryError = "";
+        this._registriesDue = false;
+        this._areas = areas; this._entities = entities; this._devices = devices; this._states = hass.states ? Object.fromEntries(Object.entries(hass.states).filter(([id, s]) => validState(s) && s.entity_id === id)) : Object.fromEntries((states ?? []).map(s => [s.entity_id, s])); this._registryError = "";
         if (this._base && this._edits) {
           const area = plantDevice(this._base, devices)?.area_id ?? "";
           if (area !== this._baseArea) {
@@ -1400,7 +1431,13 @@ export class SmartPlantsPanel extends LitElement {
           const latest = latestTask();
           if (!latest) throw new ApiError("not_found", "Care task not found.");
           const merged = mergeTaskChanges(baseline, latest, input);
-          if (merged.overlaps.length) { overlaps = merged.overlaps; this._setTaskEditor({ baseline: structuredClone(latest) }); return undefined; }
+          if (merged.overlaps.length) {
+            // The person reviews the overlapping fields; the others take the change made elsewhere.
+            overlaps = merged.overlaps;
+            const current = this._taskEditor;
+            this._setTaskEditor({ baseline: structuredClone(latest), draft: current ? rebaseTaskDraft(current.draft, baseline, latest, input) : editor.draft });
+            return undefined;
+          }
           return Object.keys(merged.changes).length ? api.updateCareTask(hass, plantId, taskId, revision, merged.changes) : undefined;
         });
         if (overlaps.length) {
@@ -1453,9 +1490,16 @@ export class SmartPlantsPanel extends LitElement {
         this._adopt(plant); this._followQuickWrite(plant);
       }
       if (!remove) {
-        for (const change of restTaskChanges(plant.care_tasks ?? [], editor.draft.off)) {
-          plant = await this._withRevision(plantId, revision => api.updateCareTask(hass, plantId, change.task.id, revision, { schedule: change.schedule }));
-          this._adopt(plant); this._followQuickWrite(plant);
+        // One write per changed task, each worked out again from the task as
+        // it is at that moment, also on the retry after a revision conflict.
+        const { off, stored } = editor.draft;
+        const touched = [...new Set([...off, ...stored])].filter(taskId => off.has(taskId) !== stored.has(taskId));
+        for (const taskId of touched) {
+          const result = await this._withRevision(plantId, async revision => {
+            const change = restTaskChanges((this._plantById(plantId)?.care_tasks ?? []).filter(task => task.id === taskId), editor.draft)[0];
+            return change ? api.updateCareTask(hass, plantId, taskId, revision, { schedule: change.schedule }) : undefined;
+          });
+          if (result) { plant = result; this._adopt(plant); this._followQuickWrite(plant); }
         }
       }
       if (context !== this._context) return;

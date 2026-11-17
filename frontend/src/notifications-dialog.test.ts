@@ -261,6 +261,30 @@ describe("notifications page and dialog", () => {
     el.remove();
     expect(unsubscribe).toHaveBeenCalled();
   });
+  it("stops reading automations when the panel goes and when a newer read starts", async () => {
+    const many: Record<string, HAState> = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`automation.mock_${i}`, state(`automation.mock_${i}`, "on", { friendly_name: `Mock ${i}` })]));
+    const pending: (() => void)[] = [];
+    const h = harness([sample], msg => msg.type === "automation/config" ? new Promise(resolve => pending.push(() => resolve({ config: {} }))) : undefined);
+    const subscriptions = new Map<string, () => void>();
+    h.hass.connection.subscribeEvents = async <T,>(callback: (event: T) => void, event: string) => { subscriptions.set(event, () => callback({} as T)); return () => undefined; };
+    h.hass.states = many;
+    const reads = () => h.calls.filter(call => call.type === "automation/config").length;
+    const finishAll = async (el: SmartPlantsPanel) => { while (pending.length) { pending.shift()!(); await settle(el); } };
+    let el = new SmartPlantsPanel(); el.hass = h.hass; document.body.append(el); await settle(el);
+    expect(reads()).toBe(8);
+    // Leaving the panel: the reads in flight finish, no new one starts.
+    el.remove();
+    await finishAll(el);
+    expect(reads()).toBe(8);
+
+    h.calls.length = 0;
+    el = new SmartPlantsPanel(); el.hass = h.hass; document.body.append(el); await settle(el);
+    expect(reads()).toBe(8);
+    // Home Assistant reloads its automations mid-read: the older read stops, the new one reads each once.
+    subscriptions.get("automation_reloaded")!(); await settle(el);
+    await finishAll(el);
+    expect(reads()).toBe(8 + 20);
+  });
   it("lets exactly one preset be chosen and shows its own fields", async () => {
     const { el } = await mount();
     await openDialog(el);

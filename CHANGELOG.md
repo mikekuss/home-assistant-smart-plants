@@ -8,6 +8,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Saving a care task a second time after the editor reported a change made somewhere else no
+  longer undoes that other change in a field you didn't touch, for example new instructions.
+  The editor now shows the other change in those fields and saves only your own edits.
+- Saving the rest period no longer resets the schedule of a task that was changed in another
+  browser or by an action while the editor was open, and leaves alone a task added meanwhile.
+  Only the tasks whose **Off during rest** setting you switched are changed.
+- Leaving the Smart Plants panel stops it from reading every automation's configuration to find
+  notifications, and a newer search replaces an older one instead of running alongside it.
+- The History card on a phone no longer jumps when the chart finishes loading. Its placeholder
+  now wraps the legend and the drying rate the same way the chart does, in any font.
+- The panel reads much less while it is open: every 30 seconds it reads only the plants and
+  their status, not the whole entity, device and area registries and every state, which it now
+  takes from Home Assistant's change events. A tab in the background reads nothing until it is
+  shown again.
+- The forecast hint in the task editor now says that the forecast is fetched at the forecast
+  refresh interval from the integration options and when the weather entity changes, instead of
+  always every 30 minutes.
 - An emoji or other character outside the Basic Multilingual Plane in a note, plant name, tag,
   task name or instructions no longer makes the plant disappear from the panel. The panel now
   counts characters the same way as Home Assistant, so a 500-character note with an emoji is

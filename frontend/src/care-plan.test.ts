@@ -102,10 +102,13 @@ describe("care task draft", () => {
 function careBackend(initial: PlantRecord, states: (plant: PlantRecord) => CareTaskSummary[] = () => [], entities: HAEntity[] = [], extra: Partial<PlantOverview> = {}) {
   let plant = structuredClone(initial);
   let nextEvent = 1;
+  // Off by default; on, a write with an outdated revision fails like in Home Assistant.
+  let checkRevisions = false;
   const bump = (changes: Partial<PlantRecord>) => { plant = { ...plant, ...changes, revision: plant.revision + 1 }; return structuredClone(plant); };
   const overview = (p: PlantRecord): PlantOverview => ({ ...overviewFor(p), ...extra, care: states(p) });
   const h = harness([plant], msg => {
     const tasks = plant.care_tasks ?? [];
+    if (checkRevisions && typeof msg.expected_revision === "number" && msg.expected_revision !== plant.revision) throw { code: "revision_conflict", message: "stale" };
     switch (msg.type) {
       case "smart_plants/plants/list": return { plants: [plant] };
       case "config/entity_registry/list": return entities;
@@ -146,7 +149,7 @@ function careBackend(initial: PlantRecord, states: (plant: PlantRecord) => CareT
     }
   });
   h.hass.config = { time_zone: "Europe/Berlin" };
-  return { h, current: () => plant, change: (next: PlantRecord) => { plant = next; } };
+  return { h, current: () => plant, change: (next: PlantRecord) => { plant = next; }, checkRevisions: () => { checkRevisions = true; } };
 }
 
 async function openCare(backend: ReturnType<typeof careBackend>) {
@@ -333,13 +336,22 @@ describe("rest period and care summaries", () => {
     // A new rest period pauses fertilizing by default.
     expect([...restDraft(null, [manualFertilize, pests]).off]).toEqual([FERTILIZE_ID]);
     expect(restDraft(rest, [manualFertilize]).off.size).toBe(0);
-    expect(validateRest({ startMonth: null, endMonth: null, off: new Set() }).error).toBe("care_plan.rest_error_months");
-    expect(validateRest({ startMonth: 1, endMonth: 12, off: new Set() }).error).toBe("care_plan.rest_error_whole_year");
-    expect(validateRest({ startMonth: 11, endMonth: 2, off: new Set() }).rest).toEqual(rest);
-    expect(restTaskChanges([fertilize, pests], new Set([PESTS_ID]))).toEqual([
+    expect(validateRest({ startMonth: null, endMonth: null, off: new Set(), stored: new Set() }).error).toBe("care_plan.rest_error_months");
+    expect(validateRest({ startMonth: 1, endMonth: 12, off: new Set(), stored: new Set() }).error).toBe("care_plan.rest_error_whole_year");
+    expect(validateRest({ startMonth: 11, endMonth: 2, off: new Set(), stored: new Set() }).rest).toEqual(rest);
+    expect(restTaskChanges([fertilize, pests], { off: new Set([PESTS_ID]), stored: new Set([FERTILIZE_ID]) })).toEqual([
       { task: fertilize, schedule: { ...fertilize.schedule, growing_season_only: false } },
       { task: pests, schedule: { ...pests.schedule, growing_season_only: true } },
     ]);
+    // Only the settings the person changed, on the schedule as it is now.
+    const slower: CareTask = { ...pests, schedule: { ...pests.schedule, every: 3 } as CareTask["schedule"] };
+    expect(restTaskChanges([fertilize, slower], { off: new Set([FERTILIZE_ID, PESTS_ID]), stored: new Set([FERTILIZE_ID]) })).toEqual([
+      { task: slower, schedule: { kind: "interval", every: 3, unit: "weeks", growing_season_only: true } },
+    ]);
+    // A task the editor did not know about, or one already set that way, needs no write.
+    expect(restTaskChanges([fertilize, pests], { off: new Set(), stored: new Set() })).toEqual([]);
+    expect(restTaskChanges([{ ...pests, schedule: { ...pests.schedule, growing_season_only: true } as CareTask["schedule"] }], { off: new Set([PESTS_ID]), stored: new Set() })).toEqual([]);
+    expect(restDraft(rest, [fertilize, pests]).stored).toEqual(new Set([FERTILIZE_ID]));
   });
 
   it("names due tasks in one line", () => {
@@ -1016,7 +1028,7 @@ describe("forecast reading tasks in the panel", () => {
     expect(dialog(el)!.querySelector(".more-options")!.textContent).toContain("· look ahead, due again");
     dialog(el)!.querySelector<HTMLButtonElement>(".more-options button")!.click(); await settle(el);
     expect(field(el, "Only after (optional)")).toBeUndefined();
-    expect(dialog(el)!.textContent).toContain("The forecast is refreshed every 30 minutes.");
+    expect(dialog(el)!.textContent).toContain("The forecast is fetched again at the forecast refresh interval from the integration options (30 minutes by default) and when the weather entity changes.");
     await choose(el, field(el, "Look ahead")!, "48");
     expect(field(el, "Reading")!.selectedOptions[0]!.textContent).toBe("Lowest temperature · next 2 days");
     expect(dialog(el)!.querySelector(".task-summary")!.textContent).toContain("When the forecast low for the next 2 days is below 5 °C");
@@ -1117,5 +1129,62 @@ describe("editing a task changed elsewhere", () => {
     dialogButton(el, "Save").click(); await settle(el); await settle(el);
     expect(backend.h.calls.find(c => c.type === "smart_plants/care_tasks/update")).toMatchObject({ expected_revision: 2, schedule: { every: 6 } });
     expect(dialog(el)).toBeNull();
+  });
+
+  it("keeps an untouched field changed elsewhere when saving again after a conflict", async () => {
+    const backend = careBackend(plantWith({ care_tasks: [fertilize] }));
+    const el = await openCare(backend);
+    await menu(el, 0, "edit");
+    // Another browser changes the interval and adds instructions while the editor is open.
+    const plant = backend.current();
+    backend.change({ ...plant, revision: plant.revision + 1, care_tasks: [{ ...fertilize, schedule: { ...fertilize.schedule, every: 8 } as CareTask["schedule"], instructions: "Feed lightly" }] });
+    await (el as unknown as { _refresh(showLoading: boolean): Promise<void> })._refresh(false); await settle(el);
+    await typeInto(el, dialog(el)!.querySelector<HTMLInputElement>('input[type="number"]')!, "6");
+    dialogButton(el, "Save").click(); await settle(el); await settle(el);
+    expect(dialog(el)!.textContent).toContain("This task was changed somewhere else while you edited it: when it's due.");
+    // The form shows the other change; only the overlapping field keeps the person's value.
+    expect(dialog(el)!.querySelector<HTMLInputElement>('input[type="number"]')!.value).toBe("6");
+    expect(dialog(el)!.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("Feed lightly");
+    dialogButton(el, "Save").click(); await settle(el); await settle(el);
+    expect(backend.h.calls.filter(c => c.type === "smart_plants/care_tasks/update")).toEqual([{ type: "smart_plants/care_tasks/update", plant_id: sample.id, task_id: FERTILIZE_ID, expected_revision: 2, schedule: { kind: "interval", every: 6, unit: "weeks", growing_season_only: true } }]);
+    expect(backend.current().care_tasks![0]!.instructions).toBe("Feed lightly");
+    expect(dialog(el)).toBeNull();
+  });
+});
+
+describe("rest settings changed elsewhere", () => {
+  const rest = { start_month: 11, end_month: 2 };
+  const box = (el: SmartPlantsPanel, name: string) => [...dialog(el)!.querySelectorAll<HTMLLabelElement>("label.check")].find(label => label.textContent?.includes(name))!.querySelector("input")!;
+  const openRest = async (el: SmartPlantsPanel) => { carePlan(el).querySelector<HTMLElement>(".restline button")!.click(); await settle(el); };
+
+  it("keeps a task interval changed elsewhere while the rest editor was open", async () => {
+    const backend = careBackend(plantWith({ care_tasks: [fertilize, pests], rest_period: rest }));
+    backend.checkRevisions();
+    const el = await openCare(backend);
+    await openRest(el);
+    // Another browser sets the pests interval to 3 weeks; the panel has not refreshed yet.
+    const plant = backend.current();
+    backend.change({ ...plant, revision: plant.revision + 1, care_tasks: [fertilize, { ...pests, schedule: { ...pests.schedule, every: 3 } as CareTask["schedule"] }] });
+    box(el, "Check for pests").click(); await settle(el);
+    dialogButton(el, "Save").click(); await settle(el); await settle(el); await settle(el);
+    expect(backend.current().care_tasks!.find(task => task.id === PESTS_ID)!.schedule).toEqual({ kind: "interval", every: 3, unit: "weeks", growing_season_only: true });
+    expect(backend.current().care_tasks!.find(task => task.id === FERTILIZE_ID)!.schedule).toEqual(fertilize.schedule);
+    expect(dialog(el)).toBeNull();
+  });
+
+  it("leaves a task the rest editor did not show alone", async () => {
+    const backend = careBackend(plantWith({ care_tasks: [fertilize], rest_period: rest }));
+    backend.checkRevisions();
+    const el = await openCare(backend);
+    await openRest(el);
+    // Another browser adds a task that waits during rest.
+    const plant = backend.current();
+    const added: CareTask = { ...pests, schedule: { ...pests.schedule, growing_season_only: true } as CareTask["schedule"] };
+    backend.change({ ...plant, revision: plant.revision + 1, care_tasks: [fertilize, added] });
+    dialogButton(el, "November").click(); await settle(el); dialogButton(el, "March").click(); await settle(el);
+    dialogButton(el, "Save").click(); await settle(el); await settle(el); await settle(el);
+    expect(backend.current().rest_period).toEqual({ start_month: 11, end_month: 3 });
+    expect(backend.current().care_tasks!.find(task => task.id === PESTS_ID)!.schedule).toEqual(added.schedule);
+    expect(backend.h.calls.some(c => c.type === "smart_plants/care_tasks/update")).toBe(false);
   });
 });

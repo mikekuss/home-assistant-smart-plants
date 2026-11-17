@@ -1,4 +1,5 @@
-import { LitElement, css, html, nothing, svg } from "lit";
+import { LitElement, css, html, nothing, svg, unsafeCSS } from "lit";
+import type { CSSResult } from "lit";
 import { property, state } from "lit/decorators.js";
 import { ENGLISH } from "../localize.js";
 import type { Localizer } from "../localize.js";
@@ -16,6 +17,25 @@ export interface ChartMarkerGroup { key: string; label: string; color: string }
 export interface ChartMarker { t: number; group: string }
 // A button offered for a pinned point; "point-action" carries its key.
 export interface ChartAction { key: string; label: string }
+
+// The rows below the plot, with every selector under `scope`. The History
+// card's loading placeholder uses the same rules with the same labels, so
+// both wrap alike in any font.
+export function chartRowStyles(scope = ""): CSSResult {
+  const at = scope ? `${scope} ` : "";
+  return unsafeCSS(`
+  ${at}.readout-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-height: 28px; margin-top: 2px; }
+  ${at}.legend { display: flex; flex-wrap: wrap; gap: 2px 16px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
+  ${at}.legend span { display: inline-flex; align-items: center; gap: 6px; }
+  ${at}.key { display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
+  ${at}.key.marker { width: 8px; border-radius: 50%; }
+`);
+}
+
+// The marker groups that have a marker between `start` and `end`, in legend order.
+export function shownGroups(groups: readonly ChartMarkerGroup[], markers: readonly ChartMarker[], start: number, end: number): ChartMarkerGroup[] {
+  return groups.filter(group => markers.some(m => m.group === group.key && m.t >= start && m.t <= end));
+}
 
 // One reading over time: the mean as a line, the spread of each period as a
 // faint area, the target range as a band and care events as vertical markers,
@@ -41,17 +61,13 @@ export class SpHistoryChart extends LitElement {
     .marker { stroke-width: 1.5; stroke-dasharray: 2 3; }
     .cursor { stroke: color-mix(in srgb, var(--sp-text) 45%, transparent); stroke-width: 1; }
     .cursor-dot { fill: var(--sp-card); stroke: var(--sp-primary); stroke-width: 2; }
-    .readout-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; min-height: 28px; margin-top: 2px; }
+    ${chartRowStyles()}
     .readout { font-size: 13px; font-variant-numeric: tabular-nums; }
     .action { padding: 2px 6px; border: 0; border-radius: 4px; background: none; color: var(--sp-primary); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
     .action:hover { background: color-mix(in srgb, var(--sp-primary) 10%, transparent); }
     .action:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: 1px; }
-    .legend { display: flex; flex-wrap: wrap; gap: 2px 16px; margin-top: 4px; font-size: 12px; color: var(--sp-text-secondary); }
-    .legend span { display: inline-flex; align-items: center; gap: 6px; }
-    .key { display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
     .key.band { background: color-mix(in srgb, var(--sp-success) 30%, transparent); }
     .key.spread { background: color-mix(in srgb, var(--sp-primary) 30%, transparent); }
-    .key.marker { width: 8px; border-radius: 50%; }
   `];
 
   @property({ attribute: false }) public points: HistoryPoint[] = [];
@@ -151,7 +167,7 @@ export class SpHistoryChart extends LitElement {
     const ticks = allTicks.filter((_, index) => (allTicks.length - 1 - index) % every === 0);
     const groups = new Map(this.markerGroups.map(group => [group.key, group]));
     const markers = this.markers.filter(m => m.t >= this.start && m.t <= this.end && groups.has(m.group));
-    const shown = this.markerGroups.filter(group => markers.some(m => m.group === group.key));
+    const shown = shownGroups(this.markerGroups, this.markers, this.start, this.end);
     const active = this._active !== null ? points[this._active] : undefined;
     const showSpread = points.some(p => p.max - p.min >= 0.1);
     const move = (e: PointerEvent) => { if (!this._pinned) this._active = this._nearest(e.clientX); };

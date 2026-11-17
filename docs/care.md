@@ -139,7 +139,8 @@ houseplants don't need one.
 2. Select the first and the last rest month. A rest period can run past December but not cover
    the whole year.
 3. Choose the repeating tasks that are **Off during rest**. Fertilizing is selected for a new
-   rest period.
+   rest period. Saving changes only the tasks you switched, so a task edited in another browser
+   meanwhile keeps its schedule.
 
 A task off during rest shows *Resting until* *date* and is due again on the first day of the
 growing season. Once-a-year tasks, reading tasks and watering alerts don't change. **Edit**
