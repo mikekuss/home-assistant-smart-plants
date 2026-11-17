@@ -125,8 +125,10 @@ heat warning.
 **Look ahead** under **More options** sets 24 hours, 2 days or 3 days. **Only after** isn't
 offered for forecasts. Smart Plants picks hourly, twice daily or daily forecasts by itself: the
 finest one that covers the whole look-ahead without a gap. When the hourly forecast stops early
-or has a gap, it uses the daily forecast for that look-ahead instead. It refreshes the forecast at the **Forecast refresh interval** from the
-[options](installation.md#options) and when the weather entity changes.
+or has a gap, it uses a coarser forecast that covers the look-ahead. When none does, it uses the
+finest forecast with entries in the look-ahead. It refreshes the forecast at the
+**Forecast refresh interval** from the [options](installation.md#options) and when the weather
+entity changes.
 
 The task shows states such as *Not needed · forecast 6 °C*, *Due · forecast 1 °C* or *No
 forecast*. *Forecast only until …* means the forecast ends before the look-ahead does.

@@ -17,7 +17,11 @@ from homeassistant.const import (
     STATE_UNAVAILABLE,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import area_registry as ar
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import floor_registry as fr
+from homeassistant.helpers import label_registry as lr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from .test_conditions import check, get_report
@@ -310,22 +314,49 @@ async def test_hidden_alarm_counts_only_where_it_is_named(
     hass: HomeAssistant,
 ) -> None:
     entry = await setup_integration(hass)
-    aloe = mock_plant(hass, entry, "Aloe")
+    floor = fr.async_get(hass).async_create("Ground floor")
+    kitchen = ar.async_get(hass).async_create("Kitchen", floor_id=floor.floor_id)
+    aloe = mock_plant(hass, entry, "Aloe", area_id=kitchen.id)
+    labels = lr.async_get(hass)
+    device_label = labels.async_create("Balcony").label_id
+    entity_label = labels.async_create("Thirsty").label_id
+    dr.async_get(hass).async_update_device(aloe.device_id, labels={device_label})
+    registry = er.async_get(hass)
+    registry.async_update_entity(aloe["needs_water"], labels={entity_label})
+    calls = await setup_automation(
+        hass,
+        {
+            "trigger": "smart_plants.needs_water",
+            "target": {"device_id": [aloe.device_id]},
+        },
+    )
     await change(hass, aloe["needs_water"], STATE_ON)
     assert state_of(hass, ALL_PLANTS) == STATE_ON
+    assert fired(calls) == [aloe["needs_water"]]
+    await change(hass, aloe["needs_water"], STATE_OFF)
 
-    # Hiding the entity leaves its state on, but it no longer counts for all
-    # plants or for its plant device, as Home Assistant itself leaves hidden
-    # entities out when it expands a device target.
-    registry = er.async_get(hass)
+    # Hiding the entity leaves its state alone, but it no longer counts for
+    # all plants or for any target that only contains it, as Home Assistant
+    # itself leaves hidden entities out when it expands a target.
     registry.async_update_entity(
         aloe["needs_water"], hidden_by=er.RegistryEntryHider.USER
     )
     await hass.async_block_till_done()
+    await change(hass, aloe["needs_water"], STATE_ON)
     assert state_of(hass, aloe["needs_water"]) == STATE_ON
     assert state_of(hass, ALL_PLANTS) == STATE_OFF
+    assert fired(calls) == [aloe["needs_water"]]
 
-    for target in ({}, {"device_id": [aloe.device_id]}):
+    expanded: list[dict[str, Any]] = [
+        {},
+        all_plants_target(),
+        {"device_id": [aloe.device_id]},
+        {"area_id": [kitchen.id]},
+        {"floor_id": [floor.floor_id]},
+        {"label_id": [device_label]},
+        {"label_id": [entity_label]},
+    ]
+    for target in expanded:
         for name in ("needs_water", "needs_attention"):
             config = {"condition": f"smart_plants.{name}", "target": target}
             assert await check(hass, config) is False, (name, target)
@@ -346,6 +377,9 @@ async def test_hidden_alarm_counts_only_where_it_is_named(
     assert state_of(hass, ALL_PLANTS) == STATE_ON
     assert await check(hass, {"condition": "smart_plants.needs_attention"}) is True
     assert (await get_report(hass))["count"] == 1
+    await change(hass, aloe["needs_water"], STATE_OFF)
+    await change(hass, aloe["needs_water"], STATE_ON)
+    assert fired(calls) == [aloe["needs_water"]] * 2
 
 
 # --- Automation configs -----------------------------------------------------

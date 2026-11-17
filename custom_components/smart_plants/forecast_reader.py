@@ -29,10 +29,11 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import itertools
 import logging
 import math
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final, Literal
 
@@ -167,7 +168,30 @@ def parse_forecast(response: object, period: timedelta) -> list[ForecastEntry] |
             )
         )
     entries.sort(key=lambda entry: entry.start)
+    if period > _DST_SHIFT:
+        return _follow_wall_clock(entries)
     return entries
+
+
+# Clocks move by at most this much at a daylight saving time change.
+_DST_SHIFT = timedelta(hours=1)
+
+
+def _follow_wall_clock(entries: list[ForecastEntry]) -> list[ForecastEntry]:
+    """
+    End each entry where the next one starts, if that is within an hour.
+
+    Twice daily and daily entries usually start at local times such as
+    midnight, so a day is 23 or 25 hours long when the clocks change. A fixed
+    period would leave an hour's gap or overlap there.
+    """
+    return [
+        replace(entry, end=following.start)
+        if following.start > entry.start
+        and abs(following.start - entry.end) <= _DST_SHIFT
+        else entry
+        for entry, following in itertools.pairwise(entries)
+    ] + entries[-1:]
 
 
 # A forecast may begin at the next full period instead of the current one.

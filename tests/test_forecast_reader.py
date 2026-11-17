@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, time, timedelta, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 from custom_components.smart_plants.diagnostics import (
@@ -532,6 +533,68 @@ async def test_hourly_in_mixed_time_zones_needs_no_daily_fetch(
     window = reader.window(WEATHER, 24)
     assert window is not None
     assert (window.low, window.high) == (4.0, 6.0)
+    reader.close()
+
+
+_BERLIN = ZoneInfo("Europe/Berlin")
+
+
+def _local_periods(
+    first: datetime, hours: list[int], lows: list[float]
+) -> list[dict[str, Any]]:
+    """Entries at local wall-clock times, a day apart, starting at ``first``."""
+    entries = []
+    for day, low in enumerate(lows):
+        for hour in hours:
+            start = datetime.combine(
+                first.date() + timedelta(days=day), time(hour), tzinfo=_BERLIN
+            )
+            entries.append(
+                {"datetime": start.isoformat(), "temperature": 9, "templow": low}
+            )
+    return entries
+
+
+@pytest.mark.parametrize(
+    ("features", "hours", "used"),
+    [
+        pytest.param(HOURLY | DAILY, [0], "daily", id="daily"),
+        pytest.param(HOURLY | TWICE_DAILY, [0, 12], "twice_daily", id="twice daily"),
+    ],
+)
+@pytest.mark.parametrize(
+    "now",
+    [
+        # The clocks go back on 2026-10-25 and forward on 2026-03-29.
+        pytest.param(datetime(2026, 10, 24, 20, 30, tzinfo=UTC), id="autumn"),
+        pytest.param(datetime(2026, 3, 28, 20, 30, tzinfo=UTC), id="spring"),
+    ],
+)
+async def test_local_midnight_forecast_covers_a_clock_change(  # noqa: PLR0913, PLR0917
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    now: datetime,
+    features: int,
+    hours: list[int],
+    used: str,
+) -> None:
+    freezer.move_to(now)
+    service = _WeatherService(hass)
+    local_day = now.astimezone(_BERLIN)
+    service.forecasts = {
+        # Hourly ends after two days, short of the three-day window.
+        "hourly": _hourly(now.replace(minute=0), [6] * 48),
+        used: _local_periods(local_day, hours, [5, 5, 5, -3, 5]),
+    }
+    _set_weather(hass, features=features)
+
+    reader, _recorder = await _reader(hass, {WEATHER: {72}})
+
+    assert service.calls == ["hourly", used]
+    window = reader.window(WEATHER, 72)
+    assert window is not None
+    assert window.low == -3.0
+    assert window.until == now + 72 * HOUR
     reader.close()
 
 
