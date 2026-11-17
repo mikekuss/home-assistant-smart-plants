@@ -27,6 +27,7 @@ from .automation_targets import (
     entity_display_name,
     is_available,
     is_task_due_entry,
+    named_entities,
     plant_binary_sensors,
     plant_snoozed,
     problem_role,
@@ -249,13 +250,14 @@ def _plant_facts(
     device: dr.DeviceEntry,
     problem_name: ProblemNamer,
     task_name: TaskNamer,
+    named: set[str],
 ) -> PlantFacts:
     name = device_name(device)
     needs_water: ReportProblem | None = None
     problems: dict[str, ReportProblem] = {}
     tasks: list[ReportTask] = []
     states: list[State | None] = []
-    for entry in plant_binary_sensors(hass, device.id):
+    for entry in plant_binary_sensors(hass, device.id, named):
         state = hass.states.get(entry.entity_id)
         states.append(state)
         if state is None or not is_available(state) or state.state != STATE_ON:
@@ -304,8 +306,14 @@ def collect_plants(
     problem_name: ProblemNamer = _default_problem_name,
     task_name: TaskNamer = _default_task_name,
 ) -> list[PlantFacts]:
-    """Return the facts of every plant in the target, or of all plants."""
+    """
+    Return the facts of every plant in the target, or of all plants.
+
+    Hidden entities count only when the target names them, as for the
+    triggers and conditions.
+    """
+    named = named_entities(hass, target)
     return [
-        _plant_facts(hass, device, problem_name, task_name)
+        _plant_facts(hass, device, problem_name, task_name, named)
         for device in resolve_plant_devices(hass, target)
     ]

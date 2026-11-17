@@ -8,6 +8,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- A hidden problem or care task sensor no longer turns on *All plants*, *Plants need attention*
+  or the plant report while the triggers and the other conditions leave it out. Hidden entities
+  now count everywhere only when you pick the entity itself, and hiding or showing one updates
+  *All plants* right away. Disabled entities never count.
+- A forecast care task no longer misses a frost or heat reminder when the hourly forecast stops
+  before the end of the look-ahead and has one more entry after it, or has a gap. Smart Plants
+  then uses a coarser forecast that covers the look-ahead, as it already did when the hourly
+  forecast simply ended early. Daily and twice daily forecasts at local times still count as
+  covering the days when the clocks change.
 - Saving a care task a second time after the editor reported a change made somewhere else no
   longer undoes that other change in a field you didn't touch, for example new instructions.
   The editor now shows the other change in those fields and saves only your own edits.

@@ -29,10 +29,11 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import itertools
 import logging
 import math
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final, Literal
 
@@ -167,12 +168,60 @@ def parse_forecast(response: object, period: timedelta) -> list[ForecastEntry] |
             )
         )
     entries.sort(key=lambda entry: entry.start)
+    if period > _DST_SHIFT:
+        return _follow_wall_clock(entries)
     return entries
 
 
-def reaches(entries: Iterable[ForecastEntry], end: datetime) -> bool:
-    """Return whether the entries cover the time up to ``end``."""
-    return any(entry.end >= end for entry in entries)
+# Clocks move by at most this much at a daylight saving time change.
+_DST_SHIFT = timedelta(hours=1)
+
+
+def _follow_wall_clock(entries: list[ForecastEntry]) -> list[ForecastEntry]:
+    """
+    End each entry where the next one starts, if that is within an hour.
+
+    Twice daily and daily entries usually start at local times such as
+    midnight, so a day is 23 or 25 hours long when the clocks change. A fixed
+    period would leave an hour's gap or overlap there.
+    """
+    return [
+        replace(entry, end=following.start)
+        if following.start > entry.start
+        and abs(following.start - entry.end) <= _DST_SHIFT
+        else entry
+        for entry, following in itertools.pairwise(entries)
+    ] + entries[-1:]
+
+
+# A forecast may begin at the next full period instead of the current one.
+# Up to this much missing at the start of a window still counts as covered.
+_START_SLACK = timedelta(hours=1)
+
+
+def covers(entries: Iterable[ForecastEntry], start: datetime, end: datetime) -> bool:
+    """
+    Return whether the entries cover ``start`` to ``end`` without a gap.
+
+    Only entries overlapping the window count, so an entry before or after it
+    proves nothing. The first one may begin up to an hour after ``start``.
+    Times are compared in UTC, so entries in different time zones join up.
+    """
+    covered: datetime | None = None
+    for entry in sorted(entries, key=lambda entry: entry.start):
+        if entry.end <= start or entry.start >= end:
+            continue
+        if covered is None:
+            if entry.start > start + _START_SLACK:
+                return False
+            covered = entry.end
+        elif entry.start > covered:
+            return False
+        else:
+            covered = max(covered, entry.end)
+        if covered >= end:
+            return True
+    return False
 
 
 def window_values(
@@ -410,10 +459,11 @@ class ForecastReader:
             _LOGGER.debug("Forecast for %s skipped: no forecast type", entity_id)
             return {}
 
-        # Fetch from finest to coarsest until one type reaches the end of the
-        # longest window, skipping types whose fetch fails; each window then
-        # takes the finest type that reaches its own end, or the finest type
-        # with any entry in it.
+        # Fetch from finest to coarsest until one type covers the longest
+        # window, skipping types whose fetch fails; each window then takes the
+        # finest type that covers it, or the finest type with any entry in it.
+        # An entry outside the window does not count as covering it, so a
+        # coarser type is still fetched when the finer one has a gap.
         now = dt_util.utcnow()
         longest = now + timedelta(hours=max(hours))
         fetched: list[tuple[str, list[ForecastEntry]]] = []
@@ -422,7 +472,7 @@ class ForecastReader:
             if entries is None:
                 continue
             fetched.append((forecast_type, entries))
-            if reaches(entries, longest):
+            if covers(entries, now, longest):
                 break
         if not fetched:
             _LOGGER.debug("Forecast for %s failed for every type", entity_id)
@@ -431,7 +481,7 @@ class ForecastReader:
         windows: dict[int, ForecastWindow] = {}
         for window_hours in hours:
             end = now + timedelta(hours=window_hours)
-            ordered = [item for item in fetched if reaches(item[1], end)] + fetched
+            ordered = [item for item in fetched if covers(item[1], now, end)] + fetched
             for forecast_type, entries in ordered:
                 values = window_values(
                     forecast_type, entries, now=now, hours=window_hours, unit=unit
