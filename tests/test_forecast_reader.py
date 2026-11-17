@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 import pytest
@@ -14,6 +14,7 @@ from custom_components.smart_plants.diagnostics import (
 from custom_components.smart_plants.forecast_reader import (
     ForecastReader,
     ForecastWindow,
+    covers,
     parse_forecast,
     supported_types,
     window_values,
@@ -235,6 +236,96 @@ def test_supported_types_from_finest(features: object, expected: list[str]) -> N
     assert [name for name, _period in supported_types(features)] == expected
 
 
+def _parsed(entries: list[dict[str, Any]], period: timedelta = HOUR) -> list[Any]:
+    parsed = parse_forecast({"forecast": entries}, period)
+    assert parsed is not None
+    return parsed
+
+
+@pytest.mark.parametrize(
+    ("entries", "expected"),
+    [
+        pytest.param(_HOURLY_30, True, id="contiguous from the current hour"),
+        pytest.param(
+            _hourly(_HOUR_START + HOUR, [5] * 24),
+            True,
+            id="starting at the next full hour",
+        ),
+        pytest.param(
+            _hourly(_HOUR_START + 2 * HOUR, [5] * 24),
+            False,
+            id="starting later than the next full hour",
+        ),
+        pytest.param(
+            _hourly(_HOUR_START, [5] * 10), False, id="ending inside the window"
+        ),
+        pytest.param(
+            [*_hourly(_HOUR_START, [5] * 10), *_hourly(_HOUR_START + 30 * HOUR, [5])],
+            False,
+            id="partial, with one entry past the window",
+        ),
+        pytest.param(
+            _hourly(_HOUR_START + 30 * HOUR, [5, 5]), False, id="only past the window"
+        ),
+        pytest.param(
+            _hourly(_HOUR_START - 30 * HOUR, [5] * 10), False, id="only before now"
+        ),
+        pytest.param(
+            [
+                *_hourly(_HOUR_START, [5] * 10),
+                *_hourly(_HOUR_START + 11 * HOUR, [5] * 20),
+            ],
+            False,
+            id="one missing hour",
+        ),
+        pytest.param(
+            [
+                {
+                    "datetime": dt_util.as_utc(_HOUR_START + index * HOUR)
+                    .astimezone(timezone(timedelta(hours=index % 3 - 1)))
+                    .isoformat(),
+                    "temperature": 5,
+                }
+                for index in range(25)
+            ],
+            True,
+            id="contiguous in mixed time zones",
+        ),
+        pytest.param(
+            [
+                {"datetime": "2026-11-02T18:00:00+00:00", "temperature": 5},
+                # 19:00-01:00 is 20:00 UTC, so 19:00 to 20:00 UTC is missing.
+                *[
+                    {
+                        "datetime": (_HOUR_START + index * HOUR)
+                        .replace(tzinfo=timezone(timedelta(hours=-1)))
+                        .isoformat(),
+                        "temperature": 5,
+                    }
+                    for index in range(1, 26)
+                ],
+            ],
+            False,
+            id="a gap that only shows in UTC",
+        ),
+    ],
+)
+def test_covers_needs_the_whole_window(
+    entries: list[dict[str, Any]],
+    expected: bool,  # noqa: FBT001
+) -> None:
+    assert covers(_parsed(entries), NOW, NOW + 24 * HOUR) is expected
+
+
+def test_covers_with_daily_entries() -> None:
+    daily = _parsed(_periods(_DAY_START, _DAY, [(9, 2), (7, -1)]), _DAY)
+    assert covers(daily, NOW, NOW + 24 * HOUR) is True
+    assert covers(daily, NOW, NOW + 48 * HOUR) is False
+    # A daily forecast that only starts tomorrow does not cover tonight.
+    tomorrow = _parsed(_periods(_DAY_START + _DAY, _DAY, [(9, 2), (7, -1)]), _DAY)
+    assert covers(tomorrow, NOW, NOW + 24 * HOUR) is False
+
+
 def test_window_reading_converts_units() -> None:
     window = ForecastWindow(low=32.0, high=212.0, unit="°F", until=NOW)
     assert window.reading("low", "°C") == pytest.approx(0.0)
@@ -377,6 +468,70 @@ async def test_uses_the_finest_type_when_none_reaches_the_window(
     assert window is not None
     assert (window.low, window.high) == (-5.0, 20.0)
     assert window.until == _HOUR_START + 30 * HOUR
+    reader.close()
+
+
+@pytest.mark.parametrize(
+    "hourly",
+    [
+        pytest.param(
+            _hourly(_HOUR_START + 30 * HOUR, [6, 6]), id="only past the window"
+        ),
+        pytest.param(
+            [*_hourly(_HOUR_START, [8, 7, 6]), *_hourly(_HOUR_START + 30 * HOUR, [6])],
+            id="partial, with one entry past the window",
+        ),
+        pytest.param(_hourly(_HOUR_START - 30 * HOUR, [6] * 10), id="only before now"),
+    ],
+)
+async def test_falls_back_to_daily_when_hourly_misses_the_window(
+    hass: HomeAssistant,
+    freezer: FrozenDateTimeFactory,
+    hourly: list[dict[str, Any]],
+) -> None:
+    freezer.move_to(NOW)
+    service = _WeatherService(hass)
+    service.forecasts = {
+        "hourly": hourly,
+        "daily": _periods(_DAY_START, _DAY, [(9, -3), (7, 1)]),
+    }
+    _set_weather(hass)
+
+    reader, _recorder = await _reader(hass, {WEATHER: {24}})
+
+    # The frost in the daily forecast is found although hourly had entries.
+    assert service.calls == ["hourly", "daily"]
+    window = reader.window(WEATHER, 24)
+    assert window is not None
+    assert window.low == -3.0
+    reader.close()
+
+
+async def test_hourly_in_mixed_time_zones_needs_no_daily_fetch(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(NOW)
+    service = _WeatherService(hass)
+    service.forecasts = {
+        "hourly": [
+            {
+                "datetime": (_HOUR_START + index * HOUR)
+                .astimezone(timezone(timedelta(hours=1 if index % 2 else -5)))
+                .isoformat(),
+                "temperature": 4 if index == 5 else 6,
+            }
+            for index in range(25)
+        ],
+        "daily": _periods(_DAY_START, _DAY, [(9, -3), (7, 1)]),
+    }
+    _set_weather(hass)
+
+    reader, _recorder = await _reader(hass, {WEATHER: {24}})
+
+    assert service.calls == ["hourly"]
+    window = reader.window(WEATHER, 24)
+    assert window is not None
+    assert (window.low, window.high) == (4.0, 6.0)
     reader.close()
 
 

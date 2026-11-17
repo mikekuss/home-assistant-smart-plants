@@ -85,7 +85,9 @@ The triggers set these variables, next to Home Assistant's own `trigger.entity_i
   *All plants* there.
 - Another Smart Plants entity counts only if it's what the trigger or condition checks. *Too
   wet* picked for *Plant needs water* matches nothing, so prefer plants, areas and labels.
-- Hidden or disabled entities don't count for *All plants* or an empty target.
+- Hidden or disabled entities count only when you pick the entity itself. For *All plants*, an
+  empty target, a plant, an area, a floor or a label they don't count. This holds for the
+  triggers, the conditions, the [plant report](#plant-report) and the *All plants* entity.
 
 ## Actions
 

@@ -357,10 +357,27 @@ def area_name(hass: HomeAssistant, device: dr.DeviceEntry) -> str | None:
     return None if area is None else area.name
 
 
-def plant_binary_sensors(hass: HomeAssistant, device_id: str) -> list[er.RegistryEntry]:
-    """Return the enabled binary sensor entries of one plant device."""
+def named_entities(hass: HomeAssistant, target: Mapping[str, Any] | None) -> set[str]:
+    """Return the entities a target names directly; none for all plants."""
+    if targets_all_plants(hass, target):
+        return set()
+    return set(TargetSelection(dict(target or {})).entity_ids)
+
+
+def plant_binary_sensors(
+    hass: HomeAssistant, device_id: str, named: Iterable[str] = ()
+) -> list[er.RegistryEntry]:
+    """
+    Return the enabled binary sensor entries of one plant device that count.
+
+    A hidden entity counts only when it is in ``named``, as Home Assistant
+    leaves hidden entities out when it expands a device, area or label but
+    keeps an entity picked directly. The same holds for all plants.
+    """
+    wanted = set(named)
     return [
         entry
         for entry in er.async_entries_for_device(er.async_get(hass), device_id)
         if _is_plant_binary_sensor(entry)
+        and (entry.hidden_by is None or entry.entity_id in wanted)
     ]

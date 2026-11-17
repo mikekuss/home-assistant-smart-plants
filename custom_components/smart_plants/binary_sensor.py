@@ -1109,12 +1109,14 @@ class AllPlantsBinarySensor(BinarySensorEntity):
                 event_filter=self._is_plant_state_change,
             )
         )
-        # A removed entity can leave the registry before its state goes.
+        # A removed entity can leave the registry before its state goes, and
+        # hiding or showing an entity changes whether it counts without a new
+        # state.
         self.async_on_remove(
             self.hass.bus.async_listen(
                 er.EVENT_ENTITY_REGISTRY_UPDATED,
                 self._handle_change,
-                event_filter=_is_removal,
+                event_filter=_is_removal_or_visibility_change,
             )
         )
 
@@ -1148,8 +1150,12 @@ class AllPlantsBinarySensor(BinarySensorEntity):
 
 
 @callback
-def _is_removal(event_data: er.EventEntityRegistryUpdatedData) -> bool:
-    return event_data["action"] == "remove"
+def _is_removal_or_visibility_change(
+    event_data: er.EventEntityRegistryUpdatedData,
+) -> bool:
+    if event_data["action"] == "remove":
+        return True
+    return event_data["action"] == "update" and "hidden_by" in event_data["changes"]
 
 
 async def async_setup_entry(

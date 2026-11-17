@@ -303,6 +303,51 @@ async def test_report_with_the_entity_lists_all_plants(hass: HomeAssistant) -> N
     assert await get_report(hass, entity_id="binary_sensor.every_plant") == everything
 
 
+# --- Hidden entities ----------------------------------------------------------
+
+
+async def test_hidden_alarm_counts_only_where_it_is_named(
+    hass: HomeAssistant,
+) -> None:
+    entry = await setup_integration(hass)
+    aloe = mock_plant(hass, entry, "Aloe")
+    await change(hass, aloe["needs_water"], STATE_ON)
+    assert state_of(hass, ALL_PLANTS) == STATE_ON
+
+    # Hiding the entity leaves its state on, but it no longer counts for all
+    # plants or for its plant device, as Home Assistant itself leaves hidden
+    # entities out when it expands a device target.
+    registry = er.async_get(hass)
+    registry.async_update_entity(
+        aloe["needs_water"], hidden_by=er.RegistryEntryHider.USER
+    )
+    await hass.async_block_till_done()
+    assert state_of(hass, aloe["needs_water"]) == STATE_ON
+    assert state_of(hass, ALL_PLANTS) == STATE_OFF
+
+    for target in ({}, {"device_id": [aloe.device_id]}):
+        for name in ("needs_water", "needs_attention"):
+            config = {"condition": f"smart_plants.{name}", "target": target}
+            assert await check(hass, config) is False, (name, target)
+        assert (await get_report(hass, **target))["count"] == 0, target
+
+    # Named directly, the hidden entity counts everywhere.
+    named = {"entity_id": [aloe["needs_water"]]}
+    for name in ("needs_water", "needs_attention"):
+        config = {"condition": f"smart_plants.{name}", "target": named}
+        assert await check(hass, config) is True, name
+    report = await get_report(hass, **named)
+    assert report["count"] == 1
+    assert report["plants"][0]["needs_water"] is True
+
+    # Showing it again counts it again, without a new state.
+    registry.async_update_entity(aloe["needs_water"], hidden_by=None)
+    await hass.async_block_till_done()
+    assert state_of(hass, ALL_PLANTS) == STATE_ON
+    assert await check(hass, {"condition": "smart_plants.needs_attention"}) is True
+    assert (await get_report(hass))["count"] == 1
+
+
 # --- Automation configs -----------------------------------------------------
 
 
