@@ -305,3 +305,84 @@ async def test_plant_list_leaves_the_care_history_to_the_plant_page(
     history = (await client.receive_json())["result"]
     assert [row["id"] for row in history["events"]] == [event.id]
     assert history["summary"]["last_watered_at"] == event.occurred_at
+
+
+async def test_health_score_follows_a_role_configured_later(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    hass.states.async_set("sensor.mock_moisture", "40", PERCENT)
+    hass.states.async_set("sensor.mock_temperature", "20", CELSIUS)
+    plant = await manager.async_create_plant(name="Aloe")
+    plant = await manager.async_set_role_sources(
+        plant.id,
+        role="moisture",
+        expected_revision=plant.revision,
+        sources=[{"entity_id": "sensor.mock_moisture"}],
+    )
+    await hass.async_block_till_done()
+    entity_id = er.async_get(hass).async_get_entity_id(
+        "sensor", DOMAIN, f"{DOMAIN}:{plant.id}:health_score"
+    )
+    assert entity_id is not None
+    await manager.async_set_role_sources(
+        plant.id,
+        role="temperature",
+        expected_revision=plant.revision,
+        sources=[{"entity_id": "sensor.mock_temperature"}],
+    )
+    await hass.async_block_till_done()
+    comfortable = hass.states.get(entity_id)
+    assert comfortable is not None
+
+    # A temperature far out of range lowers the score at once.
+    hass.states.async_set("sensor.mock_temperature", "60", CELSIUS)
+    await hass.async_block_till_done()
+    hot = hass.states.get(entity_id)
+    assert hot is not None
+    (health,) = [
+        entity
+        for entity in manager.entities_for_plant_on_platform("sensor", plant.id)
+        if entity.entity_id == entity_id
+    ]
+    assert hot.state == str(health.native_value)
+    assert float(hot.state) < float(comfortable.state)
+
+
+async def test_kept_role_entity_attaches_to_a_controller_created_later(
+    hass: HomeAssistant,
+) -> None:
+    # An entity whose registry entry exists is created even before its role
+    # has a configuration, so it has no controller yet. It follows the
+    # controller created when the role is configured.
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    registry = er.async_get(hass)
+    stress = registry.async_get_or_create(
+        "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:temperature_stress"
+    )
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    manager = entry.runtime_data.manager
+    plant = manager.get_plant(plant.id)
+    assert manager.get_role_controller(plant.id, "temperature") is None
+    assert hass.states.get(stress.entity_id) is not None
+
+    hass.states.async_set("sensor.mock_temperature", "20", CELSIUS)
+    await manager.async_set_role_sources(
+        plant.id,
+        role="temperature",
+        expected_revision=plant.revision,
+        sources=[{"entity_id": "sensor.mock_temperature"}],
+    )
+    await hass.async_block_till_done()
+    state = hass.states.get(stress.entity_id)
+    assert state is not None
+    assert state.state == "off"
+    hass.states.async_set("sensor.mock_temperature", "60", CELSIUS)
+    await hass.async_block_till_done()
+    state = hass.states.get(stress.entity_id)
+    assert state is not None
+    assert state.state == "on"

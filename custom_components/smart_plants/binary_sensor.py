@@ -62,7 +62,6 @@ from .entity import (
     SmartPlantsEntity,
     async_setup_platform_lifecycle,
 )
-from .events import PlantUpdatedEvent
 from .plant_status import STRESS_ROLE_ORDER, input_problems, stress_problems
 from .report import collect_plants, select_plants
 from .roles import EntityRole, RoleDefinition, entity_factories
@@ -269,13 +268,6 @@ class _SensorStaleBinary(_MoistureBinaryBase):
         for _controller, unsubscribe in (self._inputs or {}).values():
             unsubscribe()
         self._inputs = None
-
-    def _handle_manager_event(self, event: PlantEvent) -> None:
-        # A role configured for the first time gets its controller with this
-        # event; the controllers are already in step when subscribers run.
-        if isinstance(event, PlantUpdatedEvent) and event.plant.id == self._plant_id:
-            self._sync_input_listeners()
-        super()._handle_manager_event(event)
 
     def _on_input(self) -> None:
         # Other roles update often; write only when their problems change.

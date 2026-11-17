@@ -183,12 +183,34 @@ class SmartPlantsEntity(Entity):
                 self._on_plant_disabled()
             elif event.plant.lifecycle_state == "active":
                 self._on_plant_reenabled()
+        if (
+            isinstance(event, PlantUpdatedEvent)
+            and event.plant.lifecycle_state == "active"
+        ):
+            # A role configured for the first time gets its controller with
+            # this event (controllers are in step before subscribers run), so
+            # an entity attaches to what it was missing.
+            self._attach_missing_controllers()
         if isinstance(event, (PlantUpdatedEvent, PlantLifecycleChangedEvent)):
             # ``async_write_ha_state`` is a no-op before
             # ``async_added_to_hass`` completes; the HA runtime guards
             # that internally, so a stray subscription callback that
             # fires during teardown does not raise.
             self.async_write_ha_state()
+
+    def _attach_missing_controllers(self) -> None:
+        """
+        Attach to role controllers that did not exist when the entity was added.
+
+        Entities that read role controllers attach in ``async_added_to_hass``
+        with an ``_attach_controller_listener(s)`` method that only attaches
+        what is not attached yet; an optional role's controller is created only
+        once the role is configured, possibly after the entity was added.
+        """
+        for name in ("_attach_controller_listener", "_attach_controller_listeners"):
+            attach = getattr(self, name, None)
+            if callable(attach):
+                attach()
 
     def _on_plant_disabled(self) -> None:
         """

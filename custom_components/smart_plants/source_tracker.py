@@ -125,7 +125,10 @@ class _TrackerHub:
     def _handle_stop(self, event: Event) -> None:
         self._unsub_stop = None
         for tracker in list(self._trackers.values()):
-            tracker.handle_shutdown(event)
+            try:
+                tracker.handle_shutdown(event)
+            except Exception:
+                _LOGGER.exception("Smart Plants source tracker failed to stop")
 
 
 _HUB_KEY: HassKey[_TrackerHub] = HassKey("smart_plants_source_trackers")

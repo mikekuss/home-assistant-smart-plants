@@ -58,6 +58,7 @@ from .roles import EntityRole, RoleDefinition, entity_factories
 
 if TYPE_CHECKING:
     import asyncio
+    from collections.abc import Callable
     from datetime import datetime
 
     from homeassistant.config_entries import ConfigEntry
@@ -206,7 +207,8 @@ class _HealthScoreSensor(SmartPlantsSensorEntity):
 
     def __init__(self, manager: SmartPlantsManager, plant_id: str) -> None:
         super().__init__(manager, plant_id, ROLE_HEALTH_SCORE, ROLE_HEALTH_SCORE)
-        self._unsub_controllers: dict[str, Any] = {}
+        # role -> (controller, unsubscribe) while attached; ``None`` detached.
+        self._controllers: dict[str, tuple[Any, Callable[[], None]]] | None = None
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -217,20 +219,33 @@ class _HealthScoreSensor(SmartPlantsSensorEntity):
         await super().async_will_remove_from_hass()
 
     def _attach_controller_listeners(self) -> None:
+        if self._controllers is None:
+            self._controllers = {}
+        self._sync_controller_listeners()
+
+    def _sync_controller_listeners(self) -> None:
+        """Listen to every role's controller; one appears with its role."""
+        listened = self._controllers
+        if listened is None:
+            return
         for role_key in _HEALTH_ROLE_KEYS:
-            if role_key in self._unsub_controllers:
-                continue
             controller = self._manager.get_role_controller(self._plant_id, role_key)
-            if controller is None:
+            current = listened.get(role_key)
+            if current is not None and current[0] is controller:
                 continue
-            self._unsub_controllers[role_key] = controller.add_listener(
-                self._on_evaluation
-            )
+            if current is not None:
+                current[1]()
+                del listened[role_key]
+            if controller is not None:
+                listened[role_key] = (
+                    controller,
+                    controller.add_listener(self._on_evaluation),
+                )
 
     def _detach_controller_listeners(self) -> None:
-        for unsub in list(self._unsub_controllers.values()):
+        for _controller, unsub in (self._controllers or {}).values():
             unsub()
-        self._unsub_controllers.clear()
+        self._controllers = None
 
     def _on_evaluation(self) -> None:
         self.async_write_ha_state()
