@@ -127,7 +127,7 @@ The defaults are in [Sensors and health](sensors-and-health.md#built-in-threshol
 
 Add a photo under **Photo** on the **Settings** tab. JPEG, PNG and WebP work, up to 40 MiB and
 64 megapixels. The browser scales a photo to 2048 × 2048 pixels and 5 MiB, and Smart Plants
-stores it as WebP without metadata such as the location. Every signed-in user can view
+stores it upright as WebP without metadata such as the location. Every signed-in user can view
 photos. Only administrators can change them.
 
 ## Edit plant details

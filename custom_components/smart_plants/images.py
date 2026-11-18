@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 from uuid import uuid4
 
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from .const import (
     IMAGE_ALLOWED_INPUT_TYPES,
@@ -174,9 +174,12 @@ def _decode_and_sanitize(raw: bytes) -> Any:
     Fully decode ``raw`` and drop metadata.
 
     Returns a fresh Pillow ``Image`` object with no ``info`` block, so
-    EXIF/ICC/XMP is dropped by construction. Oversized dimensions are
-    rejected (never resized): the stored image is exactly what was
-    uploaded, re-encoded, or nothing at all.
+    EXIF/ICC/XMP is dropped by construction. The EXIF orientation is
+    applied to the pixels first: phone cameras store portrait photos as
+    landscape pixels plus an orientation tag, and dropping the tag alone
+    would store them sideways. Oversized dimensions are rejected (never
+    resized): the stored image is exactly what was uploaded, re-encoded,
+    or nothing at all.
     """
     try:
         with Image.open(io.BytesIO(raw)) as decoded:
@@ -190,7 +193,7 @@ def _decode_and_sanitize(raw: bytes) -> Any:
                 or decoded.height > IMAGE_MAX_DIMENSION
             ):
                 raise ImageValidationError(_OVERSIZED_DIMENSION_ERROR)
-            source = decoded.convert("RGB")
+            source = ImageOps.exif_transpose(decoded).convert("RGB")
             sanitized = Image.new("RGB", source.size)
             sanitized.paste(source)
     except Image.DecompressionBombError as err:
