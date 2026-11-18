@@ -18,6 +18,11 @@ var n = {
 		name: "Smart Plants Pflanzenkarte",
 		description: "Eine Pflanze mit Status, Bodenfeuchte, Messwerten und einer Schaltfläche „Gegossen“.",
 		load_error: "Die Pflanzenkarte konnte nicht geladen werden. Gleich folgt ein neuer Versuch."
+	},
+	it: {
+		name: "Scheda pianta di Smart Plants",
+		description: "Una pianta con il suo stato, l'umidità del terreno, le letture e il pulsante «Annaffiata».",
+		load_error: "Impossibile caricare la scheda della pianta. Nuovo tentativo tra poco."
 	}
 };
 function r(e) {

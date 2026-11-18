@@ -66,9 +66,13 @@ TEXT_KEYS: Final[tuple[str, ...]] = (
 )
 
 
+REPORT_LANGUAGES: Final = ("en", "de", "it")
+
+
 def report_language(language: str | None) -> str:
-    """Return the report language: German for ``de*``, English otherwise."""
-    return "de" if (language or "").lower().startswith("de") else "en"
+    """Return the report language: a supported base language, English otherwise."""
+    base = (language or "").lower().replace("_", "-").split("-")[0]
+    return base if base in REPORT_LANGUAGES else "en"
 
 
 @dataclass(frozen=True, slots=True)

@@ -670,7 +670,7 @@
         },
         "language": {
           "name": "Language",
-          "description": "Language of the title and message. English and German are supported; other languages use English. Without a language, the report uses the system language."
+          "description": "Language of the title and message. English, German and Italian are supported; other languages use English. Without a language, the report uses the system language."
         }
       }
     }

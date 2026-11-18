@@ -670,7 +670,7 @@
         },
         "language": {
           "name": "Sprache",
-          "description": "Sprache von Titel und Nachricht. Unterstützt werden Englisch und Deutsch; andere Sprachen ergeben Englisch. Ohne Sprache nutzt der Bericht die Systemsprache."
+          "description": "Sprache von Titel und Nachricht. Unterstützt werden Englisch, Deutsch und Italienisch; andere Sprachen ergeben Englisch. Ohne Sprache nutzt der Bericht die Systemsprache."
         }
       }
     }
