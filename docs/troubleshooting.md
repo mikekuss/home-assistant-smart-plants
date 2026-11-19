@@ -76,9 +76,12 @@ The other readings work the same with their own units, see
 
 ### *Sensor stale* is on, but the sensor works
 
-A sensor counts as not updating when it hasn't reported for **Not updating after**, 6 hours by
-default. Sensors that report only on a change can look stale while their value is stable.
-Raise **Not updating after** for that reading under **Several sensors for one reading**.
+A sensor counts as not updating when it hasn't reported for **Not updating after**: 24 hours
+by default, 7 days for the battery. MQTT and Zigbee2MQTT sensors send nothing to Home Assistant
+while their value stays the same, unless `force_update` is set on the entity, so a steady value
+can look stale although the sensor works. Raise **Not updating after** for that reading under
+**Several sensors for one reading**, up to 7 days (604800 seconds). See
+[Data updates](sensors-and-health.md#data-updates).
 
 ### A problem sensor is unavailable, not off
 

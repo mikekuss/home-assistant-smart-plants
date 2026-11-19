@@ -93,13 +93,19 @@ CO2_AGGREGATIONS: Final[frozenset[str]] = frozenset(
 # validation and tests agree on the exact numeric boundary.
 MOISTURE_MIN_SPAN: Final = 4
 
-# Default six-hour staleness window. Editable per plant.
-DEFAULT_STALE_AFTER_SECONDS: Final = 21_600
 # Bounded upper limit so a persisted mistake cannot silently disable
-# staleness detection forever. Seven days is well beyond the six-hour
-# default and any credible operator override.
+# staleness detection forever.
 MAX_STALE_AFTER_SECONDS: Final = 7 * 24 * 60 * 60
 MIN_STALE_AFTER_SECONDS: Final = 60
+# Default staleness window, editable per plant and reading. Some integrations,
+# MQTT and Zigbee2MQTT among them, send nothing to Home Assistant while a value
+# stays the same, so a steady soil moisture reading can go many hours without a
+# report. A day leaves room for that and still catches a dead sensor.
+DEFAULT_STALE_AFTER_SECONDS: Final = 24 * 60 * 60
+# A battery level can stay the same for days. A sensor whose battery dies also
+# stops sending its other readings, which go stale first, so the battery uses
+# the longest window.
+DEFAULT_BATTERY_STALE_AFTER_SECONDS: Final = MAX_STALE_AFTER_SECONDS
 
 # Percentage bounds on assigned source registry ids / entity ids so a
 # malformed payload cannot balloon storage.
@@ -1876,7 +1882,7 @@ class BatteryConfig:
     sources: tuple[SensorSource, ...] = ()
     primary_entity_id: str | None = None
     aggregation: BatteryAggregation = "min"
-    stale_after_seconds: int = DEFAULT_STALE_AFTER_SECONDS
+    stale_after_seconds: int = DEFAULT_BATTERY_STALE_AFTER_SECONDS
     stress_threshold_overrides: Mapping[str, int | None] = field(
         default_factory=_default_low_battery_overrides
     )
@@ -1957,7 +1963,7 @@ class BatteryConfig:
             raise ValueError("battery config aggregation is not supported")
 
         stale_after_seconds = _require_positive_int(
-            data.get("stale_after_seconds", DEFAULT_STALE_AFTER_SECONDS),
+            data.get("stale_after_seconds", DEFAULT_BATTERY_STALE_AFTER_SECONDS),
             "battery config stale_after_seconds",
         )
         if not (

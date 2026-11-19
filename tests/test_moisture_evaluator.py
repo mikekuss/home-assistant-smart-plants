@@ -294,8 +294,8 @@ def test_grace_defers_missing_last_valid() -> None:
     assert result.sensor_stale is False
 
 
-def test_default_stale_after_is_six_hours() -> None:
-    assert DEFAULT_STALE_AFTER_SECONDS == 21_600
+def test_default_stale_after_is_one_day() -> None:
+    assert DEFAULT_STALE_AFTER_SECONDS == 86_400
 
 
 def test_watering_grace_suppresses_only_needs_water_and_preserves_score() -> None:

@@ -423,7 +423,7 @@ test("wizard creates soil moisture and two more sensors in one request and keeps
   await expect(wizard(page)).toContainText("The plant is now a device in Office.");
   const create = (await messages(page, "wizard/create"))[0]!;
   expect(create).toMatchObject({ confirmed: true, expected_revision: 0, area_id: "office", tags: ["sunny", "office"], category: "Succulent", acquired_at: "2026-09-01T00:00:00.000Z", placement: { mode: "indoor", exposure: null, rain_exposure: null, container: null },
-    moisture: { sources: [{ entity_id: "sensor.soil", registry_id: id(101) }], primary_entity_id: "sensor.soil", aggregation: "primary", stale_after_seconds: 21600, threshold_overrides: { min: null, target: 40, max: null } },
+    moisture: { sources: [{ entity_id: "sensor.soil", registry_id: id(101) }], primary_entity_id: "sensor.soil", aggregation: "primary", stale_after_seconds: 86400, threshold_overrides: { min: null, target: 40, max: null } },
     roles: { temperature: { sources: [{ entity_id: "sensor.living_temp", registry_id: id(104) }], primary_entity_id: "sensor.living_temp" }, battery: { sources: [{ entity_id: "sensor.pot_battery", registry_id: id(105) }], primary_entity_id: "sensor.pot_battery" } } });
   expect(create).not.toHaveProperty("accepted_preview");
   expect(create.draft_token).toHaveLength(43);

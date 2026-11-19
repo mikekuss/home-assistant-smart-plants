@@ -30,7 +30,9 @@ async def _setup(hass: HomeAssistant) -> SmartPlantsManager:
     return manager
 
 
-async def _plant_with_light(manager: SmartPlantsManager) -> str:
+async def _plant_with_light(
+    manager: SmartPlantsManager, stale_after_seconds: int | None = None
+) -> str:
     plant = await manager.async_create_plant(name="Aloe")
     assigned = await manager.async_set_role_sources(
         plant.id,
@@ -38,12 +40,19 @@ async def _plant_with_light(manager: SmartPlantsManager) -> str:
         expected_revision=plant.revision,
         sources=[{"entity_id": "sensor.mock_lux"}],
     )
-    await manager.async_set_role_primary(
+    selected = await manager.async_set_role_primary(
         plant.id,
         role="illuminance",
         expected_revision=assigned.revision,
         primary_entity_id="sensor.mock_lux",
     )
+    if stale_after_seconds is not None:
+        await manager.async_set_role_stale_after(
+            plant.id,
+            role="illuminance",
+            expected_revision=selected.revision,
+            stale_after_seconds=stale_after_seconds,
+        )
     return plant.id
 
 
@@ -175,7 +184,9 @@ async def test_light_sensor_quiet_overnight_counts_only_after_its_stale_time(
     freezer.move_to(start)
     manager = await _setup(hass)
     hass.states.async_set("sensor.mock_lux", "0", LUX)
-    plant_id = await _plant_with_light(manager)
+    # A window shorter than the daylight hours, so the morning grace ends
+    # during the same day.
+    plant_id = await _plant_with_light(manager, stale_after_seconds=6 * 3600)
     await hass.async_block_till_done()
     controller = manager.get_role_controller(plant_id, "illuminance")
     assert controller is not None
@@ -353,11 +364,12 @@ async def test_sample_expiry_wake_up_follows_reports_and_reconfiguration(
     freezer.move_to(datetime(2026, 6, 1, 9, tzinfo=UTC))
     manager = await _setup(hass)
     hass.states.async_set("sensor.mock_lux", "1000", LUX)
-    plant_id = await _plant_with_light(manager)
+    plant_id = await _plant_with_light(manager, stale_after_seconds=6 * 3600)
     await hass.async_block_till_done()
     controller = manager.get_role_controller(plant_id, "illuminance")
     assert controller is not None
-    # One sample: no expiry can change the result, so only the edge is due.
+    # One sample: no expiry can change the result, so only the edge at 08:00
+    # plus the six-hour window is due.
     assert controller._wake_at == datetime(2026, 6, 1, 14, tzinfo=UTC)
 
     # A second, dimmer sample: the bright one leaving the window changes the

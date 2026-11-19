@@ -74,7 +74,7 @@ describe("three-step creation wizard", () => {
     expect(text(el)).toContain("Without a soil moisture sensor there are no watering alerts.");
     expect(h.calls.map(c => c.type)).toEqual(["smart_plants/wizard/start"]);
     await click(el, "Create plant");
-    expect(h.calls.at(-1)).toEqual({ type: "smart_plants/wizard/create", draft_id: draft.draft_id, draft_token: draft.draft_token, expected_revision: 0, confirmed: true, name: "My Aloe", acquired_at: null, area_id: null, placement: null, category: null, tags: [], moisture: { sources: [], primary_entity_id: null, aggregation: "primary", stale_after_seconds: 21600, threshold_overrides: { min: null, target: null, max: null } }, species: null });
+    expect(h.calls.at(-1)).toEqual({ type: "smart_plants/wizard/create", draft_id: draft.draft_id, draft_token: draft.draft_token, expected_revision: 0, confirmed: true, name: "My Aloe", acquired_at: null, area_id: null, placement: null, category: null, tags: [], moisture: { sources: [], primary_entity_id: null, aggregation: "primary", stale_after_seconds: 86400, threshold_overrides: { min: null, target: null, max: null } }, species: null });
     expect(created).toHaveBeenCalledOnce();
     expect(text(el)).toContain(`${sample.name} is ready`);
     expect(text(el)).toContain("The plant is now a device in Home Assistant.");
