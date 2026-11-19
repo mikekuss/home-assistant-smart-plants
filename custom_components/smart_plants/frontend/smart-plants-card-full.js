@@ -5234,18 +5234,18 @@ function Gt(e, t) {
 	};
 }
 // src/card/plant-card.ts
-var Kt, qt = "smart-plants-plant-card-content", Jt = "/smart-plants";
-function Yt(e, t) {
+var Kt, qt = "smart-plants-plant-card-content", Jt = "/smart-plants", Yt = 3e4, Xt = 5;
+function Zt(e, t) {
 	let n = e?.response?.events, r = Array.isArray(n) ? n.find((e) => e?.plant_id === t && e.kind === "watering") : void 0;
 	return typeof r?.event_id == "string" ? r.event_id : null;
 }
-function Xt(e) {
+function Qt(e) {
 	let t = -e.getTimezoneOffset(), n = (e) => String(Math.trunc(Math.abs(e))).padStart(2, "0");
 	return `${new Date(e.getTime() + t * 6e4).toISOString().slice(0, 19)}${t < 0 ? "-" : "+"}${n(t / 60)}:${n(t % 60)}`;
 }
-var Zt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code : null, Qt = () => We({ language: document.documentElement.lang || "en" }), $ = class extends F {
+var $t = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code : null, en = () => We({ language: document.documentElement.lang || "en" }), $ = class extends F {
 	constructor(...e) {
-		super(...e), this._config = null, this._busy = !1, this._photo = null, this._photoFor = null, this._photoRequest = 0, this._retired = null, this._retiredFor = null;
+		super(...e), this._config = null, this._busy = !1, this._photo = null, this._photoFor = null, this._photoRequest = 0, this._photoLoading = !1, this._photoAttempts = 0, this._photoRetryAt = null, this._wasConnected = !0, this._retired = null, this._retiredFor = null;
 	}
 	setConfig(e) {
 		this._config = {
@@ -5280,14 +5280,27 @@ var Zt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 			photoId: n.imageId
 		} : null);
 		if (r && r.photoId === void 0 && this._photoFor?.startsWith(`${r.plantId}/`)) return;
-		let i = r?.photoId ? `${r.plantId}/${r.photoId}` : null;
-		if (i === this._photoFor || (this._clearPhoto(), this._photoFor = i, !r?.photoId || !this.hass)) return;
-		let a = ++this._photoRequest, o = this.hass, s = `/api/${Y}/plants/${encodeURIComponent(r.plantId)}/image?v=${encodeURIComponent(r.photoId)}`;
-		(o.fetchWithAuth ? o.fetchWithAuth(s) : fetch(s, { credentials: "same-origin" })).then(async (e) => {
-			if (!e.ok) return;
-			let t = await e.blob();
-			a === this._photoRequest && t.type.startsWith("image/") && t.size && (this._photo = URL.createObjectURL(t));
-		}).catch(() => void 0);
+		let i = r?.photoId ? `${r.plantId}/${r.photoId}` : null, a = this.hass?.connected !== !1, o = a && !this._wasConnected;
+		this._wasConnected = a, i === this._photoFor ? r?.photoId && this._retryPhoto(r.plantId, r.photoId, a, o) : (this._clearPhoto(), this._photoFor = i, r?.photoId && this.hass && this._fetchPhoto(r.plantId, r.photoId));
+	}
+	_retryPhoto(e, t, n, r) {
+		this._photo || this._photoLoading || !n || (r && (this._photoRetryAt === null ? this._photoAttempts >= Xt && (this._photoAttempts = 0, this._photoRetryAt = 0) : this._photoRetryAt = 0), this._photoRetryAt === null || Date.now() < this._photoRetryAt || this._fetchPhoto(e, t));
+	}
+	_fetchPhoto(e, t) {
+		let n = this.hass;
+		if (!n) return;
+		let r = ++this._photoRequest;
+		this._photoLoading = !0, this._photoRetryAt = null, this._photoAttempts++;
+		let i = `/api/${Y}/plants/${encodeURIComponent(e)}/image?v=${encodeURIComponent(t)}`;
+		(n.fetchWithAuth ? n.fetchWithAuth(i) : fetch(i, { credentials: "same-origin" })).then(async (e) => {
+			let t = e.ok ? await e.blob() : null;
+			r === this._photoRequest && (this._photoLoading = !1, !t?.type.startsWith("image/") || !t.size ? this._photoFailed() : this._photo = URL.createObjectURL(t));
+		}).catch(() => {
+			r === this._photoRequest && (this._photoLoading = !1, this._photoFailed());
+		});
+	}
+	_photoFailed() {
+		this._photoAttempts >= Xt || (this._photoRetryAt = Date.now() + Yt * 2 ** (this._photoAttempts - 1));
 	}
 	_syncRetired(e) {
 		let t = e?.kind === "missing" ? this._config?.device_id ?? null : null;
@@ -5307,10 +5320,10 @@ var Zt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		}).catch(() => void 0);
 	}
 	_dropPhoto() {
-		this._photo && URL.revokeObjectURL(this._photo), this._photo = null;
+		this._photo && URL.revokeObjectURL(this._photo), this._photo = null, this._photoAttempts = 0, this._photoRetryAt = null;
 	}
 	_clearPhoto() {
-		this._photoRequest++, this._photo && URL.revokeObjectURL(this._photo), this._photo = null, this._photoFor = null;
+		this._photoRequest++, this._photo && URL.revokeObjectURL(this._photo), this._photo = null, this._photoFor = null, this._photoLoading = !1, this._photoAttempts = 0, this._photoRetryAt = null;
 	}
 	_toast(e, t) {
 		this.dispatchEvent(new CustomEvent("hass-notification", {
@@ -5335,19 +5348,19 @@ var Zt = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 	}
 	async _logWatering(e) {
 		if (!this.hass || this._busy) return;
-		let t = this.hass, n = this._l, r = Xt(/* @__PURE__ */ new Date());
+		let t = this.hass, n = this._l, r = Qt(/* @__PURE__ */ new Date());
 		this._busy = !0;
 		try {
 			let i = {
 				kind: "watering",
 				occurred_at: r
-			}, a = { device_id: e.deviceId }, o = this._admin && !!t.callWS, s = o ? await t.callService(Y, "log_care", i, a, !1, !0) : await t.callService(Y, "log_care", i, a, !1), c = o ? Yt(s, e.plantId) : null, l = n.t("watering.logged", { name: e.name });
+			}, a = { device_id: e.deviceId }, o = this._admin && !!t.callWS, s = o ? await t.callService(Y, "log_care", i, a, !1, !0) : await t.callService(Y, "log_care", i, a, !1), c = o ? Zt(s, e.plantId) : null, l = n.t("watering.logged", { name: e.name });
 			c ? this._toast(l, {
 				text: n.t("watering.undo"),
 				action: () => void this._undo(e, c)
 			}) : this._toast(l);
 		} catch (t) {
-			this._toast(Zt(t) === "unauthorized" ? n.t("plant_card.unauthorized") : n.t("plant_card.log_failed", { name: e.name }));
+			this._toast($t(t) === "unauthorized" ? n.t("plant_card.unauthorized") : n.t("plant_card.log_failed", { name: e.name }));
 		} finally {
 			this._busy = !1;
 		}
@@ -5474,8 +5487,8 @@ Kt = $, Kt.styles = [U, o`
       .warning { padding: 12px; }
     }
   `], W([I({ attribute: !1 })], $.prototype, "hass", void 0), W([L()], $.prototype, "_config", void 0), W([L()], $.prototype, "_busy", void 0), W([L()], $.prototype, "_photo", void 0), W([L()], $.prototype, "_retired", void 0), customElements.get("smart-plants-plant-card-content") || customElements.define(qt, $);
-function $t() {
-	let e = Qt(), t = {
+function tn() {
+	let e = en(), t = {
 		device_id: "plant_card.editor_plant",
 		show_readings: "plant_card.editor_show_readings",
 		show_watering: "plant_card.editor_show_watering"
@@ -5505,7 +5518,7 @@ function $t() {
 		computeHelper: (t) => n[t.name] ? e.t(n[t.name]) : void 0
 	};
 }
-function en(e) {
+function nn(e) {
 	let t = Mt(e), n = t.find((t) => {
 		let n = Gt(e, t.id);
 		return n.kind === "plant" && n.overview.status === "needs_water";
@@ -5516,4 +5529,4 @@ function en(e) {
 		show_watering: !0
 	};
 }
-export { qt as CONTENT_ELEMENT, Jt as PANEL_PATH, $ as SmartPlantsPlantCardContent, $t as getConfigForm, en as getStubConfig };
+export { qt as CONTENT_ELEMENT, Jt as PANEL_PATH, $ as SmartPlantsPlantCardContent, tn as getConfigForm, nn as getStubConfig };

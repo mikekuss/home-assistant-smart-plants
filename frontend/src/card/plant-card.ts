@@ -43,7 +43,14 @@ export interface CardHass extends CardHassData {
   callService(domain: string, service: string, data?: Record<string, unknown>, target?: Record<string, unknown>, notifyOnError?: boolean, returnResponse?: boolean): Promise<unknown>;
   callWS?<T>(msg: Record<string, unknown>): Promise<T>;
   fetchWithAuth?(path: string, init?: RequestInit): Promise<Response>;
+  connected?: boolean;
 }
+
+// A photo download that failed is retried on a later hass update, after a wait
+// that starts here and doubles each time (30 s, 1, 2, 4 min), with this many
+// attempts in all until the connection to Home Assistant comes back.
+const PHOTO_RETRY_FIRST_MS = 30_000;
+const PHOTO_MAX_ATTEMPTS = 5;
 
 interface CareListReply { revision: number; events: { id: string; kind: string; occurred_at: string }[] }
 interface LogCareReply { response?: { events?: { plant_id?: unknown; event_id?: unknown; kind?: unknown }[] } }
@@ -144,6 +151,11 @@ export class SmartPlantsPlantCardContent extends LitElement {
   @state() private _photo: string | null = null;
   private _photoFor: string | null = null;
   private _photoRequest = 0;
+  private _photoLoading = false;
+  private _photoAttempts = 0;
+  // When a failed download may be tried again; null when no retry is due.
+  private _photoRetryAt: number | null = null;
+  private _wasConnected = true;
   // The retired plant behind a device that is gone, looked up once per device.
   @state() private _retired: RetiredCardPlant | null = null;
   private _retiredFor: string | null = null;
@@ -186,20 +198,57 @@ export class SmartPlantsPlantCardContent extends LitElement {
     const view = live ?? (retired ? { plantId: retired.plantId, photoId: retired.imageId } : null);
     if (view && view.photoId === undefined && this._photoFor?.startsWith(`${view.plantId}/`)) return;
     const key = view?.photoId ? `${view.plantId}/${view.photoId}` : null;
-    if (key === this._photoFor) return;
+    const connected = this.hass?.connected !== false;
+    const reconnected = connected && !this._wasConnected;
+    this._wasConnected = connected;
+    if (key === this._photoFor) {
+      if (view?.photoId) this._retryPhoto(view.plantId, view.photoId, connected, reconnected);
+      return;
+    }
     this._clearPhoto();
     this._photoFor = key;
     if (!view?.photoId || !this.hass) return;
-    const request = ++this._photoRequest;
+    this._fetchPhoto(view.plantId, view.photoId);
+  }
+
+  // A failed download is tried again once its wait has passed, never while
+  // another request is out or Home Assistant is unreachable. After the last
+  // attempt only a restored connection starts over.
+  private _retryPhoto(plantId: string, photoId: string, connected: boolean, reconnected: boolean): void {
+    if (this._photo || this._photoLoading || !connected) return;
+    if (reconnected) {
+      if (this._photoRetryAt !== null) this._photoRetryAt = 0;
+      else if (this._photoAttempts >= PHOTO_MAX_ATTEMPTS) { this._photoAttempts = 0; this._photoRetryAt = 0; }
+    }
+    if (this._photoRetryAt === null || Date.now() < this._photoRetryAt) return;
+    this._fetchPhoto(plantId, photoId);
+  }
+
+  private _fetchPhoto(plantId: string, photoId: string): void {
     const hass = this.hass;
-    const path = `/api/${DOMAIN}/plants/${encodeURIComponent(view.plantId)}/image?v=${encodeURIComponent(view.photoId)}`;
+    if (!hass) return;
+    const request = ++this._photoRequest;
+    this._photoLoading = true;
+    this._photoRetryAt = null;
+    this._photoAttempts++;
+    const path = `/api/${DOMAIN}/plants/${encodeURIComponent(plantId)}/image?v=${encodeURIComponent(photoId)}`;
     const fetching = hass.fetchWithAuth ? hass.fetchWithAuth(path) : fetch(path, { credentials: "same-origin" });
     void fetching.then(async response => {
-      if (!response.ok) return;
-      const blob = await response.blob();
-      if (request !== this._photoRequest || !blob.type.startsWith("image/") || !blob.size) return;
+      const blob = response.ok ? await response.blob() : null;
+      if (request !== this._photoRequest) return;
+      this._photoLoading = false;
+      if (!blob?.type.startsWith("image/") || !blob.size) { this._photoFailed(); return; }
       this._photo = URL.createObjectURL(blob);
-    }).catch(() => undefined);
+    }).catch(() => {
+      if (request !== this._photoRequest) return;
+      this._photoLoading = false;
+      this._photoFailed();
+    });
+  }
+
+  private _photoFailed(): void {
+    if (this._photoAttempts >= PHOTO_MAX_ATTEMPTS) return;
+    this._photoRetryAt = Date.now() + PHOTO_RETRY_FIRST_MS * 2 ** (this._photoAttempts - 1);
   }
 
   // A card whose plant was retired still knows the removed device's id; the
@@ -221,12 +270,14 @@ export class SmartPlantsPlantCardContent extends LitElement {
   private _dropPhoto(): void {
     if (this._photo) URL.revokeObjectURL(this._photo);
     this._photo = null;
+    this._photoAttempts = 0; this._photoRetryAt = null;
   }
 
   private _clearPhoto(): void {
     this._photoRequest++;
     if (this._photo) URL.revokeObjectURL(this._photo);
     this._photo = null; this._photoFor = null;
+    this._photoLoading = false; this._photoAttempts = 0; this._photoRetryAt = null;
   }
 
   private _toast(message: string, action?: { text: string; action: () => void }): void {

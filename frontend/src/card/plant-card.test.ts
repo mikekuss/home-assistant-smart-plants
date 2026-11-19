@@ -485,5 +485,93 @@ describe("photo", () => {
     await flush(); await content.updateComplete;
     expect(avatar(content).src).toBeNull();
     expect(fetches).toHaveLength(1);
+    const card = (content.getRootNode() as ShadowRoot).host as SmartPlantsPlantCard;
+    for (const connected of [false, true]) {
+      card.hass = { ...card.hass!, connected } as Hass;
+      await flush(); await content.updateComplete;
+    }
+    expect(fetches).toHaveLength(1);
+  });
+
+  describe("after a failed download", () => {
+    let now = 1_000_000;
+    const answers: (() => Promise<Response>)[] = [];
+    const ok = () => Promise.resolve(new Response(new Blob(["x"], { type: "image/webp" })));
+    const unavailable = () => Promise.resolve(new Response("", { status: 503 }));
+    const offline = () => Promise.reject(new TypeError("Failed to fetch"));
+
+    async function setup() {
+      now = 1_000_000;
+      vi.spyOn(Date, "now").mockImplementation(() => now);
+      vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:photo");
+      vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+      const hass = cardHass({ [STALE]: stale({ photo_id: PHOTO }) });
+      const fetches: string[] = [];
+      hass.fetchWithAuth = (path: string) => { fetches.push(path); return (answers.shift() ?? ok)(); };
+      const content = await mount(hass);
+      const card = (content.getRootNode() as ShadowRoot).host as SmartPlantsPlantCard;
+      // Any later hass update, for example a sensor reading, rerenders the card.
+      const tick = async (seconds: number, extra: Partial<Hass> = {}) => {
+        now += seconds * 1000;
+        const base = card.hass as Hass;
+        card.hass = { ...base, ...extra, states: { ...base.states } };
+        await flush(); await content.updateComplete; await flush();
+      };
+      await flush();
+      return { content, fetches, tick };
+    }
+
+    it("is retried on a later update once the backoff has passed, then kept", async () => {
+      answers.splice(0, answers.length, offline, unavailable);
+      const { content, fetches, tick } = await setup();
+      expect(fetches).toHaveLength(1);
+      expect(avatar(content).src).toBeNull();
+
+      // Updates right after the failure don't hammer the server.
+      for (let i = 0; i < 5; i++) await tick(1);
+      expect(fetches).toHaveLength(1);
+
+      await tick(60);
+      expect(fetches).toHaveLength(2);
+      expect(avatar(content).src).toBeNull();
+
+      // The wait grows after each failure.
+      await tick(20);
+      expect(fetches).toHaveLength(2);
+      await tick(60);
+      await vi.waitFor(() => expect(avatar(content).src).toBe("blob:photo"));
+      expect(fetches).toEqual([photoUrl(PHOTO), photoUrl(PHOTO), photoUrl(PHOTO)]);
+
+      // A photo that loaded is not fetched again.
+      for (let i = 0; i < 3; i++) await tick(600);
+      expect(fetches).toHaveLength(3);
+    });
+
+    it("sends one request at a time", async () => {
+      let release!: (response: Response) => void;
+      answers.splice(0, answers.length, offline, () => new Promise<Response>(resolve => { release = resolve; }));
+      const { content, fetches, tick } = await setup();
+      await tick(60);
+      expect(fetches).toHaveLength(2);
+      for (let i = 0; i < 3; i++) await tick(600);
+      expect(fetches).toHaveLength(2);
+      release(new Response(new Blob(["x"], { type: "image/webp" })));
+      await vi.waitFor(() => expect(avatar(content).src).toBe("blob:photo"));
+    });
+
+    it("gives up after a few attempts until the connection comes back", async () => {
+      answers.splice(0, answers.length, ...Array<() => Promise<Response>>(20).fill(unavailable));
+      const { fetches, tick } = await setup();
+      for (let i = 0; i < 20; i++) await tick(3600);
+      const attempts = fetches.length;
+      expect(attempts).toBe(5);
+
+      // While Home Assistant is unreachable nothing is requested.
+      await tick(1, { connected: false } as Partial<Hass>);
+      expect(fetches).toHaveLength(attempts);
+      answers.splice(0, answers.length);
+      await tick(1, { connected: true } as Partial<Hass>);
+      expect(fetches).toHaveLength(attempts + 1);
+    });
   });
 });

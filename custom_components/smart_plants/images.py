@@ -55,10 +55,13 @@ _INPUT_FORMAT_TO_MIME: Final[dict[str, str]] = {
     "WEBP": "image/webp",
 }
 
-# Cap the amount of memory Pillow may allocate for a single decode, in
-# pixels. Applied as a process-level import-time default (Pillow reads
-# this on decode); rechecked per-image in ``_validate_dimensions``.
-Image.MAX_IMAGE_PIXELS = IMAGE_MAX_DECODE_PIXELS
+# Pillow's own ``Image.MAX_IMAGE_PIXELS`` is shared by every integration in
+# the Home Assistant process, so it is left alone. Instead every open below
+# compares the header-declared size against ``IMAGE_MAX_DECODE_PIXELS``
+# before any pixel data is decoded, and maps Pillow's own decompression-bomb
+# error (and its warning, when a host turns warnings into exceptions) to the
+# same validation error.
+_BOMB_ERRORS: Final = (Image.DecompressionBombError, Image.DecompressionBombWarning)
 
 
 class ImageValidationError(ValueError):
@@ -163,10 +166,17 @@ def _probe_header(raw: bytes, declared_content_type: str) -> None:
                 raise ImageValidationError(_OVERSIZED_DIMENSION_ERROR)
     except UnidentifiedImageError as err:
         raise ImageValidationError("image bytes are not a recognized image") from err
-    except Image.DecompressionBombError as err:
+    except _BOMB_ERRORS as err:
         raise ImageValidationError(_DIMENSION_ERROR) from err
     except OSError as err:
         raise ImageValidationError("image bytes could not be parsed") from err
+
+
+def _check_decoded_size(image: Any) -> None:
+    if image.width * image.height > IMAGE_MAX_DECODE_PIXELS:
+        raise ImageValidationError("image decoded pixel count exceeds the ceiling")
+    if image.width > IMAGE_MAX_DIMENSION or image.height > IMAGE_MAX_DIMENSION:
+        raise ImageValidationError(_OVERSIZED_DIMENSION_ERROR)
 
 
 def _decode_and_sanitize(raw: bytes) -> Any:
@@ -183,20 +193,17 @@ def _decode_and_sanitize(raw: bytes) -> Any:
     """
     try:
         with Image.open(io.BytesIO(raw)) as decoded:
+            # Check the declared size before ``load()`` allocates pixels:
+            # this, not Pillow's process-wide limit, is the decode ceiling.
+            _check_decoded_size(decoded)
             decoded.load()
-            if decoded.width * decoded.height > IMAGE_MAX_DECODE_PIXELS:
-                raise ImageValidationError(
-                    "image decoded pixel count exceeds the ceiling"
-                )
-            if (
-                decoded.width > IMAGE_MAX_DIMENSION
-                or decoded.height > IMAGE_MAX_DIMENSION
-            ):
-                raise ImageValidationError(_OVERSIZED_DIMENSION_ERROR)
+            _check_decoded_size(decoded)
             source = ImageOps.exif_transpose(decoded).convert("RGB")
             sanitized = Image.new("RGB", source.size)
             sanitized.paste(source)
-    except Image.DecompressionBombError as err:
+    except ImageValidationError:
+        raise
+    except _BOMB_ERRORS as err:
         raise ImageValidationError(_DIMENSION_ERROR) from err
     except (OSError, ValueError) as err:
         raise ImageValidationError("image could not be decoded") from err

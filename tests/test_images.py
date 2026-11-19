@@ -19,6 +19,9 @@ from __future__ import annotations
 import contextlib
 import io
 import struct
+import subprocess
+import sys
+import warnings
 import zlib
 from pathlib import Path
 
@@ -32,6 +35,7 @@ from custom_components.smart_plants.const import (
 from custom_components.smart_plants.images import (
     ImageNotFoundError,
     ImageValidationError,
+    _decode_and_sanitize,
     _is_safe_image_id,
     delete_image_file,
     image_path,
@@ -41,7 +45,7 @@ from custom_components.smart_plants.images import (
     write_image_file,
 )
 from custom_components.smart_plants.models import PlantImage
-from PIL import Image
+from PIL import Image, ImageFile
 
 
 def _jpeg_bytes(width: int, height: int) -> bytes:
@@ -371,8 +375,77 @@ def test_stored_image_accepts_zulu_timestamp() -> None:
     assert image.created_at == "2026-09-05T00:00:00Z"
 
 
-def test_max_decode_pixels_ceiling_matches_pillow_setting() -> None:
-    # Defense in depth: Pillow's own MAX_IMAGE_PIXELS must be set to our
-    # ceiling on import so a bomb file that slips past the probe still
-    # trips DecompressionBombError inside load().
-    assert Image.MAX_IMAGE_PIXELS == IMAGE_MAX_DECODE_PIXELS
+def test_importing_images_leaves_pillow_global_limit_alone() -> None:
+    # Pillow's MAX_IMAGE_PIXELS is shared by every integration in the Home
+    # Assistant process, so importing this module must not change it. A
+    # fresh interpreter shows the import effect without the test session's
+    # earlier imports hiding it.
+    script = (
+        "from PIL import Image\n"
+        "before = Image.MAX_IMAGE_PIXELS\n"
+        "import custom_components.smart_plants.images\n"
+        "assert Image.MAX_IMAGE_PIXELS == before, Image.MAX_IMAGE_PIXELS\n"
+    )
+    result = subprocess.run(  # noqa: S603 - fixed script, current interpreter
+        [sys.executable, "-c", script],
+        cwd=Path(__file__).resolve().parent.parent,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    ("width", "height"),
+    [
+        # Just above our ceiling, below Pillow's default warning threshold.
+        (8_001, 8_000),
+        # Inside Pillow's default warning band.
+        (10_000, 10_000),
+        # Above Pillow's default error threshold.
+        (100_000, 100_000),
+    ],
+)
+@pytest.mark.parametrize("global_limit", ["default", None, 10**12])
+# With Pillow's default limit the middle case warns before our check rejects it.
+@pytest.mark.filterwarnings("ignore::PIL.Image.DecompressionBombWarning")
+def test_pixel_ceiling_is_enforced_without_pillow_global(
+    monkeypatch: pytest.MonkeyPatch,
+    width: int,
+    height: int,
+    global_limit: object,
+) -> None:
+    # Whatever another integration does with the process-wide limit
+    # (keep it, disable it, raise it), headers above our own ceiling are
+    # refused with the same error.
+    assert width * height > IMAGE_MAX_DECODE_PIXELS
+    if global_limit != "default":
+        monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", global_limit)
+    with pytest.raises(ImageValidationError, match="decode ceiling"):
+        validate_and_reencode(_fake_bomb_png(width, height), "image/png")
+
+
+def test_pixel_ceiling_holds_when_pillow_warnings_are_errors() -> None:
+    # A host that turns warnings into exceptions must still see our
+    # validation error, not a raw DecompressionBombWarning.
+    payload = _fake_bomb_png(10_000, 10_000)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        with pytest.raises(ImageValidationError, match="decode ceiling"):
+            validate_and_reencode(payload, "image/png")
+
+
+def test_decode_checks_pixel_ceiling_before_loading_pixels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The decode step must refuse an oversized header on its own, before
+    # Pillow allocates pixels, even with the process-wide limit disabled.
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", None)
+
+    def _no_load(self: object) -> None:
+        raise AssertionError("pixels were decoded")
+
+    monkeypatch.setattr(ImageFile.ImageFile, "load", _no_load)
+    with pytest.raises(ImageValidationError):
+        _decode_and_sanitize(_fake_bomb_png(8_001, 8_000))
