@@ -19,6 +19,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- A portrait phone photo that is already within 2048 × 2048 pixels and 5 MiB is no longer
+  stored on its side. Smart Plants now turns the pixels upright from the photo's orientation
+  before it drops the metadata.
 - A hidden problem or care task sensor no longer turns on *All plants*, *Plants need attention*
   or the plant report while the triggers and the other conditions leave it out. Hidden entities
   now count everywhere only when you pick the entity itself, and hiding or showing one updates

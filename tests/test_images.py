@@ -183,6 +183,33 @@ def test_strips_exif_metadata() -> None:
         assert "exif" not in decoded.info
 
 
+def test_applies_exif_orientation_before_dropping_metadata() -> None:
+    # Phone cameras store a portrait photo as landscape pixels plus
+    # Orientation=6 ("rotate 90° clockwise to display"). The stored WebP has
+    # no EXIF, so the rotation must be in the pixels or the photo lies on its
+    # side. Left half red, right half blue: after the rotation red is on top.
+    original = Image.new("RGB", (80, 40), (220, 20, 20))
+    original.paste((20, 20, 220), (40, 0, 80, 40))
+    exif = original.getexif()
+    exif[0x0112] = 6  # Orientation
+    buf = io.BytesIO()
+    original.save(buf, format="JPEG", quality=95, exif=exif.tobytes())
+
+    processed = validate_and_reencode(buf.getvalue(), "image/jpeg")
+
+    assert (processed.width, processed.height) == (40, 80)
+    with Image.open(io.BytesIO(processed.data)) as decoded:
+        assert decoded.size == (40, 80)
+        assert 0x0112 not in decoded.getexif()
+        rgb = decoded.convert("RGB")
+        top = rgb.getpixel((20, 10))
+        bottom = rgb.getpixel((20, 70))
+    assert isinstance(top, tuple)
+    assert isinstance(bottom, tuple)
+    assert top[0] > top[2]
+    assert bottom[2] > bottom[0]
+
+
 def test_image_id_shape_rejects_traversal() -> None:
     assert _is_safe_image_id("abcdef0123456789abcdef0123456789")
     assert not _is_safe_image_id("../etc/passwd")
