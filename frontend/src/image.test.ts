@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { prepareImage, validateImage } from "./image.js";
+import { imageAccept, prepareImage, validateImage } from "./image.js";
 import { pngFile } from "./test-helpers.js";
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -62,5 +62,57 @@ describe("scaling large photos before upload", () => {
     const { encoded } = canvas(["image/webp", "image/webp", "image/webp"], 6 * 1024 * 1024);
     await expect(prepareImage(pngFile())).rejects.toThrow("could not be scaled down");
     expect(encoded.map(([, quality]) => quality)).toEqual([0.9, 0.8, 0.65]);
+  });
+});
+describe("HEIC photos from an iPhone", () => {
+  const ascii = (text: string) => [...text].map(c => c.charCodeAt(0));
+  const heicFile = (brand = "heic", type = "image/heic", name = "IMG_0001.HEIC") =>
+    new File([new Uint8Array([0, 0, 0, 24, ...ascii("ftyp"), ...ascii(brand), 0, 0, 0, 0])], name, { type });
+  function canvas() {
+    const drawImage = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((done: BlobCallback, type?: string) => { done(new Blob([new Uint8Array(100)], { type: type ?? "" })); });
+    return drawImage;
+  }
+  it("always re-encodes a HEIC photo, even one that already fits the upload limits", async () => {
+    const close = vi.fn(); vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 1200, height: 1600, close }))); const drawImage = canvas();
+    const result = await prepareImage(heicFile());
+    expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 1200, 1600);
+    expect(result.type).toBe("image/webp"); expect(result.name).toBe("IMG_0001.webp"); expect(close).toHaveBeenCalledOnce();
+  });
+  it.each([["heix", "image/heic", "a.heic"], ["mif1", "image/heif", "a.heif"], ["msf1", "image/heif", "a.heif"], ["heic", "", "IMG_0002.HEIC"], ["mif1", "", "a.heif"]])(
+    "accepts brand %s with type %j and name %s", async (brand, type, name) => {
+      vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 100, height: 100, close: vi.fn() }))); canvas();
+      await expect(prepareImage(heicFile(brand, type, name))).resolves.toBeInstanceOf(File);
+    });
+  it("says the browser can't read HEIC when decoding fails", async () => {
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => { throw new Error("unsupported"); }));
+    await expect(prepareImage(heicFile())).rejects.toThrow("This browser can't read HEIC photos");
+  });
+  it("keeps the generic decode message for other formats", async () => {
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => { throw new Error("unsupported"); }));
+    await expect(prepareImage(pngFile())).rejects.toThrow("could not be decoded");
+  });
+  it("rejects HEIC content under another type and other content under a HEIC type before decoding", async () => {
+    const decode = vi.fn(); vi.stubGlobal("createImageBitmap", decode);
+    await expect(prepareImage(heicFile("heic", "image/jpeg", "a.jpg"))).rejects.toThrow("content does not match");
+    await expect(prepareImage(heicFile("avif"))).rejects.toThrow("content does not match");
+    await expect(prepareImage(new File([new Uint8Array([0xff, 0xd8, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0])], "a.heic", { type: "image/heic" }))).rejects.toThrow("content does not match");
+    await expect(prepareImage(heicFile("heic", "", "photo.bin"))).rejects.toThrow("up to 40 MiB");
+    expect(decode).not.toHaveBeenCalled();
+  });
+  it("never passes HEIC on to the upload check", async () => {
+    await expect(validateImage(heicFile())).rejects.toThrow("JPEG, PNG or WebP image up to 5 MiB");
+  });
+  it.each([
+    ["Mozilla/5.0 (iPhone; CPU iPhone OS 16_7 like Mac OS X) AppleWebKit/605.1.15", 5, false],
+    ["Mozilla/5.0 (iPad; CPU OS 16_7 like Mac OS X) AppleWebKit/605.1.15", 5, false],
+    ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15", 5, false],
+    ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15", 0, true],
+    ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36", 0, true],
+  ])("offers HEIC in the file picker for %s with %i touch points: %s", (userAgent, maxTouchPoints, heic) => {
+    const accept = imageAccept({ userAgent, maxTouchPoints }).split(",");
+    expect(accept).toEqual(expect.arrayContaining(["image/jpeg", "image/png", "image/webp"]));
+    expect(accept.includes("image/heic")).toBe(heic); expect(accept.includes(".heic")).toBe(heic);
   });
 });

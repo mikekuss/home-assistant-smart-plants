@@ -131,7 +131,7 @@ type Expandable = "combine" | "troubleshooting" | "other_targets" | "more_detail
 type SettingRow = "name" | "area" | "species";
 type SensorRole = "moisture" | SourceRole;
 type SourceMode = "pick" | "combine";
-import { prepareImage, validateImage } from "./image.js";
+import { imageAccept, prepareImage, validateImage } from "./image.js";
 import { bundleOutdated, loadedBundleVersion } from "./bundle-version.js";
 import { validState } from "./validation.js";
 import { SNOOZE_PRESETS, activeSnooze, addDays, snoozeChipText, snoozeDateRange, snoozeDateText, snoozeEndDate, snoozeUntil, validSnoozeDate } from "./snooze.js";
@@ -1648,7 +1648,7 @@ export class SmartPlantsPanel extends LitElement {
       : l.t("photo.none");
     return html`<div class="setrow"><div><div class="setrow-h">${l.t("settings.photo")}</div><div class="setrow-d">${status}</div><div class="setrow-d">${l.t("photo.hint")}</div></div>
       <div class="row">
-        <label class="btn text sm">${plant.image ? l.t("photo.replace") : l.t("photo.upload")}<input class="file-input" type="file" accept="image/jpeg,image/png,image/webp" ?disabled=${disabled} @change=${(e: Event) => { const input = e.target as HTMLInputElement; const file = input.files?.[0]; input.value = ""; if (file) void this._uploadImage(plant, file); }}></label>
+        <label class="btn text sm">${plant.image ? l.t("photo.replace") : l.t("photo.upload")}<input class="file-input" type="file" accept=${imageAccept()} ?disabled=${disabled} @change=${(e: Event) => { const input = e.target as HTMLInputElement; const file = input.files?.[0]; input.value = ""; if (file) void this._uploadImage(plant, file); }}></label>
         ${plant.image ? html`<button type="button" class="btn text sm" ?disabled=${disabled} @click=${() => { if (this.hass) { const hass = this.hass; void this._mutate(() => api.deleteImage(hass, plant.id, plant.revision)); } }}>${l.t("photo.remove")}</button>` : nothing}
       </div></div>`;
   }

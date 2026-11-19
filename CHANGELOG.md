@@ -11,6 +11,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Italian translation of the panel, the dashboard card, setup, entity names, repairs, actions,
   triggers and conditions. The plant report (`smart_plants.get_report`) is also available in
   Italian.
+- HEIC photos from an iPhone can be added in Safari on macOS. The browser converts them before
+  the upload, so Smart Plants still stores WebP. Other desktop browsers can't read HEIC and now
+  say so instead of rejecting the file as the wrong type. On an iPhone or iPad the file picker
+  still doesn't offer HEIC, so iOS keeps converting photos to JPEG.
 
 ### Changed
 

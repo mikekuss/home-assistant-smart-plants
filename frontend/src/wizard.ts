@@ -9,7 +9,7 @@ import { createLocalizer, isMessageKey } from "./localize.js";
 import type { Localizer } from "./localize.js";
 import { builtin, canonicalMoisture, emptyMoisture, keys, manualSpecies, placements, resolveSource, roleSourceSpec, speciesCommonName, tags, validateMoisture, validateTaxonomy } from "./model.js";
 import type { SourceRole } from "./model.js";
-import { prepareImage } from "./image.js";
+import { imageAccept, prepareImage } from "./image.js";
 import { READING_ROLES, ROLE_META, formatValue, readingLabel } from "./status.js";
 import type { ReadingRole } from "./status.js";
 import { srOnly, themeFallbacks } from "./components/shared-styles.js";
@@ -541,7 +541,7 @@ export class SmartPlantsWizard extends LitElement {
   private renderPhoto() {
     const l = this.l;
     const drag = (e: DragEvent, over: boolean) => { e.preventDefault(); this.dragging = over; };
-    const input = (label: string) => html`<input class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" aria-label=${label} aria-describedby="photo-hint" ?disabled=${this.busy || this.blocked}
+    const input = (label: string) => html`<input class="sr-only" type="file" accept=${imageAccept()} aria-label=${label} aria-describedby="photo-hint" ?disabled=${this.busy || this.blocked}
       @change=${(e: Event) => { const input = e.target as HTMLInputElement; void this.pickPhoto(input.files?.[0]); input.value = ""; }}>`;
     const hint = this.photoChecking ? l.t("wizard.photo_checking") : this.photo ? l.t("wizard.photo_pending") : l.t("wizard.photo_hint");
     return html`<div><div class="drop ${this.photo ? "has" : ""} ${this.dragging ? "over" : ""}" @dragover=${(e: DragEvent) => drag(e, true)} @dragleave=${(e: DragEvent) => drag(e, false)}
