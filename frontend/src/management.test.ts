@@ -450,7 +450,7 @@ describe("local image validation and mutation", () => {
   });
   it.each([new File(["x"], "bad.gif", { type: "image/gif" }), new File([], "empty.png", { type: "image/png" }), new File([new Uint8Array(40 * 1024 * 1024 + 1)], "large.jpg", { type: "image/jpeg" })])("rejects invalid local file $name before upload", async file => {
     vi.stubGlobal("fetch", vi.fn()); const el = await detail(harness().hass); const input = el.shadowRoot!.querySelector<HTMLInputElement>('input[type="file"]')!; Object.defineProperty(input, "files", { value: [file] }); input.dispatchEvent(new Event("change")); await settle(el);
-    expect(el.shadowRoot?.textContent).toContain("nonempty JPEG, PNG or WebP"); expect(fetch).not.toHaveBeenCalled();
+    expect(el.shadowRoot?.textContent).toContain("nonempty JPEG, PNG, WebP or HEIC"); expect(fetch).not.toHaveBeenCalled();
   });
   it("rejects images too large to scale down and closes the decoded bitmap", async () => {
     const close = vi.fn(); vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 10000, height: 7000, close }))); vi.stubGlobal("fetch", vi.fn());

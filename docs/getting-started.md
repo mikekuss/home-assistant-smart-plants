@@ -126,8 +126,11 @@ The defaults are in [Sensors and health](sensors-and-health.md#built-in-threshol
 ## Add a photo
 
 Add a photo under **Photo** on the **Settings** tab. JPEG, PNG and WebP work, up to 40 MiB and
-64 megapixels. The browser scales a photo to 2048 × 2048 pixels and 5 MiB, and Smart Plants
-stores it upright as WebP without metadata such as the location. Every signed-in user can view
+64 megapixels. On an iPhone or iPad, iOS hands over a HEIC photo as JPEG. HEIC files on a
+computer, such as iPhone photos copied to a Mac, work in Safari on macOS. Other desktop browsers
+can't read HEIC and show a message instead; convert the photo to JPEG first. The browser scales
+a photo to 2048 × 2048 pixels and 5 MiB, and Smart Plants stores it upright as WebP without
+metadata such as the location. Every signed-in user can view
 photos. Only administrators can change them.
 
 ## Edit plant details

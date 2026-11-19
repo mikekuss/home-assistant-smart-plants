@@ -52,8 +52,10 @@ didn't touch. **Save** again to keep your value; fields you didn't touch keep th
 
 ### A photo is rejected
 
-Photos must be JPEG, PNG or WebP, up to 40 MiB and 64 megapixels, and the content must match
-the file type. A PNG renamed to `.jpg` is rejected.
+Photos must be JPEG, PNG, WebP or HEIC, up to 40 MiB and 64 megapixels, and the content must
+match the file type. A PNG renamed to `.jpg` is rejected. HEIC files only work in Safari on
+macOS. Other desktop browsers say they can't read HEIC photos; convert the photo to JPEG first.
+On an iPhone or iPad the panel doesn't offer HEIC, so iOS hands over a JPEG copy instead.
 
 ### "Smart Plants storage is full"
 
