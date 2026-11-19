@@ -2712,6 +2712,7 @@ var Hn = {
 	"combine.secondary": "Durchschnitt, niedrigsten oder höchsten Wert verwenden, wenn mehrere Sensoren zugewiesen sind",
 	"combine.intro": "Lege fest, welcher Wert zählt, wenn ein Messwert mehrere Sensoren hat, und nach welcher Zeit ohne Aktualisierung ein Sensor als ohne Daten gilt.",
 	"combine.edit_label": "Kombination der Sensoren für {role} ändern",
+	"duration.days": "{count} Tg.",
 	"duration.hours": "{count} Std.",
 	"duration.minutes": "{count} Min.",
 	"duration.seconds": "{count} Sek.",
@@ -3945,6 +3946,7 @@ var Hn = {
 	"combine.secondary": "Use the average, lowest or highest value when more than one sensor is assigned",
 	"combine.intro": "Choose which value counts when a reading has several sensors, and after how long without an update a sensor counts as not updating.",
 	"combine.edit_label": "Change how {role} sensors combine",
+	"duration.days": "{count} d",
 	"duration.hours": "{count} h",
 	"duration.minutes": "{count} min",
 	"duration.seconds": "{count} s",
@@ -7356,7 +7358,7 @@ function Ga(e, t, n, r, i, a, o) {
     ${l ? b`<p class="small history-rate history-skeleton-rate sk-reserve" aria-hidden="true"><strong>${l.rate}</strong>${l.forecast ? b` <span class="muted">${l.forecast}</span>` : x}</p>` : x}`;
 }
 function Ka(e, t) {
-	return t >= 3600 && t % 3600 == 0 ? e.t("duration.hours", { count: t / 3600 }) : t >= 60 && t % 60 == 0 ? e.t("duration.minutes", { count: t / 60 }) : e.t("duration.seconds", { count: t });
+	return t >= 172800 && t % 86400 == 0 ? e.t("duration.days", { count: t / 86400 }) : t >= 3600 && t % 3600 == 0 ? e.t("duration.hours", { count: t / 3600 }) : t >= 60 && t % 60 == 0 ? e.t("duration.minutes", { count: t / 60 }) : e.t("duration.seconds", { count: t });
 }
 function qa(e, t, n) {
 	return Object.entries(t.payload).filter(([, e]) => e !== null && e !== "").map(([t, r]) => `${n(t)}: ${typeof r == "number" && t === "amount" ? e.number(r) : String(r)}`);

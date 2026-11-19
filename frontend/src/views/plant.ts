@@ -221,8 +221,10 @@ function renderHistorySkeleton(l: Localizer, card: HistoryCard, role: ReadingRol
     ${drying ? html`<p class="small history-rate history-skeleton-rate sk-reserve" aria-hidden="true"><strong>${drying.rate}</strong>${drying.forecast ? html` <span class="muted">${drying.forecast}</span>` : nothing}</p>` : nothing}`;
 }
 
-// "6 h", "30 min" or "90 s" for the not-updating window.
+// "7 d", "24 h", "30 min" or "90 s" for the not-updating window. Days only
+// from two whole days, so the one-day default reads as "24 h".
 export function formatDuration(l: Localizer, seconds: number): string {
+  if (seconds >= 2 * 86400 && seconds % 86400 === 0) return l.t("duration.days", { count: seconds / 86400 });
   if (seconds >= 3600 && seconds % 3600 === 0) return l.t("duration.hours", { count: seconds / 3600 });
   if (seconds >= 60 && seconds % 60 === 0) return l.t("duration.minutes", { count: seconds / 60 });
   return l.t("duration.seconds", { count: seconds });

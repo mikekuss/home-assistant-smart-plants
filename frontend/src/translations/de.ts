@@ -790,6 +790,7 @@ export const de: Catalog = {
   "combine.secondary": "Durchschnitt, niedrigsten oder höchsten Wert verwenden, wenn mehrere Sensoren zugewiesen sind",
   "combine.intro": "Lege fest, welcher Wert zählt, wenn ein Messwert mehrere Sensoren hat, und nach welcher Zeit ohne Aktualisierung ein Sensor als ohne Daten gilt.",
   "combine.edit_label": "Kombination der Sensoren für {role} ändern",
+  "duration.days": "{count} Tg.",
   "duration.hours": "{count} Std.",
   "duration.minutes": "{count} Min.",
   "duration.seconds": "{count} Sek.",

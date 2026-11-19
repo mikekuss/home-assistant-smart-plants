@@ -25,6 +25,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   a day instead of 6 hours, and a light sensor can take until the second morning. Set a shorter
   **Not updating after** for a plant's reading if you want to know sooner. Sensors and health
   and Troubleshooting now explain this and name MQTT and Zigbee2MQTT.
+- A plant's sensor summary shows a **Not updating after** of several whole days in days, for
+  example *7 d* instead of *168 h*.
 - `smart_plants.log_care` accepts a plant's own entities as target, as `smart_plants.snooze`
   does. An entity such as *Needs water* logs care for its plant and needs a care type, like the
   plant's device. A care task's entities mark the task as done: besides the task itself, that

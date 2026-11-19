@@ -789,6 +789,7 @@ export const en = {
   "combine.secondary": "Use the average, lowest or highest value when more than one sensor is assigned",
   "combine.intro": "Choose which value counts when a reading has several sensors, and after how long without an update a sensor counts as not updating.",
   "combine.edit_label": "Change how {role} sensors combine",
+  "duration.days": "{count} d",
   "duration.hours": "{count} h",
   "duration.minutes": "{count} min",
   "duration.seconds": "{count} s",
