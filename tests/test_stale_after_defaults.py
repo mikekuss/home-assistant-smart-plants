@@ -40,6 +40,9 @@ from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_fire_time_changed,
 )
+from pytest_homeassistant_custom_component.typing import WebSocketGenerator
+
+from .test_wizard import _credentials, _moisture
 
 HOUR = 3600
 DAY = 24 * HOUR
@@ -320,3 +323,77 @@ async def test_steady_battery_stays_valid_for_seven_days(
     expired = hass.states.get(entity_id)
     assert expired is not None
     assert expired.state == STATE_UNAVAILABLE
+
+
+# --- Other ways a reading gets its window --------------------------------------
+
+
+async def test_wizard_roles_get_their_default_window(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator
+) -> None:
+    # The panel's wizard sends extra readings without a window, so the
+    # backend default applies.
+    manager = await _setup(hass)
+    draft = manager.wizard_start()
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "smart_plants/wizard/create",
+            **_credentials(draft),
+            "confirmed": True,
+            "name": "Aloe",
+            "moisture": _moisture(),
+            "roles": {
+                "battery": {"sources": [{"entity_id": "sensor.mock_battery"}]},
+                "temperature": {"sources": [{"entity_id": "sensor.mock_air"}]},
+            },
+        }
+    )
+    response = await client.receive_json()
+    assert response["success"], response
+    plant = manager.get_plant(response["result"]["plant"]["id"])
+    assert _window(plant, "battery") == DEFAULT_BATTERY_STALE_AFTER_SECONDS
+    assert _window(plant, "temperature") == DEFAULT_STALE_AFTER_SECONDS
+    roles = response["result"]["plant"]["roles"]
+    assert roles["battery"]["stale_after_seconds"] == 604_800
+    assert roles["temperature"]["stale_after_seconds"] == 86_400
+
+
+async def test_restored_plant_gets_the_default_windows(hass: HomeAssistant) -> None:
+    # The archive keeps only the sources, so a restored plant starts from the
+    # defaults even when its windows were changed before it was retired.
+    manager = await _setup(hass)
+    hass.states.async_set("sensor.mock_battery", "90", BATTERY)
+    plant = await manager.async_create_plant(name="Aloe")
+    plant = await manager.async_set_role_sources(
+        plant.id,
+        role="battery",
+        expected_revision=plant.revision,
+        sources=[{"entity_id": "sensor.mock_battery"}],
+    )
+    plant = await manager.async_set_role_stale_after(
+        plant.id,
+        role="battery",
+        expected_revision=plant.revision,
+        stale_after_seconds=HOUR,
+    )
+    plant = await manager.async_set_stale_after(
+        plant.id, expected_revision=plant.revision, stale_after_seconds=HOUR
+    )
+    await hass.async_block_till_done()
+    record = await manager.async_archive_plant(
+        plant.id, expected_revision=plant.revision
+    )
+    await hass.async_block_till_done()
+
+    restored = await manager.async_restore_plant(
+        plant.id,
+        expected_revision=record.revision,
+        name="Aloe",
+        include_sources_in_use=False,
+        expected_name_taken=False,
+        expected_sources_in_use=[],
+    )
+
+    assert _window(restored, "battery") == DEFAULT_BATTERY_STALE_AFTER_SECONDS
+    assert restored.moisture.stale_after_seconds == DEFAULT_STALE_AFTER_SECONDS
