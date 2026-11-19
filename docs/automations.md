@@ -116,9 +116,9 @@ A care task's entities are the task's binary sensor, for example *Fertilize*, an
 name through several of them is done once. Any other entity of a plant, for example
 *Needs water*, stands for the plant, like its device. A plant you reach through its device and
 its entities gets one entry. If any target is invalid, nothing is logged. Areas, floors, labels
-and *All plants* aren't accepted. A `watering` keeps *Needs water* off for 24 hours from `occurred_at`. With a response variable,
-the action returns `events`, one per entry, with `plant_id`, `event_id`, `kind`, `occurred_at`
-and `task_id`.
+and *All plants* aren't accepted. A `watering` keeps *Needs water* off for 24 hours from
+`occurred_at`. With a response variable, the action returns `events`, one per entry, with
+`plant_id`, `event_id`, `kind`, `occurred_at` and `task_id`.
 
 ## Plant report
 
