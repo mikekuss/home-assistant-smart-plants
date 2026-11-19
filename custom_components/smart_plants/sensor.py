@@ -75,6 +75,8 @@ if TYPE_CHECKING:
 
 
 PLATFORM = "sensor"
+# Entities read local state and never call a device, so updates need no limit.
+PARALLEL_UPDATES = 0
 
 ROLE_FACTORIES: dict[str, EntityFactory]
 

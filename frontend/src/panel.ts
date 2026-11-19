@@ -10,6 +10,7 @@ import { CO2_STRESS_BUILTIN_DEFAULTS, CO2_STRESS_KEYS, CONDUCTIVITY_STRESS_BUILT
 import type { ProblemBinaryRole, SourceRole } from "./model.js";
 import "./components/index.js";
 import { fadeIn } from "./components/motion.js";
+import { photoRetryAt } from "./photo-retry.js";
 import { skeletonStyles, themeFallbacks } from "./components/shared-styles.js";
 import { isDefined } from "./ha-elements.js";
 import { chipText } from "./overview-model.js";
@@ -337,6 +338,10 @@ export class SmartPlantsPanel extends LitElement {
   // Card thumbnails: object URL key per plant and in-flight fetches.
   private _thumbnailKeys: Record<string, string> = {};
   private _thumbnailAborts = new Map<string, AbortController>();
+  // Failed thumbnail downloads per plant: the photo, failed attempts and when
+  // the next one may start (null once none is left). A new access token
+  // doesn't start over; a new photo or a restored connection does.
+  private _thumbnailRetries = new Map<string, { imageId: string; attempts: number; retryAt: number | null }>();
   private _request = 0;
   private _careRequest = 0;
   private _historyRequest = 0;
@@ -362,7 +367,8 @@ export class SmartPlantsPanel extends LitElement {
   private _relatedAt = Number.NEGATIVE_INFINITY;
   private _relatedTimer: ReturnType<typeof setTimeout> | undefined;
   private get _l(): Localizer { return createLocalizer(this.hass); }
-  private readonly _ready = () => { void this._refresh(); };
+  // A restored connection tries failed thumbnails again right away.
+  private readonly _ready = () => { this._thumbnailRetries.clear(); void this._refresh(); };
   private readonly _disconnected = () => { this._context++; this._formBusy = false; this._blocked = true; this._request++; this._providerRequest++; this._preview = null; this._clearImage(); this._error = this._l.t("error.disconnected"); };
 
   protected willUpdate(changed: PropertyValues): void {
@@ -525,7 +531,7 @@ export class SmartPlantsPanel extends LitElement {
   }
   private _clearThumbnails(): void {
     for (const abort of this._thumbnailAborts.values()) abort.abort();
-    this._thumbnailAborts.clear();
+    this._thumbnailAborts.clear(); this._thumbnailRetries.clear();
     for (const url of Object.values(this._thumbnails)) URL.revokeObjectURL(url);
     this._thumbnails = {}; this._thumbnailKeys = {};
   }
@@ -535,7 +541,8 @@ export class SmartPlantsPanel extends LitElement {
     // Only the overview shows thumbnails; returning to it loads any that changed.
     if (this._view.kind !== "list") return;
     const hass = this.hass; const token = hass.auth?.accessToken ?? "";
-    const wanted = new Map(this._plants.filter(p => p.image).map(p => [p.id, `${token}:${p.id}:${p.image!.id}`]));
+    const images = new Map(this._plants.filter(p => p.image).map(p => [p.id, p.image!.id]));
+    const wanted = new Map([...images].map(([id, imageId]) => [id, `${token}:${id}:${imageId}`]));
     const next = { ...this._thumbnails };
     for (const id of Object.keys(this._thumbnailKeys)) {
       if (wanted.get(id) === this._thumbnailKeys[id]) continue;
@@ -544,17 +551,27 @@ export class SmartPlantsPanel extends LitElement {
       delete next[id]; delete this._thumbnailKeys[id];
     }
     this._thumbnails = next;
+    for (const [id, retry] of this._thumbnailRetries) if (images.get(id) !== retry.imageId) this._thumbnailRetries.delete(id);
+    const now = Date.now();
     for (const [id, key] of wanted) {
       if (this._thumbnailKeys[id] === key) continue;
+      // A failed photo waits for its retry instead of being fetched on every poll.
+      const retry = this._thumbnailRetries.get(id);
+      if (retry && (retry.retryAt === null || now < retry.retryAt)) continue;
       this._thumbnailKeys[id] = key;
       const abort = new AbortController(); this._thumbnailAborts.set(id, abort);
       void api.fetchImage(hass, id, abort.signal).then(blob => {
         if (abort.signal.aborted || this._thumbnailKeys[id] !== key) return;
-        this._thumbnailAborts.delete(id);
+        this._thumbnailAborts.delete(id); this._thumbnailRetries.delete(id);
         this._thumbnails = { ...this._thumbnails, [id]: URL.createObjectURL(blob) };
       }).catch(() => {
         // A missing photo falls back to the plant icon; the plant page shows photo errors.
-        if (this._thumbnailKeys[id] === key) { this._thumbnailAborts.delete(id); delete this._thumbnailKeys[id]; }
+        if (this._thumbnailKeys[id] !== key) return;
+        this._thumbnailAborts.delete(id); delete this._thumbnailKeys[id];
+        const imageId = images.get(id)!;
+        const previous = this._thumbnailRetries.get(id);
+        const attempts = (previous?.imageId === imageId ? previous.attempts : 0) + 1;
+        this._thumbnailRetries.set(id, { imageId, attempts, retryAt: photoRetryAt(attempts) });
       });
     }
   }

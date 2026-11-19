@@ -82,8 +82,10 @@ These binary sensors have the *problem* device class. On means there is a proble
 | CO2 stress | First CO₂ sensor | `reason`, `confidence`, `threshold_ppm`, `clear_ppm` |
 | Low battery | First battery sensor | `reason`, `confidence`, `threshold_percent`, `clear_percent` |
 
-*Low battery* is a diagnostic entity. Every binary sensor of a plant, including the care task
-ones, also has `snoozed` and `snoozed_until` (see [Snoozed plants](#snoozed-plants)).
+*Sensor stale* and *Low battery* are diagnostic entities, so the device page lists them under
+*Diagnostic* and dashboards that Home Assistant builds on its own leave them out. Automations
+that target the plant still include them. Every binary sensor of a plant, including the care
+task ones, also has `snoozed` and `snoozed_until` (see [Snoozed plants](#snoozed-plants)).
 
 - `last_watered`: the last logged watering as an ISO timestamp, or `null`.
 - `sources`: how many soil moisture sensors the plant has. It tells a plant without a moisture

@@ -80,6 +80,8 @@ if TYPE_CHECKING:
 
 
 PLATFORM = "binary_sensor"
+# Entities read local state and never call a device, so updates need no limit.
+PARALLEL_UPDATES = 0
 ROLE_FACTORIES: dict[str, EntityFactory]
 
 ROLE_NEEDS_WATER = "needs_water"
@@ -226,6 +228,8 @@ class _TooWetBinary(_MoistureBinaryBase):
 class _SensorStaleBinary(_MoistureBinaryBase):
     _attr_translation_key = ROLE_SENSOR_STALE
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    # It reports on the assigned sensors, not on the plant itself.
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
     _computed_gated = False
 
     def __init__(self, manager: SmartPlantsManager, plant_id: str) -> None:

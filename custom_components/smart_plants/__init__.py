@@ -125,10 +125,16 @@ async def async_setup_entry(  # noqa: PLR0915
         # retry cleanup before replacing the manager those platforms reference.
         existing = getattr(entry, "runtime_data", None)
         if existing is None:
-            raise ConfigEntryError("Smart Plants setup cleanup is incomplete")
+            raise ConfigEntryError(
+                translation_domain=DOMAIN,
+                translation_key="setup_cleanup_incomplete",
+            )
         unloaded = await _async_unload_platforms(hass, entry, PLATFORMS)
         if len(unloaded) != len(PLATFORMS):
-            raise ConfigEntryError("Smart Plants platform cleanup is still incomplete")
+            raise ConfigEntryError(
+                translation_domain=DOMAIN,
+                translation_key="platform_cleanup_incomplete",
+            )
         if existing.repair_monitor is not None:
             existing.repair_monitor.stop()
         await existing.manager.async_unload()
@@ -136,7 +142,9 @@ async def async_setup_entry(  # noqa: PLR0915
             del entry.runtime_data
         hass.data.pop(DOMAIN, None)
     elif DOMAIN in hass.data:
-        raise ConfigEntryError("Smart Plants already has a loaded config entry")
+        raise ConfigEntryError(
+            translation_domain=DOMAIN, translation_key="already_loaded"
+        )
     hass.data[DOMAIN] = entry.entry_id
 
     reconciler = SmartPlantsDeviceReconciler(hass, entry.entry_id)
@@ -255,7 +263,11 @@ async def async_setup_entry(  # noqa: PLR0915
         await async_register_panel(hass)
     except SmartPlantsStorageError as err:
         await _rollback()
-        raise ConfigEntryError(str(err)) from err
+        raise ConfigEntryError(
+            translation_domain=DOMAIN,
+            translation_key="storage_load_failed",
+            translation_placeholders={"error": str(err)},
+        ) from err
     except BaseException:
         await _rollback()
         raise

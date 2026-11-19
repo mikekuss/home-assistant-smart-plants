@@ -11,11 +11,11 @@ integration.
 1. Create an account at [open.plantbook.io](https://open.plantbook.io/) and create client
    credentials on the [API key page](https://open.plantbook.io/apikey/).
 2. Go to **Settings > Devices & services > Smart Plants > Configure**.
-3. Tick **Enable direct OpenPlantBook provider**, enter the **OpenPlantBook client ID** and
+3. Tick **Use OpenPlantBook**, enter the **OpenPlantBook client ID** and
    **OpenPlantBook client secret**, and select **Submit**.
 
-Smart Plants checks the credentials before it saves. To turn search off again, untick the
-provider. Species data you applied stays on your plants.
+Smart Plants checks the credentials before it saves. To turn search off again, untick
+**Use OpenPlantBook**. Species data you applied stays on your plants.
 
 ## Search a species
 

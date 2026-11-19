@@ -66,6 +66,8 @@ if TYPE_CHECKING:
 
 
 PLATFORM = "button"
+# Entities read local state and never call a device, so updates need no limit.
+PARALLEL_UPDATES = 0
 ROLE_WATERED: Final = "watered"
 ACTION_PROVENANCE: Final = "action"
 

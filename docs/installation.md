@@ -49,7 +49,7 @@ All fields are optional. Leave them empty to use Smart Plants without OpenPlantB
 
 | Field | Description |
 | --- | --- |
-| Enable direct OpenPlantBook provider | Turns on species search. |
+| Use OpenPlantBook | Turns on species search. |
 | OpenPlantBook client ID | Your OpenPlantBook API client ID. |
 | OpenPlantBook client secret | Your OpenPlantBook API client secret. |
 
@@ -69,7 +69,7 @@ integration.
 | --- | --- | --- |
 | Preserve inventory when the integration is removed | Off | Keeps plant data and photos on disk when you delete the integration, so a reinstall finds them again. While it is off, deleting the integration deletes all plants, their care history and photos for good; the options form says so below the switch. |
 | Forecast refresh interval | 30 min | How often forecast reading tasks fetch the weather forecast, from 15 to 180 minutes. A change of the weather entity also fetches it, at most once every 5 minutes. |
-| Enable direct OpenPlantBook provider | Off | Turns species search on or off. |
+| Use OpenPlantBook | Off | Turns species search on or off. |
 | OpenPlantBook client ID | Empty | Your client ID. |
 | OpenPlantBook client secret | Empty | The form never shows the stored secret. Leave it empty to keep it. |
 

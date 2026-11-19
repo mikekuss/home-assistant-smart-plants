@@ -186,3 +186,87 @@ describe("SmartPlantsPanel image loading", () => {
     expect(element.shadowRoot?.textContent).toContain("Photo could not be loaded"); await click(element, "Retry photo"); await settle(element); expect(avatarImg(element)?.src).toBe("blob:photo");
   });
 });
+
+describe("SmartPlantsPanel overview thumbnails", () => {
+  type Internals = { _syncThumbnails(): void; _thumbnails: Record<string, string>; _ready(): void };
+  const imageCalls = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/image")).length;
+  let now = 1_000_000;
+
+  beforeEach(() => {
+    now = 1_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 500 })));
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:thumb");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+  });
+
+  afterEach(async () => {
+    document.body.replaceChildren();
+    await Promise.resolve();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  async function openOverview(): Promise<Internals> {
+    const element = document.createElement("smart-plants-panel");
+    element.hass = hassFor([plant]);
+    document.body.append(element);
+    await vi.waitFor(() => expect(imageCalls()).toBe(1));
+    await settle(element);
+    return element as unknown as Internals;
+  }
+
+  async function poll(panel: Internals, afterMs: number): Promise<void> {
+    now += afterMs;
+    panel._syncThumbnails();
+    await Promise.resolve(); await new Promise(resolve => setTimeout(resolve, 0));
+  }
+
+  it("waits longer after each failed download and stops after five attempts", async () => {
+    const panel = await openOverview();
+    // Polls before the wait has passed fetch nothing: 30 s, then 1, 2 and 4
+    // minutes after each failure.
+    await poll(panel, 10_000);
+    expect(imageCalls()).toBe(1);
+    now -= 10_000;
+    for (const [wait, calls] of [[30_000, 2], [60_000, 3], [120_000, 4], [240_000, 5]] as const) {
+      await poll(panel, wait - 1);
+      expect(imageCalls()).toBe(calls - 1);
+      await poll(panel, 1);
+      expect(imageCalls()).toBe(calls);
+    }
+    // Five attempts in all: later polls never fetch again, also with a new
+    // access token.
+    for (let i = 0; i < 20; i++) await poll(panel, 30_000);
+    expect(imageCalls()).toBe(5);
+    (panel as unknown as { hass: HomeAssistantLike }).hass.auth = { accessToken: "rotated-token" };
+    await poll(panel, 600_000);
+    expect(imageCalls()).toBe(5);
+  });
+
+  it("starts over when the connection comes back", async () => {
+    const panel = await openOverview();
+    for (let i = 0; i < 4; i++) await poll(panel, 600_000);
+    expect(imageCalls()).toBe(5);
+    panel._ready();
+    await vi.waitFor(() => expect(imageCalls()).toBe(6));
+    vi.mocked(fetch).mockImplementation(async () => new Response(new Blob(["image"], { type: "image/webp" })));
+    await poll(panel, 30_000);
+    expect(imageCalls()).toBe(7);
+    await vi.waitFor(() => expect(panel._thumbnails[plant.id]).toBe("blob:thumb"));
+    // A loaded thumbnail is not fetched again.
+    await poll(panel, 600_000);
+    expect(imageCalls()).toBe(7);
+  });
+
+  it("fetches a new photo at once after the old one failed", async () => {
+    const panel = await openOverview();
+    for (let i = 0; i < 4; i++) await poll(panel, 600_000);
+    expect(imageCalls()).toBe(5);
+    (panel as unknown as { _plants: PlantRecord[] })._plants = [{ ...plant, revision: 2, image: { ...plant.image!, id: "img-2" } }];
+    await poll(panel, 1);
+    expect(imageCalls()).toBe(6);
+    await poll(panel, 1);
+    expect(imageCalls()).toBe(6);
+  });
+});

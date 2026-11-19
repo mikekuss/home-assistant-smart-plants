@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -21,6 +22,7 @@ from custom_components.smart_plants.storage import SmartPlantsStorageError
 from homeassistant.config_entries import ConfigEntryState, OperationNotAllowed
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 
@@ -95,6 +97,41 @@ async def test_setup_failure_releases_singleton_slot(hass: HomeAssistant) -> Non
     assert reloaded_entry is not None
     assert reloaded_entry.state is ConfigEntryState.LOADED
     assert hass.data[DOMAIN] == entry.entry_id
+
+
+async def test_setup_errors_are_translated(hass: HomeAssistant) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
+    entry.add_to_hass(hass)
+
+    with patch.object(
+        SmartPlantsManager,
+        "async_load",
+        side_effect=SmartPlantsStorageError("inventory is not valid"),
+    ):
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    assert entry.error_reason_translation_key == "storage_load_failed"
+    assert entry.error_reason_translation_placeholders == {
+        "error": "inventory is not valid"
+    }
+    assert entry.reason == (
+        "Smart Plants could not load its stored plants: inventory is not valid"
+    )
+
+
+async def test_second_entry_setup_error_is_translated(hass: HomeAssistant) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
+    entry.add_to_hass(hass)
+    hass.data[DOMAIN] = "another-entry"
+
+    with pytest.raises(ConfigEntryError) as raised:
+        await integration.async_setup_entry(hass, entry)
+
+    assert raised.value.translation_domain == DOMAIN
+    assert raised.value.translation_key == "already_loaded"
+    assert hass.data[DOMAIN] == "another-entry"
 
 
 async def test_setup_rolls_back_when_replay_fails(hass: HomeAssistant) -> None:
@@ -618,3 +655,11 @@ async def test_removal_waits_for_in_flight_write_then_deletes_storage(
     await fresh.async_load()
     assert fresh.snapshot.revision == 0
     assert fresh.snapshot.plants == {}
+
+
+@pytest.mark.parametrize("platform", list(integration.PLATFORMS))
+def test_platforms_set_parallel_updates(platform: Platform) -> None:
+    # Entities only read local state, so Home Assistant need not serialize
+    # their updates.
+    module = importlib.import_module(f"custom_components.smart_plants.{platform}")
+    assert module.PARALLEL_UPDATES == 0

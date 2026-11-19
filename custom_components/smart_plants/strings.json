@@ -15,18 +15,28 @@
         "title": "Set up Smart Plants",
         "description": "OpenPlantBook is optional and uses its API directly. You need an OpenPlantBook account and client credentials. [Get OpenPlantBook API credentials]({openplantbook_credentials_url}). Do not install the separate Home Assistant OpenPlantBook integration. Manual plant management works without credentials.",
         "data": {
-          "openplantbook_enabled": "Enable direct OpenPlantBook provider",
+          "openplantbook_enabled": "Use OpenPlantBook",
           "openplantbook_client_id": "OpenPlantBook client ID",
           "openplantbook_client_secret": "OpenPlantBook client secret"
+        },
+        "data_description": {
+          "openplantbook_enabled": "Search OpenPlantBook for a plant's species and use its moisture range. Smart Plants works without it.",
+          "openplantbook_client_id": "The client ID of your OpenPlantBook API credentials.",
+          "openplantbook_client_secret": "The client secret that belongs to the client ID."
         }
       },
       "reauth_confirm": {
         "title": "Reauthenticate OpenPlantBook",
-        "description": "Update the direct OpenPlantBook credentials. Smart Plants local inventory remains available while authentication is unavailable.",
+        "description": "Update the OpenPlantBook credentials. Smart Plants local inventory remains available while authentication is unavailable.",
         "data": {
-          "openplantbook_enabled": "Enable direct OpenPlantBook provider",
+          "openplantbook_enabled": "Use OpenPlantBook",
           "openplantbook_client_id": "OpenPlantBook client ID",
           "openplantbook_client_secret": "OpenPlantBook client secret"
+        },
+        "data_description": {
+          "openplantbook_enabled": "Search OpenPlantBook for a plant's species and use its moisture range. Smart Plants works without it.",
+          "openplantbook_client_id": "The client ID of your OpenPlantBook API credentials.",
+          "openplantbook_client_secret": "The client secret that belongs to the client ID."
         }
       }
     }
@@ -44,13 +54,16 @@
         "data": {
           "preserve_inventory_on_removal": "Preserve inventory when the integration is removed",
           "forecast_refresh_minutes": "Forecast refresh interval",
-          "openplantbook_enabled": "Enable direct OpenPlantBook provider",
+          "openplantbook_enabled": "Use OpenPlantBook",
           "openplantbook_client_id": "OpenPlantBook client ID",
           "openplantbook_client_secret": "OpenPlantBook client secret"
         },
         "data_description": {
           "preserve_inventory_on_removal": "When this is off, deleting the Smart Plants integration also deletes all plants, their care history and photos for good. Turn it on before you delete the integration if you might reinstall it.",
-          "forecast_refresh_minutes": "How often Smart Plants fetches the forecast of a weather entity that a forecast reading task watches, from 15 to 180 minutes. A change of the weather entity still fetches it again, at most once every 5 minutes."
+          "forecast_refresh_minutes": "How often Smart Plants fetches the forecast of a weather entity that a forecast reading task watches, from 15 to 180 minutes. A change of the weather entity still fetches it again, at most once every 5 minutes.",
+          "openplantbook_enabled": "Search OpenPlantBook for a plant's species and use its moisture range. Smart Plants works without it.",
+          "openplantbook_client_id": "The client ID of your OpenPlantBook API credentials.",
+          "openplantbook_client_secret": "The client secret that belongs to the client ID. The stored secret is never shown; leave the field empty to keep it."
         },
         "description": "OpenPlantBook API credentials are optional. Create an account and client credentials. [Get OpenPlantBook API credentials]({openplantbook_credentials_url}). Smart Plants connects directly; the separate Home Assistant OpenPlantBook integration is not required. Provider failures never disable local inventory."
       }
@@ -704,7 +717,7 @@
       "message": "{target} stands for all plants, so care can't be logged for it. Choose a plant, one of its entities or a care task entity."
     },
     "plant_disabled": {
-      "message": "{plant} is disabled. Enable it before logging care."
+      "message": "{plant} is paused. Resume monitoring before logging care."
     },
     "care_task_not_found": {
       "message": "The care task of {target} no longer exists."
@@ -731,7 +744,7 @@
       "message": "Choose at least one plant or one of its entities."
     },
     "plant_disabled_snooze": {
-      "message": "{plant} is disabled. Enable it before snoozing its alerts."
+      "message": "{plant} is paused. Resume monitoring before snoozing its alerts."
     },
     "snooze_period_required": {
       "message": "Set a duration or an end time for the snooze."
@@ -774,6 +787,18 @@
     },
     "moisture_thresholds_invalid": {
       "message": "The moisture thresholds must keep the minimum below the target and the target below the maximum, with at least {span} percentage points between minimum and maximum."
+    },
+    "setup_cleanup_incomplete": {
+      "message": "Smart Plants could not finish cleaning up after an earlier failed start. Restart Home Assistant."
+    },
+    "platform_cleanup_incomplete": {
+      "message": "Smart Plants could not remove the entities of an earlier failed start. Restart Home Assistant."
+    },
+    "already_loaded": {
+      "message": "Smart Plants is already running with another configuration entry."
+    },
+    "storage_load_failed": {
+      "message": "Smart Plants could not load its stored plants: {error}"
     }
   },
   "triggers": {

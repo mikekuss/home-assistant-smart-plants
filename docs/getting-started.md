@@ -59,7 +59,12 @@ never creates a second plant.
 ## Use the plant page
 
 Select a plant to open its page. The header shows the photo, status with every reason and up
-to four readings, with **Watered** and **Log care** next to it.
+to four readings, with **Watered** and **Log care** next to it. The page's address is
+`/smart-plants/plant/<plant ID>`, so you can link to a plant from a dashboard.
+
+On the overview, a plant whose photo can't be downloaded shows the plant icon. The panel tries
+again with its next refresh after 30 seconds, then after 1, 2 and 4 minutes. After five
+attempts it waits until the connection to Home Assistant comes back.
 
 ![Plant page in the Smart Plants panel](images/plant-detail.png)
 
