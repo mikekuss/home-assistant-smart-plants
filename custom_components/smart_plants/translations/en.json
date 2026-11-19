@@ -618,11 +618,11 @@
   "services": {
     "log_care": {
       "name": "Log care",
-      "description": "Logs care for Smart Plants plants or marks care tasks as done. Logging watering also keeps Needs water off for 24 hours.",
+      "description": "Logs care for Smart Plants plants or marks care tasks as done. Target a plant or one of its entities to log care for the plant, or a care task entity to mark that task as done. Logging watering also keeps Needs water off for 24 hours.",
       "fields": {
         "kind": {
           "name": "Care type",
-          "description": "What was done. Required when you target plants. When you target a care task, it can be left empty; if set, it must match the task."
+          "description": "What was done. Required when you target a plant or one of its entities. When you target a care task, it can be left empty; if set, it must match the task."
         },
         "occurred_at": {
           "name": "Time",
@@ -693,6 +693,15 @@
     },
     "invalid_target": {
       "message": "{target} is not a Smart Plants plant or care task."
+    },
+    "invalid_care_target": {
+      "message": "{target} is not a Smart Plants plant or care task. Choose a plant, one of its entities or a care task entity."
+    },
+    "unknown_care_target": {
+      "message": "{target} was not found. Choose a plant, one of its entities or a care task entity."
+    },
+    "all_plants_care_target": {
+      "message": "{target} stands for all plants, so care can't be logged for it. Choose a plant, one of its entities or a care task entity."
     },
     "plant_disabled": {
       "message": "{plant} is disabled. Enable it before logging care."

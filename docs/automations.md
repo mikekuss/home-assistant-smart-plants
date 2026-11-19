@@ -94,8 +94,8 @@ The triggers set these variables, next to Home Assistant's own `trigger.entity_i
 
 | Action | Targets | What it does |
 | --- | --- | --- |
-| `smart_plants.log_care` | Plant devices or care task entities | Adds a care entry. With a task as target, marks the task as done. |
-| `smart_plants.skip_care_task` | Care task entities | Skips the current occurrence. Not for reading tasks or paused plants. |
+| `smart_plants.log_care` | Plants, their entities or care task entities | Adds a care entry. With a care task entity, marks the task as done. |
+| `smart_plants.skip_care_task` | Care task binary sensors | Skips the current occurrence. Not for reading tasks or paused plants. |
 | `smart_plants.snooze` | Plants, their entities or *All plants* | Snoozes alerts, see [Snooze alerts](#snooze-alerts). |
 | `smart_plants.unsnooze` | Plants, their entities or *All plants* | Ends the snooze now. |
 | `smart_plants.get_report` | Plants, their entities, areas, floors, labels or *All plants* | Returns the [plant report](#plant-report). Changes nothing. |
@@ -107,14 +107,18 @@ Home Assistant's read-only group get *Unauthorized*. Automations aren't affected
 
 | Field | Required | Description |
 | --- | --- | --- |
-| `kind` | With a plant target | `watering`, `fertilizing`, `pruning`, `repotting`, `pest_control`, `note` or `task`. With a task target, leave it out or match the task. |
+| `kind` | With a plant or one of its entities | `watering`, `fertilizing`, `pruning`, `repotting`, `pest_control`, `note` or `task`. With a task target, leave it out or match the task. |
 | `occurred_at` | No | When it happened. Defaults to now and can't be in the future. Without a time zone it's local time. |
 | `note` | For `kind: note` | Up to 500 characters. |
 
-If any target is invalid, nothing is logged. Areas, floors and labels aren't accepted. A
-`watering` keeps *Needs water* off for 24 hours from `occurred_at`. With a response variable,
-the action returns `events`, one per entry, with `plant_id`, `event_id`, `kind`, `occurred_at`
-and `task_id`.
+A care task's entities are the task's binary sensor, for example *Fertilize*, and its
+*Next due*, *Last done* and *Done* entities. Each of them marks the task as done, and a task you
+name through several of them is done once. Any other entity of a plant, for example
+*Needs water*, stands for the plant, like its device. A plant you reach through its device and
+its entities gets one entry. If any target is invalid, nothing is logged. Areas, floors, labels
+and *All plants* aren't accepted. A `watering` keeps *Needs water* off for 24 hours from
+`occurred_at`. With a response variable, the action returns `events`, one per entry, with
+`plant_id`, `event_id`, `kind`, `occurred_at` and `task_id`.
 
 ## Plant report
 
@@ -333,7 +337,7 @@ triggers:
 actions:
   - action: smart_plants.log_care
     target:
-      device_id: 0123456789abcdef0123456789abcdef
+      entity_id: binary_sensor.monstera_needs_water
     data:
       kind: watering
 mode: single

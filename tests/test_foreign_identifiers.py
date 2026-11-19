@@ -80,4 +80,4 @@ async def test_log_care_rejects_the_device(hass: HomeAssistant) -> None:
             {"device_id": device_id, "kind": "watering"},
             blocking=True,
         )
-    assert info.value.translation_key == "invalid_target"
+    assert info.value.translation_key == "invalid_care_target"

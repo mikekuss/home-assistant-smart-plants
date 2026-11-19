@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- `smart_plants.log_care` accepts a plant's own entities as target, as `smart_plants.snooze`
+  does. An entity such as *Needs water* logs care for its plant and needs a care type, like the
+  plant's device. A care task's entities mark the task as done: besides the task itself, that
+  now includes its *Next due*, *Last done* and *Done* entities. When a target is wrong, the error
+  now says what to choose instead.
 - Large plant collections cost much less. Snoozing or changing many plants at once checks each
   changed plant's reading care tasks once, instead of every task of every plant for each changed
   plant (with 200 plants, 200 checks instead of 40,000). The panel's plant list, read every 30

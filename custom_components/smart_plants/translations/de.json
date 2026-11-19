@@ -618,11 +618,11 @@
   "services": {
     "log_care": {
       "name": "Pflege eintragen",
-      "description": "Trägt Pflege für Smart-Plants-Pflanzen ein oder markiert Pflegeaufgaben als erledigt. Ein eingetragenes Gießen hält Braucht Wasser außerdem 24 Stunden lang aus.",
+      "description": "Trägt Pflege für Smart-Plants-Pflanzen ein oder markiert Pflegeaufgaben als erledigt. Mit einer Pflanze oder einer ihrer Entitäten als Ziel wird Pflege für die Pflanze eingetragen, mit der Entität einer Pflegeaufgabe wird diese Aufgabe als erledigt markiert. Ein eingetragenes Gießen hält Braucht Wasser außerdem 24 Stunden lang aus.",
       "fields": {
         "kind": {
           "name": "Pflegeart",
-          "description": "Was gemacht wurde. Erforderlich, wenn Sie Pflanzen auswählen. Bei einer Pflegeaufgabe kann das Feld leer bleiben; wenn gesetzt, muss es zur Aufgabe passen."
+          "description": "Was gemacht wurde. Erforderlich, wenn du eine Pflanze oder eine ihrer Entitäten auswählst. Bei einer Pflegeaufgabe kann das Feld leer bleiben; wenn gesetzt, muss es zur Aufgabe passen."
         },
         "occurred_at": {
           "name": "Zeitpunkt",
@@ -693,6 +693,15 @@
     },
     "invalid_target": {
       "message": "{target} ist keine Pflanze und keine Pflegeaufgabe von Smart Plants."
+    },
+    "invalid_care_target": {
+      "message": "{target} ist keine Pflanze und keine Pflegeaufgabe von Smart Plants. Wähle eine Pflanze, eine ihrer Entitäten oder die Entität einer Pflegeaufgabe."
+    },
+    "unknown_care_target": {
+      "message": "{target} wurde nicht gefunden. Wähle eine Pflanze, eine ihrer Entitäten oder die Entität einer Pflegeaufgabe."
+    },
+    "all_plants_care_target": {
+      "message": "{target} steht für alle Pflanzen, dafür lässt sich keine Pflege eintragen. Wähle eine Pflanze, eine ihrer Entitäten oder die Entität einer Pflegeaufgabe."
     },
     "plant_disabled": {
       "message": "{plant} ist deaktiviert. Aktivieren Sie die Pflanze, bevor Sie Pflege eintragen."
