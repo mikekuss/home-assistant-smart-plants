@@ -367,6 +367,8 @@ export class SmartPlantsPanel extends LitElement {
   private _relatedAt = Number.NEGATIVE_INFINITY;
   private _relatedTimer: ReturnType<typeof setTimeout> | undefined;
   private get _l(): Localizer { return createLocalizer(this.hass); }
+  // Registry and archive changes only refresh; failed thumbnails keep their wait.
+  private readonly _registryChanged = () => { void this._refresh(); };
   // A restored connection tries failed thumbnails again right away.
   private readonly _ready = () => { this._thumbnailRetries.clear(); void this._refresh(); };
   private readonly _disconnected = () => { this._context++; this._formBusy = false; this._blocked = true; this._request++; this._providerRequest++; this._preview = null; this._clearImage(); this._error = this._l.t("error.disconnected"); };
@@ -491,7 +493,7 @@ export class SmartPlantsPanel extends LitElement {
     const connection = this.hass.connection; this._connection = connection;
     const generation = this._subscriptionGeneration;
     connection.addEventListener?.("ready", this._ready); connection.addEventListener?.("disconnected", this._disconnected);
-    void api.subscribeRegistry(this.hass, this._ready).then(unsubscribe => {
+    void api.subscribeRegistry(this.hass, this._registryChanged).then(unsubscribe => {
       if (this._connection !== connection || generation !== this._subscriptionGeneration || !this.isConnected) unsubscribe();
       else { this._unsubscribe = unsubscribe; this._registryLive = !!connection.subscribeEvents; }
     }).catch(() => { this._registryError = this._l.t("error.registry_updates"); });

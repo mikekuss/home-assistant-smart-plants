@@ -45,8 +45,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   monitoring of an optional reading only once you assign it a sensor. States, attributes and
   automations behave as before.
 - *Sensor stale* is now a diagnostic entity, like *Low battery*. The device page lists it under
-  *Diagnostic*, and dashboards that Home Assistant builds on its own leave it out. Automations
-  that target the plant still include it. If you hid, renamed or disabled it, that stays. See
+  *Diagnostic*, and dashboards that Home Assistant builds on its own leave it out. Smart Plants'
+  own triggers and conditions still include it when they target the plant's device or area;
+  Home Assistant's own device and area targets skip diagnostic entities, so choose the entity
+  itself there. If you hid, renamed or disabled it, that stays. See
   [Binary sensors](docs/entities.md#binary-sensors).
 - The setup and options forms call the switch **Use OpenPlantBook** instead of **Enable direct
   OpenPlantBook provider**, and explain each field below it.

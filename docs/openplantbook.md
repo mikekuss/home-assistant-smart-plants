@@ -57,13 +57,13 @@ Plants isn't affiliated with OpenPlantBook.
 
 | Message | What to do |
 | --- | --- |
-| Enter both an OpenPlantBook client ID and client secret, or disable the provider. | Fill in both fields, or untick the provider. |
+| Enter both an OpenPlantBook client ID and client secret, or turn off Use OpenPlantBook. | Fill in both fields, or untick **Use OpenPlantBook**. |
 | OpenPlantBook rejected these credentials. | Check them on the API key page. |
-| OpenPlantBook could not be reached. Try again later or disable the provider. | Check the connection and try again. |
+| OpenPlantBook could not be reached. Try again later or turn off Use OpenPlantBook. | Check the connection and try again. |
 | The OpenPlantBook client ID or client secret is too long. | Paste only the credential. |
 | OpenPlantBook didn't accept your credentials. … | Update them in the reauthentication prompt under **Settings > Devices & services**. |
 | OpenPlantBook is getting too many requests. … | Wait and try again. |
 | OpenPlantBook took too long to answer. … or isn't reachable right now. … | Try again later, or continue without a species. |
-| Species search needs OpenPlantBook. | Turn on the provider in the options. |
+| Species search needs OpenPlantBook. | Tick **Use OpenPlantBook** in the options. |
 
 A preview that can't be applied after a while has expired. Search again.

@@ -188,7 +188,10 @@ describe("SmartPlantsPanel image loading", () => {
 });
 
 describe("SmartPlantsPanel overview thumbnails", () => {
-  type Internals = { _syncThumbnails(): void; _thumbnails: Record<string, string>; _ready(): void };
+  type Internals = { _syncThumbnails(): void; _thumbnails: Record<string, string> };
+  // Connection events ("ready") and registry event subscriptions of the open panel.
+  let events: Map<string, () => void>;
+  let registryCallbacks: (() => void)[];
   const imageCalls = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/image")).length;
   let now = 1_000_000;
 
@@ -209,9 +212,13 @@ describe("SmartPlantsPanel overview thumbnails", () => {
 
   async function openOverview(): Promise<Internals> {
     const element = document.createElement("smart-plants-panel");
-    element.hass = hassFor([plant]);
+    const rig = harness([plant]);
+    events = rig.events; registryCallbacks = [];
+    rig.hass.connection.subscribeEvents = async <T>(callback: (event: T) => void) => { registryCallbacks.push(() => callback(undefined as T)); return () => undefined; };
+    element.hass = rig.hass;
     document.body.append(element);
     await vi.waitFor(() => expect(imageCalls()).toBe(1));
+    await vi.waitFor(() => expect(registryCallbacks.length).toBeGreaterThan(0));
     await settle(element);
     return element as unknown as Internals;
   }
@@ -248,7 +255,7 @@ describe("SmartPlantsPanel overview thumbnails", () => {
     const panel = await openOverview();
     for (let i = 0; i < 4; i++) await poll(panel, 600_000);
     expect(imageCalls()).toBe(5);
-    panel._ready();
+    events.get("ready")!();
     await vi.waitFor(() => expect(imageCalls()).toBe(6));
     vi.mocked(fetch).mockImplementation(async () => new Response(new Blob(["image"], { type: "image/webp" })));
     await poll(panel, 30_000);
@@ -268,5 +275,23 @@ describe("SmartPlantsPanel overview thumbnails", () => {
     expect(imageCalls()).toBe(6);
     await poll(panel, 1);
     expect(imageCalls()).toBe(6);
+  });
+
+  it("keeps the wait and the attempt count on registry changes", async () => {
+    const panel = await openOverview();
+    for (let i = 0; i < 4; i++) await poll(panel, 600_000);
+    expect(imageCalls()).toBe(5);
+    for (const callback of registryCallbacks) callback();
+    await settle(panel as unknown as { updateComplete: Promise<unknown> });
+    await poll(panel, 1);
+    expect(imageCalls()).toBe(5);
+  });
+
+  it("keeps a pending wait on registry changes", async () => {
+    const panel = await openOverview();
+    registryCallbacks[0]!();
+    await settle(panel as unknown as { updateComplete: Promise<unknown> });
+    await poll(panel, 1_000);
+    expect(imageCalls()).toBe(1);
   });
 });

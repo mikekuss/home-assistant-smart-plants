@@ -53,7 +53,7 @@ All fields are optional. Leave them empty to use Smart Plants without OpenPlantB
 | OpenPlantBook client ID | Your OpenPlantBook API client ID. |
 | OpenPlantBook client secret | Your OpenPlantBook API client secret. |
 
-With the provider on, Smart Plants checks the credentials before it finishes. Smart Plants has
+With **Use OpenPlantBook** on, Smart Plants checks the credentials before it finishes. Smart Plants has
 one configuration entry for all plants. A second setup stops with "Smart Plants is already
 configured."
 

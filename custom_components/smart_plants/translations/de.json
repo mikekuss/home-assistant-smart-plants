@@ -5,10 +5,10 @@
       "reauth_successful": "Die OpenPlantBook-Anmeldung wurde aktualisiert."
     },
     "error": {
-      "credentials_required": "Client-ID und Client-Secret eingeben oder den Anbieter deaktivieren.",
+      "credentials_required": "Client-ID und Client-Secret eingeben oder OpenPlantBook verwenden ausschalten.",
       "credentials_invalid": "Die OpenPlantBook-Client-ID oder das Client-Secret ist zu lang.",
       "invalid_auth": "OpenPlantBook hat diese Zugangsdaten abgelehnt.",
-      "cannot_connect": "OpenPlantBook ist nicht erreichbar. Später erneut versuchen oder den Anbieter deaktivieren."
+      "cannot_connect": "OpenPlantBook ist nicht erreichbar. Später erneut versuchen oder OpenPlantBook verwenden ausschalten."
     },
     "step": {
       "user": {
@@ -43,10 +43,10 @@
   },
   "options": {
     "error": {
-      "credentials_required": "Client-ID und Client-Secret eingeben oder den Anbieter deaktivieren.",
+      "credentials_required": "Client-ID und Client-Secret eingeben oder OpenPlantBook verwenden ausschalten.",
       "credentials_invalid": "Die OpenPlantBook-Client-ID oder das Client-Secret ist zu lang.",
       "invalid_auth": "OpenPlantBook hat diese Zugangsdaten abgelehnt.",
-      "cannot_connect": "OpenPlantBook ist nicht erreichbar. Später erneut versuchen oder den Anbieter deaktivieren."
+      "cannot_connect": "OpenPlantBook ist nicht erreichbar. Später erneut versuchen oder OpenPlantBook verwenden ausschalten."
     },
     "step": {
       "init": {
