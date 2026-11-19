@@ -146,7 +146,7 @@ For OpenPlantBook messages, see [OpenPlantBook](openplantbook.md#troubleshooting
 - Only administrators can use the panel. Other users get the dashboard card and the entities.
 - Plants are managed in the panel. Only the moisture limits are entities.
 - There is no import from other plant integrations.
-- The panel, setup and entity names are in English and German.
+- The panel, setup and entity names are in English, German and Italian.
 - The history chart needs the recorder. Its **24 h** range goes back as far as the recorder
   keeps short-term statistics, 10 days by default.
 - Smart Plants never switches devices.

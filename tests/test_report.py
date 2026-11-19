@@ -284,6 +284,9 @@ def test_report_german() -> None:
         ("de-CH", "de"),
         ("en", "en"),
         ("en-GB", "en"),
+        ("it", "it"),
+        ("it-IT", "it"),
+        ("it_CH", "it"),
         ("fr", "en"),
         (None, "en"),
     ],
@@ -469,6 +472,7 @@ async def test_action_names_tasks_and_follows_the_language(
     [
         ("en", "de", "de", "1 Pflanze braucht Aufmerksamkeit"),
         ("en", "de-DE", "de", "1 Pflanze braucht Aufmerksamkeit"),
+        ("en", "it", "it", "1 pianta ha bisogno di attenzione"),
         ("de", "en", "en", "1 plant needs attention"),
         ("de", "en-GB", "en", "1 plant needs attention"),
         ("de", "fr", "en", "1 plant needs attention"),

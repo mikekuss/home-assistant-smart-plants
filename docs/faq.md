@@ -44,5 +44,5 @@ A low battery is about the sensor, not the plant. It has its own *Low battery* e
 
 ## Which languages are supported?
 
-English and German. The panel follows your profile language and uses English for others. To
-add a language, see [Translations](development/translations.md).
+English, German and Italian. The panel follows your profile language and uses English for
+others. To add a language, see [Translations](development/translations.md).

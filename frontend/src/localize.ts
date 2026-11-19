@@ -8,6 +8,7 @@
 // `_other` key for languages whose plural rules need them.
 import { de } from "./translations/de.js";
 import { en } from "./translations/en.js";
+import { it } from "./translations/it.js";
 
 export type MessageKey = keyof typeof en;
 export type Catalog = Record<MessageKey, string>;
@@ -23,9 +24,9 @@ export type LanguageCatalog = Partial<Record<MessageKey | PluralKey, string>>;
 // Catalog set passed to createLocalizer: English plus any number of languages.
 export type Catalogs = Readonly<Record<string, LanguageCatalog>> & { readonly en: Partial<Catalog> };
 
-export const LANGUAGES = ["en", "de"] as const;
+export const LANGUAGES = ["en", "de", "it"] as const;
 export type Language = typeof LANGUAGES[number];
-const CATALOGS: Catalogs = { en, de };
+const CATALOGS: Catalogs = { en, de, it };
 
 // Subset of the Home Assistant frontend `hass.locale` object the panel reads.
 export interface HALocale {

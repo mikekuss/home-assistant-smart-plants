@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Italian translation of the panel, the dashboard card, setup, entity names, repairs, actions,
+  triggers and conditions. The plant report (`smart_plants.get_report`) is also available in
+  Italian.
+
 ### Changed
 
 - `smart_plants.log_care` accepts a plant's own entities as target, as `smart_plants.snooze`

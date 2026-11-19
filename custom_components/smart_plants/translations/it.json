@@ -1,0 +1,910 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Smart Plants è già configurato.",
+      "reauth_successful": "L'autenticazione di OpenPlantBook è stata aggiornata."
+    },
+    "error": {
+      "credentials_required": "Inserisci sia l'ID client sia il segreto client di OpenPlantBook, oppure disattiva il fornitore.",
+      "credentials_invalid": "L'ID client o il segreto client di OpenPlantBook è troppo lungo.",
+      "invalid_auth": "OpenPlantBook ha rifiutato queste credenziali.",
+      "cannot_connect": "Impossibile raggiungere OpenPlantBook. Riprova più tardi oppure disattiva il fornitore."
+    },
+    "step": {
+      "user": {
+        "title": "Configura Smart Plants",
+        "description": "OpenPlantBook è facoltativo e viene usato direttamente tramite la sua API. Ti servono un account OpenPlantBook e delle credenziali client. [Ottieni le credenziali API di OpenPlantBook]({openplantbook_credentials_url}). Non installare l'integrazione OpenPlantBook di Home Assistant, che è separata. Puoi gestire le piante a mano anche senza credenziali.",
+        "data": {
+          "openplantbook_enabled": "Usa OpenPlantBook come fornitore diretto",
+          "openplantbook_client_id": "ID client di OpenPlantBook",
+          "openplantbook_client_secret": "Segreto client di OpenPlantBook"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Autentica di nuovo OpenPlantBook",
+        "description": "Aggiorna le credenziali per l'accesso diretto a OpenPlantBook. Le piante salvate in locale in Smart Plants restano disponibili anche mentre l'autenticazione non funziona.",
+        "data": {
+          "openplantbook_enabled": "Usa OpenPlantBook come fornitore diretto",
+          "openplantbook_client_id": "ID client di OpenPlantBook",
+          "openplantbook_client_secret": "Segreto client di OpenPlantBook"
+        }
+      }
+    }
+  },
+  "options": {
+    "error": {
+      "credentials_required": "Inserisci sia l'ID client sia il segreto client di OpenPlantBook, oppure disattiva il fornitore.",
+      "credentials_invalid": "L'ID client o il segreto client di OpenPlantBook è troppo lungo.",
+      "invalid_auth": "OpenPlantBook ha rifiutato queste credenziali.",
+      "cannot_connect": "Impossibile raggiungere OpenPlantBook. Riprova più tardi oppure disattiva il fornitore."
+    },
+    "step": {
+      "init": {
+        "title": "Opzioni di Smart Plants",
+        "data": {
+          "preserve_inventory_on_removal": "Conserva le piante se l'integrazione viene rimossa",
+          "forecast_refresh_minutes": "Intervallo di aggiornamento delle previsioni",
+          "openplantbook_enabled": "Usa OpenPlantBook come fornitore diretto",
+          "openplantbook_client_id": "ID client di OpenPlantBook",
+          "openplantbook_client_secret": "Segreto client di OpenPlantBook"
+        },
+        "data_description": {
+          "preserve_inventory_on_removal": "Se è disattivata, eliminando l'integrazione Smart Plants elimini per sempre anche tutte le piante, il loro registro delle cure e le foto. Attivala prima di eliminare l'integrazione se pensi di reinstallarla.",
+          "forecast_refresh_minutes": "Ogni quanto Smart Plants scarica le previsioni di un'entità meteo seguita da un'attività basata sulle previsioni, da 15 a 180 minuti. Quando l'entità meteo cambia, le previsioni vengono comunque scaricate di nuovo, al massimo una volta ogni 5 minuti."
+        },
+        "description": "Le credenziali API di OpenPlantBook sono facoltative. Crea un account e delle credenziali client. [Ottieni le credenziali API di OpenPlantBook]({openplantbook_credentials_url}). Smart Plants si collega direttamente: l'integrazione OpenPlantBook di Home Assistant, che è separata, non serve. Gli errori del fornitore non bloccano mai le piante salvate in locale."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "moisture": {
+        "name": "Umidità del terreno"
+      },
+      "health_score": {
+        "name": "Punteggio di salute"
+      },
+      "temperature": {
+        "name": "Temperatura"
+      },
+      "humidity": {
+        "name": "Umidità dell'aria"
+      },
+      "illuminance": {
+        "name": "Illuminamento"
+      },
+      "battery": {
+        "name": "Batteria"
+      },
+      "conductivity": {
+        "name": "Conducibilità"
+      },
+      "soil_temperature": {
+        "name": "Temperatura del terreno"
+      },
+      "co2": {
+        "name": "CO2"
+      },
+      "last_watered": {
+        "name": "Ultima annaffiatura"
+      },
+      "care_task_fertilize_next": {
+        "name": "Prossima concimazione"
+      },
+      "care_task_prune_next": {
+        "name": "Prossima potatura"
+      },
+      "care_task_repot_next": {
+        "name": "Prossimo rinvaso"
+      },
+      "care_task_pests_next": {
+        "name": "Prossimo controllo parassiti"
+      },
+      "care_task_winter_protection_next": {
+        "name": "Prossima protezione invernale"
+      },
+      "care_task_custom_next": {
+        "name": "Prossima attività di cura"
+      },
+      "care_task_named_next": {
+        "name": "{task_name}: prossima scadenza"
+      },
+      "care_task_fertilize_last": {
+        "name": "Ultima concimazione"
+      },
+      "care_task_prune_last": {
+        "name": "Ultima potatura"
+      },
+      "care_task_repot_last": {
+        "name": "Ultimo rinvaso"
+      },
+      "care_task_pests_last": {
+        "name": "Ultimo controllo parassiti"
+      },
+      "care_task_winter_protection_last": {
+        "name": "Ultima protezione invernale"
+      },
+      "care_task_custom_last": {
+        "name": "Ultima attività di cura"
+      },
+      "care_task_named_last": {
+        "name": "{task_name}: ultima volta"
+      }
+    },
+    "binary_sensor": {
+      "all_plants": {
+        "name": "Tutte le piante"
+      },
+      "needs_water": {
+        "name": "Da annaffiare",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "too_wet": {
+        "name": "Troppo bagnata",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "sensor_stale": {
+        "name": "Sensore non aggiornato",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "low_light": {
+        "name": "Poca luce",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "low_battery": {
+        "name": "Batteria scarica",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "temperature_stress": {
+        "name": "Stress da temperatura",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "humidity_stress": {
+        "name": "Stress da umidità dell'aria",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "soil_temperature_stress": {
+        "name": "Stress da temperatura del terreno",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "co2_stress": {
+        "name": "Stress da CO2",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "conductivity_stress": {
+        "name": "Stress da conducibilità",
+        "state_attributes": {
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "care_task_fertilize": {
+        "name": "Concimazione",
+        "state": {
+          "on": "Da fare",
+          "off": "Non ancora"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Stato",
+            "state": {
+              "scheduled": "Programmata",
+              "due": "Da fare",
+              "overdue": "In ritardo",
+              "resting": "A riposo",
+              "done": "Fatta",
+              "skipped": "Saltata",
+              "missed": "Mancata",
+              "watching": "In osservazione",
+              "waiting": "In attesa che la lettura rientri",
+              "no_reading": "Nessuna lettura"
+            }
+          },
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "care_task_prune": {
+        "name": "Potatura",
+        "state": {
+          "on": "Da fare",
+          "off": "Non ancora"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Stato",
+            "state": {
+              "scheduled": "Programmata",
+              "due": "Da fare",
+              "overdue": "In ritardo",
+              "resting": "A riposo",
+              "done": "Fatta",
+              "skipped": "Saltata",
+              "missed": "Mancata",
+              "watching": "In osservazione",
+              "waiting": "In attesa che la lettura rientri",
+              "no_reading": "Nessuna lettura"
+            }
+          },
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "care_task_repot": {
+        "name": "Rinvaso",
+        "state": {
+          "on": "Da fare",
+          "off": "Non ancora"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Stato",
+            "state": {
+              "scheduled": "Programmata",
+              "due": "Da fare",
+              "overdue": "In ritardo",
+              "resting": "A riposo",
+              "done": "Fatta",
+              "skipped": "Saltata",
+              "missed": "Mancata",
+              "watching": "In osservazione",
+              "waiting": "In attesa che la lettura rientri",
+              "no_reading": "Nessuna lettura"
+            }
+          },
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "care_task_pests": {
+        "name": "Controllo parassiti",
+        "state": {
+          "on": "Da fare",
+          "off": "Non ancora"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Stato",
+            "state": {
+              "scheduled": "Programmata",
+              "due": "Da fare",
+              "overdue": "In ritardo",
+              "resting": "A riposo",
+              "done": "Fatta",
+              "skipped": "Saltata",
+              "missed": "Mancata",
+              "watching": "In osservazione",
+              "waiting": "In attesa che la lettura rientri",
+              "no_reading": "Nessuna lettura"
+            }
+          },
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "care_task_winter_protection": {
+        "name": "Protezione invernale",
+        "state": {
+          "on": "Da fare",
+          "off": "Non ancora"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Stato",
+            "state": {
+              "scheduled": "Programmata",
+              "due": "Da fare",
+              "overdue": "In ritardo",
+              "resting": "A riposo",
+              "done": "Fatta",
+              "skipped": "Saltata",
+              "missed": "Mancata",
+              "watching": "In osservazione",
+              "waiting": "In attesa che la lettura rientri",
+              "no_reading": "Nessuna lettura"
+            }
+          },
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "care_task_custom": {
+        "name": "Attività di cura",
+        "state": {
+          "on": "Da fare",
+          "off": "Non ancora"
+        },
+        "state_attributes": {
+          "status": {
+            "name": "Stato",
+            "state": {
+              "scheduled": "Programmata",
+              "due": "Da fare",
+              "overdue": "In ritardo",
+              "resting": "A riposo",
+              "done": "Fatta",
+              "skipped": "Saltata",
+              "missed": "Mancata",
+              "watching": "In osservazione",
+              "waiting": "In attesa che la lettura rientri",
+              "no_reading": "Nessuna lettura"
+            }
+          },
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      },
+      "care_due": {
+        "name": "Cure da fare",
+        "state": {
+          "on": "Da fare",
+          "off": "Non ancora"
+        },
+        "state_attributes": {
+          "snoozed": {
+            "name": "Avvisi in pausa",
+            "state": {
+              "true": "Sì",
+              "false": "No"
+            }
+          },
+          "snoozed_until": {
+            "name": "In pausa fino a"
+          }
+        }
+      }
+    },
+    "number": {
+      "moisture_min": {
+        "name": "Umidità del terreno minima"
+      },
+      "moisture_target": {
+        "name": "Umidità del terreno ideale"
+      },
+      "moisture_max": {
+        "name": "Umidità del terreno massima"
+      }
+    },
+    "button": {
+      "watered": {
+        "name": "Annaffiata"
+      },
+      "care_task_fertilize_done": {
+        "name": "Concimazione fatta"
+      },
+      "care_task_prune_done": {
+        "name": "Potatura fatta"
+      },
+      "care_task_repot_done": {
+        "name": "Rinvaso fatto"
+      },
+      "care_task_pests_done": {
+        "name": "Controllo parassiti fatto"
+      },
+      "care_task_winter_protection_done": {
+        "name": "Protezione invernale fatta"
+      },
+      "care_task_custom_done": {
+        "name": "Attività di cura fatta"
+      },
+      "care_task_named_done": {
+        "name": "{task_name}: fatto"
+      }
+    }
+  },
+  "issues": {
+    "moisture_source_missing": {
+      "title": "Smart Plants: manca una sorgente assegnata",
+      "fix_flow": {
+        "step": {
+          "source": {
+            "title": "Ripara la sorgente mancante della pianta",
+            "description": "Manca la sorgente {entity_id} ({role}) assegnata a {plant_name}. Scegli un'entità sostitutiva oppure lascia il campo vuoto per togliere l'assegnazione.",
+            "data": {
+              "replacement_entity_id": "Entità sostitutiva"
+            }
+          }
+        },
+        "error": {
+          "invalid_source": "L'entità sostitutiva non è disponibile, non è compatibile o non corrisponde più al registro delle entità. Scegline un'altra."
+        },
+        "abort": {
+          "integration_not_loaded": "Smart Plants non è caricato.",
+          "invalid_issue": "Questa riparazione non contiene un'assegnazione di sorgente valida.",
+          "issue_resolved": "L'assegnazione della sorgente è già stata riparata o rimossa."
+        }
+      }
+    }
+  },
+  "selector": {
+    "care_kind": {
+      "options": {
+        "watering": "Annaffiatura",
+        "fertilizing": "Concimazione",
+        "pruning": "Potatura",
+        "repotting": "Rinvaso",
+        "pest_control": "Trattamento antiparassitario",
+        "note": "Nota",
+        "task": "Altra attività"
+      }
+    },
+    "problem": {
+      "options": {
+        "needs_water": "Da annaffiare",
+        "too_wet": "Troppo bagnata",
+        "sensor_stale": "Sensore non aggiornato",
+        "temperature_stress": "Stress da temperatura",
+        "humidity_stress": "Stress da umidità dell'aria",
+        "soil_temperature_stress": "Stress da temperatura del terreno",
+        "conductivity_stress": "Stress da conducibilità",
+        "co2_stress": "Stress da CO2",
+        "low_light": "Poca luce",
+        "low_battery": "Batteria scarica"
+      }
+    },
+    "task_type": {
+      "options": {
+        "fertilize": "Concimazione",
+        "prune": "Potatura",
+        "repot": "Rinvaso",
+        "pests": "Controllo parassiti",
+        "winter_protection": "Protezione invernale",
+        "custom": "Personalizzata"
+      }
+    },
+    "report_include": {
+      "options": {
+        "needs_water": "Da annaffiare",
+        "problems": "Problemi",
+        "care_tasks": "Attività di cura da fare"
+      }
+    }
+  },
+  "services": {
+    "log_care": {
+      "name": "Registra cura",
+      "description": "Registra una cura per le piante di Smart Plants o segna come fatte delle attività di cura. Registrare un'annaffiatura tiene anche spento «Da annaffiare» per 24 ore.",
+      "fields": {
+        "kind": {
+          "name": "Tipo di cura",
+          "description": "Che cosa è stato fatto. Obbligatorio se scegli delle piante. Se scegli un'attività di cura puoi lasciarlo vuoto; se lo imposti, deve corrispondere all'attività."
+        },
+        "occurred_at": {
+          "name": "Data e ora",
+          "description": "Quando è stata fatta la cura. Se lo lasci vuoto vale adesso; non può essere nel futuro."
+        },
+        "note": {
+          "name": "Nota",
+          "description": "Nota facoltativa, fino a 500 caratteri. Obbligatoria per il tipo di cura «Nota»."
+        }
+      }
+    },
+    "skip_care_task": {
+      "name": "Salta attività di cura",
+      "description": "Salta la scadenza attuale delle attività di cura di Smart Plants. L'attività torna da fare alla prossima data programmata. Le attività di cura che seguono la lettura di un sensore non si possono saltare."
+    },
+    "snooze": {
+      "name": "Pausa avvisi",
+      "description": "Mette in pausa gli avvisi delle piante di Smart Plants, per esempio durante una vacanza. Le entità mantengono il loro stato reale; si attiva il loro attributo «Avvisi in pausa», così le automazioni possono restare in silenzio. Una nuova pausa sostituisce la fine di quella in corso. Scegli l'entità «Tutte le piante» per mettere in pausa ogni pianta attiva; una pianta già in pausa più a lungo mantiene la sua fine. La pausa finisce da sola.",
+      "fields": {
+        "duration": {
+          "name": "Durata",
+          "description": "Per quanto tempo mettere in pausa, a partire da adesso. Imposta questo campo oppure «Fino a», al massimo 366 giorni."
+        },
+        "until": {
+          "name": "Fino a",
+          "description": "Quando finisce la pausa. Imposta questo campo oppure «Durata», al massimo fra 366 giorni."
+        }
+      }
+    },
+    "unsnooze": {
+      "name": "Riprendi avvisi",
+      "description": "Termina subito la pausa degli avvisi delle piante di Smart Plants. Scegli l'entità «Tutte le piante» per terminare la pausa di ogni pianta."
+    },
+    "get_report": {
+      "name": "Ottieni resoconto delle piante",
+      "description": "Restituisce le piante da annaffiare, con problemi o con attività di cura da fare, con un titolo e un messaggio pronti da inviare. Le piante sospese non sono incluse.",
+      "fields": {
+        "include": {
+          "name": "Includi",
+          "description": "Che cosa elenca il resoconto. I problemi sono tutti i problemi tranne «Da annaffiare»."
+        },
+        "include_snoozed": {
+          "name": "Includi le piante con avvisi in pausa",
+          "description": "Elenca anche le piante con gli avvisi in pausa, segnalandole come tali."
+        },
+        "language": {
+          "name": "Lingua",
+          "description": "Lingua del titolo e del messaggio. Sono supportati inglese, tedesco e italiano; le altre lingue usano l'inglese. Senza una lingua, il resoconto usa la lingua del sistema."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "integration_not_loaded": {
+      "message": "Smart Plants non è caricato."
+    },
+    "no_target": {
+      "message": "Scegli almeno una pianta o un'attività di cura."
+    },
+    "unsupported_target": {
+      "message": "Scegli direttamente piante o attività di cura. Aree, piani ed etichette non sono supportati."
+    },
+    "task_target_required": {
+      "message": "Scegli l'attività di cura da saltare, non un'intera pianta."
+    },
+    "unknown_target": {
+      "message": "Impossibile trovare {target}."
+    },
+    "invalid_target": {
+      "message": "{target} non è una pianta o un'attività di cura di Smart Plants."
+    },
+    "plant_disabled": {
+      "message": "{plant} è sospesa. Riattivala prima di registrare una cura."
+    },
+    "care_task_not_found": {
+      "message": "L'attività di cura di {target} non esiste più."
+    },
+    "kind_required": {
+      "message": "Scegli un tipo di cura quando registri una cura per una pianta."
+    },
+    "note_required": {
+      "message": "Inserisci il testo della nota per il tipo di cura «Nota»."
+    },
+    "kind_mismatch": {
+      "message": "Il tipo di cura {kind} non corrisponde a {target}, che registra {task_kind}."
+    },
+    "future_time": {
+      "message": "La data della cura non può essere nel futuro."
+    },
+    "care_rejected": {
+      "message": "La cura per {target} non è stata salvata: {reason}"
+    },
+    "reading_task_skip": {
+      "message": "{target} segue la lettura di un sensore e non si può saltare. Puoi invece segnarla come fatta."
+    },
+    "no_plant_target": {
+      "message": "Scegli almeno una pianta o una delle sue entità."
+    },
+    "plant_disabled_snooze": {
+      "message": "{plant} è sospesa. Riattivala prima di mettere in pausa i suoi avvisi."
+    },
+    "snooze_period_required": {
+      "message": "Imposta una durata o una data di fine per la pausa."
+    },
+    "snooze_period_conflict": {
+      "message": "Imposta una durata oppure una data di fine, non entrambe."
+    },
+    "snooze_in_past": {
+      "message": "La pausa deve finire nel futuro."
+    },
+    "snooze_too_long": {
+      "message": "Una pausa può durare al massimo 366 giorni."
+    },
+    "snooze_rejected": {
+      "message": "La pausa di {target} non è stata salvata: {reason}"
+    },
+    "pending_operations_full": {
+      "message": "Smart Plants ha già {max} modifiche in sospeso da completare. Riavvia Home Assistant per completarle. Se questo messaggio si ripresenta, cerca errori di Smart Plants nel registro di Home Assistant."
+    },
+    "archive_limit": {
+      "message": "Smart Plants conserva al massimo {max} piante archiviate. Elimina per sempre qualche pianta archiviata prima di archiviarne un'altra."
+    },
+    "plant_limit": {
+      "message": "Smart Plants gestisce al massimo {max} piante. Elimina una pianta prima di aggiungerne un'altra."
+    },
+    "storage_full": {
+      "message": "Lo spazio di archiviazione di Smart Plants è pieno. Elimina vecchie voci del registro delle cure o note, poi riprova."
+    },
+    "storage_failed": {
+      "message": "Smart Plants non è riuscito a salvare la modifica. Non è stato cambiato nulla. Controlla il registro di Home Assistant, poi riprova."
+    },
+    "plant_not_found": {
+      "message": "Questa pianta non esiste più."
+    },
+    "plant_changed": {
+      "message": "La pianta è cambiata mentre il valore veniva salvato. Riprova."
+    },
+    "moisture_threshold_whole": {
+      "message": "Le soglie di umidità del terreno devono essere numeri interi di punti percentuali."
+    },
+    "moisture_thresholds_invalid": {
+      "message": "Le soglie di umidità del terreno devono avere il minimo sotto l'ideale e l'ideale sotto il massimo, con almeno {span} punti percentuali fra minimo e massimo."
+    }
+  },
+  "triggers": {
+    "needs_water": {
+      "name": "Pianta da annaffiare",
+      "description": "Si attiva quando una o più piante diventano da annaffiare. Per le piante con gli avvisi in pausa si attiva alla fine della pausa. Senza un obiettivo, controlla tutte le piante.",
+      "fields": {
+        "behavior": {
+          "name": "Attiva quando"
+        },
+        "for": {
+          "name": "Per almeno"
+        },
+        "include_snoozed": {
+          "name": "Anche con gli avvisi in pausa",
+          "description": "Si attiva anche mentre gli avvisi della pianta sono in pausa. In questo caso la fine della pausa non genera una nuova attivazione."
+        }
+      }
+    },
+    "problem_started": {
+      "name": "Problema della pianta iniziato",
+      "description": "Si attiva quando inizia un problema di una pianta, per esempio terreno troppo bagnato o troppo poca luce.",
+      "fields": {
+        "problems": {
+          "name": "Problemi",
+          "description": "I problemi da tenere d'occhio."
+        },
+        "for": {
+          "name": "Per almeno"
+        },
+        "include_snoozed": {
+          "name": "Anche con gli avvisi in pausa",
+          "description": "Si attiva anche mentre gli avvisi della pianta sono in pausa. In questo caso la fine della pausa non genera una nuova attivazione."
+        }
+      }
+    },
+    "problem_cleared": {
+      "name": "Problema della pianta risolto",
+      "description": "Si attiva quando un problema di una pianta è finito.",
+      "fields": {
+        "problems": {
+          "name": "Problemi",
+          "description": "I problemi da tenere d'occhio."
+        },
+        "for": {
+          "name": "Per almeno"
+        }
+      }
+    },
+    "care_task_due": {
+      "name": "Attività di cura diventata da fare",
+      "description": "Si attiva quando un'attività di cura di una pianta diventa da fare.",
+      "fields": {
+        "task_types": {
+          "name": "Tipi di attività",
+          "description": "I tipi di attività di cura da tenere d'occhio."
+        },
+        "for": {
+          "name": "Per almeno"
+        },
+        "include_snoozed": {
+          "name": "Anche con gli avvisi in pausa",
+          "description": "Si attiva anche mentre gli avvisi della pianta sono in pausa. In questo caso la fine della pausa non genera una nuova attivazione."
+        }
+      }
+    }
+  },
+  "conditions": {
+    "needs_water": {
+      "name": "Pianta da annaffiare",
+      "description": "Verifica se una o più piante sono da annaffiare.",
+      "fields": {
+        "behavior": {
+          "name": "Condizione soddisfatta se"
+        },
+        "for": {
+          "name": "Per almeno"
+        }
+      }
+    },
+    "has_problem": {
+      "name": "La pianta ha un problema",
+      "description": "Verifica se le piante hanno uno dei problemi selezionati.",
+      "fields": {
+        "problems": {
+          "name": "Problemi",
+          "description": "I problemi da tenere d'occhio."
+        },
+        "behavior": {
+          "name": "Condizione soddisfatta se"
+        }
+      }
+    },
+    "care_task_due": {
+      "name": "Attività di cura da fare",
+      "description": "Verifica se le piante hanno un'attività di cura da fare.",
+      "fields": {
+        "task_types": {
+          "name": "Tipi di attività",
+          "description": "I tipi di attività di cura da tenere d'occhio."
+        },
+        "behavior": {
+          "name": "Condizione soddisfatta se"
+        }
+      }
+    },
+    "is_not_snoozed": {
+      "name": "Avvisi della pianta non in pausa",
+      "description": "Verifica se gli avvisi delle piante non sono in pausa.",
+      "fields": {
+        "behavior": {
+          "name": "Condizione soddisfatta se"
+        }
+      }
+    },
+    "needs_attention": {
+      "name": "Le piante hanno bisogno di attenzione",
+      "description": "Verifica se il resoconto delle piante elencherebbe almeno una pianta.",
+      "fields": {
+        "include": {
+          "name": "Includi",
+          "description": "Che cosa conta. I problemi sono tutti i problemi tranne «Da annaffiare»."
+        },
+        "include_snoozed": {
+          "name": "Includi le piante con avvisi in pausa",
+          "description": "Conta anche le piante con gli avvisi in pausa."
+        }
+      }
+    }
+  },
+  "common": {
+    "report_title_one": "1 pianta ha bisogno di attenzione",
+    "report_title_other": "{count} piante hanno bisogno di attenzione",
+    "report_title_empty": "Tutte le piante stanno bene",
+    "report_message_empty": "Al momento non c'è niente da fare.",
+    "report_due": "Da fare: {tasks}",
+    "report_snoozed_marker": "avvisi in pausa",
+    "report_more_one": "…e un'altra pianta.",
+    "report_more_other": "…e altre {count} piante.",
+    "report_snoozed_left_out_one": "1 pianta con avvisi in pausa non inclusa.",
+    "report_snoozed_left_out_other": "{count} piante con avvisi in pausa non incluse."
+  }
+}
