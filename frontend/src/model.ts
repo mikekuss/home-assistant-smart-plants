@@ -463,8 +463,13 @@ export function problemBinaries(plant: PlantRecord, entities: HAEntity[], states
     return { role, label, status, reason };
   });
 }
+// Default "Not updating after" windows, the same as the backend's: a day for
+// every reading, seven days for the battery, whose level can stay the same
+// for days.
+export const DEFAULT_STALE_AFTER_SECONDS = 86400;
+export const DEFAULT_BATTERY_STALE_AFTER_SECONDS = 604800;
 export function emptyMoisture(): MoistureInput {
-  return { sources: [], primary_entity_id: null, aggregation: "primary", stale_after_seconds: 21600, threshold_overrides: { min: null, target: null, max: null } };
+  return { sources: [], primary_entity_id: null, aggregation: "primary", stale_after_seconds: DEFAULT_STALE_AFTER_SECONDS, threshold_overrides: { min: null, target: null, max: null } };
 }
 export function moistureRole(plant: PlantRecord): MoistureRoleConfig | null {
   const m = plant.roles?.moisture;
@@ -564,8 +569,8 @@ export function roleSourceSpec(role: string): RoleSourceSpec | undefined { retur
 // sentence ("air temperature" in English; German keeps noun capitalization).
 export function roleLabel(role: SourceRole, l: Localizer = ENGLISH): string { return l.t(`role.${role}`); }
 export function rolePhrase(role: SourceRole, l: Localizer = ENGLISH): string { return l.t(`role_phrase.${role}`); }
-export function emptyRoleSources(): RoleSourceInput {
-  return { sources: [], primary_entity_id: null, aggregation: "primary", stale_after_seconds: 21600 };
+export function emptyRoleSources(role: string): RoleSourceInput {
+  return { sources: [], primary_entity_id: null, aggregation: "primary", stale_after_seconds: role === "battery" ? DEFAULT_BATTERY_STALE_AFTER_SECONDS : DEFAULT_STALE_AFTER_SECONDS };
 }
 // Runtime-validate a role's source config from the plant view; never guess a
 // missing or malformed shape, mirroring moistureRole's fail-safe behaviour.

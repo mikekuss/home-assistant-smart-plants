@@ -311,12 +311,14 @@ def test_quiet_light_sensor_never_expected_without_a_clock() -> None:
 
 
 def test_evaluation_reports_a_quiet_sensor_as_expected_in_the_morning() -> None:
-    # The sensor last reported at 22:00 and went stale at night. At 09:00 it
-    # still has time to report, so the plant status leaves it alone.
+    # The sensor last reported at 22:00 and went stale at night with a
+    # six-hour window. At 09:00 it still has time to report, so the plant
+    # status leaves it alone.
     config = IlluminanceConfig(
         sources=(SensorSource(entity_id="sensor.mock_lux"),),
         primary_entity_id="sensor.mock_lux",
         aggregation="primary",
+        stale_after_seconds=6 * 3600,
     )
     last = datetime(2026, 12, 1, 22, tzinfo=UTC).timestamp()
     reading = IlluminanceReading(

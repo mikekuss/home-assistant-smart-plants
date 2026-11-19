@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { api } from "./api.js";
-import { builtin, canonicalMoisture, emptyMoisture, moistureRole, resolveSource, sourceWarning, validateMoisture } from "./model.js";
+import { builtin, canonicalMoisture, emptyMoisture, emptyRoleSources, moistureRole, resolveSource, sourceWarning, validateMoisture } from "./model.js";
 import { capabilities, draft, harness, role, sample } from "./test-helpers.js";
 import type { HAEntity, HomeAssistantLike, PlantRecord, WizardCreateInput, WizardDraft } from "./types.js";
 
@@ -63,6 +63,11 @@ describe("moisture runtime and identity boundaries", () => {
   });
   it("validates role metadata without requiring or interpreting future roles", () => {
     expect(moistureRole({ ...sample, roles: { moisture: role, future: { arbitrary: "data" } } })).toEqual(role);
+  });
+  it("defaults to the backend's not-updating windows: a day, and seven days for the battery", () => {
+    expect(emptyMoisture().stale_after_seconds).toBe(86400);
+    expect(emptyRoleSources("temperature").stale_after_seconds).toBe(86400);
+    expect(emptyRoleSources("battery").stale_after_seconds).toBe(604800);
   });
   it.each([59, 604801, 60.5, Number.NaN])("rejects invalid staleness %s", seconds => {
     expect(validateMoisture({ ...emptyMoisture(), stale_after_seconds: seconds }, builtin)).toContain("Not updating after");

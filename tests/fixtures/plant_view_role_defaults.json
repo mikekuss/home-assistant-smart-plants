@@ -3,7 +3,7 @@
     "sources": [],
     "primary_entity_id": null,
     "aggregation": "average",
-    "stale_after_seconds": 21600,
+    "stale_after_seconds": 86400,
     "stress_threshold_overrides": {
       "cold_threshold_celsius": null,
       "cold_clear_celsius": null,
@@ -15,7 +15,7 @@
     "sources": [],
     "primary_entity_id": null,
     "aggregation": "average",
-    "stale_after_seconds": 21600,
+    "stale_after_seconds": 86400,
     "stress_threshold_overrides": {
       "dry_threshold_percent": null,
       "dry_clear_percent": null,
@@ -27,7 +27,7 @@
     "sources": [],
     "primary_entity_id": null,
     "aggregation": "primary",
-    "stale_after_seconds": 21600,
+    "stale_after_seconds": 86400,
     "stress_threshold_overrides": {
       "target_lux": null,
       "clear_lux": null
@@ -37,7 +37,7 @@
     "sources": [],
     "primary_entity_id": null,
     "aggregation": "min",
-    "stale_after_seconds": 21600,
+    "stale_after_seconds": 604800,
     "stress_threshold_overrides": {
       "threshold_percent": null,
       "clear_percent": null
@@ -47,7 +47,7 @@
     "sources": [],
     "primary_entity_id": null,
     "aggregation": "primary",
-    "stale_after_seconds": 21600,
+    "stale_after_seconds": 86400,
     "stress_threshold_overrides": {
       "low_threshold_micro_siemens_per_cm": null,
       "low_clear_micro_siemens_per_cm": null,
@@ -59,7 +59,7 @@
     "sources": [],
     "primary_entity_id": null,
     "aggregation": "primary",
-    "stale_after_seconds": 21600,
+    "stale_after_seconds": 86400,
     "stress_threshold_overrides": {
       "cold_threshold_celsius": null,
       "cold_clear_celsius": null,
@@ -71,7 +71,7 @@
     "sources": [],
     "primary_entity_id": null,
     "aggregation": "average",
-    "stale_after_seconds": 21600,
+    "stale_after_seconds": 86400,
     "stress_threshold_overrides": {
       "threshold_ppm": null,
       "clear_ppm": null

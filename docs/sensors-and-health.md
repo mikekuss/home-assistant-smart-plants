@@ -53,25 +53,37 @@ that stop updating, the daytime hours of *Low light*, and care task dates just a
 Smart Plants doesn't poll your sensors.
 
 A sensor counts as not updating when it hasn't reported a valid state for **Not updating
-after**, 6 hours by default (60 seconds to 7 days, set in seconds). A sensor that reports the
-same value again stays current. A new sensor gets one full window before it can count as not
+after**: 24 hours by default, 7 days for the battery. You can set it per plant and reading from
+60 seconds to 7 days, in seconds. A new sensor gets one full window before it can count as not
 updating. An assigned sensor that no longer exists counts as not updating at once.
+
+A sensor that reports the same value again stays current, as long as Home Assistant records
+the report. Home Assistant's MQTT integration, which Zigbee2MQTT sensors also use, doesn't write
+a sensor's state again while its value stays the same, unless `force_update` is set on the
+entity. The device may keep sending, but Smart Plants sees no new report. A soil moisture sensor
+in a pot that barely dries can go many hours without a change, and such a sensor counts as not
+updating once **Not updating after** has passed, although it works. If that happens, raise
+**Not updating after** for that reading, up to 7 days.
 
 A plant shows *No recent data* when an assigned sensor is not updating or has no usable value
 and nothing more urgent applies. The plant page names the sensor, for example
 *Temperature: sensor is not reporting*. Two sensors are exceptions:
 
-- **Battery** never counts, because many battery sensors report only on a change.
+- **Battery** never counts for the plant, because a battery level says nothing about the plant.
+  The plant's *Battery* sensor still becomes unavailable once the battery sensor is not
+  updating, after 7 days by default.
 - **Light** doesn't count from 18:00 to 08:00. In the morning it counts once its window has
-  passed since 08:00, so with 6 hours, a quiet light sensor counts from 14:00. A window of 10
-  hours or more covers the whole day, so it gets that morning only after a day on which the
-  sensor reported or was assigned. A light sensor that stays silent through such a day is no
-  longer hidden from 08:00 the next morning, so it counts as not updating as soon as its window
-  has passed.
+  passed since 08:00, so with a window of 6 hours, a quiet light sensor counts from 14:00. A
+  window of 10 hours or more, such as the default, covers the whole day, so it gets that morning
+  only after a day on which the sensor reported or was assigned. A light sensor that stays
+  silent through such a day is no longer hidden from 08:00 the next morning, so it counts as not
+  updating as soon as its window has passed.
 
 For soil moisture, *Sensor stale* turns on while any moisture sensor is not updating. For the
-other readings, the problem sensor becomes unavailable instead. If a sensor reports only on a
-change, raise its **Not updating after** value.
+other readings, the problem sensor becomes unavailable instead.
+
+Earlier versions used 6 hours for every reading. On update, a reading still set to exactly 6
+hours moves to its new default. Any other value you set stays.
 
 ## Problem sensors
 

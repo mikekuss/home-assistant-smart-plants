@@ -25,6 +25,8 @@ from .const import (
 )
 from .models import (
     COLLECTION_MAX_COUNT,
+    DEFAULT_BATTERY_STALE_AFTER_SECONDS,
+    DEFAULT_STALE_AFTER_SECONDS,
     PENDING_OPERATION_SCHEMA_VERSION,
     TOMBSTONE_SCHEMA_VERSION,
     ArchivedPlant,
@@ -68,6 +70,12 @@ _MINOR_ALERT_SNOOZE: Final = 15
 _MINOR_FORECAST_READINGS: Final = 16
 _MINOR_PEST_CONTROL: Final = 17
 _MINOR_PLANT_ARCHIVE: Final = 18
+_MINOR_STALE_AFTER_DEFAULTS: Final = 19
+
+# The staleness window every reading was stored with by default before minor
+# 19. It was always written out, so it cannot be told apart from a value a user
+# chose; minor 19 treats it as the default.
+_LEGACY_DEFAULT_STALE_AFTER_SECONDS: Final = 21_600
 _SPECIES_CARE_RANGE_KEYS: Final = (
     "min_temperature",
     "max_temperature",
@@ -297,7 +305,7 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
         if old_major_version == 1 and old_minor_version < _MINOR_MOISTURE_ASSIGNMENTS:
             # Minor 4 adds a moisture config to every plant. Existing
             # plants get the documented defaults: no assigned sources, primary
-            # aggregation, six-hour staleness, and the 15/35/55 threshold
+            # aggregation, the default staleness window, and the 15/35/55 threshold
             # anchors. from_storage still accepts a missing 'moisture' key
             # for forward-compat with tests that seed pre-migration payloads,
             # but a migrated payload always carries the explicit shape.
@@ -597,6 +605,30 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                     "older storage cannot contain retired plants"
                 )
             data["archived_plants"] = []
+
+        if old_major_version == 1 and old_minor_version < _MINOR_STALE_AFTER_DEFAULTS:
+            # Minor 19 raises the default staleness window to a day, and to
+            # seven days for the battery, because sensors that send nothing
+            # while their value stays the same went stale after the old six
+            # hours although they worked. A reading still on the old default
+            # moves to its new default; any other value was chosen and stays.
+            for plant in data["plants"]:
+                roles = plant.get("roles") if isinstance(plant, dict) else None
+                if not isinstance(roles, dict):
+                    continue
+                for role, config in roles.items():
+                    if not isinstance(config, dict):
+                        continue
+                    stale_after = config.get("stale_after_seconds")
+                    if (
+                        type(stale_after) is int
+                        and stale_after == _LEGACY_DEFAULT_STALE_AFTER_SECONDS
+                    ):
+                        config["stale_after_seconds"] = (
+                            DEFAULT_BATTERY_STALE_AFTER_SECONDS
+                            if role == "battery"
+                            else DEFAULT_STALE_AFTER_SECONDS
+                        )
 
         # Home Assistant writes the result back right after this returns.
         # Check it first, so storage that fails to migrate never replaces

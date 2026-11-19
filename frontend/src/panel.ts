@@ -1807,7 +1807,7 @@ export class SmartPlantsPanel extends LitElement {
   }
   // ---- Sensors section: generic per-role source assignment ----
   // ---- Sensors tab ----
-  // "2 sensors · Average · main sensor Kitchen probe · not updating after 6 h".
+  // "2 sensors · Average · main sensor Kitchen probe · not updating after 24 h".
   private _sourceSummary(plant: PlantRecord, role: SensorRole): string {
     const c = role === "moisture" ? moistureRole(plant) : roleSourceConfig(plant, role);
     const l = this._l;

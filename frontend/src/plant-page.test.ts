@@ -41,6 +41,17 @@ describe("plant page helpers", () => {
     expect(formatDuration(ENGLISH, 21600)).toBe("6 h");
     expect(formatDuration(ENGLISH, 1800)).toBe("30 min");
     expect(formatDuration(ENGLISH, 90)).toBe("90 s");
+  });
+  it("shows a not-updating window of several whole days in days", () => {
+    expect(formatDuration(ENGLISH, 604800)).toBe("7 d");
+    expect(formatDuration(ENGLISH, 172800)).toBe("2 d");
+    expect(formatDuration(createLocalizer({ language: "de" }), 604800)).toBe("7 Tg.");
+    // One day stays in hours, like the default for most readings.
+    expect(formatDuration(ENGLISH, 86400)).toBe("24 h");
+    expect(formatDuration(ENGLISH, 90000)).toBe("25 h");
+    expect(formatDuration(ENGLISH, 129600)).toBe("36 h");
+  });
+  it("phrases readings for sentences", () => {
     expect(readingPhrase(ENGLISH, "illuminance")).toBe("light");
     expect(readingPhrase(ENGLISH, "co2")).toBe("CO₂");
     expect(readingPhrase(createLocalizer({ language: "de" }), "moisture")).toBe("Bodenfeuchte");
