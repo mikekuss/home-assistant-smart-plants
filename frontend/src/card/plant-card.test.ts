@@ -564,8 +564,7 @@ describe("photo", () => {
       const { fetches, tick } = await setup();
       for (let i = 0; i < 20; i++) await tick(3600);
       const attempts = fetches.length;
-      expect(attempts).toBeGreaterThan(1);
-      expect(attempts).toBeLessThanOrEqual(6);
+      expect(attempts).toBe(5);
 
       // While Home Assistant is unreachable nothing is requested.
       await tick(1, { connected: false } as Partial<Hass>);
