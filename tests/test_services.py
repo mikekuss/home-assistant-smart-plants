@@ -41,6 +41,7 @@ from homeassistant.exceptions import (
 )
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry, MockUser
 from pytest_homeassistant_custom_component.typing import (
@@ -448,13 +449,13 @@ async def test_log_care_rejects_unknown_and_foreign_devices(
         hass,
         SERVICE_LOG_CARE,
         {"device_id": "not-a-device", "kind": "watering"},
-        "unknown_target",
+        "unknown_care_target",
     )
     error = await _expect_error(
         hass,
         SERVICE_LOG_CARE,
         {"device_id": foreign.id, "kind": "watering"},
-        "invalid_target",
+        "invalid_care_target",
     )
     assert error.translation_placeholders == {"target": "Kitchen Lamp"}
     # One bad target rejects the whole call before anything is written.
@@ -462,7 +463,7 @@ async def test_log_care_rejects_unknown_and_foreign_devices(
         hass,
         SERVICE_LOG_CARE,
         {"device_id": [_device_id(hass, plant_id), foreign.id], "kind": "watering"},
-        "invalid_target",
+        "invalid_care_target",
     )
     assert _plant_record(entry, plant_id).care_events == ()
 
@@ -659,6 +660,226 @@ async def test_log_care_without_response_returns_nothing(hass: HomeAssistant) ->
     assert len(_plant_record(entry, plant_id).care_events) == 1
 
 
+# --- log_care with plant entities ------------------------------------------
+
+ALL_PLANTS = "binary_sensor.smart_plants_all_plants"
+TARGET_HINT = "Choose a plant, one of its entities or a care task entity."
+
+
+def _plant_entity(entry: MockConfigEntry, plant_id: str, role: str) -> str:
+    entity = _manager(entry).get_entity("binary_sensor", plant_id, role)
+    assert entity is not None
+    entity_id: str = entity.entity_id
+    return entity_id
+
+
+async def test_log_care_for_plant_entity_logs_care(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    first = await _plant(hass, entry, "Aloe")
+    second = await _plant(hass, entry, "Office Aloe")
+    needs_water = _plant_entity(entry, first, "needs_water")
+    # The registry id of an entity counts like its entity ID.
+    registry_entry = er.async_get(hass).async_get(
+        _plant_entity(entry, second, "sensor_stale")
+    )
+    assert registry_entry is not None
+
+    await _call(
+        hass,
+        SERVICE_LOG_CARE,
+        {"entity_id": [needs_water, registry_entry.id], "kind": "watering"},
+    )
+
+    for plant_id in (first, second):
+        (event,) = _plant_record(entry, plant_id).care_events
+        assert event.kind == "watering"
+        assert event.task_id is None
+        assert event.provenance == "action"
+
+
+async def test_log_care_for_plant_entity_requires_kind(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    plant_id = await _plant(hass, entry, "Aloe")
+    needs_water = _plant_entity(entry, plant_id, "needs_water")
+
+    await _expect_error(
+        hass, SERVICE_LOG_CARE, {"entity_id": needs_water}, "kind_required"
+    )
+    await _expect_error(
+        hass,
+        SERVICE_LOG_CARE,
+        {"entity_id": needs_water, "kind": "note", "note": "   "},
+        "note_required",
+    )
+    assert _plant_record(entry, plant_id).care_events == ()
+
+
+async def test_log_care_for_device_and_entities_of_one_plant_logs_once(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    plant_id = await _plant(hass, entry, "Aloe")
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_LOG_CARE,
+        {
+            "device_id": _device_id(hass, plant_id),
+            "entity_id": [
+                _plant_entity(entry, plant_id, "needs_water"),
+                _plant_entity(entry, plant_id, "sensor_stale"),
+            ],
+            "kind": "pruning",
+        },
+        blocking=True,
+        return_response=True,
+    )
+
+    (event,) = _plant_record(entry, plant_id).care_events
+    assert event.kind == "pruning"
+    assert response is not None
+    events = cast("list[dict[str, Any]]", response["events"])
+    assert [row["event_id"] for row in events] == [event.id]
+
+
+async def test_log_care_for_plant_entity_and_task_entity(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    first = await _plant(hass, entry, "Aloe")
+    second = await _plant(hass, entry, "Office Aloe")
+    task_id, task_entity = await _task(hass, entry, first)
+
+    # A care task entity still marks its task as done, without a kind.
+    await _call(hass, SERVICE_LOG_CARE, {"entity_id": task_entity})
+    (event,) = _plant_record(entry, first).care_events
+    assert event.task_id == task_id
+
+    # Beside a plant entity it still checks the kind against its task.
+    await _expect_error(
+        hass,
+        SERVICE_LOG_CARE,
+        {
+            "entity_id": [task_entity, _plant_entity(entry, second, "needs_water")],
+            "kind": "watering",
+        },
+        "kind_mismatch",
+    )
+    assert _plant_record(entry, second).care_events == ()
+
+    await _call(
+        hass,
+        SERVICE_LOG_CARE,
+        {
+            "entity_id": [task_entity, _plant_entity(entry, second, "needs_water")],
+            "kind": "fertilizing",
+        },
+    )
+    task_events = [
+        event
+        for event in _plant_record(entry, first).care_events
+        if event.task_id == task_id
+    ]
+    assert len(task_events) == 2
+    (plant_event,) = _plant_record(entry, second).care_events
+    assert plant_event.kind == "fertilizing"
+    assert plant_event.task_id is None
+
+
+async def test_log_care_rejects_plant_entity_of_paused_plant(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    active = await _plant(hass, entry, "Aloe")
+    paused = await _plant(hass, entry, "Office Aloe")
+    paused_entity = _plant_entity(entry, paused, "needs_water")
+    plant = _plant_record(entry, paused)
+    await _manager(entry).async_disable_plant(paused, expected_revision=plant.revision)
+    await hass.async_block_till_done()
+
+    error = await _expect_error(
+        hass,
+        SERVICE_LOG_CARE,
+        {
+            "entity_id": [_plant_entity(entry, active, "needs_water"), paused_entity],
+            "kind": "watering",
+        },
+        "plant_disabled",
+    )
+    assert error.translation_placeholders == {"plant": "Office Aloe"}
+    assert _plant_record(entry, active).care_events == ()
+    assert _plant_record(entry, paused).care_events == ()
+
+
+async def test_log_care_rejects_other_entities_and_names_the_targets(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    plant_id = await _plant(hass, entry, "Aloe")
+    other_entry = MockConfigEntry(domain="mock_other")
+    other_entry.add_to_hass(hass)
+    foreign = er.async_get(hass).async_get_or_create(
+        "binary_sensor", "mock_other", "lamp-problem", config_entry=other_entry
+    )
+    foreign_device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=other_entry.entry_id,
+        identifiers={("mock_other", "lamp")},
+        name="Kitchen Lamp",
+    )
+    hass.states.async_set("sun.mock_sun", "above_horizon")
+    assert er.async_get(hass).async_get(ALL_PLANTS) is not None
+
+    cases = [
+        ({"entity_id": foreign.entity_id}, "invalid_care_target", foreign.entity_id),
+        ({"entity_id": "sun.mock_sun"}, "invalid_care_target", "sun.mock_sun"),
+        (
+            {"entity_id": "binary_sensor.mock_missing"},
+            "unknown_care_target",
+            "binary_sensor.mock_missing",
+        ),
+        ({"device_id": foreign_device.id}, "invalid_care_target", "Kitchen Lamp"),
+        ({"device_id": "not-a-device"}, "unknown_care_target", "not-a-device"),
+        ({"entity_id": ALL_PLANTS}, "all_plants_care_target", ALL_PLANTS),
+    ]
+    for target, key, placeholder in cases:
+        error = await _expect_error(
+            hass, SERVICE_LOG_CARE, {**target, "kind": "watering"}, key
+        )
+        assert error.translation_placeholders == {"target": placeholder}
+    assert _plant_record(entry, plant_id).care_events == ()
+
+    messages = await async_get_translations(hass, "en", "exceptions", [DOMAIN])
+    for key in ("invalid_care_target", "unknown_care_target", "all_plants_care_target"):
+        message = messages[f"component.{DOMAIN}.exceptions.{key}.message"]
+        assert message.endswith(TARGET_HINT)
+
+
+async def test_log_care_with_one_invalid_entity_logs_nothing(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    first = await _plant(hass, entry, "Aloe")
+    second = await _plant(hass, entry, "Office Aloe")
+    _task_id, task_entity = await _task(hass, entry, first)
+    device_id = _device_id(hass, first)
+    entities = [_plant_entity(entry, second, "needs_water"), task_entity]
+
+    for invalid, key in (
+        ("binary_sensor.mock_missing", "unknown_care_target"),
+        (ALL_PLANTS, "all_plants_care_target"),
+    ):
+        await _expect_error(
+            hass,
+            SERVICE_LOG_CARE,
+            {
+                "device_id": device_id,
+                "entity_id": [*entities, invalid],
+                "kind": "fertilizing",
+            },
+            key,
+        )
+    assert _plant_record(entry, first).care_events == ()
+    assert _plant_record(entry, second).care_events == ()
+
+
 async def test_task_entity_errors(hass: HomeAssistant) -> None:
     entry = await _setup(hass)
     plant_id = await _plant(hass, entry, "Aloe")
@@ -676,22 +897,29 @@ async def test_task_entity_errors(hass: HomeAssistant) -> None:
 
     # A state without a registry entry is a wrong target, not a missing one.
     hass.states.async_set("sun.mock_sun", "above_horizon")
-    for service in (SERVICE_LOG_CARE, SERVICE_SKIP_CARE_TASK):
+    # log_care names the targets it accepts in these errors.
+    services = (
+        (SERVICE_LOG_CARE, "unknown_care_target", "invalid_care_target"),
+        (SERVICE_SKIP_CARE_TASK, "unknown_target", "invalid_target"),
+    )
+    for service, unknown, invalid in services:
         await _expect_error(
-            hass,
-            service,
-            {"entity_id": "binary_sensor.mock_missing"},
-            "unknown_target",
+            hass, service, {"entity_id": "binary_sensor.mock_missing"}, unknown
         )
         await _expect_error(
-            hass, service, {"entity_id": plant_entity.entity_id}, "invalid_target"
+            hass, service, {"entity_id": other_entity.entity_id}, invalid
         )
-        await _expect_error(
-            hass, service, {"entity_id": other_entity.entity_id}, "invalid_target"
-        )
-        await _expect_error(
-            hass, service, {"entity_id": "sun.mock_sun"}, "invalid_target"
-        )
+        await _expect_error(hass, service, {"entity_id": "sun.mock_sun"}, invalid)
+    # A plant entity is a plant target for log_care, but no care task.
+    await _expect_error(
+        hass, SERVICE_LOG_CARE, {"entity_id": plant_entity.entity_id}, "kind_required"
+    )
+    await _expect_error(
+        hass,
+        SERVICE_SKIP_CARE_TASK,
+        {"entity_id": plant_entity.entity_id},
+        "invalid_target",
+    )
 
     plant = _plant_record(entry, plant_id)
     await _manager(entry).async_delete_care_task(
@@ -700,8 +928,8 @@ async def test_task_entity_errors(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     # Deleting the task removes its entities from the registry.
     assert registry.async_get(entity_id) is None
-    for service in (SERVICE_LOG_CARE, SERVICE_SKIP_CARE_TASK):
-        await _expect_error(hass, service, {"entity_id": entity_id}, "unknown_target")
+    for service, unknown, _invalid in services:
+        await _expect_error(hass, service, {"entity_id": entity_id}, unknown)
 
     # A registry entry that outlives its task names the missing task.
     stale = registry.async_get_or_create(
@@ -722,7 +950,7 @@ async def test_task_entity_errors(hass: HomeAssistant) -> None:
         config_entry=entry,
     )
     await _expect_error(
-        hass, SERVICE_LOG_CARE, {"entity_id": orphan.entity_id}, "unknown_target"
+        hass, SERVICE_LOG_CARE, {"entity_id": orphan.entity_id}, "unknown_care_target"
     )
 
 

@@ -12,8 +12,10 @@ check; care is stored with the ``action`` provenance.
 Home Assistant doesn't check permissions for integration actions, so the
 actions that change plants require a caller who may control at least one
 Smart Plants entity. Calls without a user, such as automations, are allowed.
-``snooze`` and ``unsnooze`` also accept the All plants entity as a target,
-meaning every active plant.
+``log_care``, ``snooze`` and ``unsnooze`` accept a plant's entities in place
+of its device; for ``log_care`` a care task's entity stands for the task
+instead. ``snooze`` and ``unsnooze`` also accept the All plants entity as a
+target, meaning every active plant.
 ``get_report`` only returns what the plant entities already show and stays
 open to every user.
 """
@@ -372,12 +374,72 @@ def _unique_plants(plants: Iterable[PlantRecord]) -> list[PlantRecord]:
 
 
 def _device_kind(kind: str | None, note: str | None) -> str:
-    """Return the care kind for a plant device target, which must name one."""
+    """Return the care kind for a plant target, which must name one."""
     if kind is None:
         raise _error("kind_required")
     if kind == "note" and note is None:
         raise _error("note_required")
     return kind
+
+
+# log_care takes plants and care tasks alike, so its errors for a wrong or
+# missing target say which targets it accepts.
+_CARE_TARGET_ERRORS: Final = {
+    "invalid_target": "invalid_care_target",
+    "unknown_target": "unknown_care_target",
+}
+
+
+@contextmanager
+def _care_target_errors() -> Iterator[None]:
+    """Turn a wrong or missing target's error into the ``log_care`` one."""
+    try:
+        yield
+    except ServiceValidationError as err:
+        key = _CARE_TARGET_ERRORS.get(err.translation_key or "")
+        if key is None:
+            raise
+        raise _error(key, **(err.translation_placeholders or {})) from None
+
+
+def _resolve_care_targets(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    manager: SmartPlantsManager,
+    device_ids: list[str],
+    entity_refs: list[str],
+) -> tuple[list[PlantRecord], list[_TaskTarget]]:
+    """
+    Resolve the targets of ``log_care`` into plants and care tasks.
+
+    A care task entity stands for its task. Any other entity of a plant stands
+    for the plant, like the plant's device, so a plant reached through its
+    device and its entities is logged once. The All plants entity is not a
+    plant of its own and is rejected.
+    """
+    registry = er.async_get(hass)
+    all_plants = all_plants_entity_id(hass)
+    task_refs: list[str] = []
+    with _care_target_errors():
+        plants = [
+            _resolve_plant_device(hass, entry, manager, device_id)
+            for device_id in device_ids
+        ]
+        for ref in entity_refs:
+            entity_id = er.async_resolve_entity_id(registry, ref)
+            if entity_id is not None and entity_id == all_plants:
+                raise _error("all_plants_care_target", target=entity_id)
+            registry_entry = registry.async_get(entity_id) if entity_id else None
+            if registry_entry is not None and DUE_UNIQUE_ID.fullmatch(
+                registry_entry.unique_id
+            ):
+                task_refs.append(ref)
+            else:
+                plants.append(
+                    _resolve_plant_entity(hass, entry, manager, ref, "plant_disabled")
+                )
+        tasks = _resolve_tasks(hass, entry, manager, task_refs)
+    return _unique_plants(plants), tasks
 
 
 @verify_domain_control(DOMAIN)
@@ -387,11 +449,7 @@ async def _async_log_care(call: ServiceCall) -> ServiceResponse:
     device_ids, entity_refs = _targets(call)
     if not device_ids and not entity_refs:
         raise _error("no_target")
-    plants = _unique_plants(
-        _resolve_plant_device(hass, entry, manager, device_id)
-        for device_id in device_ids
-    )
-    tasks = _resolve_tasks(hass, entry, manager, entity_refs)
+    plants, tasks = _resolve_care_targets(hass, entry, manager, device_ids, entity_refs)
     kind: str | None = call.data.get(ATTR_KIND)
     note: str | None = call.data.get(ATTR_NOTE) or None
     occurred_at = _occurred_at(call)
