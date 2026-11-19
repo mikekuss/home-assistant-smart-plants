@@ -30,6 +30,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- The dashboard card shows the plant's photo again after a failed download, for example during
+  a restart. It used to keep the plant icon until the page was reloaded. It now tries again on a
+  later update, waiting longer after each failure, and again when the connection comes back.
+- Smart Plants no longer changes Pillow's image size limit for the whole Home Assistant
+  process, which other integrations that open images share. Photo uploads above 64 megapixels
+  are still refused, with the same error.
 - A portrait phone photo that is already within 2048 × 2048 pixels and 5 MiB is no longer
   stored on its side. Smart Plants now turns the pixels upright from the photo's orientation
   before it drops the metadata.

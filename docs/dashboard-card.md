@@ -67,3 +67,8 @@ The card works from the plant's entities, so it knows less than the panel:
 Home Assistant loads a small script of about 4 KB in every browser session to add the card to
 the picker. The card itself loads when it's on screen. If loading fails, for example during a
 restart, the card retries every 10 seconds.
+
+If the plant's photo can't be downloaded, the card shows the plant icon and tries again on a
+later update from Home Assistant, waiting longer after each failure (30 seconds, then 1, 2
+and 4 minutes). After five attempts it waits until the connection to Home Assistant comes
+back. A photo that loaded isn't downloaded again until the plant gets a new one.
