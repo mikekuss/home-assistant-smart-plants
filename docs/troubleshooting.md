@@ -77,9 +77,10 @@ The other readings work the same with their own units, see
 ### *Sensor stale* is on, but the sensor works
 
 A sensor counts as not updating when it hasn't reported for **Not updating after**: 24 hours
-by default, 7 days for the battery. MQTT and Zigbee2MQTT sensors send nothing to Home Assistant
-while their value stays the same, unless `force_update` is set on the entity, so a steady value
-can look stale although the sensor works. Raise **Not updating after** for that reading under
+by default, 7 days for the battery. Home Assistant's MQTT integration, which Zigbee2MQTT sensors
+also use, doesn't write a sensor's state again while its value stays the same, unless
+`force_update` is set on the entity. Smart Plants then sees no new report, so a steady value can
+look stale although the sensor works. Raise **Not updating after** for that reading under
 **Several sensors for one reading**, up to 7 days (604800 seconds). See
 [Data updates](sensors-and-health.md#data-updates).
 

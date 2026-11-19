@@ -15,12 +15,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Changed
 
 - **Not updating after** now defaults to 24 hours for every reading and to 7 days for the
-  battery, instead of 6 hours. MQTT and Zigbee2MQTT sensors send nothing to Home Assistant while
-  their value stays the same, so a plant whose soil moisture sensor worked but sat in a pot that
-  barely dries showed *Sensor stale* and *No recent data*, and a steady battery level made the
-  *Battery* sensor unavailable. On update, a reading still set to the old default of exactly 6 hours moves
-  to its new default; any other value you set stays. Sensors and health and Troubleshooting now
-  explain this and name MQTT and Zigbee2MQTT.
+  battery, instead of 6 hours. Home Assistant's MQTT integration, which Zigbee2MQTT sensors also
+  use, doesn't write a sensor's state again while its value stays the same, unless
+  `force_update` is set on the entity, so Smart Plants saw no new report. A plant whose working
+  soil moisture sensor sat in a pot that barely dries showed *Sensor stale* and
+  *No recent data*, and a steady battery level made the *Battery* sensor unavailable. On update,
+  a reading still set to the old default of exactly 6 hours moves to its new default; any other
+  value you set stays. In return, a sensor that stops reporting now counts as not updating after
+  a day instead of 6 hours, and a light sensor can take until the second morning. Set a shorter
+  **Not updating after** for a plant's reading if you want to know sooner. Sensors and health
+  and Troubleshooting now explain this and name MQTT and Zigbee2MQTT.
 - `smart_plants.log_care` accepts a plant's own entities as target, as `smart_plants.snooze`
   does. An entity such as *Needs water* logs care for its plant and needs a care type, like the
   plant's device. A care task's entities mark the task as done: besides the task itself, that

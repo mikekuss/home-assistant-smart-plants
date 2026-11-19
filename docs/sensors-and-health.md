@@ -57,11 +57,12 @@ after**: 24 hours by default, 7 days for the battery. You can set it per plant a
 60 seconds to 7 days, in seconds. A new sensor gets one full window before it can count as not
 updating. An assigned sensor that no longer exists counts as not updating at once.
 
-A sensor that sends the same value again stays current, but only if Home Assistant receives it.
-MQTT and Zigbee2MQTT sensors send nothing to Home Assistant while their value stays the same,
-unless `force_update` is set on the entity. A soil moisture sensor in a pot that barely dries
-can go many hours without a change, and such a sensor counts as not updating once
-**Not updating after** has passed, although it works. If that happens, raise
+A sensor that reports the same value again stays current, as long as Home Assistant records
+the report. Home Assistant's MQTT integration, which Zigbee2MQTT sensors also use, doesn't write
+a sensor's state again while its value stays the same, unless `force_update` is set on the
+entity. The device may keep sending, but Smart Plants sees no new report. A soil moisture sensor
+in a pot that barely dries can go many hours without a change, and such a sensor counts as not
+updating once **Not updating after** has passed, although it works. If that happens, raise
 **Not updating after** for that reading, up to 7 days.
 
 A plant shows *No recent data* when an assigned sensor is not updating or has no usable value
