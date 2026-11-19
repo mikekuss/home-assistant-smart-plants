@@ -77,6 +77,12 @@ ATTR_TASK_TYPE: Final = "task_type"
 DUE_UNIQUE_ID: Final = re.compile(
     rf"^{DOMAIN}:(?P<plant_id>.+):care_task:(?P<task_id>[0-9a-f]{{32}}):due$"
 )
+# Any of a care task's own entities: the task sensor, Next due, Last done and
+# the Done button.
+TASK_ENTITY_UNIQUE_ID: Final = re.compile(
+    rf"^{DOMAIN}:(?P<plant_id>.+):care_task:(?P<task_id>[0-9a-f]{{32}})"
+    r":(?:due|next|last|done)$"
+)
 _ROLE_UNIQUE_ID: Final = re.compile(
     rf"^{DOMAIN}:(?P<plant_id>.+):(?P<role>[a-z0-9_]+)$"
 )

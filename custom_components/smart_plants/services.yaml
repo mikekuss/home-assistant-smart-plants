@@ -1,8 +1,8 @@
 log_care:
   # The entity filter also limits the device picker to devices that have a
-  # matching entity, which are the Smart Plants plant devices. A care task
-  # entity marks its task as done; any other entity of a plant logs care for
-  # that plant, like its device.
+  # matching entity, which are the Smart Plants plant devices. Any entity of
+  # a care task (the task sensor, Next due, Last done, Done) marks the task as
+  # done; any other entity of a plant logs care for that plant, like its device.
   target:
     entity:
       - integration: smart_plants

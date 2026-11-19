@@ -13,7 +13,7 @@ Home Assistant doesn't check permissions for integration actions, so the
 actions that change plants require a caller who may control at least one
 Smart Plants entity. Calls without a user, such as automations, are allowed.
 ``log_care``, ``snooze`` and ``unsnooze`` accept a plant's entities in place
-of its device; for ``log_care`` a care task's entity stands for the task
+of its device; for ``log_care`` each entity of a care task stands for the task
 instead. ``snooze`` and ``unsnooze`` also accept the All plants entity as a
 target, meaning every active plant.
 ``get_report`` only returns what the plant entities already show and stays
@@ -56,6 +56,7 @@ from homeassistant.util import dt as dt_util
 
 from .automation_targets import (
     DUE_UNIQUE_ID,
+    TASK_ENTITY_UNIQUE_ID,
     all_plants_entity_id,
     plant_id_of_device,
 )
@@ -250,16 +251,25 @@ def _resolve_task_entity(
     entry: ConfigEntry,
     manager: SmartPlantsManager,
     entity_ref: str,
+    *,
+    any_task_entity: bool = False,
 ) -> _TaskTarget:
+    """
+    Return the care task an entity target stands for.
+
+    Only the task sensor counts, unless ``any_task_entity`` lets every entity
+    of the task count: Next due, Last done and the Done button as well.
+    """
     registry = er.async_get(hass)
     entity_id = er.async_resolve_entity_id(registry, entity_ref)
     registry_entry = registry.async_get(entity_id) if entity_id else None
     if entity_id is None or registry_entry is None:
         raise _unregistered_entity_error(hass, entity_ref)
-    match = DUE_UNIQUE_ID.fullmatch(registry_entry.unique_id)
+    pattern = TASK_ENTITY_UNIQUE_ID if any_task_entity else DUE_UNIQUE_ID
+    match = pattern.fullmatch(registry_entry.unique_id)
     if (
         registry_entry.platform != DOMAIN
-        or registry_entry.domain != "binary_sensor"
+        or (not any_task_entity and registry_entry.domain != "binary_sensor")
         or registry_entry.config_entry_id != entry.entry_id
         or match is None
     ):
@@ -276,10 +286,15 @@ def _resolve_tasks(
     entry: ConfigEntry,
     manager: SmartPlantsManager,
     entity_refs: list[str],
+    *,
+    any_task_entity: bool = False,
 ) -> list[_TaskTarget]:
+    """Resolve care task targets; several entities of one task count once."""
     targets: dict[tuple[str, str], _TaskTarget] = {}
     for ref in entity_refs:
-        target = _resolve_task_entity(hass, entry, manager, ref)
+        target = _resolve_task_entity(
+            hass, entry, manager, ref, any_task_entity=any_task_entity
+        )
         targets.setdefault((target.plant.id, target.task.id), target)
     return list(targets.values())
 
@@ -412,10 +427,11 @@ def _resolve_care_targets(
     """
     Resolve the targets of ``log_care`` into plants and care tasks.
 
-    A care task entity stands for its task. Any other entity of a plant stands
-    for the plant, like the plant's device, so a plant reached through its
-    device and its entities is logged once. The All plants entity is not a
-    plant of its own and is rejected.
+    Each of a care task's entities (the task sensor, Next due, Last done and
+    Done) stands for the task, so naming several of them completes it once.
+    Any other entity of a plant stands for the plant, like the plant's device,
+    so a plant reached through its device and its entities is logged once.
+    The All plants entity is not a plant of its own and is rejected.
     """
     registry = er.async_get(hass)
     all_plants = all_plants_entity_id(hass)
@@ -430,7 +446,7 @@ def _resolve_care_targets(
             if entity_id is not None and entity_id == all_plants:
                 raise _error("all_plants_care_target", target=entity_id)
             registry_entry = registry.async_get(entity_id) if entity_id else None
-            if registry_entry is not None and DUE_UNIQUE_ID.fullmatch(
+            if registry_entry is not None and TASK_ENTITY_UNIQUE_ID.fullmatch(
                 registry_entry.unique_id
             ):
                 task_refs.append(ref)
@@ -438,7 +454,7 @@ def _resolve_care_targets(
                 plants.append(
                     _resolve_plant_entity(hass, entry, manager, ref, "plant_disabled")
                 )
-        tasks = _resolve_tasks(hass, entry, manager, task_refs)
+        tasks = _resolve_tasks(hass, entry, manager, task_refs, any_task_entity=True)
     return _unique_plants(plants), tasks
 
 

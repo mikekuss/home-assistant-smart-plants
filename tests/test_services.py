@@ -880,6 +880,137 @@ async def test_log_care_with_one_invalid_entity_logs_nothing(
     assert _plant_record(entry, second).care_events == ()
 
 
+# --- log_care with the other entities of a care task -----------------------
+
+TASK_ENTITY_PLATFORMS = {
+    "due": "binary_sensor",
+    "next": "sensor",
+    "last": "sensor",
+    "done": "button",
+}
+
+
+async def _task_entity(
+    hass: HomeAssistant, plant_id: str, task_id: str, suffix: str
+) -> er.RegistryEntry:
+    """Return the registry entry of one of a care task's own entities."""
+    await hass.async_block_till_done()
+    registry = er.async_get(hass)
+    entity_id = registry.async_get_entity_id(
+        TASK_ENTITY_PLATFORMS[suffix],
+        DOMAIN,
+        f"{DOMAIN}:{plant_id}:care_task:{task_id}:{suffix}",
+    )
+    assert entity_id is not None
+    registry_entry = registry.async_get(entity_id)
+    assert registry_entry is not None
+    return registry_entry
+
+
+@pytest.mark.parametrize("suffix", list(TASK_ENTITY_PLATFORMS))
+async def test_log_care_for_any_task_entity_completes_the_task(
+    hass: HomeAssistant, suffix: str
+) -> None:
+    entry = await _setup(hass)
+    plant_id = await _plant(hass, entry, "Aloe")
+    task_id, _due = await _task(hass, entry, plant_id)
+    target = await _task_entity(hass, plant_id, task_id, suffix)
+    # Next due, Last done and Done are disabled by default and still count.
+    assert (target.disabled_by is None) == (suffix == "due")
+
+    await _call(hass, SERVICE_LOG_CARE, {"entity_id": target.entity_id})
+
+    plant = _plant_record(entry, plant_id)
+    (event,) = plant.care_events
+    assert event.kind == "fertilizing"
+    assert event.task_id == task_id
+    task = plant.care_task(task_id)
+    assert task is not None
+    assert task.last_done_at is not None
+
+
+async def test_log_care_for_done_button_of_a_custom_task(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    plant_id = await _plant(hass, entry, "Aloe")
+    task_id, _due = await _task(hass, entry, plant_id, "custom")
+    done = await _task_entity(hass, plant_id, task_id, "done")
+    task = _plant_record(entry, plant_id).care_task(task_id)
+    assert task is not None
+    assert task.last_done_at is None
+
+    await _call(hass, SERVICE_LOG_CARE, {"entity_id": done.entity_id, "kind": "task"})
+
+    plant = _plant_record(entry, plant_id)
+    (event,) = plant.care_events
+    assert event.kind == "task"
+    assert event.task_id == task_id
+    task = plant.care_task(task_id)
+    assert task is not None
+    assert task.last_done_at is not None
+
+
+async def test_log_care_checks_the_kind_of_a_done_button(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    plant_id = await _plant(hass, entry, "Aloe")
+    task_id, _due = await _task(hass, entry, plant_id)
+    done = await _task_entity(hass, plant_id, task_id, "done")
+
+    error = await _expect_error(
+        hass,
+        SERVICE_LOG_CARE,
+        {"entity_id": done.entity_id, "kind": "watering"},
+        "kind_mismatch",
+    )
+    assert error.translation_placeholders == {
+        "target": done.entity_id,
+        "kind": "watering",
+        "task_kind": "fertilizing",
+    }
+    assert _plant_record(entry, plant_id).care_events == ()
+
+
+async def test_log_care_for_several_entities_of_one_task_completes_it_once(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    plant_id = await _plant(hass, entry, "Aloe")
+    task_id, due = await _task(hass, entry, plant_id)
+    entities = [
+        due,
+        *[
+            (await _task_entity(hass, plant_id, task_id, suffix)).entity_id
+            for suffix in ("next", "last")
+        ],
+        # The registry id of an entity counts like its entity ID.
+        (await _task_entity(hass, plant_id, task_id, "done")).id,
+    ]
+
+    await _call(hass, SERVICE_LOG_CARE, {"entity_id": entities})
+
+    (event,) = _plant_record(entry, plant_id).care_events
+    assert event.task_id == task_id
+
+
+async def test_skip_care_task_still_needs_the_task_sensor(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    plant_id = await _plant(hass, entry, "Aloe")
+    task_id, _due = await _task(hass, entry, plant_id)
+    before = _plant_record(entry, plant_id)
+
+    for suffix in ("next", "last", "done"):
+        target = await _task_entity(hass, plant_id, task_id, suffix)
+        error = await _expect_error(
+            hass,
+            SERVICE_SKIP_CARE_TASK,
+            {"entity_id": target.entity_id},
+            "invalid_target",
+        )
+        assert error.translation_placeholders == {"target": target.entity_id}
+    assert _plant_record(entry, plant_id) == before
+
+
 async def test_task_entity_errors(hass: HomeAssistant) -> None:
     entry = await _setup(hass)
     plant_id = await _plant(hass, entry, "Aloe")
