@@ -5,38 +5,48 @@
       "reauth_successful": "Die OpenPlantBook-Anmeldung wurde aktualisiert."
     },
     "error": {
-      "credentials_required": "Client-ID und Client-Secret eingeben oder den Anbieter deaktivieren.",
+      "credentials_required": "Client-ID und Client-Secret eingeben oder OpenPlantBook verwenden ausschalten.",
       "credentials_invalid": "Die OpenPlantBook-Client-ID oder das Client-Secret ist zu lang.",
       "invalid_auth": "OpenPlantBook hat diese Zugangsdaten abgelehnt.",
-      "cannot_connect": "OpenPlantBook ist nicht erreichbar. Später erneut versuchen oder den Anbieter deaktivieren."
+      "cannot_connect": "OpenPlantBook ist nicht erreichbar. Später erneut versuchen oder OpenPlantBook verwenden ausschalten."
     },
     "step": {
       "user": {
         "title": "Smart Plants einrichten",
         "description": "OpenPlantBook ist optional und wird direkt über seine API angebunden. Du benötigst ein OpenPlantBook-Konto und Client-Zugangsdaten. [OpenPlantBook-API-Zugangsdaten abrufen]({openplantbook_credentials_url}). Die separate Home-Assistant-OpenPlantBook-Integration muss nicht installiert werden. Die manuelle Pflanzenverwaltung funktioniert ohne Zugangsdaten.",
         "data": {
-          "openplantbook_enabled": "Direkten OpenPlantBook-Anbieter aktivieren",
+          "openplantbook_enabled": "OpenPlantBook verwenden",
           "openplantbook_client_id": "OpenPlantBook Client-ID",
           "openplantbook_client_secret": "OpenPlantBook Client-Secret"
+        },
+        "data_description": {
+          "openplantbook_enabled": "Sucht die Art einer Pflanze in OpenPlantBook und übernimmt ihren Feuchtebereich. Smart Plants funktioniert auch ohne.",
+          "openplantbook_client_id": "Die Client-ID deiner OpenPlantBook-API-Zugangsdaten.",
+          "openplantbook_client_secret": "Das Client-Secret, das zur Client-ID gehört."
         }
       },
       "reauth_confirm": {
         "title": "OpenPlantBook erneut anmelden",
-        "description": "Aktualisiert die direkten OpenPlantBook-Zugangsdaten. Das lokale Inventar bleibt bei Anmeldefehlern verfügbar.",
+        "description": "Aktualisiert die OpenPlantBook-Zugangsdaten. Das lokale Inventar bleibt bei Anmeldefehlern verfügbar.",
         "data": {
-          "openplantbook_enabled": "Direkten OpenPlantBook-Anbieter aktivieren",
+          "openplantbook_enabled": "OpenPlantBook verwenden",
           "openplantbook_client_id": "OpenPlantBook Client-ID",
           "openplantbook_client_secret": "OpenPlantBook Client-Secret"
+        },
+        "data_description": {
+          "openplantbook_enabled": "Sucht die Art einer Pflanze in OpenPlantBook und übernimmt ihren Feuchtebereich. Smart Plants funktioniert auch ohne.",
+          "openplantbook_client_id": "Die Client-ID deiner OpenPlantBook-API-Zugangsdaten.",
+          "openplantbook_client_secret": "Das Client-Secret, das zur Client-ID gehört."
         }
       }
     }
   },
   "options": {
     "error": {
-      "credentials_required": "Client-ID und Client-Secret eingeben oder den Anbieter deaktivieren.",
+      "credentials_required": "Client-ID und Client-Secret eingeben oder OpenPlantBook verwenden ausschalten.",
       "credentials_invalid": "Die OpenPlantBook-Client-ID oder das Client-Secret ist zu lang.",
       "invalid_auth": "OpenPlantBook hat diese Zugangsdaten abgelehnt.",
-      "cannot_connect": "OpenPlantBook ist nicht erreichbar. Später erneut versuchen oder den Anbieter deaktivieren."
+      "cannot_connect": "OpenPlantBook ist nicht erreichbar. Später erneut versuchen oder OpenPlantBook verwenden ausschalten."
     },
     "step": {
       "init": {
@@ -44,13 +54,16 @@
         "data": {
           "preserve_inventory_on_removal": "Inventar beim Entfernen der Integration behalten",
           "forecast_refresh_minutes": "Aktualisierungsintervall der Wettervorhersage",
-          "openplantbook_enabled": "Direkten OpenPlantBook-Anbieter aktivieren",
+          "openplantbook_enabled": "OpenPlantBook verwenden",
           "openplantbook_client_id": "OpenPlantBook Client-ID",
           "openplantbook_client_secret": "OpenPlantBook Client-Secret"
         },
         "data_description": {
           "preserve_inventory_on_removal": "Ist diese Option aus, löscht das Entfernen der Integration Smart Plants auch alle Pflanzen, ihren Pflegeverlauf und ihre Fotos endgültig. Schalte sie vor dem Entfernen ein, wenn du die Integration vielleicht wieder installierst.",
-          "forecast_refresh_minutes": "Wie oft Smart Plants die Vorhersage einer Wetter-Entität abruft, die eine Aufgabe mit Wettervorhersage beobachtet, zwischen 15 und 180 Minuten. Ändert sich die Wetter-Entität, wird die Vorhersage zusätzlich erneut abgerufen, höchstens alle 5 Minuten."
+          "forecast_refresh_minutes": "Wie oft Smart Plants die Vorhersage einer Wetter-Entität abruft, die eine Aufgabe mit Wettervorhersage beobachtet, zwischen 15 und 180 Minuten. Ändert sich die Wetter-Entität, wird die Vorhersage zusätzlich erneut abgerufen, höchstens alle 5 Minuten.",
+          "openplantbook_enabled": "Sucht die Art einer Pflanze in OpenPlantBook und übernimmt ihren Feuchtebereich. Smart Plants funktioniert auch ohne.",
+          "openplantbook_client_id": "Die Client-ID deiner OpenPlantBook-API-Zugangsdaten.",
+          "openplantbook_client_secret": "Das Client-Secret, das zur Client-ID gehört. Das gespeicherte Secret wird nie angezeigt; lass das Feld leer, um es zu behalten."
         },
         "description": "OpenPlantBook-API-Zugangsdaten sind optional. Erstelle ein Konto und Client-Zugangsdaten. [OpenPlantBook-API-Zugangsdaten abrufen]({openplantbook_credentials_url}). Smart Plants verbindet sich direkt; die separate Home-Assistant-OpenPlantBook-Integration ist nicht erforderlich. Anbieterfehler deaktivieren nie das lokale Inventar."
       }
@@ -554,14 +567,14 @@
         "step": {
           "source": {
             "title": "Fehlende Pflanzenquelle reparieren",
-            "description": "Die {role}-Quelle {entity_id} für {plant_name} fehlt. Wählen Sie einen Ersatz oder lassen Sie das Feld leer, um die Zuweisung zu entfernen.",
+            "description": "Die {role}-Quelle {entity_id} für {plant_name} fehlt. Wähle einen Ersatz oder lass das Feld leer, um die Zuweisung zu entfernen.",
             "data": {
               "replacement_entity_id": "Ersatzentität"
             }
           }
         },
         "error": {
-          "invalid_source": "Der Ersatz ist nicht verfügbar, inkompatibel oder stimmt nicht mehr mit der Entitätsregistrierung überein. Wählen Sie eine andere Entität."
+          "invalid_source": "Der Ersatz ist nicht verfügbar, inkompatibel oder stimmt nicht mehr mit der Entitätsregistrierung überein. Wähle eine andere Entität."
         },
         "abort": {
           "integration_not_loaded": "Smart Plants ist nicht geladen.",
@@ -640,7 +653,7 @@
     },
     "snooze": {
       "name": "Hinweise stummschalten",
-      "description": "Schaltet die Hinweise von Smart-Plants-Pflanzen stumm, zum Beispiel während eines Urlaubs. Die Entitäten behalten ihren echten Zustand; ihr Attribut Stummgeschaltet wird aktiv, damit Automationen still bleiben können. Erneutes Stummschalten ersetzt das Ende. Mit der Entität Alle Pflanzen als Ziel werden alle aktiven Pflanzen stummgeschaltet; eine Pflanze, die schon länger stummgeschaltet ist, behält ihr Ende. Die Stummschaltung endet von selbst.",
+      "description": "Schaltet die Hinweise von Smart-Plants-Pflanzen stumm, zum Beispiel während eines Urlaubs. Die Entitäten behalten ihren echten Zustand; ihr Attribut Stummgeschaltet wird aktiv, damit Automatisierungen still bleiben können. Erneutes Stummschalten ersetzt das Ende. Mit der Entität Alle Pflanzen als Ziel werden alle aktiven Pflanzen stummgeschaltet; eine Pflanze, die schon länger stummgeschaltet ist, behält ihr Ende. Die Stummschaltung endet von selbst.",
       "fields": {
         "duration": {
           "name": "Dauer",
@@ -680,13 +693,13 @@
       "message": "Smart Plants ist nicht geladen."
     },
     "no_target": {
-      "message": "Wählen Sie mindestens eine Pflanze oder Pflegeaufgabe."
+      "message": "Wähle mindestens eine Pflanze oder Pflegeaufgabe."
     },
     "unsupported_target": {
-      "message": "Wählen Sie Pflanzen oder Pflegeaufgaben direkt aus. Bereiche, Etagen und Labels werden nicht unterstützt."
+      "message": "Wähle Pflanzen oder Pflegeaufgaben direkt aus. Bereiche, Etagen und Labels werden nicht unterstützt."
     },
     "task_target_required": {
-      "message": "Wählen Sie die Pflegeaufgabe, die übersprungen werden soll, nicht eine ganze Pflanze."
+      "message": "Wähle die Pflegeaufgabe, die übersprungen werden soll, nicht eine ganze Pflanze."
     },
     "unknown_target": {
       "message": "{target} wurde nicht gefunden."
@@ -704,16 +717,16 @@
       "message": "{target} steht für alle Pflanzen, dafür lässt sich keine Pflege eintragen. Wähle eine Pflanze, eine ihrer Entitäten oder die Entität einer Pflegeaufgabe."
     },
     "plant_disabled": {
-      "message": "{plant} ist deaktiviert. Aktivieren Sie die Pflanze, bevor Sie Pflege eintragen."
+      "message": "{plant} ist pausiert. Setze die Überwachung fort, bevor du Pflege einträgst."
     },
     "care_task_not_found": {
       "message": "Die Pflegeaufgabe von {target} existiert nicht mehr."
     },
     "kind_required": {
-      "message": "Wählen Sie eine Pflegeart, wenn Sie Pflege für eine Pflanze eintragen."
+      "message": "Wähle eine Pflegeart, wenn du Pflege für eine Pflanze einträgst."
     },
     "note_required": {
-      "message": "Geben Sie für die Pflegeart Notiz einen Notiztext ein."
+      "message": "Gib für die Pflegeart Notiz einen Notiztext ein."
     },
     "kind_mismatch": {
       "message": "Die Pflegeart {kind} passt nicht zu {target}; diese Aufgabe wird als {task_kind} eingetragen."
@@ -725,19 +738,19 @@
       "message": "Die Pflege für {target} wurde nicht gespeichert: {reason}"
     },
     "reading_task_skip": {
-      "message": "{target} richtet sich nach einem Messwert und kann nicht übersprungen werden. Markieren Sie die Aufgabe stattdessen als erledigt."
+      "message": "{target} richtet sich nach einem Messwert und kann nicht übersprungen werden. Markiere die Aufgabe stattdessen als erledigt."
     },
     "no_plant_target": {
-      "message": "Wählen Sie mindestens eine Pflanze oder eine ihrer Entitäten aus."
+      "message": "Wähle mindestens eine Pflanze oder eine ihrer Entitäten aus."
     },
     "plant_disabled_snooze": {
-      "message": "{plant} ist deaktiviert. Aktivieren Sie die Pflanze, bevor Sie ihre Hinweise stummschalten."
+      "message": "{plant} ist pausiert. Setze die Überwachung fort, bevor du ihre Hinweise stummschaltest."
     },
     "snooze_period_required": {
-      "message": "Geben Sie eine Dauer oder ein Ende für die Stummschaltung an."
+      "message": "Gib eine Dauer oder ein Ende für die Stummschaltung an."
     },
     "snooze_period_conflict": {
-      "message": "Geben Sie entweder eine Dauer oder ein Ende an, nicht beides."
+      "message": "Gib entweder eine Dauer oder ein Ende an, nicht beides."
     },
     "snooze_in_past": {
       "message": "Die Stummschaltung muss in der Zukunft enden."
@@ -749,31 +762,43 @@
       "message": "Die Stummschaltung von {target} wurde nicht gespeichert: {reason}"
     },
     "pending_operations_full": {
-      "message": "Bei Smart Plants warten bereits {max} unvollständige Änderungen darauf, abgeschlossen zu werden. Starten Sie Home Assistant neu, um sie abzuschließen. Erscheint diese Meldung erneut, prüfen Sie das Home-Assistant-Protokoll auf Fehler von Smart Plants."
+      "message": "Bei Smart Plants warten bereits {max} unvollständige Änderungen darauf, abgeschlossen zu werden. Starte Home Assistant neu, um sie abzuschließen. Erscheint diese Meldung erneut, prüfe das Home-Assistant-Protokoll auf Fehler von Smart Plants."
     },
     "archive_limit": {
       "message": "Smart Plants behält höchstens {max} archivierte Pflanzen. Lösche zuerst einige archivierte Pflanzen endgültig, bevor du eine weitere archivierst."
     },
     "plant_limit": {
-      "message": "Smart Plants verwaltet höchstens {max} Pflanzen. Löschen Sie eine Pflanze, bevor Sie eine weitere hinzufügen."
+      "message": "Smart Plants verwaltet höchstens {max} Pflanzen. Lösche eine Pflanze, bevor du eine weitere hinzufügst."
     },
     "storage_full": {
       "message": "Der Speicher von Smart Plants ist voll. Lösche alte Einträge oder Notizen im Pflegeprotokoll und versuche es erneut."
     },
     "storage_failed": {
-      "message": "Smart Plants konnte die Änderung nicht speichern. Es wurde nichts geändert. Prüfen Sie das Home-Assistant-Protokoll und versuchen Sie es erneut."
+      "message": "Smart Plants konnte die Änderung nicht speichern. Es wurde nichts geändert. Prüfe das Home-Assistant-Protokoll und versuche es erneut."
     },
     "plant_not_found": {
       "message": "Diese Pflanze gibt es nicht mehr."
     },
     "plant_changed": {
-      "message": "Die Pflanze wurde geändert, während der Wert gespeichert wurde. Versuchen Sie es erneut."
+      "message": "Die Pflanze wurde geändert, während der Wert gespeichert wurde. Versuche es erneut."
     },
     "moisture_threshold_whole": {
       "message": "Die Feuchtewerte Minimum, Zielwert und Maximum müssen ganze Prozentpunkte sein."
     },
     "moisture_thresholds_invalid": {
       "message": "Bei der Feuchte muss das Minimum unter dem Zielwert und der Zielwert unter dem Maximum liegen, mit mindestens {span} Prozentpunkten zwischen Minimum und Maximum."
+    },
+    "setup_cleanup_incomplete": {
+      "message": "Smart Plants konnte nach einem fehlgeschlagenen Start nicht vollständig aufräumen. Starte Home Assistant neu."
+    },
+    "platform_cleanup_incomplete": {
+      "message": "Smart Plants konnte die Entitäten eines fehlgeschlagenen Starts nicht entfernen. Starte Home Assistant neu."
+    },
+    "already_loaded": {
+      "message": "Smart Plants läuft bereits mit einem anderen Konfigurationseintrag."
+    },
+    "storage_load_failed": {
+      "message": "Smart Plants konnte die gespeicherten Pflanzen nicht laden: {error}"
     }
   },
   "triggers": {

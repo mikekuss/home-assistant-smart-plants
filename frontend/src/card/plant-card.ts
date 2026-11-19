@@ -20,6 +20,7 @@ import { cardReason, chipText, secondaryReadings, wateredText } from "../overvie
 import { relativeTime } from "../status.js";
 import { localDate } from "../care-plan.js";
 import { snoozeChipText } from "../snooze.js";
+import { PHOTO_MAX_ATTEMPTS, photoRetryAt } from "../photo-retry.js";
 import { DOMAIN, plantDevices, plantView } from "./plant-state.js";
 import type { CardHassData, CardPlant, PlantView } from "./plant-state.js";
 
@@ -45,12 +46,6 @@ export interface CardHass extends CardHassData {
   fetchWithAuth?(path: string, init?: RequestInit): Promise<Response>;
   connected?: boolean;
 }
-
-// A photo download that failed is retried on a later hass update, after a wait
-// that starts here and doubles each time (30 s, 1, 2, 4 min), with this many
-// attempts in all until the connection to Home Assistant comes back.
-const PHOTO_RETRY_FIRST_MS = 30_000;
-const PHOTO_MAX_ATTEMPTS = 5;
 
 interface CareListReply { revision: number; events: { id: string; kind: string; occurred_at: string }[] }
 interface LogCareReply { response?: { events?: { plant_id?: unknown; event_id?: unknown; kind?: unknown }[] } }
@@ -247,8 +242,7 @@ export class SmartPlantsPlantCardContent extends LitElement {
   }
 
   private _photoFailed(): void {
-    if (this._photoAttempts >= PHOTO_MAX_ATTEMPTS) return;
-    this._photoRetryAt = Date.now() + PHOTO_RETRY_FIRST_MS * 2 ** (this._photoAttempts - 1);
+    this._photoRetryAt = photoRetryAt(this._photoAttempts);
   }
 
   // A card whose plant was retired still knows the removed device's id; the

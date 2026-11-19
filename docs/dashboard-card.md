@@ -64,7 +64,7 @@ The card works from the plant's entities, so it knows less than the panel:
 - A deleted plant shows "Plant not found". A retired plant shows its photo and name and says
   it was retired.
 
-Home Assistant loads a small script of about 4 KB in every browser session to add the card to
+Home Assistant loads a small script of about 7 KB in every browser session to add the card to
 the picker. The card itself loads when it's on screen. If loading fails, for example during a
 restart, the card retries every 10 seconds.
 

@@ -20,6 +20,7 @@ jobs:
   layout:
     name: Layout validation
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -31,6 +32,7 @@ jobs:
   backend:
     name: Ruff, Mypy, Pytest
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -55,6 +57,7 @@ jobs:
     # supported version pinned in requirements-dev.txt; together they cover
     # both schema libraries (voluptuous before 2026.9, probatio from 2026.9).
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Resolve latest Home Assistant test versions
@@ -142,6 +145,7 @@ jobs:
   hassfest:
     name: Hassfest
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: home-assistant/actions/hassfest@86d4564712fa02543c808e3a693dd04f9d3f8361 # master
@@ -149,6 +153,7 @@ jobs:
   hacs:
     name: HACS
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # main
@@ -158,6 +163,7 @@ jobs:
   frontend:
     name: Frontend (lint, typecheck, test, build)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: frontend

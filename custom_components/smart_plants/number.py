@@ -56,6 +56,8 @@ if TYPE_CHECKING:
 
 
 PLATFORM = "number"
+# Entities read local state and never call a device, so updates need no limit.
+PARALLEL_UPDATES = 0
 ROLE_FACTORIES: dict[str, EntityFactory]
 
 ROLE_MOISTURE_MIN = "moisture_min"

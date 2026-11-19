@@ -1410,8 +1410,8 @@ var Ne = {
 	"dialog.delete_retire_instead": "Stattdessen archivieren",
 	"dialog.retire_title": "{name} archivieren?",
 	"dialog.retire_body": "Gerät und Entitäten werden entfernt, und die Sensoren sind frei für eine andere Pflanze. Foto und Pflegeverlauf bleiben im Archiv. Dort kannst du die Pflanze wiederherstellen oder endgültig löschen.",
-	"dialog.retire_automations_one": "{count} Automation nutzt Entitäten dieser Pflanze und funktioniert dann nicht mehr.",
-	"dialog.retire_automations_other": "{count} Automationen nutzen Entitäten dieser Pflanze und funktionieren dann nicht mehr.",
+	"dialog.retire_automations_one": "{count} Automatisierung nutzt Entitäten dieser Pflanze und funktioniert dann nicht mehr.",
+	"dialog.retire_automations_other": "{count} Automatisierungen nutzen Entitäten dieser Pflanze und funktionieren dann nicht mehr.",
 	"dialog.retire_confirm": "Archivieren",
 	"archive.menu": "Archiv",
 	"archive.title": "Archiv",
@@ -1563,7 +1563,7 @@ var Ne = {
 	"care_plan.back": "Zurück",
 	"care_plan.save": "Speichern",
 	"care_plan.close": "Schließen",
-	"care_plan.confirm_delete": "Pflegeaufgabe {name} löschen? Ihre Entitäten werden entfernt, und Automationen, die sie verwenden, funktionieren nicht mehr. Ihre Einträge im Pflegeverlauf bleiben erhalten.",
+	"care_plan.confirm_delete": "Pflegeaufgabe {name} löschen? Ihre Entitäten werden entfernt, und Automatisierungen, die sie verwenden, funktionieren nicht mehr. Ihre Einträge im Pflegeverlauf bleiben erhalten.",
 	"care_plan.added_toast": "{name} zum Pflegeplan hinzugefügt",
 	"care_plan.saved_toast": "{name} gespeichert",
 	"care_plan.done_toast": "{name} als erledigt markiert",
@@ -1573,7 +1573,7 @@ var Ne = {
 	"care_plan.form_marks_done": "Markiert {name} als erledigt.",
 	"care_plan.form_also_marks": "Markiert auch {name} als erledigt.",
 	"care_plan.automate_title": "„{name}“ automatisieren",
-	"care_plan.automate_intro": "Verwende diese Entitäten in jeder Automation, zum Beispiel für eine Benachrichtigung auf deinem Handy.",
+	"care_plan.automate_intro": "Verwende diese Entitäten in jeder Automatisierung, zum Beispiel für eine Benachrichtigung auf deinem Handy.",
 	"care_plan.automate_due": "An, solange {name} fällig ist",
 	"care_plan.automate_next": "Nächster Fälligkeitstermin",
 	"care_plan.automate_next_disabled": "Standardmäßig deaktiviert. Aktiviere sie auf der Geräteseite der Pflanze, um sie zu verwenden.",
@@ -1713,7 +1713,7 @@ var Ne = {
 	"snooze.menu_change": "Stummschaltung ändern…",
 	"snooze.title": "Hinweise für {name} stummschalten",
 	"snooze.title_change": "Stummschaltung für {name} ändern",
-	"snooze.intro": "Die Entitäten behalten ihren echten Zustand, und die Pflanze zeigt weiter ihren Status. Automationen können das Attribut Stummgeschaltet prüfen, um still zu bleiben. Die Stummschaltung endet von selbst am Ende des gewählten Tages.",
+	"snooze.intro": "Die Entitäten behalten ihren echten Zustand, und die Pflanze zeigt weiter ihren Status. Automatisierungen können das Attribut Stummgeschaltet prüfen, um still zu bleiben. Die Stummschaltung endet von selbst am Ende des gewählten Tages.",
 	"snooze.current": "Stummgeschaltet bis {date}",
 	"snooze.choices": "Stummschalten für",
 	"snooze.preset_1": "1 Tag",
@@ -4932,6 +4932,11 @@ function Ct(e, t, n, r, i = Date.now()) {
 	let a = bt(t, i), o = a ? xt(a, r) : null;
 	return o ? e.t("snooze.chip", { date: St(e, o, n).replace(/\s/g, "\xA0") }) : null;
 }
+// src/photo-retry.ts
+var wt = 3e4;
+function Tt(e, t = Date.now()) {
+	return e >= 5 ? null : t + wt * 2 ** (e - 1);
+}
 // src/card/plant-state.ts
 var Y = "smart_plants", X = [
 	{
@@ -4981,14 +4986,14 @@ var Y = "smart_plants", X = [
 		sensor: "low_battery",
 		kinds: { low_battery: "battery_low" }
 	}
-], wt = "stress", Tt = /* @__PURE__ */ new Set([
+], Et = "stress", Dt = /* @__PURE__ */ new Set([
 	"needs_water",
 	"too_cold",
 	"too_dry",
 	"low_light",
 	"low_conductivity",
 	"battery_low"
-]), Et = {
+]), Ot = {
 	temperature: {
 		range: ["cold_threshold_celsius", "hot_threshold_celsius"],
 		clear: ["cold_clear_celsius", "hot_clear_celsius"]
@@ -5017,12 +5022,12 @@ var Y = "smart_plants", X = [
 		range: ["threshold_percent", null],
 		clear: ["clear_percent", null]
 	}
-}, Z = /* @__PURE__ */ new Set(["unavailable", "unknown"]), Dt = /* @__PURE__ */ new Set(["on", "off"]), Q = (e) => typeof e == "number" && Number.isFinite(e) ? e : null, Ot = (e) => {
+}, Z = /* @__PURE__ */ new Set(["unavailable", "unknown"]), kt = /* @__PURE__ */ new Set(["on", "off"]), Q = (e) => typeof e == "number" && Number.isFinite(e) ? e : null, At = (e) => {
 	if (Z.has(e)) return null;
 	let t = Number(e);
 	return e.trim() !== "" && Number.isFinite(t) ? t : null;
-}, kt = (e) => e ? Ot(e.state) : null;
-function At(e, t) {
+}, jt = (e) => e ? At(e.state) : null;
+function Mt(e, t) {
 	let n = /* @__PURE__ */ new Map();
 	for (let r of Object.values(e.entities ?? {})) {
 		if (!r || r.device_id !== t || r.platform !== "smart_plants" || !r.translation_key) continue;
@@ -5031,14 +5036,14 @@ function At(e, t) {
 	}
 	return n;
 }
-function jt(e) {
+function Nt(e) {
 	return e?.identifiers?.find(([e]) => e === "smart_plants")?.[1] ?? null;
 }
-function Mt(e) {
-	return Object.values(e.devices ?? {}).filter((e) => !!e && jt(e) !== null).sort((e, t) => Nt(e).localeCompare(Nt(t), void 0, { sensitivity: "base" }));
-}
-var Nt = (e) => e.name_by_user || e.name || "";
 function Pt(e) {
+	return Object.values(e.devices ?? {}).filter((e) => !!e && Nt(e) !== null).sort((e, t) => Ft(e).localeCompare(Ft(t), void 0, { sensitivity: "base" }));
+}
+var Ft = (e) => e.name_by_user || e.name || "";
+function It(e) {
 	if (e.allUnavailable) return {
 		status: "paused",
 		problems: []
@@ -5050,20 +5055,20 @@ function Pt(e) {
 	});
 	let r = !1, i = /* @__PURE__ */ new Set();
 	for (let n of X) {
-		let a = It(e, n);
+		let a = Rt(e, n);
 		a ? (t.push({
 			role: n.role,
 			kind: a
-		}), r = !0) : a === void 0 && Ot(e.readings[n.role] ?? "") !== null && i.add(n.role);
+		}), r = !0) : a === void 0 && At(e.readings[n.role] ?? "") !== null && i.add(n.role);
 	}
-	let a = e.moisture !== null && !Z.has(e.moisture), o = e.sensor_stale === "on", s = Ft(e), c = n !== null || Dt.has(e.needs_water ?? "") && Dt.has(e.too_wet ?? ""), l = s ? o ? "stale" : a && c ? null : "unavailable" : null;
+	let a = e.moisture !== null && !Z.has(e.moisture), o = e.sensor_stale === "on", s = Lt(e), c = n !== null || kt.has(e.needs_water ?? "") && kt.has(e.too_wet ?? ""), l = s ? o ? "stale" : a && c ? null : "unavailable" : null;
 	l && t.push({
 		role: "moisture",
 		kind: l
 	});
-	let u = Rt(e, i);
+	let u = Bt(e, i);
 	t.push(...u);
-	let d = !s && !X.some(({ role: t }) => t !== "battery" && Lt(e, t));
+	let d = !s && !X.some(({ role: t }) => t !== "battery" && zt(e, t));
 	d && t.push({
 		role: "moisture",
 		kind: "no_sensors"
@@ -5074,18 +5079,18 @@ function Pt(e) {
 		problems: t
 	};
 }
-function Ft(e) {
+function Lt(e) {
 	return e.sources === null ? e.moisture !== null && !Z.has(e.moisture) || e.sensor_stale === "on" : e.sources > 0;
 }
-function It(e, t) {
+function Rt(e, t) {
 	if (e.stress_problems) return e.stress_problems[t.role] ?? null;
 	let n = e.stress[t.role];
-	return n?.state === "on" ? t.kinds[n.reason ?? ""] ?? wt : n?.state === "off" ? null : void 0;
+	return n?.state === "on" ? t.kinds[n.reason ?? ""] ?? Et : n?.state === "off" ? null : void 0;
 }
-function Lt(e, t) {
-	return Ot(e.readings[t] ?? "") !== null || Dt.has(e.stress[t]?.state ?? "") || e.input_problems[t] !== void 0 || e.stress_problems?.[t] !== void 0;
+function zt(e, t) {
+	return At(e.readings[t] ?? "") !== null || kt.has(e.stress[t]?.state ?? "") || e.input_problems[t] !== void 0 || e.stress_problems?.[t] !== void 0;
 }
-function Rt(e, t) {
+function Bt(e, t) {
 	let n = [];
 	for (let { role: r } of X) {
 		let i = e.input_problems[r];
@@ -5099,7 +5104,7 @@ function Rt(e, t) {
 	}
 	return n;
 }
-function zt(e, t) {
+function Vt(e, t) {
 	let n = (n) => {
 		let r = t.get(n);
 		return r ? e.states[r] : void 0;
@@ -5128,12 +5133,12 @@ function zt(e, t) {
 		sensor_stale: n("binary_sensor.sensor_stale")?.state ?? null,
 		sources: Q(n("binary_sensor.sensor_stale")?.attributes.sources),
 		stress: r,
-		input_problems: Bt(a.input_problems) ?? {},
-		stress_problems: Bt(a.stress_problems),
+		input_problems: Ht(a.input_problems) ?? {},
+		stress_problems: Ht(a.stress_problems),
 		readings: o
 	};
 }
-function Bt(e) {
+function Ht(e) {
 	if (typeof e != "object" || !e || Array.isArray(e)) return null;
 	let t = {};
 	for (let { role: n } of X) {
@@ -5142,11 +5147,11 @@ function Bt(e) {
 	}
 	return t;
 }
-var Vt = /* @__PURE__ */ new Set(["temperature", "soil_temperature"]), Ht = (e, t) => t === "°F" ? Math.round((e * 9 / 5 + 32) * 10) / 10 : t === "K" ? Math.round((e + 273.15) * 100) / 100 : e;
-function Ut(e, t, n) {
-	let r = Et[e], i = (r) => {
+var Ut = /* @__PURE__ */ new Set(["temperature", "soil_temperature"]), Wt = (e, t) => t === "°F" ? Math.round((e * 9 / 5 + 32) * 10) / 10 : t === "K" ? Math.round((e + 273.15) * 100) / 100 : e;
+function Gt(e, t, n) {
+	let r = Ot[e], i = (r) => {
 		let i = r && t && !Z.has(t.state) ? Q(t.attributes[r]) : null;
-		return i !== null && Vt.has(e) ? Ht(i, n) : i;
+		return i !== null && Ut.has(e) ? Wt(i, n) : i;
 	};
 	return {
 		range: {
@@ -5160,22 +5165,22 @@ function Ut(e, t, n) {
 		}
 	};
 }
-function Wt(e, t, n) {
-	return n ? "stale" : e === null ? "unavailable" : t ? Tt.has(t.kind) ? "low" : "high" : "ok";
+function Kt(e, t, n) {
+	return n ? "stale" : e === null ? "unavailable" : t ? Dt.has(t.kind) ? "low" : "high" : "ok";
 }
-function Gt(e, t) {
-	let n = e.devices?.[t], r = jt(n);
+function qt(e, t) {
+	let n = e.devices?.[t], r = Nt(n);
 	if (!n || !r) return { kind: "missing" };
-	let i = At(e, t), a = (t) => {
+	let i = Mt(e, t), a = (t) => {
 		let n = i.get(t);
 		return n ? e.states[n] : void 0;
-	}, o = zt(e, i), { status: s, problems: c } = Pt(o), l = s === "paused", u = {}, d = a("sensor.moisture"), f = kt(d), p = o.sensor_stale === "on", ee = Ft(o);
+	}, o = Vt(e, i), { status: s, problems: c } = It(o), l = s === "paused", u = {}, d = a("sensor.moisture"), f = jt(d), p = o.sensor_stale === "on", ee = Lt(o);
 	if (!l && (f !== null || ee)) {
 		let e = d?.attributes ?? {}, t = Q(e.min_threshold_percent), n = Q(e.max_threshold_percent);
 		u.moisture = {
 			value: f,
 			unit: "%",
-			state: Wt(f, c.find((e) => e.role === "moisture" && (e.kind === "needs_water" || e.kind === "too_wet")), p),
+			state: Kt(f, c.find((e) => e.role === "moisture" && (e.kind === "needs_water" || e.kind === "too_wet")), p),
 			range: {
 				min: t,
 				target: Q(e.target_threshold_percent),
@@ -5191,13 +5196,13 @@ function Gt(e, t) {
 	}
 	for (let e of Ke) {
 		if (e === "moisture" || l) continue;
-		let t = a(`sensor.${e}`), n = kt(t), r = c.find((t) => t.role === e), i = r?.kind === "stale" || r?.kind === "unavailable";
+		let t = a(`sensor.${e}`), n = jt(t), r = c.find((t) => t.role === e), i = r?.kind === "stale" || r?.kind === "unavailable";
 		if (n === null && !i) continue;
-		let o = X.find((t) => t.role === e), s = typeof t?.attributes.unit_of_measurement == "string" ? t.attributes.unit_of_measurement : "", { range: d, clear: f } = Ut(e, o ? a(`binary_sensor.${o.sensor}`) : void 0, s);
+		let o = X.find((t) => t.role === e), s = typeof t?.attributes.unit_of_measurement == "string" ? t.attributes.unit_of_measurement : "", { range: d, clear: f } = Gt(e, o ? a(`binary_sensor.${o.sensor}`) : void 0, s);
 		u[e] = {
 			value: n,
 			unit: s,
-			state: Wt(n, i ? void 0 : r, r?.kind === "stale"),
+			state: Kt(n, i ? void 0 : r, r?.kind === "stale"),
 			range: d,
 			clear: f,
 			last_reported: null,
@@ -5208,7 +5213,7 @@ function Gt(e, t) {
 		a("binary_sensor.sensor_stale"),
 		m,
 		...X.map((e) => a(`binary_sensor.${e.sensor}`))
-	].find((e) => e && typeof e.attributes.snoozed_until == "string"), te = Ke.filter((e) => e !== "moisture").map((e) => i.get(`sensor.${e}`)).find((t) => t !== void 0 && kt(e.states[t]) !== null), ne = i.get("sensor.moisture") ?? null, _ = a("binary_sensor.sensor_stale")?.attributes, v = _ && "photo_id" in _ ? typeof _.photo_id == "string" && _.photo_id ? _.photo_id : null : void 0, y = n.model?.trim(), b = {
+	].find((e) => e && typeof e.attributes.snoozed_until == "string"), te = Ke.filter((e) => e !== "moisture").map((e) => i.get(`sensor.${e}`)).find((t) => t !== void 0 && jt(e.states[t]) !== null), ne = i.get("sensor.moisture") ?? null, _ = a("binary_sensor.sensor_stale")?.attributes, v = _ && "photo_id" in _ ? typeof _.photo_id == "string" && _.photo_id ? _.photo_id : null : void 0, y = n.model?.trim(), b = {
 		plant_id: r,
 		revision: 0,
 		lifecycle_state: l ? "disabled" : "active",
@@ -5226,7 +5231,7 @@ function Gt(e, t) {
 		kind: "plant",
 		deviceId: t,
 		plantId: r,
-		name: Nt(n),
+		name: Ft(n),
 		area: n.area_id && e.areas?.[n.area_id]?.name || null,
 		species: y && y !== "Plant" ? y : null,
 		overview: b,
@@ -5237,7 +5242,7 @@ function Gt(e, t) {
 	};
 }
 // src/card/plant-card.ts
-var Kt, qt = "smart-plants-plant-card-content", Jt = "/smart-plants", Yt = 3e4, Xt = 5;
+var Jt, Yt = "smart-plants-plant-card-content", Xt = "/smart-plants";
 function Zt(e, t) {
 	let n = e?.response?.events, r = Array.isArray(n) ? n.find((e) => e?.plant_id === t && e.kind === "watering") : void 0;
 	return typeof r?.event_id == "string" ? r.event_id : null;
@@ -5273,7 +5278,7 @@ var $t = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		return this.hass?.user?.is_admin === !0;
 	}
 	_plant() {
-		return !this.hass || !this._config?.device_id ? null : Gt(this.hass, this._config.device_id);
+		return !this.hass || !this._config?.device_id ? null : qt(this.hass, this._config.device_id);
 	}
 	_syncPhoto() {
 		let e = this._plant();
@@ -5287,7 +5292,7 @@ var $t = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		this._wasConnected = a, i === this._photoFor ? r?.photoId && this._retryPhoto(r.plantId, r.photoId, a, o) : (this._clearPhoto(), this._photoFor = i, r?.photoId && this.hass && this._fetchPhoto(r.plantId, r.photoId));
 	}
 	_retryPhoto(e, t, n, r) {
-		this._photo || this._photoLoading || !n || (r && (this._photoRetryAt === null ? this._photoAttempts >= Xt && (this._photoAttempts = 0, this._photoRetryAt = 0) : this._photoRetryAt = 0), this._photoRetryAt === null || Date.now() < this._photoRetryAt || this._fetchPhoto(e, t));
+		this._photo || this._photoLoading || !n || (r && (this._photoRetryAt === null ? this._photoAttempts >= 5 && (this._photoAttempts = 0, this._photoRetryAt = 0) : this._photoRetryAt = 0), this._photoRetryAt === null || Date.now() < this._photoRetryAt || this._fetchPhoto(e, t));
 	}
 	_fetchPhoto(e, t) {
 		let n = this.hass;
@@ -5303,7 +5308,7 @@ var $t = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		});
 	}
 	_photoFailed() {
-		this._photoAttempts >= Xt || (this._photoRetryAt = Date.now() + Yt * 2 ** (this._photoAttempts - 1));
+		this._photoRetryAt = Tt(this._photoAttempts);
 	}
 	_syncRetired(e) {
 		let t = e?.kind === "missing" ? this._config?.device_id ?? null : null;
@@ -5343,7 +5348,7 @@ var $t = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
 		history.pushState(null, "", e), window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: !1 } }));
 	}
 	_open(e, t) {
-		this._admin ? this._navigate(`${Jt}/plant/${encodeURIComponent(e.plantId)}${t ? `/${t}` : ""}`) : e.moreInfoEntity && this.dispatchEvent(new CustomEvent("hass-more-info", {
+		this._admin ? this._navigate(`${Xt}/plant/${encodeURIComponent(e.plantId)}${t ? `/${t}` : ""}`) : e.moreInfoEntity && this.dispatchEvent(new CustomEvent("hass-more-info", {
 			bubbles: !0,
 			composed: !0,
 			detail: { entityId: e.moreInfoEntity }
@@ -5424,7 +5429,7 @@ var $t = (e) => typeof e == "object" && e && typeof e.code == "string" ? e.code 
     </div>`;
 	}
 };
-Kt = $, Kt.styles = [U, o`
+Jt = $, Jt.styles = [U, o`
     :host { display: block; container-type: inline-size; }
     ha-card { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; color: var(--sp-text);
       background: var(--ha-card-background, var(--sp-card)); border-radius: var(--ha-card-border-radius, 12px);
@@ -5489,7 +5494,7 @@ Kt = $, Kt.styles = [U, o`
       .foot { padding: 6px 6px 8px 12px; }
       .warning { padding: 12px; }
     }
-  `], W([I({ attribute: !1 })], $.prototype, "hass", void 0), W([L()], $.prototype, "_config", void 0), W([L()], $.prototype, "_busy", void 0), W([L()], $.prototype, "_photo", void 0), W([L()], $.prototype, "_retired", void 0), customElements.get("smart-plants-plant-card-content") || customElements.define(qt, $);
+  `], W([I({ attribute: !1 })], $.prototype, "hass", void 0), W([L()], $.prototype, "_config", void 0), W([L()], $.prototype, "_busy", void 0), W([L()], $.prototype, "_photo", void 0), W([L()], $.prototype, "_retired", void 0), customElements.get("smart-plants-plant-card-content") || customElements.define(Yt, $);
 function tn() {
 	let e = en(), t = {
 		device_id: "plant_card.editor_plant",
@@ -5522,8 +5527,8 @@ function tn() {
 	};
 }
 function nn(e) {
-	let t = Mt(e), n = t.find((t) => {
-		let n = Gt(e, t.id);
+	let t = Pt(e), n = t.find((t) => {
+		let n = qt(e, t.id);
 		return n.kind === "plant" && n.overview.status === "needs_water";
 	}) ?? t[0];
 	return {
@@ -5532,4 +5537,4 @@ function nn(e) {
 		show_watering: !0
 	};
 }
-export { qt as CONTENT_ELEMENT, Jt as PANEL_PATH, $ as SmartPlantsPlantCardContent, tn as getConfigForm, nn as getStubConfig };
+export { Yt as CONTENT_ELEMENT, Xt as PANEL_PATH, $ as SmartPlantsPlantCardContent, tn as getConfigForm, nn as getStubConfig };

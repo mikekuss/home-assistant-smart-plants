@@ -14,6 +14,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from custom_components.smart_plants.binary_sensor import _SensorStaleBinary
 from custom_components.smart_plants.const import DOMAIN, SINGLETON_UNIQUE_ID
 from custom_components.smart_plants.manager import (
     SmartPlantsManager,
@@ -145,6 +146,57 @@ async def test_previously_enabled_threshold_numbers_stay_enabled(
         assert registry_entry.disabled_by is None
         assert hass.states.get(entity_id) is not None
         assert manager.get_entity("number", plant.id, role) is not None
+
+
+async def test_sensor_stale_is_a_diagnostic_entity(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    plant = await entry.runtime_data.manager.async_create_plant(name="Aloe")
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    entity_id = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:sensor_stale"
+    )
+    assert entity_id is not None
+    registry_entry = registry.async_get(entity_id)
+    assert registry_entry is not None
+    assert registry_entry.entity_category is EntityCategory.DIAGNOSTIC
+    assert registry_entry.disabled_by is None
+    assert hass.states.get(entity_id) is not None
+
+
+async def test_existing_sensor_stale_becomes_diagnostic_and_keeps_user_choices(
+    hass: HomeAssistant,
+) -> None:
+    # Register the entity the way earlier releases did (no category), hide
+    # it as a user would, then reload with the current category in place.
+    with patch.object(_SensorStaleBinary, "_attr_entity_category", new=None):
+        entry = await _setup(hass)
+        plant = await entry.runtime_data.manager.async_create_plant(name="Aloe")
+        await hass.async_block_till_done()
+        registry = er.async_get(hass)
+        entity_id = registry.async_get_entity_id(
+            "binary_sensor", DOMAIN, f"{DOMAIN}:{plant.id}:sensor_stale"
+        )
+        assert entity_id is not None
+        registry_entry = registry.async_get(entity_id)
+        assert registry_entry is not None
+        assert registry_entry.entity_category is None
+        registry.async_update_entity(
+            entity_id, hidden_by=er.RegistryEntryHider.USER, name="Sensors offline"
+        )
+
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    registry_entry = registry.async_get(entity_id)
+    assert registry_entry is not None
+    assert registry_entry.entity_id == entity_id
+    assert registry_entry.entity_category is EntityCategory.DIAGNOSTIC
+    assert registry_entry.hidden_by is er.RegistryEntryHider.USER
+    assert registry_entry.disabled_by is None
+    assert registry_entry.name == "Sensors offline"
+    assert hass.states.get(entity_id) is not None
 
 
 async def test_controller_listener_attach_is_idempotent(hass: HomeAssistant) -> None:

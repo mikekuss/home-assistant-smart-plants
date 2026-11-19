@@ -59,7 +59,12 @@ never creates a second plant.
 ## Use the plant page
 
 Select a plant to open its page. The header shows the photo, status with every reason and up
-to four readings, with **Watered** and **Log care** next to it.
+to four readings, with **Watered** and **Log care** next to it. The page's address is
+`/smart-plants/plant/<plant ID>`, so you can link to a plant from a dashboard.
+
+On the overview, a plant whose photo can't be downloaded shows the plant icon. The panel tries
+again with its next refresh after 30 seconds, then after 1, 2 and 4 minutes. After five
+attempts it waits until the connection to Home Assistant comes back.
 
 ![Plant page in the Smart Plants panel](images/plant-detail.png)
 
@@ -130,8 +135,8 @@ Add a photo under **Photo** on the **Settings** tab. JPEG, PNG and WebP work, up
 computer, such as iPhone photos copied to a Mac, work in Safari on macOS. Other desktop browsers
 can't read HEIC and show a message instead; convert the photo to JPEG first. The browser scales
 a photo to 2048 × 2048 pixels and 5 MiB, and Smart Plants stores it upright as WebP without
-metadata such as the location. Every signed-in user can view
-photos. Only administrators can change them.
+metadata such as the location. Every signed-in user can view photos. Only administrators can
+change them.
 
 ## Edit plant details
 

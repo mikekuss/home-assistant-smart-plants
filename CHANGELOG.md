@@ -44,9 +44,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   watches the entity registry once instead of once per plant sensor role, and starts the
   monitoring of an optional reading only once you assign it a sensor. States, attributes and
   automations behave as before.
+- *Sensor stale* is now a diagnostic entity, like *Low battery*. The device page lists it under
+  *Diagnostic*, and dashboards that Home Assistant builds on its own leave it out. Smart Plants'
+  own triggers and conditions still include it when they target the plant's device or area;
+  Home Assistant's own device and area targets skip diagnostic entities, so choose the entity
+  itself there. If you hid, renamed or disabled it, that stays. See
+  [Binary sensors](docs/entities.md#binary-sensors).
+- The setup and options forms call the switch **Use OpenPlantBook** instead of **Enable direct
+  OpenPlantBook provider**, and explain each field below it.
+- German texts address you with "du" throughout and say "Automatisierung", as Home Assistant
+  does. Some error messages of actions and repairs used "Sie" and "Automation".
+- The panel's address for a plant, `/smart-plants/plant/<plant ID>`, is now in
+  [Getting started](docs/getting-started.md#use-the-plant-page).
 
 ### Fixed
 
+- The panel overview no longer downloads a plant photo that failed again on every refresh
+  every 30 seconds. It now tries again after about 30 seconds, then after 1, 2 and 4 minutes, and
+  after five attempts only once the connection to Home Assistant comes back or the plant gets
+  a new photo.
+- Logging care or snoozing a paused plant now says the plant is paused and to resume
+  monitoring, as the panel calls it, instead of "disabled" and "Enable it".
+- When Smart Plants fails to start, Home Assistant shows the reason in your language, for
+  example when the stored plants can't be loaded.
 - The dashboard card shows the plant's photo again after a failed download, for example during
   a restart. It used to keep the plant icon until the page was reloaded. It now tries again on a
   later update, waiting longer after each failure, and again when the connection comes back.

@@ -1,9 +1,10 @@
-Third-party software bundled in smart-plants-panel.js
-======================================================
+Third-party software bundled in smart-plants-panel.js and smart-plants-card-full.js
+==================================================================================
 
-smart-plants-panel.js is a minified build of the Smart Plants panel
-(MIT, see the LICENSE file in the repository root) and includes the
-following third-party packages:
+smart-plants-panel.js (the Smart Plants panel) and smart-plants-card-full.js
+(the content of the Smart Plants dashboard card) are minified builds of
+Smart Plants (MIT, see the LICENSE file in the repository root). Each of
+them includes the following third-party packages:
 
 - lit                    (https://github.com/lit/lit)
 - lit-html               (https://github.com/lit/lit)
@@ -43,10 +44,10 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ------------------------------------------------------------------------
 
-The build also inlines the decorator helper `decorate` from
+Both builds also inline the decorator helper `decorate` from
 @oxc-project/runtime (https://github.com/oxc-project/oxc), which the
-bundler injects to apply the panel's TypeScript decorators. It is
-distributed under the following license:
+bundler injects to apply the TypeScript decorators. It is distributed
+under the following license:
 
 ------------------------------------------------------------------------
 MIT License
@@ -72,3 +73,5 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ------------------------------------------------------------------------
+
+smart-plants-card.js, the small card loader, contains no third-party code.

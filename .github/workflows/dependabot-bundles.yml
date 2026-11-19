@@ -28,6 +28,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # npm ci runs code from the updated packages, so this job keeps the
     # read-only token. Only the next job, which runs no package code, can push.
     outputs:
@@ -76,6 +77,7 @@ jobs:
     needs: build
     if: needs.build.outputs.changed == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: write
       # Lets the job start CI for the new commit. Pushes made with the workflow
