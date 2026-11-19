@@ -30,14 +30,15 @@ async def _setup_entry(hass: HomeAssistant) -> MockConfigEntry:
     return entry
 
 
-async def test_new_plant_has_default_illuminance_runtime_config(
+async def test_new_plant_has_no_illuminance_controller_until_configured(
     hass: HomeAssistant,
 ) -> None:
     manager = await _loaded_manager(hass)
     plant = await manager.async_create_plant(name="Aloe")
     controller = manager.get_role_controller(plant.id, "illuminance")
-    assert controller is not None
-    assert controller.current_evaluation.computed_available is False
+    # An unconfigured optional role has no sensor and no entities, so it
+    # gets no controller either; readers treat it as unconfigured.
+    assert controller is None
     assert plant.role_config("illuminance") is None
 
 
@@ -127,8 +128,7 @@ async def test_low_light_entity_metadata_and_daytime_state(
     manager = entry.runtime_data.manager
     plant = await manager.async_create_plant(name="Aloe")
     await hass.async_block_till_done()
-    controller = manager.get_role_controller(plant.id, "illuminance")
-    assert not controller._light_samples
+    assert manager.get_role_controller(plant.id, "illuminance") is None
 
     registry = er.async_get(hass)
     # Lazy entity creation: no problem binary until the role has a source.
@@ -158,6 +158,8 @@ async def test_low_light_entity_metadata_and_daytime_state(
         primary_entity_id="sensor.plant_lux",
     )
     await hass.async_block_till_done()
+    controller = manager.get_role_controller(plant.id, "illuminance")
+    assert controller is not None
     assert len(controller._light_samples) == 1
     # A second source observation, one minute later, supplies the second
     # daytime sample. Configuration recomputation is not another sample.

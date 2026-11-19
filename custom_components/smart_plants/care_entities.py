@@ -40,7 +40,7 @@ from homeassistant.util import dt as dt_util
 
 from .care_schedule import TaskState, is_resting, task_state
 from .const import DOMAIN
-from .events import PlantDeletedEvent, PlantEvent
+from .events import PlantDeletedEvent, PlantEvent, PlantUpdatedEvent
 from .models import ReadingSchedule
 
 if TYPE_CHECKING:
@@ -230,6 +230,9 @@ class CareEntityLifecycle:
         self._added: set[tuple[str, str]] = set()
         self._owner: EntityPlatform | None = None
         self._operation_lock = asyncio.Lock()
+        # Set while an event's entity changes have not been fully applied; the
+        # next event then reconciles every plant instead of only its own.
+        self._resync_all = False
         self._closing = False
         self._unsubs: list[Callable[[], None]] = []
         self._unsub_midnight: Callable[[], None] | None = None
@@ -340,6 +343,18 @@ class CareEntityLifecycle:
                 self._forget_plant(event.plant_id)
                 return
             plants = self._manager.snapshot.plants
+            if not self._resync_all:
+                # Only the event's plant can need other care entities, and
+                # only when its care tasks changed: a write that snoozes many
+                # plants delivers one event per plant and needs none.
+                if (
+                    isinstance(event, PlantUpdatedEvent)
+                    and event.previous.care_tasks == event.plant.care_tasks
+                ):
+                    return
+                plant = plants.get(event.plant.id)
+                plants = {} if plant is None else {plant.id: plant}
+            self._resync_all = True
             await self._async_remove_obsolete(plants)
             entities = self._build_missing(plants.values())
             if entities:
@@ -349,6 +364,7 @@ class CareEntityLifecycle:
                     for entity in entities:
                         self._added.discard((entity.plant_id, entity.role))
                     raise
+            self._resync_all = False
 
     def _desired_roles(self, plant: PlantRecord) -> set[str]:
         roles = {
@@ -384,7 +400,7 @@ class CareEntityLifecycle:
         return built
 
     async def _async_remove_obsolete(self, plants: Mapping[str, PlantRecord]) -> None:
-        for plant_id, role in sorted(self._added):
+        for plant_id, role in sorted(key for key in self._added if key[0] in plants):
             plant = plants.get(plant_id)
             if plant is None or role in self._desired_roles(plant):
                 continue

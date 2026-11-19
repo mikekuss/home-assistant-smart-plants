@@ -183,12 +183,34 @@ class SmartPlantsEntity(Entity):
                 self._on_plant_disabled()
             elif event.plant.lifecycle_state == "active":
                 self._on_plant_reenabled()
+        if (
+            isinstance(event, PlantUpdatedEvent)
+            and event.plant.lifecycle_state == "active"
+        ):
+            # A role configured for the first time gets its controller with
+            # this event (controllers are in step before subscribers run), so
+            # an entity attaches to what it was missing.
+            self._attach_missing_controllers()
         if isinstance(event, (PlantUpdatedEvent, PlantLifecycleChangedEvent)):
             # ``async_write_ha_state`` is a no-op before
             # ``async_added_to_hass`` completes; the HA runtime guards
             # that internally, so a stray subscription callback that
             # fires during teardown does not raise.
             self.async_write_ha_state()
+
+    def _attach_missing_controllers(self) -> None:
+        """
+        Attach to role controllers that did not exist when the entity was added.
+
+        Entities that read role controllers attach in ``async_added_to_hass``
+        with an ``_attach_controller_listener(s)`` method that only attaches
+        what is not attached yet; an optional role's controller is created only
+        once the role is configured, possibly after the entity was added.
+        """
+        for name in ("_attach_controller_listener", "_attach_controller_listeners"):
+            attach = getattr(self, name, None)
+            if callable(attach):
+                attach()
 
     def _on_plant_disabled(self) -> None:
         """
@@ -243,6 +265,9 @@ class SmartPlantsPlatformLifecycle:
         self._unsub_manager: Callable[[], None] | None = None
         self._owner: EntityPlatform | None = None
         self._operation_lock = asyncio.Lock()
+        # Set while an event's entities have not all been added; the next
+        # event then checks every plant instead of only its own.
+        self._resync_all = False
         self._closing = False
         self._on_unload: list[Callable[[], Awaitable[None]]] = []
 
@@ -305,12 +330,20 @@ class SmartPlantsPlatformLifecycle:
                 await self._async_remove_plant_entities(event.plant_id)
                 self._forget_plant(event.plant_id)
                 return
-            # Every non-delete event is also a deterministic resync point. If
+            # Only the event's plant can need new entities. A write that
+            # changes many plants delivers one event per plant, so checking
+            # every plant each time would grow with the square of the count.
+            # Every non-delete event is also a deterministic resync point: if
             # an earlier platform callback failed, its dedupe claims were
-            # rolled back and the missing entities are retried here.
-            entities = self._build_new_entities_for_plants(
-                self._manager.snapshot.plants.values()
-            )
+            # rolled back and the next event retries every plant.
+            plants = self._manager.snapshot.plants
+            if self._resync_all:
+                scope = list(plants.values())
+            else:
+                plant = plants.get(event.plant.id)
+                scope = [] if plant is None else [plant]
+            self._resync_all = True
+            entities = self._build_new_entities_for_plants(scope)
             if entities:
                 try:
                     await self._async_add(entities)
@@ -318,6 +351,7 @@ class SmartPlantsPlatformLifecycle:
                     for entity in entities:
                         self._added.discard((entity.plant_id, entity.role))
                     raise
+            self._resync_all = False
 
     async def _async_add(self, entities: list[SmartPlantsEntity]) -> None:
         if self._closing:

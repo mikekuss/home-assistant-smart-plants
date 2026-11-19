@@ -27,7 +27,8 @@ export function harness(plants: PlantRecord[] = [structuredClone(sample)], handl
     const custom = handler?.(msg); if (custom !== undefined) return await custom as never;
     switch (msg.type) {
       case "smart_plants/panel/info": return capabilities as never;
-      case "smart_plants/plants/list": return { plants } as never;
+      // Like the backend, the list leaves the care history to care/list.
+      case "smart_plants/plants/list": return { plants: plants.map(({ care_events: _history, ...plant }) => plant) } as never;
       case "smart_plants/wizard/start": return draft as never;
       case "smart_plants/wizard/preview": return preview as never;
       case "smart_plants/species/preview": return preview as never;

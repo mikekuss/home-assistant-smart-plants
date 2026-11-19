@@ -26,14 +26,15 @@ async def _setup_entry(hass: HomeAssistant) -> MockConfigEntry:
     return entry
 
 
-async def test_new_plant_has_default_soil_temperature_runtime_config(
+async def test_new_plant_has_no_soil_temperature_controller_until_configured(
     hass: HomeAssistant,
 ) -> None:
     manager = await _loaded_manager(hass)
     plant = await manager.async_create_plant(name="Aloe")
     controller = manager.get_role_controller(plant.id, "soil_temperature")
-    assert controller is not None
-    assert controller.current_evaluation.computed_available is False
+    # An unconfigured optional role has no sensor and no entities, so it
+    # gets no controller either; readers treat it as unconfigured.
+    assert controller is None
     assert plant.role_config("soil_temperature") is None
 
 

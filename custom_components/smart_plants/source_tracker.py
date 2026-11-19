@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -22,9 +23,12 @@ from homeassistant.helpers.event import (
     async_track_state_report_event,
 )
 from homeassistant.util import dt as dt_util
+from homeassistant.util.hass_dict import HassKey
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class SourceDescriptor(Protocol):
@@ -65,6 +69,71 @@ def source_key(source: SourceDescriptor) -> str:
     return source.registry_id or source.entity_id
 
 
+class _TrackerHub:
+    """
+    One registry listener and one stop listener shared by every tracker.
+
+    Every role controller has a tracker. Listening once per Home Assistant
+    instance and handing each event to the trackers in creation order keeps the
+    bus listener count constant however many plants there are.
+    """
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self._hass = hass
+        self._trackers: dict[int, SourceTracker] = {}
+        self._unsub_registry: Callable[[], None] | None = hass.bus.async_listen(
+            er.EVENT_ENTITY_REGISTRY_UPDATED,
+            self._handle_registry,  # type: ignore[arg-type]
+        )
+        self._unsub_stop: Callable[[], None] | None = hass.bus.async_listen_once(
+            EVENT_HOMEASSISTANT_STOP, self._handle_stop
+        )
+
+    @classmethod
+    def get(cls, hass: HomeAssistant) -> _TrackerHub:
+        hub = hass.data.get(_HUB_KEY)
+        if hub is None:
+            hub = hass.data[_HUB_KEY] = cls(hass)
+        return hub
+
+    def add(self, tracker: SourceTracker) -> None:
+        self._trackers[id(tracker)] = tracker
+
+    def remove(self, tracker: SourceTracker) -> None:
+        if self._trackers.pop(id(tracker), None) is None or self._trackers:
+            return
+        if self._unsub_registry is not None:
+            self._unsub_registry()
+            self._unsub_registry = None
+        if self._unsub_stop is not None:
+            self._unsub_stop()
+            self._unsub_stop = None
+        if self._hass.data.get(_HUB_KEY) is self:
+            del self._hass.data[_HUB_KEY]
+
+    @callback
+    def _handle_registry(self, event: Event) -> None:
+        for tracker in list(self._trackers.values()):
+            # Each tracker used to listen on its own; one failing tracker
+            # still must not keep the others from seeing the change.
+            try:
+                tracker.handle_registry(event)
+            except Exception:
+                _LOGGER.exception("Smart Plants source tracker registry update failed")
+
+    @callback
+    def _handle_stop(self, event: Event) -> None:
+        self._unsub_stop = None
+        for tracker in list(self._trackers.values()):
+            try:
+                tracker.handle_shutdown(event)
+            except Exception:
+                _LOGGER.exception("Smart Plants source tracker failed to stop")
+
+
+_HUB_KEY: HassKey[_TrackerHub] = HassKey("smart_plants_source_trackers")
+
+
 class SourceTracker:
     """Track source changes and wake a consumer at grace/stale deadlines."""
 
@@ -84,13 +153,8 @@ class SourceTracker:
         self._unsub_states: Callable[[], None] | None = None
         self._unsub_reports: Callable[[], None] | None = None
         self._unsub_deadline: Callable[[], None] | None = None
-        self._unsub_shutdown = self._hass.bus.async_listen_once(
-            EVENT_HOMEASSISTANT_STOP, self._handle_shutdown
-        )
-        self._unsub_registry = self._hass.bus.async_listen(
-            er.EVENT_ENTITY_REGISTRY_UPDATED,
-            self._handle_registry,  # type: ignore[arg-type]
-        )
+        self._hub: _TrackerHub | None = _TrackerHub.get(hass)
+        self._hub.add(self)
         self._stale_after = timedelta(0)
         self._active = False
 
@@ -183,8 +247,9 @@ class SourceTracker:
     def close(self) -> None:
         """Permanently detach the tracker."""
         self.stop()
-        self._unsub_shutdown()
-        self._unsub_registry()
+        if self._hub is not None:
+            self._hub.remove(self)
+            self._hub = None
 
     def _resolve_source(
         self, source: SourceDescriptor
@@ -232,7 +297,7 @@ class SourceTracker:
                 tracked.grace_until = None
 
     @callback
-    def _handle_shutdown(self, _event: Event) -> None:
+    def handle_shutdown(self, _event: Event) -> None:
         self.stop()
 
     def _detach_states(self) -> None:
@@ -329,7 +394,7 @@ class SourceTracker:
             self._on_report(now)
 
     @callback
-    def _handle_registry(self, _event: Event) -> None:
+    def handle_registry(self, _event: Event) -> None:
         """Invalidate removals and rebind renames by immutable registry UUID."""
         registry = er.async_get(self._hass)
         changed = False

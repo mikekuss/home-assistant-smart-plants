@@ -710,7 +710,7 @@ export class SmartPlantsPanel extends LitElement {
   }
   private _areaName(id: string): string { return this._areas.find(a => a.area_id === id)?.name ?? (id || this._l.t("area.none")); }
   private _setConflict(before: PlantRecord, after: PlantRecord): void {
-    const fields = ["name", "acquired_at", "placement", "category", "tags", "species", "image", "lifecycle_state", "roles", "care_events"] as const;
+    const fields = ["name", "acquired_at", "placement", "category", "tags", "species", "image", "lifecycle_state", "roles"] as const;
     const changes = fields.filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k])).map(k => k === "roles" ? this._l.t("conflict.roles_changed") : `${this._l.t(`conflict_field.${k}`)}: ${JSON.stringify(before[k])} → ${JSON.stringify(after[k])}`);
     this._conflict = { before, after, changes }; this._preview = null; this._providerRequest++;
   }

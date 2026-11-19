@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING, Any, Final
 from homeassistant.const import PERCENTAGE, UnitOfConductivity, UnitOfTemperature
 from homeassistant.util import dt as dt_util
 
-from .care import care_summary
 from .care_schedule import TaskState, is_resting, task_state
 from .co2_evaluator import CO2_PARTS_PER_MILLION
 from .illuminance_evaluator import LIGHT_LUX
@@ -299,7 +298,7 @@ def plant_overview(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str,
         "status": result.status,
         "problems": [problem.as_dict() for problem in result.problems],
         "roles": roles,
-        "last_watered_at": care_summary(plant.care_events)["last_watered_at"],
+        "last_watered_at": plant.care_summary()["last_watered_at"],
         "image": {"id": plant.image.id} if plant.image is not None else None,
         "care": _care_view(manager, plant, tz=tz, today=today),
         "rest_period": (

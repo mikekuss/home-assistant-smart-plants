@@ -365,7 +365,8 @@ async function respond(message) {
   }
   switch (message.type) {
     case "smart_plants/panel/info": return { api_version: 1, schema_version: 1, providers: [{ provider: "manual", available: true, search_supported: false }, { provider: "openplantbook", available: state.providerAvailable, search_supported: true }] };
-    case "smart_plants/plants/list": return { plants: copy(state.plants), archived_count: state.archived.length };
+    // Like the backend, the list leaves the care history to care/list.
+    case "smart_plants/plants/list": return { plants: copy(state.plants).map(({ care_events: _history, ...p }) => p), archived_count: state.archived.length };
     case "smart_plants/plants/archive": {
       const at = new Date().toISOString(); const device = state.devices.find(d => d.identifiers[0][1] === p.id);
       const area = state.areas.find(a => a.area_id === device?.area_id)?.name ?? null;

@@ -27,7 +27,6 @@ from .care import (
     CARE_PROVENANCES,
     CARE_TASK_TYPES,
     CareEvent,
-    care_summary,
     clean_note,
     kind_for_task_type,
     minimal_care_payload,
@@ -625,22 +624,42 @@ class SmartPlantsManager:
         self._synced_plants[plant.id] = plant
         by_role = self._controllers.setdefault(plant.id, {})
         for definition in role_definitions():
-            config = definition.config_for(plant)
-            if config is None or not isinstance(config, definition.config_type):
-                continue
-            controller = definition.controller_factory(
-                self._hass,
-                plant.id,
-                config,
-                definition.measurement_adapter,
-            )
-            if definition.key == "moisture":
-                set_care_events = getattr(controller, "set_care_events", None)
-                if callable(set_care_events):
-                    set_care_events(plant.care_events)
-            by_role[definition.key] = controller
-            if start:
-                controller.start()
+            self._create_controller(by_role, definition, plant, start=start)
+
+    def _create_controller(
+        self,
+        by_role: dict[str, Any],
+        definition: RoleDefinition,
+        plant: PlantRecord,
+        *,
+        start: bool,
+    ) -> None:
+        """
+        Create the role's controller once the plant has configured the role.
+
+        An optional role that was never configured has no sensor and no
+        entities, so it gets no controller (and no source subscriptions) until
+        a configuration is saved; readers treat a missing controller as an
+        unconfigured role. Moisture always has one.
+        """
+        if not definition.always_present and plant.role_config(definition.key) is None:
+            return
+        config = definition.config_for(plant)
+        if config is None or not isinstance(config, definition.config_type):
+            return
+        controller = definition.controller_factory(
+            self._hass,
+            plant.id,
+            config,
+            definition.measurement_adapter,
+        )
+        if definition.key == "moisture":
+            set_care_events = getattr(controller, "set_care_events", None)
+            if callable(set_care_events):
+                set_care_events(plant.care_events)
+        by_role[definition.key] = controller
+        if start:
+            controller.start()
 
     def _close_all_controllers(self) -> None:
         for by_role in self._controllers.values():
@@ -703,15 +722,26 @@ class SmartPlantsManager:
         return False
 
     def _sync_controller_configs(self, base: PlantRecord, plant: PlantRecord) -> None:
-        existing = self._controllers.get(plant.id, {})
+        existing = self._controllers.get(plant.id)
+        if existing is None:
+            # Controllers are only missing for a plant that was never active.
+            return
         moisture_controller = existing.get("moisture")
         if moisture_controller is not None and base.care_events != plant.care_events:
             moisture_controller.set_care_events(plant.care_events)
         for definition in role_definitions():
             controller = existing.get(definition.key)
+            if controller is None:
+                self._create_controller(
+                    existing,
+                    definition,
+                    plant,
+                    start=plant.lifecycle_state == "active",
+                )
+                continue
             previous = definition.config_for(base)
             current = definition.config_for(plant)
-            if controller is not None and previous != current:
+            if previous != current:
                 controller.reconfigure(current)
 
     async def async_unload(self) -> None:
@@ -964,7 +994,7 @@ class SmartPlantsManager:
             "events": [
                 event.as_storage() for event in ordered_events(plant.care_events)
             ],
-            "summary": care_summary(plant.care_events),
+            "summary": plant.care_summary(),
         }
 
     async def async_add_watering(  # noqa: PLR0913

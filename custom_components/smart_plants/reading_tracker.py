@@ -150,8 +150,19 @@ class ReadingTracker:
         # disabled plants, so a schedule edit can be told apart from a reload.
         self._schedules: dict[str, ReadingSchedule] = {}
         self._tracked: dict[str, _TrackedTask] = {}
+        # plant_id -> its reading task ids in plant order, and task_id ->
+        # plant_id, also for disabled plants. A plant change then only
+        # touches that plant's tasks instead of every task of the inventory.
+        self._plant_tasks: dict[str, tuple[str, ...]] = {}
+        self._task_plants: dict[str, str] = {}
+        # plant_id -> role -> (controller, unsubscribe) for role sources.
         self._role_subscriptions: dict[
-            tuple[str, str], tuple[Any, Callable[[], None]]
+            str, dict[str, tuple[Any, Callable[[], None]]]
+        ] = {}
+        # plant_id -> the sensor entities and forecast windows its tracked
+        # tasks read; the union decides the shared subscriptions.
+        self._plant_sources: dict[
+            str, tuple[frozenset[str], frozenset[tuple[str, int]]]
         ] = {}
         self._entity_ids: frozenset[str] = frozenset()
         self._unsub_entities: Callable[[], None] | None = None
@@ -170,8 +181,11 @@ class ReadingTracker:
         """Load the stored state; drop entries of tasks that no longer exist."""
         self._persisted = await self._store.async_load()
         for plant in self._manager.snapshot.plants.values():
-            for task, schedule in reading_tasks(plant):
+            tasks = reading_tasks(plant)
+            for task, schedule in tasks:
                 self._schedules[task.id] = schedule
+                self._task_plants[task.id] = plant.id
+            self._plant_tasks[plant.id] = tuple(task.id for task, _ in tasks)
         unknown = set(self._persisted) - set(self._schedules)
         for task_id in unknown:
             del self._persisted[task_id]
@@ -204,9 +218,11 @@ class ReadingTracker:
         for tracked in self._tracked.values():
             tracked.cancel_timer()
         self._tracked.clear()
-        for _controller, unsub in self._role_subscriptions.values():
-            unsub()
+        for by_role in self._role_subscriptions.values():
+            for _controller, unsub in by_role.values():
+                unsub()
         self._role_subscriptions.clear()
+        self._plant_sources.clear()
         if self._unsub_entities is not None:
             self._unsub_entities()
             self._unsub_entities = None
@@ -230,14 +246,22 @@ class ReadingTracker:
 
     @callback
     def handle_event(self, event: PlantEvent) -> None:
-        """Bring tracking in line with a plant change before entities render."""
+        """
+        Bring tracking in line with a plant change before entities render.
+
+        Only the changed plant's tasks are synced and evaluated: a write that
+        changes many plants delivers one event per plant, and the other
+        plants' tasks did not change.
+        """
         if self._closed:
             return
         if isinstance(event, PlantDeletedEvent):
             self._forget_tasks(
                 task.id for task, _schedule in reading_tasks(event.previous)
             )
-        self._sync()
+            self._sync_plant(event.plant_id)
+        else:
+            self._sync_plant(event.plant.id)
 
     # --- Queries -----------------------------------------------------------
 
@@ -269,22 +293,75 @@ class ReadingTracker:
             if tracked is not None:
                 tracked.cancel_timer()
             self._schedules.pop(task_id, None)
+            plant_id = self._task_plants.pop(task_id, None)
+            if plant_id is not None and plant_id in self._plant_tasks:
+                self._plant_tasks[plant_id] = tuple(
+                    known for known in self._plant_tasks[plant_id] if known != task_id
+                )
             if self._persisted.pop(task_id, None) is not None:
                 self._schedule_save()
 
     def _sync(self) -> None:
+        """Sync and evaluate every plant's tasks; used when tracking starts."""
         plants = self._manager.snapshot.plants
-        current: dict[str, tuple[PlantRecord, CareTask, ReadingSchedule]] = {}
-        for plant in plants.values():
-            for task, schedule in reading_tasks(plant):
-                current[task.id] = (plant, task, schedule)
-
+        current = {
+            task.id for plant in plants.values() for task, _ in reading_tasks(plant)
+        }
         # Tasks that were deleted or left the reading kind lose their state.
         self._forget_tasks(
             [task_id for task_id in self._schedules if task_id not in current]
         )
+        for plant_id in [known for known in self._plant_tasks if known not in plants]:
+            self._update_plant(plant_id, None)
+        for plant_id, plant in plants.items():
+            self._update_plant(plant_id, plant)
+        self._apply_sources()
+        for plant_id in plants:
+            self._sync_role_subscriptions(plant_id)
+        now = dt_util.utcnow()
+        for task_id in list(self._tracked):
+            self._evaluate(task_id, now)
 
-        for task_id, (plant, _task, schedule) in current.items():
+    def _sync_plant(self, plant_id: str) -> None:
+        """Sync and evaluate one plant's tasks after that plant changed."""
+        plant = self._manager.snapshot.plants.get(plant_id)
+        current = (
+            set() if plant is None else {task.id for task, _ in reading_tasks(plant)}
+        )
+        # Tasks that were deleted or left the reading kind lose their state.
+        self._forget_tasks(
+            [
+                task_id
+                for task_id in self._plant_tasks.get(plant_id, ())
+                if task_id not in current and self._task_plants.get(task_id) == plant_id
+            ]
+        )
+        if self._update_plant(plant_id, plant):
+            self._apply_sources()
+        self._sync_role_subscriptions(plant_id)
+        now = dt_util.utcnow()
+        for task_id in self._plant_tasks.get(plant_id, ()):
+            if task_id in self._tracked:
+                self._evaluate(task_id, now)
+
+    def _update_plant(self, plant_id: str, plant: PlantRecord | None) -> bool:
+        """
+        Track the plant's current reading tasks; drop a removed plant.
+
+        Return whether the sensors or forecasts the plant's tasks read changed.
+        """
+        if plant is None:
+            for task_id in self._plant_tasks.pop(plant_id, ()):
+                tracked = self._tracked.pop(task_id, None)
+                if tracked is not None:
+                    tracked.cancel_timer()
+            return self._plant_sources.pop(plant_id, None) is not None
+
+        task_ids: list[str] = []
+        for task, schedule in reading_tasks(plant):
+            task_id = task.id
+            task_ids.append(task_id)
+            self._task_plants[task_id] = plant_id
             previous = self._schedules.get(task_id)
             self._schedules[task_id] = schedule
             if previous is not None and previous != schedule:
@@ -301,51 +378,48 @@ class ReadingTracker:
                 continue
             if task_id not in self._tracked:
                 self._tracked[task_id] = _TrackedTask(
-                    plant_id=plant.id, schedule=schedule
+                    plant_id=plant_id, schedule=schedule
                 )
+        self._plant_tasks[plant_id] = tuple(task_ids)
+        return self._update_plant_sources(plant_id)
 
-        self._sync_subscriptions()
-        now = dt_util.utcnow()
-        for task_id in list(self._tracked):
-            self._evaluate(task_id, now)
-
-    def _sync_subscriptions(self) -> None:
-        roles: set[tuple[str, str]] = set()
+    def _update_plant_sources(self, plant_id: str) -> bool:
+        """Record what the plant's tracked tasks read; return whether it changed."""
         entity_ids: set[str] = set()
-        forecasts: dict[str, set[int]] = {}
-        for tracked in self._tracked.values():
+        forecasts: set[tuple[str, int]] = set()
+        for tracked in self._plant_tracked(plant_id):
             source = tracked.schedule.source
             if source.role is not None:
-                roles.add((tracked.plant_id, source.role))
-            elif source.entity_id is not None:
+                continue
+            if source.entity_id is not None:
                 entity_ids.add(source.entity_id)
             elif source.forecast is not None:
-                forecasts.setdefault(source.forecast.entity_id, set()).add(
-                    source.forecast.hours
-                )
+                forecasts.add((source.forecast.entity_id, source.forecast.hours))
+        if not entity_ids and not forecasts:
+            return self._plant_sources.pop(plant_id, None) is not None
+        sources = (frozenset(entity_ids), frozenset(forecasts))
+        if self._plant_sources.get(plant_id) == sources:
+            return False
+        self._plant_sources[plant_id] = sources
+        return True
+
+    def _plant_tracked(self, plant_id: str) -> list[_TrackedTask]:
+        return [
+            tracked
+            for task_id in self._plant_tasks.get(plant_id, ())
+            if (tracked := self._tracked.get(task_id)) is not None
+        ]
+
+    def _apply_sources(self) -> None:
+        """Subscribe to the union of every plant's sensors and forecasts."""
+        entity_ids: set[str] = set()
+        forecasts: dict[str, set[int]] = {}
+        for plant_entities, plant_forecasts in self._plant_sources.values():
+            entity_ids.update(plant_entities)
+            for entity_id, hours in plant_forecasts:
+                forecasts.setdefault(entity_id, set()).add(hours)
         # A closed reader (after Home Assistant stops) ignores this.
         self._forecasts.watch(forecasts)
-
-        for key in list(self._role_subscriptions):
-            controller, unsub = self._role_subscriptions[key]
-            plant_id, role = key
-            if (
-                key not in roles
-                or self._manager.get_role_controller(plant_id, role) is not controller
-            ):
-                unsub()
-                del self._role_subscriptions[key]
-        for key in roles - set(self._role_subscriptions):
-            plant_id, role = key
-            controller = self._manager.get_role_controller(plant_id, role)
-            if controller is None:
-                continue
-            unsub = controller.add_listener(
-                lambda plant_id=plant_id, role=role: self._handle_role_change(
-                    plant_id, role
-                )
-            )
-            self._role_subscriptions[key] = (controller, unsub)
 
         wanted = frozenset(entity_ids)
         if wanted != self._entity_ids:
@@ -358,6 +432,36 @@ class ReadingTracker:
                     self._hass, sorted(wanted), self._handle_entity_change
                 )
 
+    def _sync_role_subscriptions(self, plant_id: str) -> None:
+        roles = {
+            role
+            for tracked in self._plant_tracked(plant_id)
+            if (role := tracked.schedule.source.role) is not None
+        }
+        subscriptions = self._role_subscriptions.get(plant_id, {})
+        for role in list(subscriptions):
+            controller, unsub = subscriptions[role]
+            if (
+                role not in roles
+                or self._manager.get_role_controller(plant_id, role) is not controller
+            ):
+                unsub()
+                del subscriptions[role]
+        for role in roles - set(subscriptions):
+            controller = self._manager.get_role_controller(plant_id, role)
+            if controller is None:
+                continue
+            unsub = controller.add_listener(
+                lambda plant_id=plant_id, role=role: self._handle_role_change(
+                    plant_id, role
+                )
+            )
+            subscriptions[role] = (controller, unsub)
+        if subscriptions:
+            self._role_subscriptions[plant_id] = subscriptions
+        else:
+            self._role_subscriptions.pop(plant_id, None)
+
     # --- Source changes ----------------------------------------------------
 
     def _handle_role_change(self, plant_id: str, role: str) -> None:
@@ -365,8 +469,9 @@ class ReadingTracker:
             return
         now = dt_util.utcnow()
         changed = False
-        for task_id, tracked in list(self._tracked.items()):
-            if tracked.plant_id == plant_id and tracked.schedule.source.role == role:
+        for task_id in self._plant_tasks.get(plant_id, ()):
+            tracked = self._tracked.get(task_id)
+            if tracked is not None and tracked.schedule.source.role == role:
                 changed |= self._evaluate(task_id, now)
         if changed:
             self._notify(plant_id)
