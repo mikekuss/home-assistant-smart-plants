@@ -10,7 +10,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Italian translation of the panel, the dashboard card, setup, entity names, repairs, actions,
   triggers and conditions. The plant report (`smart_plants.get_report`) is also available in
-  Italian.
+  Italian. The Italian panel writes days as *g*, for example *7 g* for the battery's
+  **Not updating after**.
 - HEIC photos from an iPhone can be added in Safari on macOS. The browser converts them before
   the upload, so Smart Plants still stores WebP. Other desktop browsers can't read HEIC and now
   say so instead of rejecting the file as the wrong type. On an iPhone or iPad the file picker
@@ -34,8 +35,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - `smart_plants.log_care` accepts a plant's own entities as target, as `smart_plants.snooze`
   does. An entity such as *Needs water* logs care for its plant and needs a care type, like the
   plant's device. A care task's entities mark the task as done: besides the task itself, that
-  now includes its *Next due*, *Last done* and *Done* entities. When a target is wrong, the error
-  now says what to choose instead.
+  now includes its *Next due*, *Last done* and *Done* entities, which the action editor now
+  offers as targets too. When a target is wrong, the error now says what to choose instead.
 - Large plant collections cost much less. Snoozing or changing many plants at once checks each
   changed plant's reading care tasks once, instead of every task of every plant for each changed
   plant (with 200 plants, 200 checks instead of 40,000). The panel's plant list, read every 30
@@ -51,18 +52,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   itself there. If you hid, renamed or disabled it, that stays. See
   [Binary sensors](docs/entities.md#binary-sensors).
 - The setup and options forms call the switch **Use OpenPlantBook** instead of **Enable direct
-  OpenPlantBook provider**, and explain each field below it.
+  OpenPlantBook provider**, and explain each field below it. The errors that tell you to turn
+  OpenPlantBook off name that switch, in Italian and German too.
 - German texts address you with "du" throughout and say "Automatisierung", as Home Assistant
-  does. Some error messages of actions and repairs used "Sie" and "Automation".
+  does. Some error messages of actions and repairs used "Sie" and "Automation". The German
+  description of `smart_plants.log_care` now says that a logged watering turns *Braucht Wasser*
+  off for 24 hours.
 - The panel's address for a plant, `/smart-plants/plant/<plant ID>`, is now in
   [Getting started](docs/getting-started.md#use-the-plant-page).
+- Storage moves to a new format with the new **Not updating after** defaults. Existing data is
+  migrated automatically on the first start, and earlier versions cannot read the migrated
+  data. To roll back, restore `.storage/smart_plants.inventory.backup`, which also brings back
+  the old 6-hour **Not updating after** values.
 
 ### Fixed
 
 - The panel overview no longer downloads a plant photo that failed again on every refresh
-  every 30 seconds. It now tries again after about 30 seconds, then after 1, 2 and 4 minutes, and
-  after five attempts only once the connection to Home Assistant comes back or the plant gets
-  a new photo.
+  every 30 seconds. It now tries again a few times, waiting longer each time, and after five
+  attempts only once the connection to Home Assistant comes back or the plant gets a new photo.
 - Logging care or snoozing a paused plant now says the plant is paused and to resume
   monitoring, as the panel calls it, instead of "disabled" and "Enable it".
 - When Smart Plants fails to start, Home Assistant shows the reason in your language, for
@@ -73,6 +80,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Smart Plants no longer changes Pillow's image size limit for the whole Home Assistant
   process, which other integrations that open images share. Photo uploads above 64 megapixels
   are still refused, with the same error.
+- A JPEG with a Multi-Picture extension, which some phones, 3D cameras and photo editors
+  write, is no longer refused as the wrong type when it is within 2048 × 2048 pixels and 5 MiB.
+  Smart Plants stores its first picture.
 - A portrait phone photo that is already within 2048 × 2048 pixels and 5 MiB is no longer
   stored on its side. Smart Plants now turns the pixels upright from the photo's orientation
   before it drops the metadata.
