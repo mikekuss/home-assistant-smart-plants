@@ -53,6 +53,7 @@
         "title": "Smart-Plants-Optionen",
         "data": {
           "preserve_inventory_on_removal": "Inventar beim Entfernen der Integration behalten",
+          "detect_watering": "Gießen am Bodenfeuchtesensor erkennen",
           "forecast_refresh_minutes": "Aktualisierungsintervall der Wettervorhersage",
           "openplantbook_enabled": "OpenPlantBook verwenden",
           "openplantbook_client_id": "OpenPlantBook Client-ID",
@@ -60,6 +61,7 @@
         },
         "data_description": {
           "preserve_inventory_on_removal": "Ist diese Option aus, löscht das Entfernen der Integration Smart Plants auch alle Pflanzen, ihren Pflegeverlauf und ihre Fotos endgültig. Schalte sie vor dem Entfernen ein, wenn du die Integration vielleicht wieder installierst.",
+          "detect_watering": "Steigt die Bodenfeuchte einer Pflanze innerhalb einer Stunde um 15 Punkte oder mehr, trägt Smart Plants ein Gießen für sie ein, außer es wurde in den 6 Stunden davor schon eines eingetragen. Praktisch, wenn niemand auf Gegossen tippt. Standardmäßig aus, weil es selbst in den Pflegeverlauf schreibt.",
           "forecast_refresh_minutes": "Wie oft Smart Plants die Vorhersage einer Wetter-Entität abruft, die eine Aufgabe mit Wettervorhersage beobachtet, zwischen 15 und 180 Minuten. Ändert sich die Wetter-Entität, wird die Vorhersage zusätzlich erneut abgerufen, höchstens alle 5 Minuten.",
           "openplantbook_enabled": "Sucht die Art einer Pflanze in OpenPlantBook und übernimmt ihren Feuchtebereich. Smart Plants funktioniert auch ohne.",
           "openplantbook_client_id": "Die Client-ID deiner OpenPlantBook-API-Zugangsdaten.",

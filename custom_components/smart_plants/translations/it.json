@@ -53,6 +53,7 @@
         "title": "Opzioni di Smart Plants",
         "data": {
           "preserve_inventory_on_removal": "Conserva le piante se l'integrazione viene rimossa",
+          "detect_watering": "Registra le annaffiature dal sensore del terreno",
           "forecast_refresh_minutes": "Intervallo di aggiornamento delle previsioni",
           "openplantbook_enabled": "Usa OpenPlantBook",
           "openplantbook_client_id": "ID client di OpenPlantBook",
@@ -60,6 +61,7 @@
         },
         "data_description": {
           "preserve_inventory_on_removal": "Se è disattivata, eliminando l'integrazione Smart Plants elimini per sempre anche tutte le piante, il loro registro delle cure e le foto. Attivala prima di eliminare l'integrazione se pensi di reinstallarla.",
+          "detect_watering": "Quando l'umidità del terreno di una pianta sale di 15 punti o più in un'ora, Smart Plants registra un'annaffiatura, a meno che non ne sia già stata registrata una nelle 6 ore precedenti. Utile quando nessuno preme Annaffiata. Spenta di default, perché scrive da sola nello storico delle cure.",
           "forecast_refresh_minutes": "Ogni quanto Smart Plants scarica le previsioni di un'entità meteo seguita da un'attività basata sulle previsioni, da 15 a 180 minuti. Quando l'entità meteo cambia, le previsioni vengono comunque scaricate di nuovo, al massimo una volta ogni 5 minuti.",
           "openplantbook_enabled": "Cerca su OpenPlantBook la specie di una pianta e usa il suo intervallo di umidità del terreno. Smart Plants funziona anche senza.",
           "openplantbook_client_id": "L'ID client delle tue credenziali API di OpenPlantBook.",

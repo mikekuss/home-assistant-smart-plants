@@ -243,9 +243,12 @@ class SmartPlantsManager:
         *,
         reconciler: SmartPlantsDeviceReconciler | None = None,
         forecast_refresh_interval: timedelta = REFRESH_INTERVAL,
+        detect_watering: bool = False,
     ) -> None:
         self._hass = hass
         self._forecast_refresh_interval = forecast_refresh_interval
+        # Log a watering when a plant's soil moisture jumps (an option).
+        self._detect_watering = detect_watering
         self._store = SmartPlantsStore(hass)
         self._mutation_lock = asyncio.Lock()
         self._snapshot = InventorySnapshot.empty()
@@ -291,6 +294,7 @@ class SmartPlantsManager:
         self._unsub_registry: Callable[[], None] | None = None
         self._registry_subscribers: list[Callable[[], None]] = []
         self._registry_tasks: set[asyncio.Task[Any]] = set()
+        self._detected_watering_tasks: set[asyncio.Task[Any]] = set()
         # plant_id -> registered role -> controller. Role metadata owns
         # construction and configuration; adding a role never adds a manager map.
         self._controllers: dict[str, dict[str, Any]] = {}
@@ -657,6 +661,9 @@ class SmartPlantsManager:
             set_care_events = getattr(controller, "set_care_events", None)
             if callable(set_care_events):
                 set_care_events(plant.care_events)
+            set_detection = getattr(controller, "set_watering_detection", None)
+            if self._detect_watering and callable(set_detection):
+                set_detection(self._handle_detected_watering)
         by_role[definition.key] = controller
         if start:
             controller.start()
@@ -763,11 +770,16 @@ class SmartPlantsManager:
             self._unavailable = True
             self._loaded = False
 
-        tasks = [*self._registry_tasks, *self._snooze_tasks]
+        tasks = [
+            *self._registry_tasks,
+            *self._snooze_tasks,
+            *self._detected_watering_tasks,
+        ]
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         self._registry_tasks.clear()
         self._snooze_tasks.clear()
+        self._detected_watering_tasks.clear()
         # Drain event delivery. Every committed event is owned by the queue
         # or by a nested delivery task, so this wait is finite: the events
         # that have not started yet are skipped now that the manager closes.
@@ -821,6 +833,34 @@ class SmartPlantsManager:
         self._unsub_registry = self._hass.bus.async_listen(
             EVENT_ENTITY_REGISTRY_UPDATED, _schedule
         )
+
+    @callback
+    def _handle_detected_watering(self, plant_id: str, when: datetime) -> None:
+        if self._closing or self._unavailable:
+            return
+        task = self._hass.async_create_task(
+            self._async_log_detected_watering(plant_id, when)
+        )
+        self._detected_watering_tasks.add(task)
+        task.add_done_callback(self._detected_watering_tasks.discard)
+
+    async def _async_log_detected_watering(self, plant_id: str, when: datetime) -> None:
+        try:
+            await self.async_add_watering(
+                plant_id,
+                expected_revision=None,
+                occurred_at=when.isoformat(),
+                note=None,
+                provenance="sensor",
+            )
+        except Exception as err:  # noqa: BLE001
+            # A detected watering is a convenience; failing to save it, for
+            # example while the storage is full, must not disturb the sensor.
+            _LOGGER.warning(
+                "Could not log the watering detected for plant %s: %s", plant_id, err
+            )
+        else:
+            _LOGGER.debug("Logged a watering detected for plant %s", plant_id)
 
     @callback
     def _create_registry_task(self, event: Any) -> None:
