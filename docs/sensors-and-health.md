@@ -132,9 +132,21 @@ score don't change.
 
 You can change every threshold per plant on the **Settings** tab. Moisture values are whole
 numbers with minimum < target < maximum, at least 4 points apart. The clear value of an
-override must sit between its trigger value and the normal range. Species data from
-[OpenPlantBook](openplantbook.md) replaces the moisture minimum and maximum defaults. Your own
-values always win.
+override must sit between its trigger value and the normal range. Your own values always win.
+
+Species data from [OpenPlantBook](openplantbook.md) replaces some defaults:
+
+- The moisture minimum and maximum.
+- The temperature range the species likes. Its lowest and highest temperature become the
+  temperature triggers. The clear values keep the built-in gap, 2 °C above the low trigger and
+  3 °C below the high one.
+- The air humidity range the species likes. Its lowest and highest humidity become the
+  humidity triggers, and the clear values sit 5 % inside them.
+
+When the species gives only one side of a range, the other side keeps the built-in value. When
+its values don't fit a value you entered, or leave too little room between trigger and clear,
+the reading keeps the built-in values; the species is still applied. In **Edit thresholds** a
+value from the species reads *Species default*.
 
 ## Health score
 

@@ -85,7 +85,11 @@ from .models import (
     validate_care_tasks,
 )
 from .reading_tracker import ReadingTracker
-from .roles import require_role, role_definitions
+from .roles import (
+    require_role,
+    role_definitions,
+    with_species_threshold_defaults,
+)
 from .storage import SmartPlantsStorageError, SmartPlantsStore, _utcnow_iso
 
 if TYPE_CHECKING:
@@ -2449,6 +2453,19 @@ class SmartPlantsManager:
             for definition in role_definitions():
                 apply = definition.apply_threshold_defaults
                 if apply is None:
+                    continue
+                if definition.species_threshold_defaults is not None:
+                    # A role without a sensor stays unconfigured; it picks up
+                    # the species values when it gets its first sensor.
+                    configured = updated.role_config(definition.key)
+                    if configured is None:
+                        continue
+                    updated = updated.with_role_config(
+                        definition.key,
+                        with_species_threshold_defaults(
+                            definition, configured, cleaned_species
+                        ),
+                    )
                     continue
                 supplied = cleaned_species.snapshot.threshold_defaults.get(
                     definition.key, {}

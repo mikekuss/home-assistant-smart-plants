@@ -2096,6 +2096,9 @@ var Hn = {
 	"snapshot.category": "Kategorie",
 	"snapshot.imported_defaults": "Importierte Feuchte-Standardwerte",
 	"snapshot.default_not_supplied": "Mit — markierte Werte liefert die Art nicht; es gilt der eingebaute Standardwert.",
+	"snapshot.imported_ranges": "Importierte Problembereiche",
+	"snapshot.temperature_range": "Temperatur {min}–{max} °C",
+	"snapshot.humidity_range": "Luftfeuchtigkeit {min}–{max} %",
 	"snapshot.care_notes": "Pflegehinweise",
 	"snapshot.source_details": "Quellendetails",
 	"snapshot.field_attribution": "Quellenangabe je Feld",
@@ -2377,8 +2380,10 @@ var Hn = {
 	"threshold_field.target": "Zielwert ({unit})",
 	"threshold_field.clear": "Aufhebung ({unit})",
 	"threshold.default_effective": "Standard {default} {unit} · wirksam {effective} {unit}",
+	"threshold.species_default_effective": "Standard der Art {default} {unit} · wirksam {effective} {unit}",
 	"threshold.inherit": "Übernehmen",
 	"threshold.inherit_all": "Alle integrierten Standardwerte übernehmen",
+	"threshold.inherit_all_species": "Alle Standardwerte der Art und integrierten Standardwerte übernehmen",
 	"threshold.save": "Schwellenwerte speichern",
 	"threshold.group_label": "Schwellenwerte für {label}",
 	"threshold_intro.temperature_stress": "Lass ein Feld leer, um den Standardwert zu verwenden, oder gib einen Wert nur für diese Pflanze ein. Jede Warnung schaltet sich beim Auslöser ein und bei der Aufhebung wieder aus. Die Aufhebung liegt etwas innerhalb des Auslösers, damit die Warnung nicht ständig an- und ausgeht.",
@@ -3331,6 +3336,9 @@ var Hn = {
 	"snapshot.category": "Category",
 	"snapshot.imported_defaults": "Imported moisture defaults",
 	"snapshot.default_not_supplied": "Values marked — are not supplied by the species; the built-in default applies.",
+	"snapshot.imported_ranges": "Imported problem ranges",
+	"snapshot.temperature_range": "Temperature {min}–{max} °C",
+	"snapshot.humidity_range": "Air humidity {min}–{max} %",
 	"snapshot.care_notes": "Care notes",
 	"snapshot.source_details": "Source details",
 	"snapshot.field_attribution": "Field attribution",
@@ -3612,8 +3620,10 @@ var Hn = {
 	"threshold_field.target": "Target ({unit})",
 	"threshold_field.clear": "Clear ({unit})",
 	"threshold.default_effective": "Default {default} {unit} · effective {effective} {unit}",
+	"threshold.species_default_effective": "Species default {default} {unit} · effective {effective} {unit}",
 	"threshold.inherit": "Inherit",
 	"threshold.inherit_all": "Inherit all built-in defaults",
+	"threshold.inherit_all_species": "Inherit all species and built-in defaults",
 	"threshold.save": "Save thresholds",
 	"threshold.group_label": "{label} thresholds",
 	"threshold_intro.temperature_stress": "Leave a field empty to use the default, or enter a value for this plant only. Each alert turns on at its trigger value and turns off at its clear value. The clear value sits a little inside the trigger, so the alert doesn't switch on and off over and over.",
@@ -4566,6 +4576,9 @@ var Hn = {
 	"snapshot.category": "Categoria",
 	"snapshot.imported_defaults": "Valori predefiniti di umidità del terreno importati",
 	"snapshot.default_not_supplied": "I valori segnati con — non sono forniti dalla specie; si usa il valore predefinito integrato.",
+	"snapshot.imported_ranges": "Intervalli dei problemi importati",
+	"snapshot.temperature_range": "Temperatura {min}–{max} °C",
+	"snapshot.humidity_range": "Umidità dell'aria {min}–{max} %",
 	"snapshot.care_notes": "Note di cura",
 	"snapshot.source_details": "Dettagli della fonte",
 	"snapshot.field_attribution": "Fonte per campo",
@@ -4847,8 +4860,10 @@ var Hn = {
 	"threshold_field.target": "Ideale ({unit})",
 	"threshold_field.clear": "Disattivazione ({unit})",
 	"threshold.default_effective": "Predefinito {default} {unit} · in uso {effective} {unit}",
+	"threshold.species_default_effective": "Predefinito della specie {default} {unit} · in uso {effective} {unit}",
 	"threshold.inherit": "Usa predefinito",
 	"threshold.inherit_all": "Usa tutti i valori predefiniti integrati",
+	"threshold.inherit_all_species": "Usa tutti i valori predefiniti della specie e integrati",
 	"threshold.save": "Salva le soglie",
 	"threshold.group_label": "Soglie per {label}",
 	"threshold_intro.temperature_stress": "Lascia un campo vuoto per usare il valore predefinito, oppure inserisci un valore solo per questa pianta. Ogni avviso si attiva al suo valore di attivazione e si disattiva al valore di disattivazione. Il valore di disattivazione è un po' più interno rispetto a quello di attivazione, così l'avviso non continua ad accendersi e spegnersi.",
@@ -5983,22 +5998,22 @@ function hr(e) {
 	let r = mr(n);
 	return r < ur || r > dr ? "invalid" : r;
 }
-function gr(e, t = z) {
-	let n = {};
-	for (let r of lr) {
-		let i = hr(e[r]);
+function gr(e, t = z, n = cr) {
+	let r = {};
+	for (let n of lr) {
+		let i = hr(e[n]);
 		if (i === "invalid") return {
 			values: {},
 			error: t.t("threshold_error.temperature_stress")
 		};
-		n[r] = i;
+		r[n] = i;
 	}
-	let r = n, i = (e) => r[e] ?? cr[e], a = i("cold_threshold_celsius"), o = i("cold_clear_celsius"), s = i("hot_clear_celsius"), c = i("hot_threshold_celsius");
-	return !(a < o && o < s && s < c) || o - a < fr || c - s < fr || s - o < pr ? {
-		values: r,
+	let i = r, a = (e) => i[e] ?? n[e], o = a("cold_threshold_celsius"), s = a("cold_clear_celsius"), c = a("hot_clear_celsius"), l = a("hot_threshold_celsius");
+	return !(o < s && s < c && c < l) || s - o < fr || l - c < fr || c - s < pr ? {
+		values: i,
 		error: t.t("threshold_error.temperature_stress")
 	} : {
-		values: r,
+		values: i,
 		error: null
 	};
 }
@@ -6035,22 +6050,22 @@ function wr(e) {
 	let r = mr(n);
 	return r < br || r > xr ? "invalid" : r;
 }
-function Tr(e, t = z) {
-	let n = {};
-	for (let r of yr) {
-		let i = wr(e[r]);
+function Tr(e, t = z, n = vr) {
+	let r = {};
+	for (let n of yr) {
+		let i = wr(e[n]);
 		if (i === "invalid") return {
 			values: {},
 			error: t.t("threshold_error.humidity_stress")
 		};
-		n[r] = i;
+		r[n] = i;
 	}
-	let r = n, i = (e) => r[e] ?? vr[e], a = i("dry_threshold_percent"), o = i("dry_clear_percent"), s = i("damp_clear_percent"), c = i("damp_threshold_percent");
-	return !(a < o && o < s && s < c) || o - a < Sr || c - s < Sr || s - o < Cr ? {
-		values: r,
+	let i = r, a = (e) => i[e] ?? n[e], o = a("dry_threshold_percent"), s = a("dry_clear_percent"), c = a("damp_clear_percent"), l = a("damp_threshold_percent");
+	return !(o < s && s < c && c < l) || s - o < Sr || l - c < Sr || c - s < Cr ? {
+		values: i,
 		error: t.t("threshold_error.humidity_stress")
 	} : {
-		values: r,
+		values: i,
 		error: null
 	};
 }
@@ -6786,18 +6801,25 @@ function na(e, t, n) {
 		[e.t("snapshot.status"), t.source_status === "manual" || t.source_status === "provider" ? e.t(`snapshot.status_${t.source_status}`) : t.source_status],
 		[e.t("snapshot.confidence"), t.confidence === null ? r : e.number(t.confidence)],
 		[e.t("snapshot.category"), t.category ?? r]
-	], a = t.threshold_defaults.moisture, o = Object.entries(t.care_text), s = (e) => {
+	], a = t.threshold_defaults.moisture, o = (t) => t == null ? "—" : e.number(t), s = t.threshold_defaults.humidity, c = [...typeof t.min_temperature == "number" || typeof t.max_temperature == "number" ? [e.t("snapshot.temperature_range", {
+		min: o(t.min_temperature),
+		max: o(t.max_temperature)
+	})] : [], ...s?.min !== void 0 || s?.max !== void 0 ? [e.t("snapshot.humidity_range", {
+		min: o(s?.min),
+		max: o(s?.max)
+	})] : []], l = Object.entries(t.care_text), u = (e) => {
 		let t = e == null ? "—" : typeof e == "string" ? e : JSON.stringify(e);
 		return Je(t) > 80 ? `${Ye(t, 79)}…` : t;
-	}, c = Si(t, e.language);
-	return b`<article><h3>${c ?? t.latin_name ?? e.t("snapshot.species")}</h3>${t.latin_name && t.latin_name !== c ? b`<p><i>${t.latin_name}</i></p>` : x}
+	}, d = Si(t, e.language);
+	return b`<article><h3>${d ?? t.latin_name ?? e.t("snapshot.species")}</h3>${t.latin_name && t.latin_name !== d ? b`<p><i>${t.latin_name}</i></p>` : x}
     <p class="snapshot-targets">${e.t("snapshot.imported_defaults")}: ${B.map((t) => `${qi(e, t)} ${a?.[t] === void 0 ? "—" : e.percent(a[t])}`).join(" · ")}</p>
     ${B.some((e) => a?.[e] === void 0) ? b`<p class="small muted">${e.t("snapshot.default_not_supplied")}</p>` : x}
-    ${o.length ? b`<details><summary>${e.t("snapshot.care_notes")}</summary>${o.map(([e, t]) => b`<h4>${e}</h4><p class="prose">${t}</p>`)}</details>` : x}
+    ${c.length ? b`<p class="snapshot-ranges">${e.t("snapshot.imported_ranges")}: ${c.join(" · ")}</p>` : x}
+    ${l.length ? b`<details><summary>${e.t("snapshot.care_notes")}</summary>${l.map(([e, t]) => b`<h4>${e}</h4><p class="prose">${t}</p>`)}</details>` : x}
     <details><summary>${e.t("snapshot.source_details")}</summary>
       <dl>${i.map(([e, t]) => b`<dt>${e}</dt><dd>${t}</dd>`)}</dl>
       <h4>${e.t("snapshot.field_attribution")}</h4>${Object.entries(t.field_sources).map(([e, t]) => b`<p>${e}: ${t}</p>`)}
-      ${n ? b`<h4>${e.t("snapshot.proposed_changes")}</h4>${Object.entries(n.diff).map(([e, t]) => b`<p>${e}: ${s(t.before)} → ${s(t.after)}</p>`)}` : x}
+      ${n ? b`<h4>${e.t("snapshot.proposed_changes")}</h4>${Object.entries(n.diff).map(([e, t]) => b`<p>${e}: ${u(t.before)} → ${u(t.after)}</p>`)}` : x}
     </details>
     ${n ? b`<p class="small muted">${e.t("snapshot.preview_read_only")}</p>` : x}</article>`;
 }
@@ -10991,7 +11013,7 @@ var ml, hl = Object.fromEntries([
 			hot_clear_celsius: "threshold_field.hot_clear",
 			hot_threshold_celsius: "threshold_field.hot_trigger"
 		},
-		validate: (e, t) => gr(e, t),
+		validate: (e, t, n) => gr(e, t, n),
 		seed: (e) => _r(e)
 	},
 	{
@@ -11009,7 +11031,7 @@ var ml, hl = Object.fromEntries([
 			damp_clear_percent: "threshold_field.damp_clear",
 			damp_threshold_percent: "threshold_field.damp_trigger"
 		},
-		validate: (e, t) => Tr(e, t),
+		validate: (e, t, n) => Tr(e, t, n),
 		seed: (e) => Er(e)
 	},
 	{
@@ -12695,6 +12717,17 @@ var $ = class e extends S {
 		}
 		return i;
 	}
+	_inheritedThresholds(e, t) {
+		let n = t.roles?.[e.configRole], r = n && typeof n == "object" ? n.species_defaults : void 0, i = { ...e.defaults }, a = /* @__PURE__ */ new Set();
+		if (r && typeof r == "object") for (let t of e.keys) {
+			let e = r[t], n = e && typeof e == "object" ? e.value : void 0;
+			typeof n == "number" && Number.isFinite(n) && (i[t] = n, a.add(t));
+		}
+		return {
+			values: i,
+			species: a
+		};
+	}
 	_toggleThresholdEdit(e, t) {
 		this._thresholdRole === e.problemRole && this._thresholdEdits !== null ? (this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._pendingThresholdSwitch = null) : this._thresholdRole && this._thresholdRole !== e.problemRole && this._hasUnsavedThresholdChanges() ? this._pendingThresholdSwitch = {
 			spec: e,
@@ -12726,21 +12759,21 @@ var $ = class e extends S {
 	_renderThresholdEditor(e, t) {
 		let n = this._thresholdEdits;
 		if (!n) return x;
-		let r = this._l, i = (t) => {
-			let i = n[t].trim(), a = Number(i);
-			return i === "" ? r.number(e.defaults[t]) : Number.isFinite(a) ? r.number(a) : i;
-		}, a = (t) => b`<label>${r.t(e.labels[t], { unit: e.unit })}<input type="number" step=${e.step} min=${e.min} max=${e.max} inputmode="decimal" .value=${n[t]} @input=${(e) => this._editThreshold({ [t]: e.target.value })}></label><small>${r.t("threshold.default_effective", {
-			default: r.number(e.defaults[t]),
-			effective: i(t),
+		let r = this._l, i = this._inheritedThresholds(e, t), a = (e) => {
+			let t = n[e].trim(), a = Number(t);
+			return t === "" ? r.number(i.values[e]) : Number.isFinite(a) ? r.number(a) : t;
+		}, o = (t) => b`<label>${r.t(e.labels[t], { unit: e.unit })}<input type="number" step=${e.step} min=${e.min} max=${e.max} inputmode="decimal" .value=${n[t]} @input=${(e) => this._editThreshold({ [t]: e.target.value })}></label><small>${r.t(i.species.has(t) ? "threshold.species_default_effective" : "threshold.default_effective", {
+			default: r.number(i.values[t]),
+			effective: a(t),
 			unit: e.unit
 		})}</small><button type="button" @click=${() => this._editThreshold({ [t]: "" })}>${r.t("threshold.inherit")}</button>`;
 		return b`<div id=${`${e.problemRole}-editor`} class="threshold-editor" role="group" aria-label=${r.t("threshold.group_label", { label: r.t(`problem_phrase.${e.problemRole}`) })}>
       <p>${r.t(`threshold_intro.${e.problemRole}`)}</p>
       <fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>
-        <div class="grid">${e.keys.map((e) => b`<div>${a(e)}</div>`)}</div>
+        <div class="grid">${e.keys.map((e) => b`<div>${o(e)}</div>`)}</div>
         ${this._thresholdError ? b`<p class="error" role="alert">${this._thresholdError}</p>` : x}
         <div class="actions">
-          <button type="button" @click=${() => this._editThreshold(Object.fromEntries(e.keys.map((e) => [e, ""])))}>${r.t("threshold.inherit_all")}</button>
+          <button type="button" @click=${() => this._editThreshold(Object.fromEntries(e.keys.map((e) => [e, ""])))}>${r.t(i.species.size ? "threshold.inherit_all_species" : "threshold.inherit_all")}</button>
           <button type="button" @click=${() => {
 			this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._pendingThresholdSwitch = null;
 		}}>${r.t("common.cancel")}</button>
@@ -12751,7 +12784,7 @@ var $ = class e extends S {
 	}
 	async _saveThresholds(e, t) {
 		if (!this.hass || !this._thresholdEdits || this._formBusy || this._blocked || this._conflict) return;
-		let { values: n, error: r } = e.validate(this._thresholdEdits, this._l);
+		let { values: n, error: r } = e.validate(this._thresholdEdits, this._l, this._inheritedThresholds(e, t).values);
 		if (r) {
 			this._thresholdError = r;
 			return;
