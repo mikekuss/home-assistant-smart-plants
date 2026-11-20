@@ -142,7 +142,7 @@ var m = {
 };
 function h() {
 	let e = window.customElements, t = Date.now(), n = setInterval(() => {
-		window.customElements !== e && p(), (window.customElements !== e || Date.now() - t > m.timeoutMs) && clearInterval(n);
+		typeof window > "u" ? clearInterval(n) : (window.customElements !== e && p(), (window.customElements !== e || Date.now() - t > m.timeoutMs) && clearInterval(n));
 	}, m.intervalMs);
 }
 p(), !window.__haScopedRegistryReady && !("CustomElementRegistryPolyfill" in window) && h();
