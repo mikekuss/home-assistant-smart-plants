@@ -7,9 +7,11 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_DETECT_WATERING,
     CONF_FORECAST_REFRESH_MINUTES,
     CONF_OPENPLANTBOOK_ENABLED,
     CONF_PRESERVE_INVENTORY_ON_REMOVAL,
+    DEFAULT_DETECT_WATERING,
     DEFAULT_PRESERVE_INVENTORY_ON_REMOVAL,
     DOMAIN,
     MAX_FORECAST_REFRESH_MINUTES,
@@ -207,6 +209,9 @@ class SmartPlantsOptionsFlow(config_entries.OptionsFlowWithReload):
                 {
                     **_safe_provider_defaults(dict(self._config_entry.data)),
                     CONF_PRESERVE_INVENTORY_ON_REMOVAL: preserve,
+                    CONF_DETECT_WATERING: self._config_entry.options.get(
+                        CONF_DETECT_WATERING, DEFAULT_DETECT_WATERING
+                    ),
                     CONF_FORECAST_REFRESH_MINUTES: refresh_minutes(
                         self._config_entry.options
                     ),
@@ -225,6 +230,10 @@ class SmartPlantsOptionsFlow(config_entries.OptionsFlowWithReload):
                         CONF_PRESERVE_INVENTORY_ON_REMOVAL,
                         DEFAULT_PRESERVE_INVENTORY_ON_REMOVAL,
                     ),
+                ): bool,
+                vol.Optional(
+                    CONF_DETECT_WATERING,
+                    default=defaults.get(CONF_DETECT_WATERING, DEFAULT_DETECT_WATERING),
                 ): bool,
                 vol.Optional(
                     CONF_FORECAST_REFRESH_MINUTES,

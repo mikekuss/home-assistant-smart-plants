@@ -229,7 +229,7 @@ export interface CareEvent {
   schema_version: 2;
   id: string;
   kind: "watering" | "fertilizing" | "pruning" | "repotting" | "pest_control" | "note" | "task";
-  provenance: "manual" | "action" | "automation";
+  provenance: "manual" | "action" | "automation" | "sensor";
   task_id: string | null;
   occurred_at: string;
   local_date: string;

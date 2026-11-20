@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Log waterings from the soil moisture sensor**, a new option that is off by default. When a
+  plant's soil moisture rises by 15 points or more within an hour, Smart Plants logs a watering
+  at that time, unless one was logged in the 6 hours before. The entry's `provenance` is
+  `sensor`. Waterings nobody logged by hand now count for *Last watered* and the 24-hour grace.
+
 ## [0.19.0] - 2026-11-21
 
 ### Added

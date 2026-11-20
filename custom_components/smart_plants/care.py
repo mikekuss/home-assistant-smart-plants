@@ -22,7 +22,8 @@ CARE_EVENT_KINDS: Final = (
     "note",
     "task",
 )
-CARE_PROVENANCES: Final = ("manual", "action", "automation")
+# "sensor": logged by Smart Plants itself when the soil moisture jumped.
+CARE_PROVENANCES: Final = ("manual", "action", "automation", "sensor")
 CARE_TASK_TYPES: Final = (
     "fertilize",
     "prune",
