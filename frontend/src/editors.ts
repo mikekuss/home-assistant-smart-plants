@@ -111,6 +111,13 @@ export function snapshotView(l: Localizer, snapshot: SpeciesSnapshot, preview?: 
     [l.t("snapshot.confidence"), snapshot.confidence === null ? notSupplied : l.number(snapshot.confidence)], [l.t("snapshot.category"), snapshot.category ?? notSupplied],
   ];
   const moisture = snapshot.threshold_defaults.moisture;
+  // Ranges that become the temperature and air humidity problem thresholds.
+  const bound = (value: number | null | undefined) => value === null || value === undefined ? "—" : l.number(value);
+  const humidity = snapshot.threshold_defaults.humidity;
+  const ranges = [
+    ...(typeof snapshot.min_temperature === "number" || typeof snapshot.max_temperature === "number" ? [l.t("snapshot.temperature_range", { min: bound(snapshot.min_temperature), max: bound(snapshot.max_temperature) })] : []),
+    ...(humidity?.min !== undefined || humidity?.max !== undefined ? [l.t("snapshot.humidity_range", { min: bound(humidity?.min), max: bound(humidity?.max) })] : []),
+  ];
   const care = Object.entries(snapshot.care_text);
   const shortValue = (value: unknown): string => {
     const text = value === null || value === undefined ? "—" : typeof value === "string" ? value : JSON.stringify(value);
@@ -120,6 +127,7 @@ export function snapshotView(l: Localizer, snapshot: SpeciesSnapshot, preview?: 
   return html`<article><h3>${commonName ?? snapshot.latin_name ?? l.t("snapshot.species")}</h3>${snapshot.latin_name && snapshot.latin_name !== commonName ? html`<p><i>${snapshot.latin_name}</i></p>` : nothing}
     <p class="snapshot-targets">${l.t("snapshot.imported_defaults")}: ${keys.map(k => `${thresholdKeyLabel(l, k)} ${moisture?.[k] === undefined ? "—" : l.percent(moisture[k])}`).join(" · ")}</p>
     ${keys.some(k => moisture?.[k] === undefined) ? html`<p class="small muted">${l.t("snapshot.default_not_supplied")}</p>` : nothing}
+    ${ranges.length ? html`<p class="snapshot-ranges">${l.t("snapshot.imported_ranges")}: ${ranges.join(" · ")}</p>` : nothing}
     ${care.length ? html`<details><summary>${l.t("snapshot.care_notes")}</summary>${care.map(([k, v]) => html`<h4>${k}</h4><p class="prose">${v}</p>`)}</details>` : nothing}
     <details><summary>${l.t("snapshot.source_details")}</summary>
       <dl>${fields.map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl>

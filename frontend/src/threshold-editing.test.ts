@@ -1292,3 +1292,58 @@ describe("Threshold editor localization", () => {
     expect(toggle.textContent?.trim()).toBe("Edit thresholds");
   });
 });
+
+describe("thresholds a species supplies", () => {
+  beforeEach(() => { vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["x"], { type: "image/webp" })))); });
+  afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+  const coldFromSpecies = {
+    cold_threshold_celsius: { value: 8, provider: "openplantbook", provider_ref: "aloe vera" },
+    cold_clear_celsius: { value: 10, provider: "openplantbook", provider_ref: "aloe vera" },
+  };
+  function withSpeciesTemperature(overrides: Partial<Record<string, number | null>> = {}): PlantRecord {
+    const plant = withTemperatureRole(overrides);
+    const roles = plant.roles as Record<string, Record<string, unknown>>;
+    roles.temperature = { ...roles.temperature, species_defaults: coldFromSpecies };
+    return plant;
+  }
+
+  it("validates blank fields against the inherited values it is given", () => {
+    const input = { cold_threshold_celsius: "", cold_clear_celsius: "9", hot_clear_celsius: "", hot_threshold_celsius: "" };
+    // 9 °C is below the built-in cold trigger of 10 °C …
+    expect(validateTemperatureStressOverrides(input).error).not.toBeNull();
+    // … but above a species trigger of 8 °C.
+    const inherited = { cold_threshold_celsius: 8, cold_clear_celsius: 10, hot_clear_celsius: 32, hot_threshold_celsius: 35 };
+    expect(validateTemperatureStressOverrides(input, undefined, inherited).error).toBeNull();
+    const humidity = { dry_threshold_percent: "", dry_clear_percent: "42", damp_clear_percent: "", damp_threshold_percent: "" };
+    expect(validateHumidityStressOverrides(humidity).error).toBeNull();
+    expect(validateHumidityStressOverrides(humidity, undefined, { dry_threshold_percent: 45, dry_clear_percent: 50, damp_clear_percent: 75, damp_threshold_percent: 80 }).error).not.toBeNull();
+  });
+
+  it("names the species values and keeps the built-in ones apart", async () => {
+    const entities = [stressEntity("temperature_stress")];
+    const states = { [`binary_sensor.smart_plants_${PLANT_ID}_temperature_stress`]: stressState("temperature_stress", "off") };
+    const { el } = await mountDetail(withSpeciesTemperature(), entities, states);
+    await click(el, "Edit thresholds");
+    const hints = [...el.shadowRoot!.querySelectorAll("#temperature_stress-editor small")].map(s => s.textContent ?? "");
+    expect(hints[0]).toContain("Species default 8 °C");
+    expect(hints[1]).toContain("Species default 10 °C");
+    expect(hints.slice(2).every(h => h.startsWith("Default"))).toBe(true);
+    expect(el.shadowRoot!.querySelector("#temperature_stress-editor")?.textContent).toContain("Inherit all species and built-in defaults");
+  });
+
+  it("saves a value that only fits the species values", async () => {
+    const entities = [stressEntity("temperature_stress")];
+    const states = { [`binary_sensor.smart_plants_${PLANT_ID}_temperature_stress`]: stressState("temperature_stress", "off") };
+    const updated = withSpeciesTemperature({ cold_clear_celsius: 9 });
+    const { el, calls } = await mountDetail(withSpeciesTemperature(), entities, states, msg => msg.type === "smart_plants/roles/set_threshold_overrides" ? { plant: { ...updated, revision: 2 } } : undefined);
+    await click(el, "Edit thresholds");
+    const inputs = [...el.shadowRoot!.querySelectorAll("#temperature_stress-editor input[type='number']")] as HTMLInputElement[];
+    inputs[1].value = "9"; inputs[1].dispatchEvent(new Event("input", { bubbles: true }));
+    await settle(el);
+    await click(el, "Save thresholds");
+    expect(el.shadowRoot!.querySelector("#temperature_stress-editor p.error")).toBeNull();
+    const sent = calls.find(c => c.type === "smart_plants/roles/set_threshold_overrides") as Record<string, unknown> | undefined;
+    expect(sent?.values).toEqual({ cold_threshold_celsius: null, cold_clear_celsius: 9, hot_clear_celsius: null, hot_threshold_celsius: null });
+  });
+});
