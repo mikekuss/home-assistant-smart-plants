@@ -140,6 +140,38 @@ def test_accepts_and_returns_webp_for_valid_jpeg() -> None:
         assert decoded.format == "WEBP"
 
 
+def _mpo_bytes(width: int, height: int) -> bytes:
+    """Return a JPEG with a Multi-Picture extension and two frames."""
+    buf = io.BytesIO()
+    first = Image.new("RGB", (width, height), (200, 50, 50))
+    second = Image.new("RGB", (width, height), (50, 50, 200))
+    first.save(buf, format="MPO", save_all=True, append_images=[second])
+    return buf.getvalue()
+
+
+def test_accepts_multi_picture_jpeg_and_keeps_the_first_frame() -> None:
+    raw = _mpo_bytes(64, 48)
+    with Image.open(io.BytesIO(raw)) as probe:
+        assert probe.format == "MPO"
+        assert getattr(probe, "n_frames", 1) == 2
+
+    processed = validate_and_reencode(raw, "image/jpeg")
+
+    assert processed.content_type == IMAGE_OUTPUT_CONTENT_TYPE
+    assert (processed.width, processed.height) == (64, 48)
+    with Image.open(io.BytesIO(processed.data)) as decoded:
+        assert decoded.format == "WEBP"
+        assert getattr(decoded, "n_frames", 1) == 1
+        pixel = decoded.convert("RGB").getpixel((32, 24))
+        assert isinstance(pixel, tuple)
+        assert pixel[0] > pixel[2]
+
+
+def test_rejects_multi_picture_jpeg_declared_as_png() -> None:
+    with pytest.raises(ImageValidationError, match="does not match"):
+        validate_and_reencode(_mpo_bytes(64, 48), "image/png")
+
+
 def test_rejects_oversized_phone_photo() -> None:
     # Simulate an oversized phone photo: 4000x3000 JPEG. Must be
     # rejected outright — never silently downscaled. What the user

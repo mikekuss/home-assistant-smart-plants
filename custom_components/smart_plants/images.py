@@ -48,9 +48,13 @@ _LOGGER = logging.getLogger(__name__)
 # images directory via ``..``, ``/``, or NUL bytes.
 _IMAGE_ID_RE: Final = re.compile(r"^[0-9a-f]{32}$")
 
-# Map the Pillow format string back to the MIME type we advertise.
+# Map the Pillow format string back to the MIME type we advertise. Pillow
+# reports a JPEG with a Multi-Picture extension (some phones, 3D cameras and
+# gain-map exports) as ``MPO``. Browsers send it as ``image/jpeg``, and only
+# its first frame is decoded and re-encoded.
 _INPUT_FORMAT_TO_MIME: Final[dict[str, str]] = {
     "JPEG": "image/jpeg",
+    "MPO": "image/jpeg",
     "PNG": "image/png",
     "WEBP": "image/webp",
 }

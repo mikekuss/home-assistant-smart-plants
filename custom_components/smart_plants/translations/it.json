@@ -5,26 +5,26 @@
       "reauth_successful": "L'autenticazione di OpenPlantBook è stata aggiornata."
     },
     "error": {
-      "credentials_required": "Inserisci sia l'ID client sia il segreto client di OpenPlantBook, oppure disattiva il fornitore.",
+      "credentials_required": "Inserisci sia l'ID client sia il segreto client di OpenPlantBook, oppure disattiva «Usa OpenPlantBook».",
       "credentials_invalid": "L'ID client o il segreto client di OpenPlantBook è troppo lungo.",
       "invalid_auth": "OpenPlantBook ha rifiutato queste credenziali.",
-      "cannot_connect": "Impossibile raggiungere OpenPlantBook. Riprova più tardi oppure disattiva il fornitore."
+      "cannot_connect": "Impossibile raggiungere OpenPlantBook. Riprova più tardi oppure disattiva «Usa OpenPlantBook»."
     },
     "step": {
       "user": {
         "title": "Configura Smart Plants",
         "description": "OpenPlantBook è facoltativo e viene usato direttamente tramite la sua API. Ti servono un account OpenPlantBook e delle credenziali client. [Ottieni le credenziali API di OpenPlantBook]({openplantbook_credentials_url}). Non installare l'integrazione OpenPlantBook di Home Assistant, che è separata. Puoi gestire le piante a mano anche senza credenziali.",
         "data": {
-          "openplantbook_enabled": "Usa OpenPlantBook come fornitore diretto",
+          "openplantbook_enabled": "Usa OpenPlantBook",
           "openplantbook_client_id": "ID client di OpenPlantBook",
           "openplantbook_client_secret": "Segreto client di OpenPlantBook"
         }
       },
       "reauth_confirm": {
         "title": "Autentica di nuovo OpenPlantBook",
-        "description": "Aggiorna le credenziali per l'accesso diretto a OpenPlantBook. Le piante salvate in locale in Smart Plants restano disponibili anche mentre l'autenticazione non funziona.",
+        "description": "Aggiorna le credenziali di OpenPlantBook. Le piante salvate in locale in Smart Plants restano disponibili anche mentre l'autenticazione non funziona.",
         "data": {
-          "openplantbook_enabled": "Usa OpenPlantBook come fornitore diretto",
+          "openplantbook_enabled": "Usa OpenPlantBook",
           "openplantbook_client_id": "ID client di OpenPlantBook",
           "openplantbook_client_secret": "Segreto client di OpenPlantBook"
         }
@@ -33,10 +33,10 @@
   },
   "options": {
     "error": {
-      "credentials_required": "Inserisci sia l'ID client sia il segreto client di OpenPlantBook, oppure disattiva il fornitore.",
+      "credentials_required": "Inserisci sia l'ID client sia il segreto client di OpenPlantBook, oppure disattiva «Usa OpenPlantBook».",
       "credentials_invalid": "L'ID client o il segreto client di OpenPlantBook è troppo lungo.",
       "invalid_auth": "OpenPlantBook ha rifiutato queste credenziali.",
-      "cannot_connect": "Impossibile raggiungere OpenPlantBook. Riprova più tardi oppure disattiva il fornitore."
+      "cannot_connect": "Impossibile raggiungere OpenPlantBook. Riprova più tardi oppure disattiva «Usa OpenPlantBook»."
     },
     "step": {
       "init": {
@@ -44,7 +44,7 @@
         "data": {
           "preserve_inventory_on_removal": "Conserva le piante se l'integrazione viene rimossa",
           "forecast_refresh_minutes": "Intervallo di aggiornamento delle previsioni",
-          "openplantbook_enabled": "Usa OpenPlantBook come fornitore diretto",
+          "openplantbook_enabled": "Usa OpenPlantBook",
           "openplantbook_client_id": "ID client di OpenPlantBook",
           "openplantbook_client_secret": "Segreto client di OpenPlantBook"
         },

@@ -130,7 +130,7 @@ variable.
 | --- | --- | --- |
 | `include` | All | Any of `needs_water`, `problems` and `care_tasks`. `problems` leaves out *Needs water*. |
 | `include_snoozed` | `false` | Also list snoozed plants, marked as snoozed. |
-| `language` | Home Assistant's | `en` or `de`, region codes such as `de-DE` work too. Other languages give English. |
+| `language` | Home Assistant's | `en`, `de` or `it`, region codes such as `de-DE` work too. Other languages give English. |
 
 The report leaves out paused plants, plants with nothing to report and, by default, snoozed
 plants. The response:

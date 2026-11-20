@@ -57,6 +57,11 @@ after**: 24 hours by default, 7 days for the battery. You can set it per plant a
 60 seconds to 7 days, in seconds. A new sensor gets one full window before it can count as not
 updating. An assigned sensor that no longer exists counts as not updating at once.
 
+After Home Assistant restarts, each sensor gets one full **Not updating after** window again
+before it counts as not updating, so *Sensor stale* can stay off for a day after a restart (a
+week for the battery). The plant status doesn't wait: a sensor that is unavailable or has no
+usable value makes the plant show *No recent data* right away.
+
 A sensor that reports the same value again stays current, as long as Home Assistant records
 the report. Home Assistant's MQTT integration, which Zigbee2MQTT sensors also use, doesn't write
 a sensor's state again while its value stays the same, unless `force_update` is set on the

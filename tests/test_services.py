@@ -6,6 +6,7 @@ import json
 import logging
 from datetime import timedelta
 from http import HTTPStatus
+from pathlib import Path
 from typing import Any, cast
 from unittest.mock import patch
 
@@ -43,6 +44,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.translation import async_get_translations
 from homeassistant.util import dt as dt_util
+from homeassistant.util.yaml import parse_yaml
 from pytest_homeassistant_custom_component.common import MockConfigEntry, MockUser
 from pytest_homeassistant_custom_component.typing import (
     ClientSessionGenerator,
@@ -534,6 +536,63 @@ async def test_log_care_for_task_entity_completes_task(hass: HomeAssistant) -> N
     task = plant.care_task(task_id)
     assert task is not None
     assert task.last_done_at is not None
+
+
+async def test_log_care_picker_offers_task_entities_and_only_plant_devices(
+    hass: HomeAssistant,
+) -> None:
+    """
+    The action editor can pick every log_care target, but no other device.
+
+    The UI target picker offers an entity that matches one of the entity
+    filters, and a device only when one of its entities matches. So every
+    Smart Plants entity in a filtered domain must be the All plants entity
+    (no device) or belong to a plant device.
+    """
+    services = parse_yaml(
+        (
+            Path(__file__).parents[1] / "custom_components" / DOMAIN / "services.yaml"
+        ).read_text(encoding="utf-8")
+    )
+    assert isinstance(services, dict)
+    filters = services["log_care"]["target"]["entity"]
+    assert all(item["integration"] == DOMAIN for item in filters)
+    domains = {item["domain"] for item in filters}
+    assert domains == {"binary_sensor", "sensor", "button"}
+
+    entry = await _setup(hass)
+    plant_id = await _plant(hass, entry, "Aloe")
+    manager = _manager(entry)
+    await manager.async_create_care_task(
+        plant_id,
+        expected_revision=manager.get_plant(plant_id).revision,
+        task_type="fertilize",
+        name=None,
+        schedule=INTERVAL,
+        instructions=None,
+        baseline_done_on=None,
+    )
+    await hass.async_block_till_done()
+
+    entity_registry = er.async_get(hass)
+    entities = [
+        item
+        for item in er.async_entries_for_config_entry(entity_registry, entry.entry_id)
+        if item.domain in domains
+    ]
+    # The care task's sensors and its Done button are pickable.
+    task_entities = [item for item in entities if ":care_task:" in item.unique_id]
+    assert {item.domain for item in task_entities} == {
+        "binary_sensor",
+        "sensor",
+        "button",
+    }
+
+    plant_device_id = _device_id(hass, plant_id)
+    offered_devices = {item.device_id for item in entities if item.device_id}
+    assert offered_devices == {plant_device_id}
+    (deviceless,) = [item for item in entities if item.device_id is None]
+    assert deviceless.unique_id == f"{DOMAIN}:all_plants"
 
 
 async def test_log_care_for_task_entity_by_registry_id_and_matching_kind(
