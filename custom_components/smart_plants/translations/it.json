@@ -5,38 +5,48 @@
       "reauth_successful": "L'autenticazione di OpenPlantBook è stata aggiornata."
     },
     "error": {
-      "credentials_required": "Inserisci sia l'ID client sia il segreto client di OpenPlantBook, oppure disattiva il fornitore.",
+      "credentials_required": "Inserisci sia l'ID client sia il segreto client di OpenPlantBook, oppure disattiva «Usa OpenPlantBook».",
       "credentials_invalid": "L'ID client o il segreto client di OpenPlantBook è troppo lungo.",
       "invalid_auth": "OpenPlantBook ha rifiutato queste credenziali.",
-      "cannot_connect": "Impossibile raggiungere OpenPlantBook. Riprova più tardi oppure disattiva il fornitore."
+      "cannot_connect": "Impossibile raggiungere OpenPlantBook. Riprova più tardi oppure disattiva «Usa OpenPlantBook»."
     },
     "step": {
       "user": {
         "title": "Configura Smart Plants",
         "description": "OpenPlantBook è facoltativo e viene usato direttamente tramite la sua API. Ti servono un account OpenPlantBook e delle credenziali client. [Ottieni le credenziali API di OpenPlantBook]({openplantbook_credentials_url}). Non installare l'integrazione OpenPlantBook di Home Assistant, che è separata. Puoi gestire le piante a mano anche senza credenziali.",
         "data": {
-          "openplantbook_enabled": "Usa OpenPlantBook come fornitore diretto",
+          "openplantbook_enabled": "Usa OpenPlantBook",
           "openplantbook_client_id": "ID client di OpenPlantBook",
           "openplantbook_client_secret": "Segreto client di OpenPlantBook"
+        },
+        "data_description": {
+          "openplantbook_enabled": "Cerca su OpenPlantBook la specie di una pianta e usa il suo intervallo di umidità del terreno. Smart Plants funziona anche senza.",
+          "openplantbook_client_id": "L'ID client delle tue credenziali API di OpenPlantBook.",
+          "openplantbook_client_secret": "Il segreto client che corrisponde all'ID client."
         }
       },
       "reauth_confirm": {
         "title": "Autentica di nuovo OpenPlantBook",
-        "description": "Aggiorna le credenziali per l'accesso diretto a OpenPlantBook. Le piante salvate in locale in Smart Plants restano disponibili anche mentre l'autenticazione non funziona.",
+        "description": "Aggiorna le credenziali di OpenPlantBook. Le piante salvate in locale in Smart Plants restano disponibili anche mentre l'autenticazione non funziona.",
         "data": {
-          "openplantbook_enabled": "Usa OpenPlantBook come fornitore diretto",
+          "openplantbook_enabled": "Usa OpenPlantBook",
           "openplantbook_client_id": "ID client di OpenPlantBook",
           "openplantbook_client_secret": "Segreto client di OpenPlantBook"
+        },
+        "data_description": {
+          "openplantbook_enabled": "Cerca su OpenPlantBook la specie di una pianta e usa il suo intervallo di umidità del terreno. Smart Plants funziona anche senza.",
+          "openplantbook_client_id": "L'ID client delle tue credenziali API di OpenPlantBook.",
+          "openplantbook_client_secret": "Il segreto client che corrisponde all'ID client."
         }
       }
     }
   },
   "options": {
     "error": {
-      "credentials_required": "Inserisci sia l'ID client sia il segreto client di OpenPlantBook, oppure disattiva il fornitore.",
+      "credentials_required": "Inserisci sia l'ID client sia il segreto client di OpenPlantBook, oppure disattiva «Usa OpenPlantBook».",
       "credentials_invalid": "L'ID client o il segreto client di OpenPlantBook è troppo lungo.",
       "invalid_auth": "OpenPlantBook ha rifiutato queste credenziali.",
-      "cannot_connect": "Impossibile raggiungere OpenPlantBook. Riprova più tardi oppure disattiva il fornitore."
+      "cannot_connect": "Impossibile raggiungere OpenPlantBook. Riprova più tardi oppure disattiva «Usa OpenPlantBook»."
     },
     "step": {
       "init": {
@@ -44,13 +54,16 @@
         "data": {
           "preserve_inventory_on_removal": "Conserva le piante se l'integrazione viene rimossa",
           "forecast_refresh_minutes": "Intervallo di aggiornamento delle previsioni",
-          "openplantbook_enabled": "Usa OpenPlantBook come fornitore diretto",
+          "openplantbook_enabled": "Usa OpenPlantBook",
           "openplantbook_client_id": "ID client di OpenPlantBook",
           "openplantbook_client_secret": "Segreto client di OpenPlantBook"
         },
         "data_description": {
           "preserve_inventory_on_removal": "Se è disattivata, eliminando l'integrazione Smart Plants elimini per sempre anche tutte le piante, il loro registro delle cure e le foto. Attivala prima di eliminare l'integrazione se pensi di reinstallarla.",
-          "forecast_refresh_minutes": "Ogni quanto Smart Plants scarica le previsioni di un'entità meteo seguita da un'attività basata sulle previsioni, da 15 a 180 minuti. Quando l'entità meteo cambia, le previsioni vengono comunque scaricate di nuovo, al massimo una volta ogni 5 minuti."
+          "forecast_refresh_minutes": "Ogni quanto Smart Plants scarica le previsioni di un'entità meteo seguita da un'attività basata sulle previsioni, da 15 a 180 minuti. Quando l'entità meteo cambia, le previsioni vengono comunque scaricate di nuovo, al massimo una volta ogni 5 minuti.",
+          "openplantbook_enabled": "Cerca su OpenPlantBook la specie di una pianta e usa il suo intervallo di umidità del terreno. Smart Plants funziona anche senza.",
+          "openplantbook_client_id": "L'ID client delle tue credenziali API di OpenPlantBook.",
+          "openplantbook_client_secret": "Il segreto client che corrisponde all'ID client. Il segreto salvato non viene mai mostrato: lascia il campo vuoto per conservarlo."
         },
         "description": "Le credenziali API di OpenPlantBook sono facoltative. Crea un account e delle credenziali client. [Ottieni le credenziali API di OpenPlantBook]({openplantbook_credentials_url}). Smart Plants si collega direttamente: l'integrazione OpenPlantBook di Home Assistant, che è separata, non serve. Gli errori del fornitore non bloccano mai le piante salvate in locale."
       }
@@ -618,11 +631,11 @@
   "services": {
     "log_care": {
       "name": "Registra cura",
-      "description": "Registra una cura per le piante di Smart Plants o segna come fatte delle attività di cura. Registrare un'annaffiatura tiene anche spento «Da annaffiare» per 24 ore.",
+      "description": "Registra una cura per le piante di Smart Plants o segna come fatte delle attività di cura. Scegli una pianta o una delle sue entità per registrare una cura per la pianta, oppure l'entità di un'attività di cura per segnare come fatta quell'attività. Registrare un'annaffiatura tiene anche spento «Da annaffiare» per 24 ore.",
       "fields": {
         "kind": {
           "name": "Tipo di cura",
-          "description": "Che cosa è stato fatto. Obbligatorio se scegli delle piante. Se scegli un'attività di cura puoi lasciarlo vuoto; se lo imposti, deve corrispondere all'attività."
+          "description": "Che cosa è stato fatto. Obbligatorio se scegli una pianta o una delle sue entità. Se scegli un'attività di cura puoi lasciarlo vuoto; se lo imposti, deve corrispondere all'attività."
         },
         "occurred_at": {
           "name": "Data e ora",
@@ -694,8 +707,17 @@
     "invalid_target": {
       "message": "{target} non è una pianta o un'attività di cura di Smart Plants."
     },
+    "invalid_care_target": {
+      "message": "{target} non è una pianta né un'attività di cura di Smart Plants. Scegli una pianta, una delle sue entità o l'entità di un'attività di cura."
+    },
+    "unknown_care_target": {
+      "message": "Impossibile trovare {target}. Scegli una pianta, una delle sue entità o l'entità di un'attività di cura."
+    },
+    "all_plants_care_target": {
+      "message": "{target} indica tutte le piante, quindi non si può registrare una cura per questa destinazione. Scegli una pianta, una delle sue entità o l'entità di un'attività di cura."
+    },
     "plant_disabled": {
-      "message": "{plant} è sospesa. Riattivala prima di registrare una cura."
+      "message": "{plant} è sospesa. Riattiva il monitoraggio prima di registrare una cura."
     },
     "care_task_not_found": {
       "message": "L'attività di cura di {target} non esiste più."
@@ -722,7 +744,7 @@
       "message": "Scegli almeno una pianta o una delle sue entità."
     },
     "plant_disabled_snooze": {
-      "message": "{plant} è sospesa. Riattivala prima di mettere in pausa i suoi avvisi."
+      "message": "{plant} è sospesa. Riattiva il monitoraggio prima di mettere in pausa i suoi avvisi."
     },
     "snooze_period_required": {
       "message": "Imposta una durata o una data di fine per la pausa."
@@ -765,6 +787,18 @@
     },
     "moisture_thresholds_invalid": {
       "message": "Le soglie di umidità del terreno devono avere il minimo sotto l'ideale e l'ideale sotto il massimo, con almeno {span} punti percentuali fra minimo e massimo."
+    },
+    "setup_cleanup_incomplete": {
+      "message": "Smart Plants non è riuscito a completare la pulizia dopo un avvio fallito in precedenza. Riavvia Home Assistant."
+    },
+    "platform_cleanup_incomplete": {
+      "message": "Smart Plants non è riuscito a rimuovere le entità di un avvio fallito in precedenza. Riavvia Home Assistant."
+    },
+    "already_loaded": {
+      "message": "Smart Plants è già in esecuzione con un'altra voce di configurazione."
+    },
+    "storage_load_failed": {
+      "message": "Smart Plants non è riuscito a caricare le piante salvate: {error}"
     }
   },
   "triggers": {
