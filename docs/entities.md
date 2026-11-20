@@ -135,7 +135,7 @@ press it from an automation with `button.press`.
 | *Done* of a care task, for example *Fertilize done* | Per care task | Marks the task as done now, like **Mark as done** in the panel. |
 
 A press logs care the same way as the [`smart_plants.log_care`](automations.md#actions)
-action, without a note. A logged watering keeps *Needs water* off for 24 hours, see
+action, without a note. A logged watering keeps *Needs water* and *Too wet* off for 24 hours, see
 [Sensors and health](sensors-and-health.md). The buttons are unavailable while the plant is
 paused. When the care can't be saved, for example because the storage is full, the press
 fails with a message and nothing is logged.

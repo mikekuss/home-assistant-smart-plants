@@ -170,6 +170,8 @@ def evaluate(  # noqa: PLR0913, PLR0912, PLR0915
     history from the caller. ``grace_until`` is a caller-supplied
     absolute time; below it, sources with no valid reading yet are not
     considered stale — this implements the assignment/restart grace.
+    ``watering_grace`` is true for a while after a logged watering; it keeps
+    both watering problems off.
     """
     reasons: list[str] = []
     sources: tuple[SensorSource, ...] = config.sources
@@ -262,8 +264,6 @@ def evaluate(  # noqa: PLR0913, PLR0912, PLR0915
         direction="below",
         previous=previous_needs_water,
     )
-    if watering_grace:
-        needs_water = False
     too_wet = _apply_hysteresis(
         computed,
         threshold=config.moisture_max,
@@ -271,6 +271,13 @@ def evaluate(  # noqa: PLR0913, PLR0912, PLR0915
         direction="above",
         previous=previous_too_wet,
     )
+    if watering_grace:
+        # Right after a watering the soil is soaked on purpose: the sensor
+        # still reads a dry pot for a while, then it reads the fresh water
+        # while it drains. Neither is a problem yet. Soil that stays above
+        # the maximum after the grace is, and Too wet turns on then.
+        needs_water = False
+        too_wet = False
     return MoistureEvaluation(
         computed_percent=computed,
         health_score=health,

@@ -110,9 +110,12 @@ Unavailable doesn't mean healthy.
   hold off *Low light* for longer than two hours. At night it's off, or unavailable while the
   light sensor is not updating.
 
-After you log a watering, *Needs water* stays off for 24 hours from the time of the entry.
-This holds for the panel, the card, the *Watered* button and the `smart_plants.log_care` action.
-Other sensors and the health score don't change.
+After you log a watering, *Needs water* and *Too wet* stay off for 24 hours from the time of
+the entry. Before the water reaches it, the sensor still reads a dry pot; then it reads the
+fresh water while it drains, often well above the maximum. Soil that is still above the
+maximum when the 24 hours are over turns *Too wet* on. This holds for the panel, the card,
+the *Watered* button and the `smart_plants.log_care` action. Other sensors and the health
+score don't change.
 
 ## Built-in thresholds
 
