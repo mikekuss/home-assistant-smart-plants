@@ -791,6 +791,7 @@ export const it: LanguageCatalog = {
   "combine.secondary": "Usa il valore medio, minimo o massimo quando sono assegnati più sensori",
   "combine.intro": "Scegli quale valore conta quando una lettura ha più sensori e dopo quanto tempo senza aggiornamenti un sensore è considerato non aggiornato.",
   "combine.edit_label": "{role}: cambia come si combinano i sensori",
+  "duration.days": "{count} g",
   "duration.hours": "{count} h",
   "duration.minutes": "{count} min",
   "duration.seconds": "{count} s",

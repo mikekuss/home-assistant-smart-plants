@@ -185,10 +185,13 @@ export const REGISTRY_WATCH = { intervalMs: 100, timeoutMs: 120_000 };
 // missing. Frontends with the fix set __haScopedRegistryReady before they
 // start extra modules, and a polyfill already in place has nothing left to
 // swap. Otherwise the card is defined again once the registry changes.
+// Without a window (a test environment torn down while the interval still
+// runs) there is nothing left to watch.
 function watchRegistry(): void {
   const first = window.customElements;
   const started = Date.now();
   const timer = setInterval(() => {
+    if (typeof window === "undefined") { clearInterval(timer); return; }
     if (window.customElements !== first) defineCard();
     if (window.customElements !== first || Date.now() - started > REGISTRY_WATCH.timeoutMs) clearInterval(timer);
   }, REGISTRY_WATCH.intervalMs);
