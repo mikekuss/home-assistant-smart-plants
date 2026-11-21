@@ -9,7 +9,8 @@
       "cold_clear_celsius": null,
       "hot_threshold_celsius": null,
       "hot_clear_celsius": null
-    }
+    },
+    "species_defaults": {}
   },
   "humidity": {
     "sources": [],
@@ -21,7 +22,8 @@
       "dry_clear_percent": null,
       "damp_threshold_percent": null,
       "damp_clear_percent": null
-    }
+    },
+    "species_defaults": {}
   },
   "illuminance": {
     "sources": [],

@@ -121,7 +121,8 @@ export function parseTemperatureStressField(raw: string): number | null | "inval
 }
 // Validate an entire override map for temperature_stress and return the WebSocket
 // payload (all four keys, number | null) plus an inline error string if invalid.
-export function validateTemperatureStressOverrides(input: TemperatureStressInput, l: Localizer = ENGLISH): { values: Record<TemperatureStressKey, number | null>; error: string | null } {
+// `defaults` are the role's inherited values: built-in, or from the species.
+export function validateTemperatureStressOverrides(input: TemperatureStressInput, l: Localizer = ENGLISH, defaults: Record<string, number> = TEMPERATURE_STRESS_BUILTIN_DEFAULTS): { values: Record<TemperatureStressKey, number | null>; error: string | null } {
   const parsed: Partial<Record<TemperatureStressKey, number | null>> = {};
   for (const key of TEMPERATURE_STRESS_KEYS) {
     const result = parseTemperatureStressField(input[key]);
@@ -129,7 +130,7 @@ export function validateTemperatureStressOverrides(input: TemperatureStressInput
     parsed[key] = result;
   }
   const values = parsed as Record<TemperatureStressKey, number | null>;
-  const eff = (k: TemperatureStressKey) => values[k] ?? TEMPERATURE_STRESS_BUILTIN_DEFAULTS[k];
+  const eff = (k: TemperatureStressKey) => values[k] ?? defaults[k]!;
   const ct = eff("cold_threshold_celsius"), cc = eff("cold_clear_celsius"), hc = eff("hot_clear_celsius"), ht = eff("hot_threshold_celsius");
   if (!(ct < cc && cc < hc && hc < ht) || cc - ct < _TEMP_MIN_HYST || ht - hc < _TEMP_MIN_HYST || hc - cc < _TEMP_MIN_STABLE) {
     return { values, error: l.t("threshold_error.temperature_stress") };
@@ -170,7 +171,7 @@ export function parseHumidityStressField(raw: string): number | null | "invalid"
   if (rounded < _HUM_LOW || rounded > _HUM_HIGH) return "invalid";
   return rounded;
 }
-export function validateHumidityStressOverrides(input: HumidityStressInput, l: Localizer = ENGLISH): { values: Record<HumidityStressKey, number | null>; error: string | null } {
+export function validateHumidityStressOverrides(input: HumidityStressInput, l: Localizer = ENGLISH, defaults: Record<string, number> = HUMIDITY_STRESS_BUILTIN_DEFAULTS): { values: Record<HumidityStressKey, number | null>; error: string | null } {
   const parsed: Partial<Record<HumidityStressKey, number | null>> = {};
   for (const key of HUMIDITY_STRESS_KEYS) {
     const result = parseHumidityStressField(input[key]);
@@ -178,7 +179,7 @@ export function validateHumidityStressOverrides(input: HumidityStressInput, l: L
     parsed[key] = result;
   }
   const values = parsed as Record<HumidityStressKey, number | null>;
-  const eff = (k: HumidityStressKey) => values[k] ?? HUMIDITY_STRESS_BUILTIN_DEFAULTS[k];
+  const eff = (k: HumidityStressKey) => values[k] ?? defaults[k]!;
   const dt = eff("dry_threshold_percent"), dc = eff("dry_clear_percent"), pc = eff("damp_clear_percent"), pt = eff("damp_threshold_percent");
   if (!(dt < dc && dc < pc && pc < pt) || dc - dt < _HUM_MIN_HYST || pt - pc < _HUM_MIN_HYST || pc - dc < _HUM_MIN_STABLE) {
     return { values, error: l.t("threshold_error.humidity_stress") };

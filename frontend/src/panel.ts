@@ -37,7 +37,8 @@ interface ThresholdEditorSpec {
   readonly max: string;
   readonly step: string;
   readonly labels: Record<string, MessageKey>;   // per-key label, `{unit}` placeholder
-  readonly validate: (input: Record<string, string>, l: Localizer) => { values: Record<string, number | null>; error: string | null };
+  // `defaults` are the role's inherited values, which a species can supply.
+  readonly validate: (input: Record<string, string>, l: Localizer, defaults: Record<string, number>) => { values: Record<string, number | null>; error: string | null };
   readonly seed: (persisted: Partial<Record<string, number | null>> | null | undefined) => Record<string, string>;
 }
 const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
@@ -49,7 +50,7 @@ const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
     unit: "°C",
     min: "-40", max: "80", step: "0.1",
     labels: { cold_threshold_celsius: "threshold_field.cold_trigger", cold_clear_celsius: "threshold_field.cold_clear", hot_clear_celsius: "threshold_field.hot_clear", hot_threshold_celsius: "threshold_field.hot_trigger" },
-    validate: (input, l) => validateTemperatureStressOverrides(input as never, l),
+    validate: (input, l, defaults) => validateTemperatureStressOverrides(input as never, l, defaults),
     seed: persisted => temperatureStressInput(persisted as never),
   },
   {
@@ -60,7 +61,7 @@ const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
     unit: "%",
     min: "0", max: "100", step: "0.1",
     labels: { dry_threshold_percent: "threshold_field.dry_trigger", dry_clear_percent: "threshold_field.dry_clear", damp_clear_percent: "threshold_field.damp_clear", damp_threshold_percent: "threshold_field.damp_trigger" },
-    validate: (input, l) => validateHumidityStressOverrides(input as never, l),
+    validate: (input, l, defaults) => validateHumidityStressOverrides(input as never, l, defaults),
     seed: persisted => humidityStressInput(persisted as never),
   },
   {
@@ -1759,6 +1760,24 @@ export class SmartPlantsPanel extends LitElement {
     }
     return out;
   }
+  // The values a blank field inherits. Temperature and air humidity can take
+  // them from the species (`species_defaults`); the rest are built-in values.
+  private _inheritedThresholds(spec: ThresholdEditorSpec, plant: PlantRecord): { values: Record<string, number>; species: Set<string> } {
+    const raw = plant.roles?.[spec.configRole];
+    const stored = raw && typeof raw === "object" ? (raw as Record<string, unknown>)["species_defaults"] : undefined;
+    const values: Record<string, number> = { ...spec.defaults };
+    const species = new Set<string>();
+    if (stored && typeof stored === "object") {
+      for (const key of spec.keys) {
+        const entry = (stored as Record<string, unknown>)[key];
+        const value = entry && typeof entry === "object" ? (entry as { value?: unknown }).value : undefined;
+        if (typeof value !== "number" || !Number.isFinite(value)) continue;
+        values[key] = value;
+        species.add(key);
+      }
+    }
+    return { values, species };
+  }
   private _toggleThresholdEdit(spec: ThresholdEditorSpec, plant: PlantRecord): void {
     if (this._thresholdRole === spec.problemRole && this._thresholdEdits !== null) {
       this._thresholdRole = null; this._thresholdEdits = null; this._thresholdBaseline = null; this._thresholdError = ""; this._pendingThresholdSwitch = null; return;
@@ -1797,15 +1816,16 @@ export class SmartPlantsPanel extends LitElement {
     const edits = this._thresholdEdits;
     if (!edits) return nothing;
     const l = this._l;
-    const effective = (key: string) => { const raw = edits[key]!.trim(); const n = Number(raw); return raw === "" ? l.number(spec.defaults[key]!) : Number.isFinite(n) ? l.number(n) : raw; };
-    const field = (key: string) => html`<label>${l.t(spec.labels[key]!, { unit: spec.unit })}<input type="number" step=${spec.step} min=${spec.min} max=${spec.max} inputmode="decimal" .value=${edits[key]} @input=${(e: Event) => this._editThreshold({ [key]: (e.target as HTMLInputElement).value })}></label><small>${l.t("threshold.default_effective", { default: l.number(spec.defaults[key]!), effective: effective(key), unit: spec.unit })}</small><button type="button" @click=${() => this._editThreshold({ [key]: "" })}>${l.t("threshold.inherit")}</button>`;
+    const inherited = this._inheritedThresholds(spec, plant);
+    const effective = (key: string) => { const raw = edits[key]!.trim(); const n = Number(raw); return raw === "" ? l.number(inherited.values[key]!) : Number.isFinite(n) ? l.number(n) : raw; };
+    const field = (key: string) => html`<label>${l.t(spec.labels[key]!, { unit: spec.unit })}<input type="number" step=${spec.step} min=${spec.min} max=${spec.max} inputmode="decimal" .value=${edits[key]} @input=${(e: Event) => this._editThreshold({ [key]: (e.target as HTMLInputElement).value })}></label><small>${l.t(inherited.species.has(key) ? "threshold.species_default_effective" : "threshold.default_effective", { default: l.number(inherited.values[key]!), effective: effective(key), unit: spec.unit })}</small><button type="button" @click=${() => this._editThreshold({ [key]: "" })}>${l.t("threshold.inherit")}</button>`;
     return html`<div id=${`${spec.problemRole}-editor`} class="threshold-editor" role="group" aria-label=${l.t("threshold.group_label", { label: l.t(`problem_phrase.${spec.problemRole}`) })}>
       <p>${l.t(`threshold_intro.${spec.problemRole}`)}</p>
       <fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>
         <div class="grid">${spec.keys.map(k => html`<div>${field(k)}</div>`)}</div>
         ${this._thresholdError ? html`<p class="error" role="alert">${this._thresholdError}</p>` : nothing}
         <div class="actions">
-          <button type="button" @click=${() => this._editThreshold(Object.fromEntries(spec.keys.map(k => [k, ""])))}>${l.t("threshold.inherit_all")}</button>
+          <button type="button" @click=${() => this._editThreshold(Object.fromEntries(spec.keys.map(k => [k, ""])))}>${l.t(inherited.species.size ? "threshold.inherit_all_species" : "threshold.inherit_all")}</button>
           <button type="button" @click=${() => { this._thresholdRole = null; this._thresholdEdits = null; this._thresholdBaseline = null; this._thresholdError = ""; this._pendingThresholdSwitch = null; }}>${l.t("common.cancel")}</button>
           <button type="button" class="primary" @click=${() => void this._saveThresholds(spec, plant)}>${l.t("threshold.save")}</button>
         </div>
@@ -1814,7 +1834,7 @@ export class SmartPlantsPanel extends LitElement {
   }
   private async _saveThresholds(spec: ThresholdEditorSpec, plant: PlantRecord): Promise<void> {
     if (!this.hass || !this._thresholdEdits || this._formBusy || this._blocked || this._conflict) return;
-    const { values, error } = spec.validate(this._thresholdEdits, this._l);
+    const { values, error } = spec.validate(this._thresholdEdits, this._l, this._inheritedThresholds(spec, plant).values);
     if (error) { this._thresholdError = error; return; }
     this._thresholdError = "";
     const hass = this.hass;
