@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-21
+
 ### Added
 
 - Italian translation of the panel, the dashboard card, setup, entity names, repairs, actions,
@@ -831,7 +833,8 @@ First public release.
 - English and German translations for the integration's entities, setup, and repairs. The
   sidebar panel is English-only.
 
-[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.18.0...HEAD
+[Unreleased]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.19.0...HEAD
+[0.19.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.18.0...0.19.0
 [0.18.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.17.0...0.18.0
 [0.17.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.16.0...0.17.0
 [0.16.0]: https://github.com/mikekuss/home-assistant-smart-plants/compare/0.15.0...0.16.0
