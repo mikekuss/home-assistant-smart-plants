@@ -631,7 +631,7 @@
   "services": {
     "log_care": {
       "name": "Pflege eintragen",
-      "description": "Trägt Pflege für Smart-Plants-Pflanzen ein oder markiert Pflegeaufgaben als erledigt. Mit einer Pflanze oder einer ihrer Entitäten als Ziel wird Pflege für die Pflanze eingetragen, mit der Entität einer Pflegeaufgabe wird diese Aufgabe als erledigt markiert. Ein eingetragenes Gießen schaltet Braucht Wasser außerdem 24 Stunden lang aus.",
+      "description": "Trägt Pflege für Smart-Plants-Pflanzen ein oder markiert Pflegeaufgaben als erledigt. Mit einer Pflanze oder einer ihrer Entitäten als Ziel wird Pflege für die Pflanze eingetragen, mit der Entität einer Pflegeaufgabe wird diese Aufgabe als erledigt markiert. Ein eingetragenes Gießen schaltet Braucht Wasser und Zu nass außerdem 24 Stunden lang aus.",
       "fields": {
         "kind": {
           "name": "Pflegeart",

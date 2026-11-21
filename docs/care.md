@@ -21,8 +21,8 @@ Notes take up to 500 characters, other details up to 120. Every limit in Smart P
 characters, so an emoji counts as one. The **⋮** menu of an entry edits or
 deletes it. Chips at the top of **Care history** filter by type once there is more than one.
 
-A **watering** keeps *Needs water* off for 24 hours from the time of the entry, so the soil
-sensor can catch up. A fertilizing, pruning or repotting entry also marks the matching care
+A **watering** keeps *Needs water* and *Too wet* off for 24 hours from the time of the entry,
+so the soil sensor can catch up and the fresh water can drain. A fertilizing, pruning or repotting entry also marks the matching care
 task as done.
 
 Each plant keeps up to 256 entries. Beyond that, Smart Plants removes the oldest watering

@@ -576,6 +576,47 @@ async def test_durable_watering_grace_expires_and_unavailable_stays_unavailable(
     assert controller.current_evaluation.needs_water is True
 
 
+async def test_watering_grace_keeps_too_wet_off_while_the_soil_drains(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    entry = await _setup(hass)
+    manager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    hass.states.async_set("sensor.source_a", "20", {"unit_of_measurement": "%"})
+    assigned = await manager.async_set_moisture_sources(
+        plant.id,
+        expected_revision=plant.revision,
+        sources=[{"entity_id": "sensor.source_a"}],
+    )
+    selected = await manager.async_set_moisture_primary(
+        plant.id,
+        expected_revision=assigned.revision,
+        primary_entity_id="sensor.source_a",
+    )
+    controller = manager.get_moisture_controller(plant.id)
+    now = dt_util.utcnow()
+    freezer.move_to(now)
+    await manager.async_add_watering(
+        plant.id,
+        expected_revision=selected.revision,
+        occurred_at=now.isoformat(),
+        note=None,
+    )
+    # The fresh water reaches the sensor: well above the maximum.
+    hass.states.async_set("sensor.source_a", "95", {"unit_of_measurement": "%"})
+    await hass.async_block_till_done()
+    assert controller.current_evaluation.computed_percent == 95
+    assert controller.current_evaluation.too_wet is False
+
+    # A day later the soil is still soaked: that is a problem.
+    expired = now + timedelta(hours=24)
+    freezer.move_to(expired)
+    async_fire_time_changed(hass, expired)
+    hass.states.async_set("sensor.source_a", "90", {"unit_of_measurement": "%"})
+    await hass.async_block_till_done()
+    assert controller.current_evaluation.too_wet is True
+
+
 @pytest.mark.parametrize("provenance", ["manual", "action", "automation"])
 async def test_watering_grace_counts_every_provenance(
     hass: HomeAssistant, freezer: Any, provenance: str

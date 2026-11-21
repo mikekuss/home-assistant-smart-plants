@@ -290,7 +290,7 @@ export const it: LanguageCatalog = {
   "care.no_amount": "Nessuna quantità misurata",
   "care.save_changes": "Salva le modifiche",
   "care.cancel_editing": "Annulla le modifiche",
-  "care.no_irrigation": "Le voci del registro non comandano mai l'irrigazione. Dopo un'annaffiatura registrata, «Da annaffiare» resta disattivato per 24 ore.",
+  "care.no_irrigation": "Le voci del registro non comandano mai l'irrigazione. Dopo un'annaffiatura registrata, «Da annaffiare» e «Troppo bagnata» restano disattivati per 24 ore.",
   "care.confirm_delete": "Eliminare questa voce ({kind})? L'operazione non può essere annullata.",
   "care.error_refresh_save": "Aggiorna il registro delle cure prima di salvare. La bozza viene conservata.",
   "care.error_refresh_delete": "Aggiorna il registro delle cure prima di eliminare.",

@@ -631,7 +631,7 @@
   "services": {
     "log_care": {
       "name": "Registra cura",
-      "description": "Registra una cura per le piante di Smart Plants o segna come fatte delle attività di cura. Scegli una pianta o una delle sue entità per registrare una cura per la pianta, oppure l'entità di un'attività di cura per segnare come fatta quell'attività. Registrare un'annaffiatura tiene anche spento «Da annaffiare» per 24 ore.",
+      "description": "Registra una cura per le piante di Smart Plants o segna come fatte delle attività di cura. Scegli una pianta o una delle sue entità per registrare una cura per la pianta, oppure l'entità di un'attività di cura per segnare come fatta quell'attività. Registrare un'annaffiatura tiene anche spenti «Da annaffiare» e «Troppo bagnata» per 24 ore.",
       "fields": {
         "kind": {
           "name": "Tipo di cura",

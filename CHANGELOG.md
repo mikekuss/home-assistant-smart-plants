@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- A logged watering now also keeps *Too wet* off for 24 hours, as it already did for *Needs
+  water*. Right after a watering the sensor reads the fresh water, often far above the
+  maximum, so every watering turned *Too wet* on for hours and the plant showed as a problem.
+  Soil that is still above the maximum after the 24 hours turns *Too wet* on as before.
+
 ## [0.19.0] - 2026-11-21
 
 ### Added
