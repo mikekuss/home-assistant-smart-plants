@@ -25,6 +25,24 @@ A **watering** keeps *Needs water* off for 24 hours from the time of the entry, 
 sensor can catch up. A fertilizing, pruning or repotting entry also marks the matching care
 task as done.
 
+### Waterings from the soil moisture sensor
+
+Smart Plants can log a watering by itself when nobody presses **Watered**. Turn on **Log
+waterings from the soil moisture sensor** in the [options](installation.md#options). Then a
+rise of a plant's soil moisture by 15 points or more within an hour logs a watering at the time
+of the rise:
+
+- Water reaching the sensor raises its reading this fast; soil drying or a sensor settling in
+  the pot changes it by a few points a day.
+- A watering logged in the 6 hours before, by hand or by Smart Plants, wins, so a watering is
+  never logged twice. The soil settling after a watering doesn't log another one either.
+- The entry has no note, and its `provenance` is `sensor` in the WebSocket API. Edit or
+  delete it like any other entry.
+- Smart Plants keeps the readings of the last hour in memory only, so it can't recognize a
+  watering while Home Assistant restarts.
+
+The option is off by default because it writes to the care history by itself.
+
 Each plant keeps up to 256 entries. Beyond that, Smart Plants removes the oldest watering
 first, then the oldest note, then the oldest entry that isn't the latest of its type. All
 plants share one storage file of at most 8 MiB. When it's full, the panel shows "Smart Plants

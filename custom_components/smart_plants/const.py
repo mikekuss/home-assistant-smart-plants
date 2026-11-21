@@ -19,13 +19,17 @@ CONF_FORECAST_REFRESH_MINUTES = "forecast_refresh_minutes"
 DEFAULT_FORECAST_REFRESH_MINUTES = 30
 MIN_FORECAST_REFRESH_MINUTES = 15
 MAX_FORECAST_REFRESH_MINUTES = 180
+# Log a watering when a plant's soil moisture jumps, for waterings nobody
+# logged by hand. Off by default: it writes to the care history by itself.
+CONF_DETECT_WATERING = "detect_watering"
+DEFAULT_DETECT_WATERING = False
 CONF_OPENPLANTBOOK_ENABLED = "openplantbook_enabled"
 CONF_OPENPLANTBOOK_CLIENT_ID = "openplantbook_client_id"
 CONF_OPENPLANTBOOK_CLIENT_SECRET = "openplantbook_client_secret"  # noqa: S105
 
 STORAGE_KEY = f"{DOMAIN}.inventory"
 STORAGE_MAJOR_VERSION = 1
-STORAGE_MINOR_VERSION = 19
+STORAGE_MINOR_VERSION = 20
 # Runtime state of reading care tasks; kept apart from the inventory so
 # sensor-driven changes never bump a plant revision.
 READING_STATE_STORAGE_KEY = f"{DOMAIN}.reading_state"

@@ -71,6 +71,7 @@ _MINOR_FORECAST_READINGS: Final = 16
 _MINOR_PEST_CONTROL: Final = 17
 _MINOR_PLANT_ARCHIVE: Final = 18
 _MINOR_STALE_AFTER_DEFAULTS: Final = 19
+_MINOR_DETECTED_WATERING: Final = 20
 
 # The staleness window every reading was stored with by default before minor
 # 19. It was always written out, so it cannot be told apart from a value a user
@@ -629,6 +630,22 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                             if role == "battery"
                             else DEFAULT_STALE_AFTER_SECONDS
                         )
+
+        if old_major_version == 1 and old_minor_version < _MINOR_DETECTED_WATERING:
+            # Minor 20 adds the "sensor" provenance for a watering that Smart
+            # Plants logged itself after a sudden rise of the soil moisture.
+            # Older storage cannot contain one.
+            for plant in data["plants"]:
+                events = plant.get("care_events") if isinstance(plant, dict) else None
+                if not isinstance(events, list):
+                    continue
+                if any(
+                    isinstance(event, dict) and event.get("provenance") == "sensor"
+                    for event in events
+                ):
+                    raise SmartPlantsInvalidStorageError(
+                        "older storage cannot contain detected waterings"
+                    )
 
         # Home Assistant writes the result back right after this returns.
         # Check it first, so storage that fails to migrate never replaces

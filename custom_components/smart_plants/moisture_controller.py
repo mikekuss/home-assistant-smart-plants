@@ -17,6 +17,7 @@ from .moisture_evaluator import (
     evaluate,
 )
 from .source_tracker import SourceTracker
+from .watering_detector import WateringDetector
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -57,6 +58,8 @@ class MoisturePlantController:
         self._active = False
         self._care_events: tuple[CareEvent, ...] = ()
         self._unsub_watering_deadline: Callable[[], None] | None = None
+        self._watering_detector = WateringDetector()
+        self._on_watering_detected: Callable[[str, datetime], None] | None = None
         self._tracker = SourceTracker(
             hass,
             is_valid=adapter.is_valid,
@@ -116,6 +119,12 @@ class MoisturePlantController:
         self._care_events = events
         if self._active:
             self._recompute_and_notify(dt_util.utcnow())
+
+    def set_watering_detection(
+        self, on_detected: Callable[[str, datetime], None] | None
+    ) -> None:
+        """Call ``on_detected(plant_id, when)`` for a sudden rise, or stop."""
+        self._on_watering_detected = on_detected
 
     def reconfigure(self, config: MoistureConfig) -> None:
         self._config = config
@@ -190,6 +199,16 @@ class MoisturePlantController:
             self._previous_needs_water = result.needs_water
             self._previous_too_wet = result.too_wet
         self._evaluation = result
+        if (
+            self._active
+            and self._on_watering_detected is not None
+            and result.computed_available
+            and result.computed_percent is not None
+            and self._watering_detector.observe(
+                now, float(result.computed_percent), self._care_events
+            )
+        ):
+            self._on_watering_detected(self._plant_id, now)
         if self._active and deadline is not None:
             self._unsub_watering_deadline = async_track_point_in_time(
                 self._hass, self._handle_watering_deadline, deadline
