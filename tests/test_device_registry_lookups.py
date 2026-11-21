@@ -9,13 +9,17 @@ Home Assistant 2026.11 deprecates three calls this integration used:
 
 For a custom integration they only log a warning, and the minimum supported
 version, 2026.8, doesn't report them at all. These tests make any call from
-the integration fail instead, so a later change can't bring one back.
+the integration fail instead, so a later change can't bring one back: on
+versions that report a deprecated call, the report fails the test; on 2026.8
+the three calls are guarded directly. Which calls each version still has as
+real methods differs, so each guard only applies where its target exists.
 """
 
 from __future__ import annotations
 
 import sys
 from collections.abc import Callable
+from types import FrameType
 from typing import Any
 
 import pytest
@@ -28,6 +32,14 @@ from .test_conditions import get_report
 from .test_triggers import manager_of, set_soil, setup_integration, watered_plant
 
 PACKAGE = "custom_components.smart_plants"
+
+
+def _from_integration(frame: FrameType | None) -> bool:
+    while frame is not None:
+        if frame.f_globals.get("__name__", "").startswith(PACKAGE):
+            return True
+        frame = frame.f_back
+    return False
 
 
 def _guarded(name: str, original: Callable[..., Any]) -> Callable[..., Any]:
@@ -43,23 +55,32 @@ def _guarded(name: str, original: Callable[..., Any]) -> Callable[..., Any]:
 def deprecated_lookups_fail(
     hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    report_usage = getattr(dr, "report_usage", None)
+    if report_usage is not None:
+
+        def fail_on_report(what: str, *args: Any, **kwargs: Any) -> None:
+            assert not _from_integration(sys._getframe(1)), f"Smart Plants {what}"
+            report_usage(what, *args, **kwargs)
+
+        monkeypatch.setattr(dr, "report_usage", fail_on_report)
     monkeypatch.setattr(
         dr.DeviceRegistry,
         "async_get_device",
         _guarded("async_get_device", dr.DeviceRegistry.async_get_device),
     )
-    config_entries: Any = vars(dr.DeviceEntry)["config_entries"]
-    assert isinstance(config_entries, property)
-    assert config_entries.fget is not None
-    monkeypatch.setattr(
-        dr.DeviceEntry,
-        "config_entries",
-        property(_guarded("DeviceEntry.config_entries", config_entries.fget)),
-    )
+    config_entries: Any = vars(dr.DeviceEntry).get("config_entries")
+    if isinstance(config_entries, property) and config_entries.fget is not None:
+        monkeypatch.setattr(
+            dr.DeviceEntry,
+            "config_entries",
+            property(_guarded("DeviceEntry.config_entries", config_entries.fget)),
+        )
     items = type(dr.async_get(hass).devices)
-    monkeypatch.setattr(
-        items, "values", _guarded("DeviceRegistry.devices.values", items.values)
-    )
+    values = getattr(items, "values", None)
+    if values is not None:
+        monkeypatch.setattr(
+            items, "values", _guarded("DeviceRegistry.devices.values", values)
+        )
 
 
 @pytest.mark.usefixtures("deprecated_lookups_fail")
