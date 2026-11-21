@@ -2978,10 +2978,12 @@ class SmartPlantsManager:
     def _device_area(self, plant_id: str) -> tuple[str | None, str | None, str | None]:
         """Return the device id, and its area id and name, of a plant."""
         from homeassistant.helpers import area_registry as ar  # noqa: PLC0415
-        from homeassistant.helpers import device_registry as dr  # noqa: PLC0415
 
-        device = dr.async_get(self._hass).async_get_device(
-            identifiers={(DOMAIN, plant_id)}
+        # Without a reconciler there is no config entry, and so no plant device.
+        device = (
+            self._reconciler.find_device(plant_id)
+            if self._reconciler is not None
+            else None
         )
         if device is None:
             return None, None, None
