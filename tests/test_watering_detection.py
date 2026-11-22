@@ -12,8 +12,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from unittest.mock import patch
 
 import pytest
+from custom_components.smart_plants import button as button_module
 from custom_components.smart_plants.care import CareEvent
 from custom_components.smart_plants.const import (
     DOMAIN,
@@ -33,9 +35,13 @@ from custom_components.smart_plants.storage import (
 )
 from custom_components.smart_plants.watering_detector import WateringDetector
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
+
+from tests.helpers import plant_device
 
 SOIL = "sensor.mock_soil"
 PERCENT = {"unit_of_measurement": "%"}
@@ -447,6 +453,59 @@ async def test_a_watering_logged_soon_after_replaces_the_detected_one(
         "sensor",
         "manual",
     ]
+
+
+async def test_the_log_care_action_replaces_the_detected_watering(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    freezer.move_to(T0)
+    manager = await _setup(hass)
+    plant = await _plant(manager, hass)
+    await _water(hass, freezer, T0)
+    device = plant_device(dr.async_get(hass), plant.id)
+    assert device is not None
+
+    # The card's Watered and an automation both use the log_care action.
+    freezer.move_to(T0 + timedelta(minutes=30))
+    await hass.services.async_call(
+        DOMAIN,
+        "log_care",
+        {"device_id": device.id, "kind": "watering", "note": "Rain water"},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    (event,) = _waterings(manager, plant.id)
+    assert event.provenance == "action"
+    assert event.payload["note"] == "Rain water"
+
+
+async def test_the_watered_button_replaces_the_detected_watering(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    freezer.move_to(T0)
+    with patch.object(
+        button_module.SmartPlantsButtonEntity,
+        "_attr_entity_registry_enabled_default",
+        new=True,
+    ):
+        manager = await _setup(hass)
+        plant = await _plant(manager, hass)
+    await _water(hass, freezer, T0)
+    button = er.async_get(hass).async_get_entity_id(
+        "button", DOMAIN, f"{DOMAIN}:{plant.id}:watered"
+    )
+    assert button is not None
+
+    freezer.move_to(T0 + timedelta(minutes=30))
+    await hass.services.async_call(
+        "button", "press", {"entity_id": button}, blocking=True
+    )
+    await hass.async_block_till_done()
+
+    (event,) = _waterings(manager, plant.id)
+    assert event.provenance == "action"
+    assert dt_util.parse_datetime(event.occurred_at) == T0 + timedelta(minutes=30)
 
 
 async def test_a_restored_plant_keeps_its_choice(hass: HomeAssistant) -> None:

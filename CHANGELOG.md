@@ -23,7 +23,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   decides: on indoors and in a greenhouse, off elsewhere, where rain raises the soil moisture
   too. **Settings** > **More details** sets it per plant. Existing plants start with it off.
   The care history marks these entries, a watering logged within 6 hours replaces the detected
-  one, and a change of the sensors behind the value doesn't count as a watering.
+  one, also from the card, the **Watered** button and the `smart_plants.log_care` action, and a
+  change of the sensors behind the value doesn't count as a watering.
 - The add-plant wizard asks for the **Placement** in its first step, and an info icon below
   **Placement** explains what it changes.
 

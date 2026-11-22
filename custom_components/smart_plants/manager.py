@@ -1109,11 +1109,8 @@ class SmartPlantsManager:
             self._raise_if_unavailable()
             current = self._require_plant(plant_id)
             self._require_optional_expected_revision(current, expected_revision)
-            base = current
-            if kind == "watering" and provenance != "sensor":
-                base = _without_detected_watering(current, occurred_at)
             updated, event = _with_care_event(
-                base,
+                current,
                 kind=kind,
                 occurred_at=occurred_at,
                 payload=payload,
@@ -3853,7 +3850,13 @@ def _with_care_event(  # noqa: PLR0913
         provenance=provenance,
         task_id=task_id,
     )
-    updated = current.with_next_revision(**_care_append_changes(current, event))
+    # Every way of logging a watering (the panel, the card, the Watered
+    # button and the log_care action) passes here, so each replaces a
+    # detected watering the same way.
+    base = current
+    if event.kind == "watering" and event.provenance != "sensor":
+        base = _without_detected_watering(current, event.occurred_at)
+    updated = base.with_next_revision(**_care_append_changes(base, event))
     return updated, event
 
 

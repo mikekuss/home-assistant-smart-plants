@@ -35,8 +35,11 @@ of the rise:
   the pot changes it by a few points a day.
 - A watering logged in the 6 hours before, by hand or by Smart Plants, wins, so a watering is
   never logged twice. The soil settling after a watering doesn't log another one either.
-- A watering you log within 6 hours of one Smart Plants detected, for example with
-  **Watered**, takes its place with your time and note instead of adding a second one.
+- A watering you log within 6 hours of one Smart Plants detected takes its place with your time
+  and note instead of adding a second one. This holds for **Watered** in the panel and on the
+  card, the **Watered** button entity and the `smart_plants.log_care` action. **Undo** after
+  such a replacement removes your entry and doesn't bring the detected one back, so the plant
+  has no watering logged for that time.
 - The care history marks the entry *logged from the soil moisture sensor*. It has no note, and
   its `provenance` is `sensor` in the WebSocket API. Edit or delete it like any other entry.
 - With several sensors, the value can jump without any water when a sensor drops out, comes
