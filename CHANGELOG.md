@@ -35,6 +35,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Home Assistant 2026.11 no longer logs deprecation warnings for Smart Plants' device lookups.
   The report for all plants, `smart_plants.log_care` on a plant device and archiving a plant used
   device registry calls that stop working in Home Assistant 2027.8 to 2027.10.
+- Smart Plants starts after an update even when converting the stored data takes it a little
+  over the 8 MiB storage limit. Before, setup failed for a store that was just under the limit.
+- `smart_plants.snooze` with *All plants* skips a plant that is paused while the action runs,
+  instead of failing for all plants.
+- Restoring a retired plant no longer accepts a name that another plant has, also when that
+  plant took it while the dialog was open. The dialog then offers a free name.
+- `smart_plants.get_report` recognizes the *All plants* entity when the target gives its
+  registry ID instead of its entity ID.
 
 ## [0.19.0] - 2026-11-21
 

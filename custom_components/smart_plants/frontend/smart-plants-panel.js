@@ -10583,7 +10583,8 @@ var Z = class extends S {
 		if (t && n) try {
 			let r = await L.restoreCheck(t, n.id);
 			if (this._dialog !== "restore" || this._detail !== n) return;
-			r.name_taken && !e.name_taken && (this._name = r.suggested_name), this._shareSensors = !1, this._check = r, this._dialogError = this.l.t("archive.restore_changed");
+			let i = (e) => e.sources_in_use.map((e) => e.entity_id).sort().join(",");
+			r.name_taken && (!e.name_taken || i(r) === i(e)) && (this._name = r.suggested_name), this._shareSensors = !1, this._check = r, this._dialogError = this.l.t("archive.restore_changed");
 		} catch (e) {
 			this._dialogError = this._friendly(e);
 		}

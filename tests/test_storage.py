@@ -5,7 +5,7 @@ import copy
 import json
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any
+from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
@@ -23,6 +23,7 @@ from custom_components.smart_plants.models import (
     PendingOperation,
     PlantRecord,
 )
+from custom_components.smart_plants.roles import require_role
 from custom_components.smart_plants.storage import (
     SmartPlantsInvalidStorageError,
     SmartPlantsStorageError,
@@ -911,6 +912,68 @@ async def test_save_at_the_size_limit_saves_and_loads_back(
 
     loaded = await SmartPlantsStore(hass).async_load()
     assert loaded.plants["plant-1"].name == snapshot.plants["plant-1"].name
+
+
+def _minor_19_store_at_the_size_limit(
+    hass_storage: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Seed minor-19 storage that is exactly as large as a save may write."""
+    plant = PlantRecord(
+        id="plant-1", revision=1, name="Aloe", created_at="2026-01-01T00:00:00Z"
+    ).as_storage()
+    for role in ("temperature", "humidity"):
+        definition = require_role(role)
+        assert definition.serialize_config is not None
+        config = dict(
+            cast(
+                "dict[str, Any]",
+                definition.serialize_config(definition.default_config()),
+            )
+        )
+        del config["species_defaults"]
+        plant["roles"][role] = config
+    data = {
+        "revision": 1,
+        "plants": [plant],
+        "pending_operations": [],
+        "tombstones": [],
+        "archived_plants": [],
+    }
+    _seed(hass_storage, major=STORAGE_MAJOR_VERSION, minor=19, data=data)
+    size = len(json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode())
+    monkeypatch.setattr(storage_module, "_INVENTORY_MAX_BYTES", size)
+
+
+async def test_migration_may_grow_storage_past_the_save_limit(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Storage saved right at the limit grows by a few bytes when a migration
+    # adds a field. It still loads, now and on the next start, but a save
+    # keeps the strict limit.
+    _minor_19_store_at_the_size_limit(hass_storage, monkeypatch)
+
+    snapshot = await SmartPlantsStore(hass).async_load()
+
+    assert hass_storage[STORAGE_KEY]["minor_version"] == STORAGE_MINOR_VERSION
+    reloaded = await SmartPlantsStore(hass).async_load()
+    assert reloaded.plants["plant-1"].name == "Aloe"
+    with pytest.raises(SmartPlantsStorageFullError):
+        await SmartPlantsStore(hass).async_save(snapshot)
+
+
+async def test_load_refuses_storage_beyond_the_headroom(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _minor_19_store_at_the_size_limit(hass_storage, monkeypatch)
+    monkeypatch.setattr(storage_module, "_INVENTORY_LOAD_HEADROOM_BYTES", 0)
+
+    with pytest.raises(SmartPlantsInvalidStorageError, match="size limit"):
+        await SmartPlantsStore(hass).async_load()
+    assert hass_storage[STORAGE_KEY]["minor_version"] == 19
 
 
 async def test_failed_automatic_migration_save_rejects_load(

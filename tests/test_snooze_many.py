@@ -555,6 +555,31 @@ async def test_snooze_action_with_all_plants_keeps_a_later_end(
     assert manager.get_plant(paused.id) == paused
 
 
+async def test_snooze_action_with_all_plants_skips_a_plant_paused_meanwhile(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    # The action picks the active plants before it waits for its turn to
+    # save. A plant paused in that moment is left alone, not an error.
+    freezer.move_to(NOW)
+    entry = await _setup(hass)
+    _aloe, office = await _plants(entry, "Aloe", "Office Aloe")
+    await hass.async_block_till_done()
+    manager = _manager(entry)
+    apply_changes = manager.async_apply_plant_changes
+
+    async def pause_first(*args: Any, **kwargs: Any) -> Any:
+        await manager.async_disable_plant(office.id, expected_revision=office.revision)
+        return await apply_changes(*args, **kwargs)
+
+    with patch.object(manager, "async_apply_plant_changes", new=pause_first):
+        await _call(
+            hass, SERVICE_SNOOZE, {"entity_id": ALL_PLANTS, "duration": {"days": 7}}
+        )
+
+    assert _ends(entry) == {"Aloe": WEEK_END, "Office Aloe": None}
+    assert manager.get_plant(office.id).lifecycle_state == "disabled"
+
+
 async def test_snooze_action_all_plants_wins_over_other_targets(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:

@@ -2767,8 +2767,8 @@ class SmartPlantsManager:
 
         ``expected_name_taken`` and ``expected_sources_in_use`` are what the
         restore check told the user. When the check now gives a different
-        answer, or the chosen name became taken, the restore is refused so
-        nothing is shared or renamed without the user being asked.
+        answer, or another plant has the chosen name, the restore is refused
+        so nothing is shared or renamed without the user being asked.
         """
         cleaned_name = _validate_name(name)
         self._raise_if_unavailable()
@@ -2789,7 +2789,7 @@ class SmartPlantsManager:
             if (
                 conflicts["name_taken"] != expected_name_taken
                 or in_use_now != set(expected_sources_in_use)
-                or (cleaned_name.casefold() in names and not expected_name_taken)
+                or cleaned_name.casefold() in names
             ):
                 raise SmartPlantsRestoreConflictError(plant_id)
             skipped = {

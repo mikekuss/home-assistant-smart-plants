@@ -663,18 +663,34 @@ def _snooze_end(call: ServiceCall) -> datetime:
     return end
 
 
+def _skip_inactive(change: PlantChange) -> PlantChange:
+    """
+    Return the change, but leave a plant alone that is no longer active.
+
+    All plants stands for the plants active when the change is saved, so a
+    plant paused while the action waited for its turn is skipped, not an error.
+    """
+
+    def apply(current: PlantRecord) -> PlantRecord:
+        if current.lifecycle_state != "active":
+            return current
+        return change(current)
+
+    return apply
+
+
 @verify_domain_control(DOMAIN)
 async def _async_snooze(call: ServiceCall) -> None:
     entry, manager = _loaded_runtime(call.hass)
     plants, all_plants = _snooze_plants(call, entry, manager, "plant_disabled_snooze")
     end = _snooze_end(call)
     # Snoozing all plants keeps a longer snooze someone set for one plant.
+    change = snooze_change(end, keep_later=all_plants)
+    if all_plants:
+        change = _skip_inactive(change)
     await _async_apply(
         manager,
-        [
-            (plant.id, plant.name, snooze_change(end, keep_later=all_plants))
-            for plant in plants
-        ],
+        [(plant.id, plant.name, change) for plant in plants],
         "snooze_rejected",
     )
     for plant in plants:

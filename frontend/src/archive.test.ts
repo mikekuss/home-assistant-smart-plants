@@ -290,6 +290,25 @@ describe("the archive page", () => {
     expect(h.calls.filter(c => c.type === "smart_plants/archive/restore")[1]).toMatchObject({ name: "Basil 2", include_sources_in_use: false, expected_name_taken: true, expected_sources_in_use: ["sensor.mock_moisture"] });
   });
 
+  it("offers a free name again when the chosen one was taken after the dialog opened", async () => {
+    let checks = 0;
+    const h = archiveHarness(msg => {
+      if (msg.type === "smart_plants/archive/restore_check") return { ...noConflicts, name_taken: true, suggested_name: ++checks === 1 ? "Basil 2" : "Basil 3" };
+      if (msg.type === "smart_plants/archive/restore") return Promise.reject({ code: "conflict", message: "changed" });
+      return undefined;
+    });
+    const el = await mount(h.hass);
+    await choose(el, "archive");
+    let page = await archivePage(el);
+    page.shadowRoot!.querySelector<HTMLButtonElement>(".archive-row")!.click(); await settle(el); page = await archivePage(el);
+    button(page.shadowRoot!, "Restore").click(); await settle(page); await settle(page);
+    page.shadowRoot!.querySelector<HTMLButtonElement>("dialog button.primary")!.click();
+    await settle(page); await settle(page); await settle(page);
+    expect(h.calls.filter(c => c.type === "smart_plants/archive/restore")[0]).toMatchObject({ name: "Basil 2", expected_name_taken: true });
+    expect(page.shadowRoot!.querySelector("dialog")!.textContent).toContain("Another plant took this name or a sensor in the meantime.");
+    expect(page.shadowRoot!.querySelector<HTMLInputElement>("#restore-name")!.value).toBe("Basil 3");
+  });
+
   it("gives the list and each retired plant an address", async () => {
     const el = await mount(archiveHarness().hass);
     el.route = { prefix: "/smart-plants", path: "" }; await settle(el);
