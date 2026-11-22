@@ -100,7 +100,10 @@ def _inventory_summary(snapshot: Any) -> dict[str, Any]:
         rest_period_count += plant.rest_period is not None
         if plant.winter_thresholds is not None:
             winter_count += 1
-            winter_active_count += winter_active(plant, today)
+            # A paused plant evaluates nothing, so its winter values don't apply.
+            winter_active_count += (
+                plant.lifecycle_state != "disabled" and winter_active(plant, today)
+            )
             for role in plant.winter_thresholds:
                 winter_role_counts[role] = winter_role_counts.get(role, 0) + 1
         if plant.snoozed_until is not None:

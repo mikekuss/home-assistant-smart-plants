@@ -469,20 +469,6 @@
           },
           "snoozed_until": {
             "name": "Stummgeschaltet bis"
-          },
-          "winter_values": {
-            "name": "Winterwerte",
-            "state": {
-              "true": "Aktiv",
-              "false": "Nicht aktiv"
-            }
-          },
-          "winter_reason": {
-            "name": "Grund für Winterwerte",
-            "state": {
-              "rest_period": "Ruhezeit",
-              "dormant_storage": "Winterquartier"
-            }
           }
         }
       },
@@ -517,20 +503,6 @@
           },
           "snoozed_until": {
             "name": "Stummgeschaltet bis"
-          },
-          "winter_values": {
-            "name": "Winterwerte",
-            "state": {
-              "true": "Aktiv",
-              "false": "Nicht aktiv"
-            }
-          },
-          "winter_reason": {
-            "name": "Grund für Winterwerte",
-            "state": {
-              "rest_period": "Ruhezeit",
-              "dormant_storage": "Winterquartier"
-            }
           }
         }
       },
@@ -565,20 +537,6 @@
           },
           "snoozed_until": {
             "name": "Stummgeschaltet bis"
-          },
-          "winter_values": {
-            "name": "Winterwerte",
-            "state": {
-              "true": "Aktiv",
-              "false": "Nicht aktiv"
-            }
-          },
-          "winter_reason": {
-            "name": "Grund für Winterwerte",
-            "state": {
-              "rest_period": "Ruhezeit",
-              "dormant_storage": "Winterquartier"
-            }
           }
         }
       },
@@ -613,20 +571,6 @@
           },
           "snoozed_until": {
             "name": "Stummgeschaltet bis"
-          },
-          "winter_values": {
-            "name": "Winterwerte",
-            "state": {
-              "true": "Aktiv",
-              "false": "Nicht aktiv"
-            }
-          },
-          "winter_reason": {
-            "name": "Grund für Winterwerte",
-            "state": {
-              "rest_period": "Ruhezeit",
-              "dormant_storage": "Winterquartier"
-            }
           }
         }
       },
@@ -661,20 +605,6 @@
           },
           "snoozed_until": {
             "name": "Stummgeschaltet bis"
-          },
-          "winter_values": {
-            "name": "Winterwerte",
-            "state": {
-              "true": "Aktiv",
-              "false": "Nicht aktiv"
-            }
-          },
-          "winter_reason": {
-            "name": "Grund für Winterwerte",
-            "state": {
-              "rest_period": "Ruhezeit",
-              "dormant_storage": "Winterquartier"
-            }
           }
         }
       },
@@ -709,20 +639,6 @@
           },
           "snoozed_until": {
             "name": "Stummgeschaltet bis"
-          },
-          "winter_values": {
-            "name": "Winterwerte",
-            "state": {
-              "true": "Aktiv",
-              "false": "Nicht aktiv"
-            }
-          },
-          "winter_reason": {
-            "name": "Grund für Winterwerte",
-            "state": {
-              "rest_period": "Ruhezeit",
-              "dormant_storage": "Winterquartier"
-            }
           }
         }
       },
@@ -742,20 +658,6 @@
           },
           "snoozed_until": {
             "name": "Stummgeschaltet bis"
-          },
-          "winter_values": {
-            "name": "Winterwerte",
-            "state": {
-              "true": "Aktiv",
-              "false": "Nicht aktiv"
-            }
-          },
-          "winter_reason": {
-            "name": "Grund für Winterwerte",
-            "state": {
-              "rest_period": "Ruhezeit",
-              "dormant_storage": "Winterquartier"
-            }
           }
         }
       }

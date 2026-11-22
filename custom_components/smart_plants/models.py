@@ -2853,6 +2853,15 @@ class RestPeriod:
         return {"start_month": self.start_month, "end_month": self.end_month}
 
 
+def thresholds_changed(previous: Any, config: Any, keys: Iterable[str]) -> bool:
+    """Return whether any of ``keys`` has another effective threshold."""
+    return any(
+        previous.effective_stress_threshold(key)
+        != config.effective_stress_threshold(key)
+        for key in keys
+    )
+
+
 # Roles whose problem thresholds a plant can replace with winter values.
 WINTER_THRESHOLD_ROLES: Final = (
     "temperature",

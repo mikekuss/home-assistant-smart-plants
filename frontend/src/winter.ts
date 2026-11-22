@@ -345,9 +345,13 @@ export function winterChip(l: Localizer, plant: PlantRecord, winter: WinterView 
   return l.t("winter.chip_storage");
 }
 // The sentence that opens the chip's box.
-export function winterReasonText(l: Localizer, plant: PlantRecord, winter: WinterView): string {
+export function winterReasonText(l: Localizer, plant: PlantRecord, winter: WinterView, today: string): string {
   const months = restMonths(l, plant);
-  return winter.reason === "rest_period" && months ? l.t("winter.reason_rest", { months }) : l.t("winter.reason_storage");
+  if (winter.reason === "rest_period" && months) return l.t("winter.reason_rest", { months });
+  // In dormant storage during the rest period, changing the placement alone
+  // doesn't end the winter values.
+  const resting = months !== null && localWinterReason({ ...plant, placement: null }, today) === "rest_period";
+  return resting ? l.t("winter.reason_storage_rest", { months }) : l.t("winter.reason_storage");
 }
 
 // A reading's range while winter values replace it, with the tooltip that

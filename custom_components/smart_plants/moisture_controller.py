@@ -134,25 +134,28 @@ class MoisturePlantController:
         self._watering_detector.reset()
         self._detector_members = None
 
-    def _clear_alert(self) -> None:
+    def _clear_alert(self, previous: MoistureConfig) -> None:
         """
-        Forget whether the alert was on, so the next evaluation starts fresh.
+        Forget an alert that was on if its side's thresholds changed.
 
         Used when other thresholds take over, such as winter values: an alert
         that was on must not wait for a clear value that belongs to the new
-        thresholds.
+        thresholds. A side whose thresholds stay the same keeps its alert.
         """
-        self._previous_needs_water = False
-        self._previous_too_wet = False
+        if previous.moisture_min != self._config.moisture_min:
+            self._previous_needs_water = False
+        if previous.moisture_max != self._config.moisture_max:
+            self._previous_too_wet = False
 
     def refresh(self) -> None:
         """Evaluate again with the current config and notify listeners."""
         self._recompute_and_notify(dt_util.utcnow())
 
     def reconfigure(self, config: MoistureConfig, *, clear_alert: bool = False) -> None:
+        previous = self._config
         self._config = config
         if clear_alert:
-            self._clear_alert()
+            self._clear_alert(previous)
         # New sources, aggregation or main sensor change the value by themselves.
         self._reset_watering_detector()
         self._tracker.configure(

@@ -6,7 +6,7 @@ import { parseOverview } from "./overview-model.js";
 import type { PlantOverview } from "./overview-model.js";
 import type { PlantRecord } from "./types.js";
 import { backendRoleDefaults, button, click, harness, overviewFor, panelText, role, sample, settle, snapshot } from "./test-helpers.js";
-import { deriveWinterValues, fieldHint, localWinterReason, nextRestStart, nextText, normalThresholds, showWinterHint, survivalWarning, validateWinterRole, winterChip, winterDraft, winterEditorRoles, winterLines, winterPayload, winterRangeText, winterSuggestion, winterThresholds, winterWhen } from "./winter.js";
+import { deriveWinterValues, fieldHint, localWinterReason, nextRestStart, nextText, normalThresholds, showWinterHint, survivalWarning, validateWinterRole, winterChip, winterDraft, winterEditorRoles, winterLines, winterPayload, winterRangeText, winterReasonText, winterSuggestion, winterThresholds, winterWhen } from "./winter.js";
 
 const source = (id: string) => ({ sources: [{ entity_id: id, registry_id: null }], primary_entity_id: id });
 // A synthetic plant with sensors for soil moisture, temperature, light and
@@ -154,6 +154,14 @@ describe("winter values logic", () => {
     expect(showWinterHint(plant(), cold)).toBe(false);
     expect(showWinterHint(plant({ rest_period: { start_month: 11, end_month: 2 } }), cold)).toBe(false);
     expect(showWinterHint(plant({ placement: storage, winter_thresholds: winterSet }), cold)).toBe(false);
+  });
+  it("words dormant storage so it stays true during the rest period", () => {
+    const storage = { mode: "dormant_storage", exposure: null, rain_exposure: null, container: null };
+    const view = { active: true, reason: "dormant_storage" as const, until: null, roles: ["temperature"] };
+    const both = plant({ placement: storage, rest_period: { start_month: 12, end_month: 2 }, winter_thresholds: winterSet });
+    expect(winterReasonText(ENGLISH, both, view, "2027-01-15")).toBe("Winter values apply while the placement is dormant storage and during the rest period (Dec–Feb). What changes:");
+    expect(winterReasonText(ENGLISH, both, view, "2026-06-15")).toContain("They end when you change the placement.");
+    expect(winterReasonText(ENGLISH, plant({ placement: storage, winter_thresholds: winterSet }), view, "2027-01-15")).toContain("They end when you change the placement.");
   });
   it("ignores malformed stored winter values", () => {
     expect(winterThresholds(plant({ winter_thresholds: { temperature: { cold_threshold_celsius: 0 } } }))).toBeNull();
@@ -327,6 +335,13 @@ describe("winter values on the plant page", () => {
     toasts.at(-1)!.action!.action(); await settle(el); await settle(el);
     expect(h.calls.filter(c => c.type === "smart_plants/plants/set_winter_thresholds").length).toBe(writes);
     expect(toasts.at(-1)?.message).toBe("Couldn't put the winter values back. Add them again under Settings.");
+  });
+  it("says a paused plant's winter values wait instead of naming the next rest period", async () => {
+    const { el } = await mount(plant({ winter_thresholds: winterSet, lifecycle_state: "disabled", rest_period: { start_month: 12, end_month: 2 } }), p => ({ ...overviewFor(p), winter: { active: false, reason: null, until: null, roles: ["temperature"] } }));
+    await openSettings(el);
+    const card = shadow(el).querySelector(".winter-card")!;
+    expect(card.textContent).toContain("They don't apply while the plant is paused.");
+    expect(card.textContent).not.toContain("Next:");
   });
   it("closes the winter box when another plant is opened", async () => {
     const { el } = await mount(plant({ winter_thresholds: winterSet, rest_period: { start_month: 12, end_month: 2 } }), activeOverview);

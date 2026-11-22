@@ -1356,6 +1356,8 @@ export const de: Catalog = {
   "winter.chip_storage": "Winterwerte · Winterquartier",
   "winter.reason_rest": "Winterwerte gelten in der Ruhezeit ({months}). Das ändert sich:",
   "winter.reason_storage": "Winterwerte gelten, solange der Standort Winterquartier ist. Sie enden, wenn du den Standort änderst. Das ändert sich:",
+  "winter.reason_storage_rest": "Winterwerte gelten, solange der Standort Winterquartier ist, und in der Ruhezeit ({months}). Das ändert sich:",
+  "winter.paused": "Sie gelten nicht, solange die Pflanze pausiert ist.",
   "winter.range_tooltip": "Winterwert. Sonst {normal}.",
   "winter.icon_label": "Winterwerte aktiv",
   "winter.hint_storage": "Im Winterquartier?",

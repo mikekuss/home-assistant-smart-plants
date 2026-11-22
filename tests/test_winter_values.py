@@ -722,3 +722,101 @@ async def test_paused_plant_overview_shows_normal_ranges(
     temperature = summary["roles"]["temperature"]
     assert temperature["normal_range"] is None
     assert temperature["range"]["min"] == 10.0
+
+
+async def test_switch_keeps_an_alert_whose_side_did_not_change(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    # The winter values keep the normal cold bounds (10/12 °C) and only change
+    # the hot ones. Too cold at 11 °C stays on when winter starts.
+    freezer.move_to(JUNE)
+    manager = _manager(await _setup(hass))
+    plant = await _garage_oleander(hass, manager, winter=False)
+    plant = await manager.async_set_winter_thresholds(
+        plant.id,
+        expected_revision=plant.revision,
+        winter_thresholds={
+            "temperature": {
+                "cold_threshold_celsius": 10.0,
+                "cold_clear_celsius": 12.0,
+                "hot_threshold_celsius": 30.0,
+                "hot_clear_celsius": 28.0,
+            }
+        },
+    )
+    hass.states.async_set(TEMPERATURE_SENSOR, "11", {"unit_of_measurement": "°C"})
+    await hass.async_block_till_done()
+    assert _temperature_stress(manager, plant.id) == "cold_stress"
+
+    await manager.async_update_plant(
+        plant.id,
+        expected_revision=plant.revision,
+        placement=PlantPlacement(mode="dormant_storage"),
+    )
+    await hass.async_block_till_done()
+
+    assert _temperature_stress(manager, plant.id) == "cold_stress"
+
+
+async def test_normal_edit_after_equal_winter_values_keeps_the_alert(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    # Normal values equal to the winter values make the switch out of winter
+    # a no-op. The role must still count as normal afterwards, so a later edit
+    # of the normal values keeps the alert, as edits always did.
+    winter = {
+        **WINTER_TEMPERATURE,
+        "cold_threshold_celsius": 4.0,
+        "cold_clear_celsius": 6.0,
+    }
+    freezer.move_to(JUNE)
+    manager = _manager(await _setup(hass))
+    plant = await _garage_oleander(hass, manager, winter=False)
+    plant = await manager.async_set_winter_thresholds(
+        plant.id,
+        expected_revision=plant.revision,
+        winter_thresholds={"temperature": winter},
+    )
+    plant = await manager.async_update_plant(
+        plant.id,
+        expected_revision=plant.revision,
+        placement=PlantPlacement(mode="dormant_storage"),
+    )
+    plant = await manager.async_set_role_threshold_overrides(
+        plant.id, role="temperature", expected_revision=plant.revision, values=winter
+    )
+    plant = await manager.async_update_plant(
+        plant.id,
+        expected_revision=plant.revision,
+        placement=PlantPlacement(mode="indoor"),
+    )
+    hass.states.async_set(TEMPERATURE_SENSOR, "3", {"unit_of_measurement": "°C"})
+    await hass.async_block_till_done()
+    hass.states.async_set(TEMPERATURE_SENSOR, "5", {"unit_of_measurement": "°C"})
+    await hass.async_block_till_done()
+    assert _temperature_stress(manager, plant.id) == "cold_stress"
+
+    await manager.async_set_role_threshold_overrides(
+        plant.id,
+        role="temperature",
+        expected_revision=plant.revision,
+        values={**winter, "cold_threshold_celsius": 4.5, "cold_clear_celsius": 6.5},
+    )
+    await hass.async_block_till_done()
+
+    assert _temperature_stress(manager, plant.id) == "cold_stress"
+
+
+async def test_diagnostics_do_not_count_paused_plants_as_active(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(JANUARY)
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    plant = await _garage_oleander(hass, manager)
+    await manager.async_disable_plant(plant.id, expected_revision=plant.revision)
+
+    inventory = (await async_get_config_entry_diagnostics(hass, entry))["inventory"]
+
+    assert inventory["winter_values_count"] == 1
+    assert inventory["winter_values_active_count"] == 0

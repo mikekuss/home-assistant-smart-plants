@@ -1355,6 +1355,8 @@ export const en = {
   "winter.chip_storage": "Winter values · dormant storage",
   "winter.reason_rest": "Winter values apply during the rest period ({months}). What changes:",
   "winter.reason_storage": "Winter values apply while the placement is dormant storage. They end when you change the placement. What changes:",
+  "winter.reason_storage_rest": "Winter values apply while the placement is dormant storage and during the rest period ({months}). What changes:",
+  "winter.paused": "They don't apply while the plant is paused.",
   "winter.range_tooltip": "Winter value. Normally {normal}.",
   "winter.icon_label": "Winter values apply",
   "winter.hint_storage": "In dormant storage?",

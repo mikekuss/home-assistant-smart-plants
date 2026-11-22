@@ -815,8 +815,8 @@ class SmartPlantsManager:
         config = winter_config(definition, plant, today)
         configs = self._controller_configs.setdefault(plant.id, {})
         previous = configs.get(role)
-        if previous == config:
-            return False
+        # Track the winter state even when the config stays the same, for
+        # example when the normal values equal the winter values.
         winter_roles = self._winter_roles.setdefault(plant.id, set())
         was_winter = role in winter_roles
         is_winter = winter_values_apply(definition, plant, today)
@@ -824,6 +824,8 @@ class SmartPlantsManager:
             winter_roles.add(role)
         else:
             winter_roles.discard(role)
+        if previous == config:
+            return False
         clear_alert = (
             (was_winter or is_winter)
             and previous is not None

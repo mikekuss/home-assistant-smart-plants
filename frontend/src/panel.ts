@@ -2415,7 +2415,9 @@ export class SmartPlantsPanel extends LitElement {
     const today = this._today();
     const active = o?.winter ? o.winter.active : localWinterReason(plant, today) !== null;
     const when = winterWhen(l, plant);
-    const next = !active && plant.rest_period ? nextText(l, plant, today) : null;
+    // A paused plant evaluates nothing, so its winter values wait until it resumes.
+    const paused = plant.lifecycle_state === "disabled";
+    const next = paused ? l.t("winter.paused") : !active && plant.rest_period ? nextText(l, plant, today) : null;
     return html`<section class="sp-card winter-card" aria-labelledby="winter-heading"><div class="card-h"><h3 id="winter-heading"><ha-icon aria-hidden="true" icon="mdi:snowflake"></ha-icon>${l.t("winter.title")}${active ? html`<span class="winter-badge">${l.t("winter.active_now")}</span>` : nothing}</h3></div>
       <div class="card-b">${when ? html`<p class="small muted">${when}${next ? html` ${next}` : nothing}</p>` : this._renderWinterNever(plant)}
         <ul class="winter-lines">${winterLines(l, plant).map(line => this._renderWinterLine(line))}</ul>
@@ -2425,7 +2427,7 @@ export class SmartPlantsPanel extends LitElement {
   // Under the header chip: why winter values apply and what they change.
   private _renderWinterBox(plant: PlantRecord, winter: NonNullable<PlantOverview["winter"]>) {
     const l = this._l;
-    return html`<div class="winter-box" id="winter-box"><p>${winterReasonText(l, plant, winter)}</p>
+    return html`<div class="winter-box" id="winter-box"><p>${winterReasonText(l, plant, winter, this._today())}</p>
       <ul>${winterLines(l, plant).filter(line => line.changed).map(line => this._renderWinterLine(line))}</ul>
       <button type="button" class="btn text sm" ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._openWinterEditor(plant)}>${l.t("winter.edit")}</button></div>`;
   }

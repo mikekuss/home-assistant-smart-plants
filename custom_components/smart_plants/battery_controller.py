@@ -82,14 +82,15 @@ class BatteryPlantController:
         self._active = False
         self._tracker.close()
 
-    def _clear_alert(self) -> None:
+    def _clear_alert(self, previous: BatteryConfig) -> None:
         """
         Forget whether the alert was on, so the next evaluation starts fresh.
 
         Used when other thresholds take over, such as winter values: an alert
         that was on must not wait for a clear value that belongs to the new
-        thresholds.
+        thresholds. The caller only asks when the thresholds changed.
         """
+        del previous
         self._previous_low_battery = False
 
     def refresh(self) -> None:
@@ -97,9 +98,10 @@ class BatteryPlantController:
         self._recompute_and_notify(dt_util.utcnow())
 
     def reconfigure(self, config: BatteryConfig, *, clear_alert: bool = False) -> None:
+        previous = self._config
         self._config = config
         if clear_alert:
-            self._clear_alert()
+            self._clear_alert(previous)
         self._tracker.configure(
             config.sources, stale_after=timedelta(seconds=config.stale_after_seconds)
         )

@@ -3317,6 +3317,8 @@ var Gn = {
 	"winter.chip_storage": "Winterwerte · Winterquartier",
 	"winter.reason_rest": "Winterwerte gelten in der Ruhezeit ({months}). Das ändert sich:",
 	"winter.reason_storage": "Winterwerte gelten, solange der Standort Winterquartier ist. Sie enden, wenn du den Standort änderst. Das ändert sich:",
+	"winter.reason_storage_rest": "Winterwerte gelten, solange der Standort Winterquartier ist, und in der Ruhezeit ({months}). Das ändert sich:",
+	"winter.paused": "Sie gelten nicht, solange die Pflanze pausiert ist.",
 	"winter.range_tooltip": "Winterwert. Sonst {normal}.",
 	"winter.icon_label": "Winterwerte aktiv",
 	"winter.hint_storage": "Im Winterquartier?"
@@ -4636,6 +4638,8 @@ var Gn = {
 	"winter.chip_storage": "Winter values · dormant storage",
 	"winter.reason_rest": "Winter values apply during the rest period ({months}). What changes:",
 	"winter.reason_storage": "Winter values apply while the placement is dormant storage. They end when you change the placement. What changes:",
+	"winter.reason_storage_rest": "Winter values apply while the placement is dormant storage and during the rest period ({months}). What changes:",
+	"winter.paused": "They don't apply while the plant is paused.",
 	"winter.range_tooltip": "Winter value. Normally {normal}.",
 	"winter.icon_label": "Winter values apply",
 	"winter.hint_storage": "In dormant storage?"
@@ -8671,9 +8675,12 @@ function Js(e, t, n) {
 	}
 	return e.t("winter.chip_storage");
 }
-function Ys(e, t, n) {
-	let r = Us(e, t);
-	return n.reason === "rest_period" && r ? e.t("winter.reason_rest", { months: r }) : e.t("winter.reason_storage");
+function Ys(e, t, n, r) {
+	let i = Us(e, t);
+	return n.reason === "rest_period" && i ? e.t("winter.reason_rest", { months: i }) : i !== null && qs({
+		...t,
+		placement: null
+	}, r) === "rest_period" ? e.t("winter.reason_storage_rest", { months: i }) : e.t("winter.reason_storage");
 }
 function Xs(e, t, n) {
 	let r = n.normal_range;
@@ -14141,7 +14148,7 @@ var $ = class e extends S {
 	}
 	_renderWinterCard(e) {
 		if (!xs(e)) return x;
-		let t = this._l, n = this._overview[e.id], r = this._formBusy || this._blocked || !!this._conflict, i = this._today(), a = n?.winter ? n.winter.active : qs(e, i) !== null, o = Ws(t, e), s = !a && e.rest_period ? Ks(t, e, i) : null;
+		let t = this._l, n = this._overview[e.id], r = this._formBusy || this._blocked || !!this._conflict, i = this._today(), a = n?.winter ? n.winter.active : qs(e, i) !== null, o = Ws(t, e), s = e.lifecycle_state === "disabled" ? t.t("winter.paused") : !a && e.rest_period ? Ks(t, e, i) : null;
 		return b`<section class="sp-card winter-card" aria-labelledby="winter-heading"><div class="card-h"><h3 id="winter-heading"><ha-icon aria-hidden="true" icon="mdi:snowflake"></ha-icon>${t.t("winter.title")}${a ? b`<span class="winter-badge">${t.t("winter.active_now")}</span>` : x}</h3></div>
       <div class="card-b">${o ? b`<p class="small muted">${o}${s ? b` ${s}` : x}</p>` : this._renderWinterNever(e)}
         <ul class="winter-lines">${Bs(t, e).map((e) => this._renderWinterLine(e))}</ul>
@@ -14150,7 +14157,7 @@ var $ = class e extends S {
 	}
 	_renderWinterBox(e, t) {
 		let n = this._l;
-		return b`<div class="winter-box" id="winter-box"><p>${Ys(n, e, t)}</p>
+		return b`<div class="winter-box" id="winter-box"><p>${Ys(n, e, t, this._today())}</p>
       <ul>${Bs(n, e).filter((e) => e.changed).map((e) => this._renderWinterLine(e))}</ul>
       <button type="button" class="btn text sm" ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._openWinterEditor(e)}>${n.t("winter.edit")}</button></div>`;
 	}
