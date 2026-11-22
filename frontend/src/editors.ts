@@ -1,5 +1,5 @@
 import { html, nothing } from "lit";
-import { builtin, keys, ownEntityIds, placements, resolveSource, rolePhrase, roleSourceWarning, singleSourcePrimary, sourceWarning, speciesCommonName, speciesRangesNotApplied } from "./model.js";
+import { builtin, detectsWaterings, keys, ownEntityIds, placements, resolveSource, rolePhrase, roleSourceWarning, singleSourcePrimary, sourceWarning, speciesCommonName, speciesRangesNotApplied } from "./model.js";
 import type { RoleSourceSpec } from "./model.js";
 import { isMessageKey } from "./localize.js";
 import type { Localizer } from "./localize.js";
@@ -23,13 +23,25 @@ export function thresholdKeyLabel(l: Localizer, key: typeof keys[number]): strin
 export function areaEditor(l: Localizer, area: string, areas: HAArea[], change: (v: string) => void) {
   return selectField(l, l.t("area.label"), area, [{ value: "", label: l.t("area.none") }, ...(area && !areas.some(a => a.area_id === area) ? [{ value: area, label: l.t("area.missing_option", { area }) }] : []), ...areas.map(a => ({ value: a.area_id, label: a.name }))], change);
 }
+// Info icon that explains what Placement changes besides the description.
+export function placementInfo(l: Localizer, text: string) {
+  return html`<details class="info-tip"><summary><ha-icon aria-hidden="true" icon="mdi:information-outline"></ha-icon>${l.t("placement.info_label")}</summary><p>${text}</p></details>`;
+}
 export function placementEditor(l: Localizer, p: PlantPlacement | null, change: (v: PlantPlacement | null) => void) {
   const patch = (part: Partial<PlantPlacement>) => change({ mode: "indoor", exposure: null, rain_exposure: null, container: null, ...p, ...part });
   const unspecified = l.t("common.not_specified");
-  return html`${selectField(l, l.t("placement.label"), p?.mode ?? "", [{ value: "", label: unspecified }, ...placements.map(v => ({ value: v, label: placementLabel(l, v) }))], v => v ? patch({ mode: v }) : change(null))}
+  return html`${selectField(l, l.t("placement.label"), p?.mode ?? "", [{ value: "", label: unspecified }, ...placements.map(v => ({ value: v, label: placementLabel(l, v) }))], v => v ? patch({ mode: v }) : change(null))}${placementInfo(l, l.t("placement.info"))}
     ${p ? html`${selectField(l, l.t("exposure.label"), p.exposure ?? "", ["", "full_sun", "partial_sun", "shade"].map(v => ({ value: v, label: v ? exposureLabel(l, v) : unspecified })), v => patch({ exposure: v || null }))}
     ${selectField(l, l.t("rain_exposure.label"), p.rain_exposure ?? "", ["", "none", "partial", "full"].map(v => ({ value: v, label: v ? rainExposureLabel(l, v) : unspecified })), v => patch({ rain_exposure: v || null }))}
     ${selectField(l, l.t("container.label"), p.container === null ? "" : String(p.container), [{ value: "", label: unspecified }, { value: "true", label: l.t("container.in_container") }, { value: "false", label: l.t("container.in_ground") }], v => patch({ container: v === "" ? null : v === "true" }))}` : nothing}`;
+}
+// Whether this plant logs waterings from its soil moisture sensor: follow the
+// placement (shown with what that means right now), always on or always off.
+export function wateringDetectionEditor(l: Localizer, choice: boolean | null, placement: PlantPlacement | null, change: (v: boolean | null) => void) {
+  const current = choice === null ? "" : choice ? "on" : "off";
+  const follow = detectsWaterings(null, placement) ? l.t("watering_detection.follow_on") : l.t("watering_detection.follow_off");
+  return html`${selectField(l, l.t("watering_detection.label"), current, [{ value: "", label: follow }, { value: "on", label: l.t("watering_detection.on") }, { value: "off", label: l.t("watering_detection.off") }], v => change(v === "" ? null : v === "on"))}
+    <p class="small muted">${l.t("watering_detection.hint")}</p>`;
 }
 function candidateLabel(l: Localizer, id: string, states: Record<string, HAState>): string {
   const state = states[id]; const notSupplied = l.t("sources.not_supplied_lower");

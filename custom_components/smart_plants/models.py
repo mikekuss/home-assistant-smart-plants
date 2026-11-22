@@ -50,6 +50,9 @@ SPECIES_COMMON_NAMES_MAX_COUNT: Final = 5
 SPECIES_COMMON_NAME_MAX_LEN: Final = 100
 COLLECTION_MAX_COUNT: Final = 1_000
 PLANT_TAG_MAX_COUNT: Final = 32
+# Placements where rain can't reach the pot, so a sudden rise of the soil
+# moisture is a watering. A plant follows this unless it has its own choice.
+WATERING_DETECTION_PLACEMENTS: Final = frozenset({"indoor", "greenhouse"})
 SENSOR_SOURCE_MAX_COUNT: Final = 32
 
 PlantLifecycleState = Literal["active", "disabled"]
@@ -3299,6 +3302,10 @@ class PlantRecord:
     rest_period: RestPeriod | None = None
     # End of an alert snooze as a UTC timestamp; ``None`` when not snoozed.
     snoozed_until: str | None = None
+    # Log a watering when the soil moisture jumps: ``None`` follows the
+    # placement (see ``detects_waterings``), ``True`` and ``False`` are a
+    # choice made for this plant.
+    watering_detection: bool | None = None
     # ``care_summary(care_events)``, derived on first use. Ordering the care
     # history is the costly part, and every reader of one record (overview,
     # entities, WebSocket replies) needs the same summary.
@@ -3310,6 +3317,21 @@ class PlantRecord:
         object.__setattr__(self, "extra_roles", _deep_freeze(self.extra_roles))
         object.__setattr__(self, "care_events", tuple(self.care_events))
         object.__setattr__(self, "care_tasks", tuple(self.care_tasks))
+
+    def detects_waterings(self) -> bool:
+        """
+        Return whether a sudden rise of the soil moisture logs a watering.
+
+        Without a choice for the plant it follows the placement: on where
+        rain can't reach the pot, off outdoors and without a placement,
+        where rain raises the soil moisture just the same.
+        """
+        if self.watering_detection is not None:
+            return self.watering_detection
+        return (
+            self.placement is not None
+            and self.placement.mode in WATERING_DETECTION_PLACEMENTS
+        )
 
     def care_summary(self) -> dict[str, Any]:
         """Return the watering count and the latest watering of the history."""
@@ -3381,6 +3403,7 @@ class PlantRecord:
                     "care_tasks",
                     "rest_period",
                     "snoozed_until",
+                    "watering_detection",
                 }
             ),
             "plant record",
@@ -3440,6 +3463,11 @@ class PlantRecord:
         snoozed_until = data.get("snoozed_until")
         if snoozed_until is not None:
             parse_utc_timestamp(snoozed_until, "plant snoozed_until")
+        if require_roles and "watering_detection" not in data:
+            raise ValueError("plant watering_detection is required")
+        watering_detection = data.get("watering_detection")
+        if watering_detection is not None and not isinstance(watering_detection, bool):
+            raise ValueError("plant watering_detection must be a boolean or null")
         rest_data = data.get("rest_period")
         rest_period = (
             RestPeriod.from_storage(rest_data) if rest_data is not None else None
@@ -3502,6 +3530,7 @@ class PlantRecord:
             care_tasks=care_tasks,
             rest_period=rest_period,
             snoozed_until=snoozed_until,
+            watering_detection=watering_detection,
         )
 
     def as_storage(self) -> dict[str, Any]:
@@ -3542,6 +3571,7 @@ class PlantRecord:
             if self.rest_period is not None
             else None,
             "snoozed_until": self.snoozed_until,
+            "watering_detection": self.watering_detection,
             "roles": {
                 **extra_roles,
                 "moisture": self.moisture.as_storage(),
@@ -3729,9 +3759,10 @@ class ArchivedPlant:
 
     The live plant, its device and its entities are gone. What stays is
     what the user wants to look back on, and enough to bring the plant back:
-    identity, species, photo, care log, dates, the area and the assigned
-    sensors. Thresholds, care tasks, the rest period and the snooze are not
-    kept. The record is read-only; only restore and delete change it.
+    identity, species, photo, care log, dates, the area, the assigned sensors
+    and the choice about detected waterings. Thresholds, care tasks, the rest
+    period and the snooze are not kept. The record is read-only; only restore
+    and delete change it.
     """
 
     id: str
@@ -3753,6 +3784,8 @@ class ArchivedPlant:
     device_id: str | None = None
     # Role key -> assigned sources, the main source first.
     sources: Mapping[str, tuple[SensorSource, ...]] = field(default_factory=dict)
+    # PlantRecord.watering_detection, so a restored plant keeps the choice.
+    watering_detection: bool | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "tags", tuple(self.tags))
@@ -3807,6 +3840,7 @@ class ArchivedPlant:
             area_name=area_name,
             device_id=device_id,
             sources=sources,
+            watering_detection=plant.watering_detection,
         )
 
     @classmethod
@@ -3833,6 +3867,7 @@ class ArchivedPlant:
                     "area_name",
                     "device_id",
                     "sources",
+                    "watering_detection",
                 }
             ),
             "archived plant",
@@ -3874,6 +3909,11 @@ class ArchivedPlant:
         species_data = data.get("species")
         placement_data = data.get("placement")
         image_data = data.get("image")
+        watering_detection = data.get("watering_detection")
+        if watering_detection is not None and not isinstance(watering_detection, bool):
+            raise ValueError(
+                "archived plant watering_detection must be a boolean or null"
+            )
         return cls(
             id=_require_identifier(data.get("id"), "archived plant id"),
             revision=_require_positive_int(
@@ -3913,6 +3953,7 @@ class ArchivedPlant:
             ),
             device_id=device_id,
             sources=_archived_sources_from_storage(data["sources"]),
+            watering_detection=watering_detection,
         )
 
     def as_storage(self) -> dict[str, Any]:
@@ -3938,6 +3979,7 @@ class ArchivedPlant:
                 role: [source.as_storage() for source in items]
                 for role, items in self.sources.items()
             },
+            "watering_detection": self.watering_detection,
         }
 
 

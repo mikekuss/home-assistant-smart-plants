@@ -167,7 +167,7 @@ async def test_minor_seventeen_migrates_to_an_empty_archive(
         {"revision": 1, "plants": [plant], "pending_operations": [], "tombstones": []},
     )
     snapshot = await SmartPlantsStore(hass).async_load()
-    assert STORAGE_MINOR_VERSION == 20
+    assert STORAGE_MINOR_VERSION == 21
     assert dict(snapshot.archived_plants) == {}
     assert set(snapshot.plants) == {"p"}
     assert hass_storage[STORAGE_KEY]["data"]["archived_plants"] == []

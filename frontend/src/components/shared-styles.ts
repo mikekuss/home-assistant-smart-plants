@@ -18,6 +18,19 @@ export const themeFallbacks = css`
   }
 `;
 
+// An info icon that opens a short explanation below it: native <details>, so
+// it works with the keyboard and screen readers without any state.
+export const infoTip = css`
+  details.info-tip { margin: 0; }
+  details.info-tip > summary { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 4px; margin: -6px -4px; border-radius: 8px; cursor: pointer; color: var(--sp-text); font-size: 13px; list-style: none; }
+  details.info-tip > summary::-webkit-details-marker { display: none; }
+  details.info-tip > summary::marker { content: ""; }
+  details.info-tip > summary:hover { background: color-mix(in srgb, var(--sp-text) 6%, transparent); }
+  details.info-tip > summary:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: 0; }
+  details.info-tip > summary ha-icon { --mdc-icon-size: 18px; color: var(--sp-primary); }
+  details.info-tip > p { margin: 4px 0 0; font-size: 13px; line-height: 1.4; color: var(--sp-text-secondary); }
+`;
+
 export const srOnly = css`
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 `;

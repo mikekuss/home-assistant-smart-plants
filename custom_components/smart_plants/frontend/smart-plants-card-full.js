@@ -646,6 +646,7 @@ var Ne = {
 	"conflict_field.name": "Name",
 	"conflict_field.acquired_at": "Angeschafft",
 	"conflict_field.placement": "Standort",
+	"conflict_field.watering_detection": "Gießen über den Bodenfeuchtesensor eintragen",
 	"conflict_field.category": "Kategorie",
 	"conflict_field.tags": "Tags",
 	"conflict_field.species": "Art",
@@ -679,6 +680,14 @@ var Ne = {
 	"placement.greenhouse": "Gewächshaus",
 	"placement.covered_outdoor": "draußen überdacht",
 	"placement.dormant_storage": "Winterquartier",
+	"placement.info_label": "Was der Standort ändert",
+	"placement.info": "Der Standort entscheidet auch, ob Smart Plants ein Gießen einträgt, wenn die Bodenfeuchte plötzlich steigt. Drinnen und im Gewächshaus tut es das. An den anderen Standorten und ohne Standort nicht, weil auch Regen die Bodenfeuchte steigen lässt. Du kannst das für jede Pflanze in ihren Einstellungen ändern.",
+	"watering_detection.label": "Gießen über den Bodenfeuchtesensor eintragen",
+	"watering_detection.follow_on": "Wie der Standort (an)",
+	"watering_detection.follow_off": "Wie der Standort (aus)",
+	"watering_detection.on": "An",
+	"watering_detection.off": "Aus",
+	"watering_detection.hint": "Ein Anstieg um 15 Punkte oder mehr innerhalb einer Stunde trägt ein Gießen ein, außer in den 6 Stunden davor wurde schon eines eingetragen.",
 	"exposure.label": "Sonneneinstrahlung",
 	"exposure.full_sun": "volle Sonne",
 	"exposure.partial_sun": "Halbschatten",
@@ -837,6 +846,7 @@ var Ne = {
 	"role_phrase.soil_temperature": "Bodentemperatur",
 	"role_phrase.co2": "CO₂",
 	"care.heading": "Pflegeverlauf",
+	"care.from_sensor": "vom Bodenfeuchtesensor eingetragen",
 	"care.watering_count_one": "{count} Gießvorgang.",
 	"care.watering_count_other": "{count} Gießvorgänge.",
 	"care.last_watered": "Zuletzt gegossen: {date}.",
@@ -1103,7 +1113,7 @@ var Ne = {
 	"wizard.targets_species": "Von OpenPlantBook übernommen. Ändere einen Wert, um ihn für diese Pflanze zu überschreiben.",
 	"wizard.targets_reset": "Auf Standardwerte zurücksetzen",
 	"wizard.details_section": "Weitere Details",
-	"wizard.details_summary": "Optional · Anschaffungsdatum, drinnen oder draußen, Kategorie, Tags",
+	"wizard.details_summary": "Optional · Anschaffungsdatum, Kategorie, Tags",
 	"wizard.acquired_date": "Anschaffungsdatum",
 	"wizard.tags": "Tags",
 	"wizard.tags_hint": "Tags mit Kommas trennen",
@@ -1899,6 +1909,7 @@ var Ne = {
 	"conflict_field.name": "Name",
 	"conflict_field.acquired_at": "Acquired",
 	"conflict_field.placement": "Placement",
+	"conflict_field.watering_detection": "Log waterings from the soil moisture sensor",
 	"conflict_field.category": "Category",
 	"conflict_field.tags": "Tags",
 	"conflict_field.species": "Species",
@@ -1932,6 +1943,14 @@ var Ne = {
 	"placement.greenhouse": "greenhouse",
 	"placement.covered_outdoor": "covered outdoor",
 	"placement.dormant_storage": "dormant storage",
+	"placement.info_label": "What placement changes",
+	"placement.info": "Placement also decides whether Smart Plants logs a watering when the soil moisture suddenly rises. Indoors and in a greenhouse it does. In the other placements, and without one, it doesn't, because rain can raise the soil moisture too. You can change this for each plant in its settings.",
+	"watering_detection.label": "Log waterings from the soil moisture sensor",
+	"watering_detection.follow_on": "Follow placement (on)",
+	"watering_detection.follow_off": "Follow placement (off)",
+	"watering_detection.on": "On",
+	"watering_detection.off": "Off",
+	"watering_detection.hint": "A rise of 15 points or more within an hour logs a watering, unless one was logged in the 6 hours before.",
 	"exposure.label": "Sun exposure",
 	"exposure.full_sun": "full sun",
 	"exposure.partial_sun": "partial sun",
@@ -2090,6 +2109,7 @@ var Ne = {
 	"role_phrase.soil_temperature": "soil temperature",
 	"role_phrase.co2": "CO₂",
 	"care.heading": "Care history",
+	"care.from_sensor": "logged from the soil moisture sensor",
 	"care.watering_count_one": "{count} watering event.",
 	"care.watering_count_other": "{count} watering events.",
 	"care.last_watered": "Last watered: {date}.",
@@ -2356,7 +2376,7 @@ var Ne = {
 	"wizard.targets_species": "Imported from OpenPlantBook. Edit any value to override it for this plant.",
 	"wizard.targets_reset": "Reset to defaults",
 	"wizard.details_section": "More details",
-	"wizard.details_summary": "Optional · date acquired, indoor or outdoor, category, tags",
+	"wizard.details_summary": "Optional · date acquired, category, tags",
 	"wizard.acquired_date": "Date acquired",
 	"wizard.tags": "Tags",
 	"wizard.tags_hint": "Separate tags with commas",
@@ -3152,6 +3172,7 @@ var Ne = {
 	"conflict_field.name": "Nome",
 	"conflict_field.acquired_at": "Data di acquisto",
 	"conflict_field.placement": "Posizione",
+	"conflict_field.watering_detection": "Registra le annaffiature dal sensore del terreno",
 	"conflict_field.category": "Categoria",
 	"conflict_field.tags": "Tag",
 	"conflict_field.species": "Specie",
@@ -3185,6 +3206,14 @@ var Ne = {
 	"placement.greenhouse": "serra",
 	"placement.covered_outdoor": "all'aperto al riparo",
 	"placement.dormant_storage": "ricovero invernale",
+	"placement.info_label": "Cosa cambia la posizione",
+	"placement.info": "La posizione decide anche se Smart Plants registra un'annaffiatura quando l'umidità del terreno sale all'improvviso. In casa e in serra lo fa. Nelle altre posizioni, e senza posizione, no, perché anche la pioggia fa salire l'umidità del terreno. Puoi cambiarlo per ogni pianta nelle sue impostazioni.",
+	"watering_detection.label": "Registra le annaffiature dal sensore del terreno",
+	"watering_detection.follow_on": "Come la posizione (attivo)",
+	"watering_detection.follow_off": "Come la posizione (spento)",
+	"watering_detection.on": "Attivo",
+	"watering_detection.off": "Spento",
+	"watering_detection.hint": "Una salita di 15 punti o più in un'ora registra un'annaffiatura, a meno che non ne sia già stata registrata una nelle 6 ore precedenti.",
 	"exposure.label": "Esposizione al sole",
 	"exposure.full_sun": "pieno sole",
 	"exposure.partial_sun": "sole parziale",
@@ -3343,6 +3372,7 @@ var Ne = {
 	"role_phrase.soil_temperature": "temperatura del terreno",
 	"role_phrase.co2": "CO₂",
 	"care.heading": "Registro delle cure",
+	"care.from_sensor": "registrata dal sensore del terreno",
 	"care.watering_count_one": "{count} annaffiatura.",
 	"care.watering_count_other": "{count} annaffiature.",
 	"care.last_watered": "Ultima annaffiatura: {date}.",
@@ -3609,7 +3639,7 @@ var Ne = {
 	"wizard.targets_species": "Importati da OpenPlantBook. Modifica un valore per cambiarlo solo per questa pianta.",
 	"wizard.targets_reset": "Ripristina i valori predefiniti",
 	"wizard.details_section": "Altri dettagli",
-	"wizard.details_summary": "Facoltativo · data di acquisto, in casa o all'aperto, categoria, tag",
+	"wizard.details_summary": "Facoltativo · data di acquisto, categoria, tag",
 	"wizard.acquired_date": "Data di acquisto",
 	"wizard.tags": "Tag",
 	"wizard.tags_hint": "Separa i tag con una virgola",
@@ -4612,7 +4642,18 @@ var U = o`
     /* Care reminders have their own colour, apart from the watering palette. */
     --sp-care: var(--purple-color, #8f5bd1);
   }
-`, Ze = o`
+`;
+o`
+  details.info-tip { margin: 0; }
+  details.info-tip > summary { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 4px; margin: -6px -4px; border-radius: 8px; cursor: pointer; color: var(--sp-text); font-size: 13px; list-style: none; }
+  details.info-tip > summary::-webkit-details-marker { display: none; }
+  details.info-tip > summary::marker { content: ""; }
+  details.info-tip > summary:hover { background: color-mix(in srgb, var(--sp-text) 6%, transparent); }
+  details.info-tip > summary:focus-visible { outline: 2px solid var(--sp-primary); outline-offset: 0; }
+  details.info-tip > summary ha-icon { --mdc-icon-size: 18px; color: var(--sp-primary); }
+  details.info-tip > p { margin: 4px 0 0; font-size: 13px; line-height: 1.4; color: var(--sp-text-secondary); }
+`;
+var Ze = o`
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 `;
 function Qe(e) {

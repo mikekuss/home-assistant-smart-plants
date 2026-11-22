@@ -72,6 +72,7 @@ _MINOR_PEST_CONTROL: Final = 17
 _MINOR_PLANT_ARCHIVE: Final = 18
 _MINOR_STALE_AFTER_DEFAULTS: Final = 19
 _MINOR_STRESS_THRESHOLD_DEFAULTS: Final = 20
+_MINOR_DETECTED_WATERING: Final = 21
 
 # The staleness window every reading was stored with by default before minor
 # 19. It was always written out, so it cannot be told apart from a value a user
@@ -651,6 +652,38 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                     config = roles.get(role)
                     if isinstance(config, dict):
                         config.setdefault("species_defaults", {})
+        if old_major_version == 1 and old_minor_version < _MINOR_DETECTED_WATERING:
+            # Minor 21 lets a plant log a watering when its soil moisture
+            # jumps. Existing plants keep logging waterings only by hand, so
+            # they get detection off; new plants follow their placement.
+            # A detected watering, with the "sensor" provenance, or a choice
+            # for the plant cannot come from an older minor.
+            for plant in data["plants"]:
+                if not isinstance(plant, dict):
+                    continue
+                if plant.get("watering_detection") is not None:
+                    raise SmartPlantsInvalidStorageError(
+                        "older storage cannot contain watering detection"
+                    )
+                plant["watering_detection"] = False
+                events = plant.get("care_events")
+                if isinstance(events, list) and any(
+                    isinstance(event, dict) and event.get("provenance") == "sensor"
+                    for event in events
+                ):
+                    raise SmartPlantsInvalidStorageError(
+                        "older storage cannot contain detected waterings"
+                    )
+            # Retired plants keep the choice for a restore, the same as the
+            # plants that existed before.
+            for archived in data.get("archived_plants", []):
+                if not isinstance(archived, dict):
+                    continue
+                if archived.get("watering_detection") is not None:
+                    raise SmartPlantsInvalidStorageError(
+                        "older storage cannot contain watering detection"
+                    )
+                archived["watering_detection"] = False
 
         # Home Assistant writes the result back right after this returns.
         # Check it first, so storage that fails to migrate never replaces

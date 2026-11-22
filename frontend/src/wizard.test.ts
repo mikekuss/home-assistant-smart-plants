@@ -142,16 +142,19 @@ describe("three-step creation wizard", () => {
 
   it("keeps every choice when going back and focuses the step heading", async () => {
     const el = await mount(harness([]).hass);
-    await fill(el, "Plant name", "Fern"); await fill(el, "Area", "kitchen"); await choosePhoto(el, pngFile());
+    await fill(el, "Plant name", "Fern"); await fill(el, "Area", "kitchen"); await fill(el, "Placement", "balcony"); await choosePhoto(el, pngFile());
     await click(el, "Next"); expect(root(el).activeElement?.tagName).toBe("H2");
     await fill(el, "Soil moisture sensor", "sensor.mock_soil"); await click(el, "Next");
     await open(el, "species"); await fill(el, "Ideal", "40"); await fill(el, "Scientific name", "Nephrolepis exaltata");
-    await open(el, "details"); await fill(el, "Tags", "shade, shade, fern"); await fill(el, "Placement", "balcony");
+    await open(el, "details"); await fill(el, "Tags", "shade, shade, fern");
     await click(el, "Back");
     expect(text(el)).toContain("Rubber Plant Moisture");
     await click(el, "Back");
     expect((field(root(el), "Plant name") as HTMLInputElement).value).toBe("Fern");
     expect((field(root(el), "Area") as HTMLSelectElement).value).toBe("kitchen");
+    // happy-dom doesn't apply a `selected` attribute set after the option is
+    // inserted, which browsers do, so check the attribute the panel renders.
+    expect(field(root(el), "Placement").querySelector("option[selected]")?.getAttribute("value")).toBe("balcony");
     expect(text(el)).toContain("image.png");
     await click(el, "Next"); await click(el, "Next");
     expect(text(el)).toContain("Kitchen · with photo");

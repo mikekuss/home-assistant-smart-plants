@@ -123,6 +123,9 @@ export interface PlantRecord {
   rest_period?: RestPeriod | null;
   // When the plant's alert snooze ends (UTC timestamp), or null.
   snoozed_until?: string | null;
+  // Log a watering when the soil moisture jumps: null follows the placement,
+  // true or false is the plant's own choice. See detectsWaterings().
+  watering_detection?: boolean | null;
 }
 
 // A retired plant: no device or entities any more, only a plain record with
@@ -229,7 +232,7 @@ export interface CareEvent {
   schema_version: 2;
   id: string;
   kind: "watering" | "fertilizing" | "pruning" | "repotting" | "pest_control" | "note" | "task";
-  provenance: "manual" | "action" | "automation";
+  provenance: "manual" | "action" | "automation" | "sensor";
   task_id: string | null;
   occurred_at: string;
   local_date: string;

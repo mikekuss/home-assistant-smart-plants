@@ -158,7 +158,7 @@ describe("care tasks and linked care events", () => {
     local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { note: "Sprayed" } };
   it("accepts schema 2 events with task links, the task kind and every provenance", () => {
     expect(validCareEvent(event)).toBe(true);
-    for (const provenance of ["manual", "action", "automation"]) expect(validCareEvent({ ...event, provenance })).toBe(true);
+    for (const provenance of ["manual", "action", "automation", "sensor"]) expect(validCareEvent({ ...event, provenance })).toBe(true);
     expect(validCareEvent({ ...event, kind: "watering", task_id: null, payload: { note: null } })).toBe(true);
   });
   it("checks pest control payloads", () => {

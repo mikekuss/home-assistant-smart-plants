@@ -92,6 +92,7 @@ from .roles import (
     with_species_threshold_defaults,
 )
 from .storage import SmartPlantsStorageError, SmartPlantsStore, _utcnow_iso
+from .watering_detector import DETECTION_QUIET
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -296,6 +297,7 @@ class SmartPlantsManager:
         self._unsub_registry: Callable[[], None] | None = None
         self._registry_subscribers: list[Callable[[], None]] = []
         self._registry_tasks: set[asyncio.Task[Any]] = set()
+        self._detected_watering_tasks: set[asyncio.Task[Any]] = set()
         # plant_id -> registered role -> controller. Role metadata owns
         # construction and configuration; adding a role never adds a manager map.
         self._controllers: dict[str, dict[str, Any]] = {}
@@ -662,6 +664,9 @@ class SmartPlantsManager:
             set_care_events = getattr(controller, "set_care_events", None)
             if callable(set_care_events):
                 set_care_events(plant.care_events)
+            set_detection = getattr(controller, "set_watering_detection", None)
+            if plant.detects_waterings() and callable(set_detection):
+                set_detection(self._handle_detected_watering)
         by_role[definition.key] = controller
         if start:
             controller.start()
@@ -734,6 +739,13 @@ class SmartPlantsManager:
         moisture_controller = existing.get("moisture")
         if moisture_controller is not None and base.care_events != plant.care_events:
             moisture_controller.set_care_events(plant.care_events)
+        if (
+            moisture_controller is not None
+            and base.detects_waterings() != plant.detects_waterings()
+        ):
+            moisture_controller.set_watering_detection(
+                self._handle_detected_watering if plant.detects_waterings() else None
+            )
         for definition in role_definitions():
             controller = existing.get(definition.key)
             if controller is None:
@@ -768,11 +780,16 @@ class SmartPlantsManager:
             self._unavailable = True
             self._loaded = False
 
-        tasks = [*self._registry_tasks, *self._snooze_tasks]
+        tasks = [
+            *self._registry_tasks,
+            *self._snooze_tasks,
+            *self._detected_watering_tasks,
+        ]
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         self._registry_tasks.clear()
         self._snooze_tasks.clear()
+        self._detected_watering_tasks.clear()
         # Drain event delivery. Every committed event is owned by the queue
         # or by a nested delivery task, so this wait is finite: the events
         # that have not started yet are skipped now that the manager closes.
@@ -826,6 +843,34 @@ class SmartPlantsManager:
         self._unsub_registry = self._hass.bus.async_listen(
             EVENT_ENTITY_REGISTRY_UPDATED, _schedule
         )
+
+    @callback
+    def _handle_detected_watering(self, plant_id: str, when: datetime) -> None:
+        if self._closing or self._unavailable:
+            return
+        task = self._hass.async_create_task(
+            self._async_log_detected_watering(plant_id, when)
+        )
+        self._detected_watering_tasks.add(task)
+        task.add_done_callback(self._detected_watering_tasks.discard)
+
+    async def _async_log_detected_watering(self, plant_id: str, when: datetime) -> None:
+        try:
+            await self.async_add_watering(
+                plant_id,
+                expected_revision=None,
+                occurred_at=when.isoformat(),
+                note=None,
+                provenance="sensor",
+            )
+        except Exception as err:  # noqa: BLE001
+            # A detected watering is a convenience; failing to save it, for
+            # example while the storage is full, must not disturb the sensor.
+            _LOGGER.warning(
+                "Could not log the watering detected for plant %s: %s", plant_id, err
+            )
+        else:
+            _LOGGER.debug("Logged a watering detected for plant %s", plant_id)
 
     @callback
     def _create_registry_task(self, event: Any) -> None:
@@ -1660,6 +1705,7 @@ class SmartPlantsManager:
         placement: PlantPlacement | None = _UNSET,
         tags: Iterable[str] = _UNSET,
         category: str | None = _UNSET,
+        watering_detection: bool | None = _UNSET,
     ) -> PlantRecord:
         # ``area_id`` is deliberately absent here: the device area is
         # authoritative on HA's registry once the device exists, so any
@@ -1684,6 +1730,10 @@ class SmartPlantsManager:
         if category is not _UNSET:
             changes["category"] = _validate_optional_short_string(
                 category, "category", _CATEGORY_MAX_LEN
+            )
+        if watering_detection is not _UNSET:
+            changes["watering_detection"] = _validate_watering_detection(
+                watering_detection
             )
 
         self._raise_if_unavailable()
@@ -2822,6 +2872,7 @@ class SmartPlantsManager:
                 category=record.category,
                 image=record.image,
                 care_events=record.care_events,
+                watering_detection=record.watering_detection,
             )
             moisture_values = {
                 key: value
@@ -3799,7 +3850,13 @@ def _with_care_event(  # noqa: PLR0913
         provenance=provenance,
         task_id=task_id,
     )
-    updated = current.with_next_revision(**_care_append_changes(current, event))
+    # Every way of logging a watering (the panel, the card, the Watered
+    # button and the log_care action) passes here, so each replaces a
+    # detected watering the same way.
+    base = current
+    if event.kind == "watering" and event.provenance != "sensor":
+        base = _without_detected_watering(current, event.occurred_at)
+    updated = base.with_next_revision(**_care_append_changes(base, event))
     return updated, event
 
 
@@ -3946,6 +4003,39 @@ def _build_care_event(  # noqa: PLR0913
     except (TypeError, ValueError) as err:
         raise SmartPlantsValidationError(str(err)) from err
     return event
+
+
+def _validate_watering_detection(value: object) -> bool | None:
+    """Return a plant's watering detection choice: on, off or None for placement."""
+    if value is not None and not isinstance(value, bool):
+        raise SmartPlantsValidationError("watering_detection must be a boolean or null")
+    return value
+
+
+def _without_detected_watering(current: PlantRecord, occurred_at: str) -> PlantRecord:
+    """
+    Return the plant without the detected waterings a logged one replaces.
+
+    A watering logged within the detector's quiet time of one Smart Plants
+    detected is the same watering, so the logged entry, with its time and
+    note, takes the detected one's place instead of adding a second.
+    """
+    when = dt_util.parse_datetime(occurred_at)
+    if when is None:
+        return current
+    kept = tuple(
+        event
+        for event in current.care_events
+        if not (
+            event.kind == "watering"
+            and event.provenance == "sensor"
+            and (detected := dt_util.parse_datetime(event.occurred_at)) is not None
+            and abs(when - detected) < DETECTION_QUIET
+        )
+    )
+    if len(kept) == len(current.care_events):
+        return current
+    return replace(current, care_events=kept)
 
 
 def _care_append_changes(current: PlantRecord, event: CareEvent) -> dict[str, Any]:

@@ -3,7 +3,7 @@ import { property, state } from "lit/decorators.js";
 import type { PropertyValues } from "lit";
 import { api, ApiError } from "./api.js";
 import type { UpdatePlantInput } from "./api.js";
-import { aggregationLabel, areaEditor, moistureEditor, placementEditor, placementLabel, roleSourcesEditor, selectField, snapshotView, textField } from "./editors.js";
+import { aggregationLabel, areaEditor, moistureEditor, placementEditor, placementLabel, roleSourcesEditor, selectField, snapshotView, textField, wateringDetectionEditor } from "./editors.js";
 import { createLocalizer, isMessageKey } from "./localize.js";
 import type { Localizer, MessageKey } from "./localize.js";
 import { CO2_STRESS_BUILTIN_DEFAULTS, CO2_STRESS_KEYS, CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, CONDUCTIVITY_STRESS_KEYS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_KEYS, LOW_BATTERY_STRESS_BUILTIN_DEFAULTS, LOW_BATTERY_STRESS_KEYS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_KEYS, SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, SOIL_TEMPERATURE_STRESS_KEYS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_KEYS, builtin, canonicalMoisture, co2StressInput, conductivityStressInput, confidenceGloss, confidenceLabel, contributorLabel, effectiveThresholds, humidityStressInput, keys, lowBatteryInput, lowLightInput, manualSpecies, missingMainSensor, moistureInput, moistureRole, plantDevice, problemBinaries, resolveSource, roleSourceConfig, roleSourceInput, roleSourceSpec, ROLE_SOURCE_SPECS, canonicalRoleSources, validateRoleSources, soilTemperatureStressInput, speciesCommonName, tags, temperatureStressInput, validateCo2StressOverrides, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowBatteryOverrides, validateLowLightOverrides, validateMoisture, validateSoilTemperatureStressOverrides, validateTaxonomy, validateTemperatureStressOverrides } from "./model.js";
@@ -11,7 +11,7 @@ import type { ProblemBinaryRole, SourceRole } from "./model.js";
 import "./components/index.js";
 import { fadeIn } from "./components/motion.js";
 import { photoRetryAt } from "./photo-retry.js";
-import { skeletonStyles, themeFallbacks } from "./components/shared-styles.js";
+import { infoTip, skeletonStyles, themeFallbacks } from "./components/shared-styles.js";
 import { isDefined } from "./ha-elements.js";
 import { chipText } from "./overview-model.js";
 import { READING_ROLES, ROLE_META, formatValue, isReadingRole, readingLabel, relativeTime } from "./status.js";
@@ -159,7 +159,7 @@ const PLANT_ROUTE = /^\/plant\/([^/]+)(?:\/(sensors))?\/?$/;
 const NOTIFICATIONS_ROUTE = /^\/notifications\/?$/;
 // The Retired plants list, or one retired plant.
 const RETIRED_ROUTE = /^\/retired(?:\/([^/]+))?\/?$/;
-interface Edits { name: string; acquired: string; placement: PlantPlacement | null; category: string; tagText: string; area: string; common: string; latin: string; moisture: MoistureInput | null }
+interface Edits { name: string; acquired: string; placement: PlantPlacement | null; wateringDetection: boolean | null; category: string; tagText: string; area: string; common: string; latin: string; moisture: MoistureInput | null }
 type SaveKind = "identity" | "taxonomy" | "area" | "moisture" | "species";
 interface Conflict { before: PlantRecord; after: PlantRecord; changes: string[] }
 
@@ -200,7 +200,7 @@ function stored(key: string): string | null { try { return localStorage.getItem(
 function store(key: string, value: string): void { try { localStorage.setItem(key, value); } catch { /* not persisted */ } }
 
 export class SmartPlantsPanel extends LitElement {
-  static styles = [themeFallbacks, skeletonStyles, styles, plantStyles, carePlanStyles];
+  static styles = [themeFallbacks, skeletonStyles, styles, plantStyles, carePlanStyles, infoTip];
   // The bundle this document is running, taken from the URL it was loaded from.
   static bundleVersion: string | null = loadedBundleVersion(import.meta.url);
   @property({ attribute: false }) public hass?: HomeAssistantLike;
@@ -732,13 +732,13 @@ export class SmartPlantsPanel extends LitElement {
   }
   private _areaName(id: string): string { return this._areas.find(a => a.area_id === id)?.name ?? (id || this._l.t("area.none")); }
   private _setConflict(before: PlantRecord, after: PlantRecord): void {
-    const fields = ["name", "acquired_at", "placement", "category", "tags", "species", "image", "lifecycle_state", "roles"] as const;
+    const fields = ["name", "acquired_at", "placement", "watering_detection", "category", "tags", "species", "image", "lifecycle_state", "roles"] as const;
     const changes = fields.filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k])).map(k => k === "roles" ? this._l.t("conflict.roles_changed") : `${this._l.t(`conflict_field.${k}`)}: ${JSON.stringify(before[k])} → ${JSON.stringify(after[k])}`);
     this._conflict = { before, after, changes }; this._preview = null; this._providerRequest++;
   }
   private _beginEdit(plant: PlantRecord): void {
     const m = moistureRole(plant); this._base = structuredClone(plant); this._baseArea = plantDevice(plant, this._devices)?.area_id ?? "";
-    this._edits = { name: plant.name, acquired: plant.acquired_at ?? "", placement: structuredClone(plant.placement), category: plant.category ?? "", tagText: plant.tags.join(", "), area: this._baseArea, common: plant.species?.snapshot.common_name ?? "", latin: plant.species?.snapshot.latin_name ?? "", moisture: m ? moistureInput(m) : null };
+    this._edits = { name: plant.name, acquired: plant.acquired_at ?? "", placement: structuredClone(plant.placement), wateringDetection: plant.watering_detection ?? null, category: plant.category ?? "", tagText: plant.tags.join(", "), area: this._baseArea, common: plant.species?.snapshot.common_name ?? "", latin: plant.species?.snapshot.latin_name ?? "", moisture: m ? moistureInput(m) : null };
     this._conflict = null; this._areaReview = false; this._preview = null; this._results = []; this._provider = "manual"; this._thresholdRole = null; this._thresholdEdits = null; this._thresholdBaseline = null; this._thresholdError = ""; this._thresholdSaved = {}; this._pendingThresholdSwitch = null;
     this._sourceRole = null; this._sourceEdits = null; this._sourceBaseline = null; this._sourceError = ""; this._sourceSaved = {}; this._pendingSourceSwitch = null; this._allSourceSensors = false; this._sourceUnavailable = null; this._moistureSourceError = "";
   }
@@ -1163,7 +1163,7 @@ export class SmartPlantsPanel extends LitElement {
           const extra = careDetails(l, event, fieldLabel);
           const when = l.recordedDateTime(event.occurred_at);
           return html`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${CARE_ICONS[event.kind]}></ha-icon></span>
-            <span class="li-main"><span class="li-title">${eventTitle(event)}</span><span class="li-sub"><time datetime=${event.occurred_at}>${when}</time>${extra.map(part => html` · <span class="prose">${part}</span>`)}</span></span>
+            <span class="li-main"><span class="li-title">${eventTitle(event)}</span><span class="li-sub"><time datetime=${event.occurred_at}>${when}</time>${event.provenance === "sensor" ? ` · ${l.t("care.from_sensor")}` : nothing}${extra.map(part => html` · <span class="prose">${part}</span>`)}</span></span>
             <ha-dropdown @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => { if (e.detail.item.value === "edit") { this._careTaskId = null; this._editCare(event); this._goTo("care", "#care-form select, #care-form input"); } else if (e.detail.item.value === "delete") void this._deleteCare(plant, event); }}>
               <button slot="trigger" type="button" class="icon-btn" ?disabled=${busy} aria-label=${l.t("care.event_menu", { kind: kindLabel(event.kind), date: when })}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
               <ha-dropdown-item value="edit" ?disabled=${busy}>${l.t("care.edit_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>
@@ -1182,7 +1182,7 @@ export class SmartPlantsPanel extends LitElement {
     const input: UpdatePlantInput = { plant_id: base.id, expected_revision: base.revision };
     if (kind === "identity") {
       if (!edit.name.trim() || !withinChars(edit.name.trim(), 200) || (edit.acquired && !Number.isFinite(Date.parse(edit.acquired)))) { this._error = this._l.t("error.identity"); return; }
-      Object.assign(input, { name: edit.name.trim(), acquired_at: edit.acquired ? new Date(edit.acquired).toISOString() : null, placement: edit.placement });
+      Object.assign(input, { name: edit.name.trim(), acquired_at: edit.acquired ? new Date(edit.acquired).toISOString() : null, placement: edit.placement, watering_detection: edit.wateringDetection });
     }
     if (kind === "taxonomy") {
       const error = validateTaxonomy(edit.category, tags(edit.tagText), this._l); if (error) { this._error = error; return; }
@@ -1263,6 +1263,7 @@ export class SmartPlantsPanel extends LitElement {
     if (edits.name !== before.name) retained.name = edits.name;
     if (edits.acquired !== (before.acquired_at ?? "")) retained.acquired = edits.acquired;
     if (JSON.stringify(edits.placement) !== JSON.stringify(before.placement)) retained.placement = edits.placement;
+    if (edits.wateringDetection !== (before.watering_detection ?? null)) retained.wateringDetection = edits.wateringDetection;
     if (edits.category !== (before.category ?? "")) retained.category = edits.category;
     if (JSON.stringify(tags(edits.tagText)) !== JSON.stringify(before.tags)) retained.tagText = edits.tagText;
     if (edits.area !== this._baseArea) retained.area = edits.area;
@@ -2541,6 +2542,7 @@ export class SmartPlantsPanel extends LitElement {
       ${this._expander("other_targets", "mdi:tune-variant", l.t("other_targets.heading"), l.t("other_targets.secondary"), () => this._renderOtherTargets(plant))}
       ${this._expander("more_details", "mdi:tag-outline", l.t("more_details.heading"), l.t("more_details.secondary"), () => html`
         <fieldset ?disabled=${disabled}>${placementEditor(l, edit.placement, v => this._edit({ placement: v }))}
+          ${wateringDetectionEditor(l, edit.wateringDetection, edit.placement, v => this._edit({ wateringDetection: v }))}
           <label>${l.t("detail.acquired")}<input type="date" .value=${edit.acquired.slice(0, 10)} @input=${(e: Event) => this._edit({ acquired: (e.target as HTMLInputElement).value })}></label>
           <div class="actions">${this._saveButton("identity", l.t("more_details.save_identity"))}</div></fieldset>
         <fieldset ?disabled=${disabled}>${textField(l.t("taxonomy.category"), edit.category, v => this._edit({ category: v }), "text", 60)}${textField(l.t("taxonomy.tags"), edit.tagText, v => this._edit({ tagText: v }), "text", 2000)}<p class="small muted">${l.t("taxonomy.hint")}</p>

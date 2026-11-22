@@ -17,6 +17,7 @@ from .moisture_evaluator import (
     evaluate,
 )
 from .source_tracker import SourceTracker
+from .watering_detector import WateringDetector
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -57,6 +58,11 @@ class MoisturePlantController:
         self._active = False
         self._care_events: tuple[CareEvent, ...] = ()
         self._unsub_watering_deadline: Callable[[], None] | None = None
+        self._watering_detector = WateringDetector()
+        self._on_watering_detected: Callable[[str, datetime], None] | None = None
+        # The sources behind the value the detector saw last; when they
+        # change, the value can jump without any water.
+        self._detector_members: tuple[str, ...] | None = None
         self._tracker = SourceTracker(
             hass,
             is_valid=adapter.is_valid,
@@ -117,8 +123,21 @@ class MoisturePlantController:
         if self._active:
             self._recompute_and_notify(dt_util.utcnow())
 
+    def set_watering_detection(
+        self, on_detected: Callable[[str, datetime], None] | None
+    ) -> None:
+        """Call ``on_detected(plant_id, when)`` for a sudden rise, or stop."""
+        self._on_watering_detected = on_detected
+        self._reset_watering_detector()
+
+    def _reset_watering_detector(self) -> None:
+        self._watering_detector.reset()
+        self._detector_members = None
+
     def reconfigure(self, config: MoistureConfig) -> None:
         self._config = config
+        # New sources, aggregation or main sensor change the value by themselves.
+        self._reset_watering_detector()
         self._tracker.configure(
             config.sources, stale_after=timedelta(seconds=config.stale_after_seconds)
         )
@@ -190,6 +209,7 @@ class MoisturePlantController:
             self._previous_needs_water = result.needs_water
             self._previous_too_wet = result.too_wet
         self._evaluation = result
+        self._detect_watering(now, result)
         if self._active and deadline is not None:
             self._unsub_watering_deadline = async_track_point_in_time(
                 self._hass, self._handle_watering_deadline, deadline
@@ -199,6 +219,21 @@ class MoisturePlantController:
                 listener()
             except Exception:
                 _LOGGER.exception("moisture controller listener raised; continuing")
+
+    def _detect_watering(self, now: datetime, result: MoistureEvaluation) -> None:
+        if not self._active or self._on_watering_detected is None:
+            return
+        if not result.computed_available or result.computed_percent is None:
+            # Without a value the sources come back one by one; start afresh.
+            self._reset_watering_detector()
+            return
+        if result.members != self._detector_members:
+            self._watering_detector.reset()
+            self._detector_members = result.members
+        if self._watering_detector.observe(
+            now, float(result.computed_percent), self._care_events
+        ):
+            self._on_watering_detected(self._plant_id, now)
 
     @callback
     def _handle_watering_deadline(self, _now: datetime) -> None:
