@@ -13,6 +13,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   maximum, so every watering turned *Too wet* on for hours and the plant showed as a problem.
   Soil that is still above the maximum after the 24 hours turns *Too wet* on as before.
 
+### Fixed
+
+- Home Assistant 2026.11 no longer logs deprecation warnings for Smart Plants' device lookups.
+  The report for all plants, `smart_plants.log_care` on a plant device and archiving a plant used
+  device registry calls that stop working in Home Assistant 2027.8 to 2027.10.
+
 ## [0.19.0] - 2026-11-21
 
 ### Added

@@ -117,6 +117,10 @@ class SmartPlantsDeviceReconciler:
     def _identifier(self, plant_id: str) -> set[tuple[str, str]]:
         return {(DOMAIN, plant_id)}
 
+    def find_device(self, plant_id: str) -> dr.DeviceEntry | None:
+        """Return the device of a plant, if the registry has one."""
+        return self._find_device(self._registry(), plant_id)
+
     def _find_device(
         self, registry: dr.DeviceRegistry, plant_id: str
     ) -> dr.DeviceEntry | None:

@@ -229,7 +229,7 @@ def _resolve_plant_device(
         raise _error("unknown_target", target=device_id)
     label = device.name_by_user or device.name or device_id
     plant_id = plant_id_of_device(device)
-    if entry.entry_id not in device.config_entries or plant_id is None:
+    if device.config_entry_id != entry.entry_id or plant_id is None:
         raise _error("invalid_target", target=label)
     return _plant_for_target(manager, plant_id, label, disabled_key)
 

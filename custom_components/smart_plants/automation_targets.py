@@ -333,7 +333,8 @@ def resolve_plant_devices(
     if targets_all_plants(hass, target):
         return [
             device
-            for device in devices.devices.values()
+            for entry in hass.config_entries.async_entries(DOMAIN)
+            for device in dr.async_entries_for_config_entry(devices, entry.entry_id)
             if plant_id_of_device(device) is not None
         ]
     selected = async_extract_referenced_entity_ids(
