@@ -14,12 +14,14 @@ import { activeSnooze, snoozeChipText } from "../snooze.js";
 
 export const DOCUMENTATION_URL = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md";
 
-const TILES: Record<OverviewFilter, { label: MessageKey; icon: string; tone: string }> = {
-  all: { label: "overview.tile_all", icon: "mdi:sprout", tone: "var(--sp-primary)" },
-  water: { label: "overview.tile_water", icon: "mdi:water-alert", tone: "var(--sp-warning)" },
-  problems: { label: "overview.tile_problems", icon: "mdi:alert-circle", tone: "var(--sp-error)" },
-  sensors: { label: "overview.tile_sensors", icon: "mdi:clock-alert-outline", tone: "var(--sp-disabled)" },
-  care: { label: "overview.tile_care", icon: "mdi:calendar-check-outline", tone: "var(--sp-care)" },
+// `label` names the filter; `count` is the singular and plural text shown
+// next to the number on the tile, so it reads "1 problem", "2 problems".
+const TILES: Record<OverviewFilter, { label: MessageKey; count: [MessageKey, MessageKey]; icon: string; tone: string }> = {
+  all: { label: "overview.tile_all", count: ["overview.tile_count_all_one", "overview.tile_count_all_other"], icon: "mdi:sprout", tone: "var(--sp-primary)" },
+  water: { label: "overview.tile_water", count: ["overview.tile_count_water_one", "overview.tile_count_water_other"], icon: "mdi:water-alert", tone: "var(--sp-warning)" },
+  problems: { label: "overview.tile_problems", count: ["overview.tile_count_problems_one", "overview.tile_count_problems_other"], icon: "mdi:alert-circle", tone: "var(--sp-error)" },
+  sensors: { label: "overview.tile_sensors", count: ["overview.tile_count_sensors_one", "overview.tile_count_sensors_other"], icon: "mdi:clock-alert-outline", tone: "var(--sp-disabled)" },
+  care: { label: "overview.tile_care", count: ["overview.tile_count_care_one", "overview.tile_count_care_other"], icon: "mdi:calendar-check-outline", tone: "var(--sp-care)" },
 };
 const SORT_LABELS: Record<OverviewSort, MessageKey> = { attention: "overview.sort_attention", name: "overview.sort_name", area: "overview.sort_area" };
 const SORT_ICONS: Record<OverviewSort, string> = { attention: "mdi:alert-circle-outline", name: "mdi:sort-alphabetical-ascending", area: "mdi:texture-box" };
@@ -242,7 +244,7 @@ export class SmartPlantsOverview extends LitElement {
     const items = this._items();
     const shown = items.filter(item => matchesFilter(this._filter, item.status, item.careDue, item.snoozed) && matchesSearch(item, this._query));
     const filtered = this._filter !== "all";
-    return html`<div class="countline"><p role="status">${l.t("list.count_filtered", { shown: shown.length, total: items.length })}${filtered ? ` · ${l.t(TILES[this._filter].label)}` : ""}</p>
+    return html`<div class="countline"><p role="status">${l.tn(items.length, "list.count_filtered_one", "list.count_filtered_other", { shown: shown.length, total: items.length })}${filtered ? ` · ${l.t(TILES[this._filter].label)}` : ""}</p>
         ${filtered || this._query ? html`<button type="button" class="text-button" @click=${() => this._clear()}>${l.t("overview.clear_filter")}</button>` : nothing}</div>
       ${shown.length ? this._renderList(shown) : this._renderNoResults()}`;
   }
@@ -268,7 +270,7 @@ export class SmartPlantsOverview extends LitElement {
     return html`<button type="button" class="tile ${count === 0 ? "zero" : ""}" style="--tone:${tile.tone}" aria-pressed=${this._filter === filter ? "true" : "false"}
       @click=${() => { this._filter = this._filter === filter && filter !== "all" ? "all" : filter; }}>
       <span class="ico" aria-hidden="true"><ha-icon .icon=${tile.icon}></ha-icon></span>
-      <span class="txt"><span class="num">${this.l.number(count)}</span><span class="lbl">${this.l.t(tile.label)}</span></span></button>`;
+      <span class="txt"><span class="num">${this.l.number(count)}</span><span class="lbl">${this.l.tn(count, ...tile.count)}</span></span></button>`;
   }
 
   private _renderList(items: CardItem[]) {

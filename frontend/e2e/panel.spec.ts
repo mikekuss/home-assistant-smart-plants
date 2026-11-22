@@ -346,8 +346,8 @@ test("overview prioritizes plant summaries with compact filters and native-style
   }
   await expect(page.getByRole("heading", { name: "Smart Plants", exact: true })).toBeVisible();
   await expect(page.locator("smart-plants-panel ha-top-app-bar-fixed .top-app-bar")).toHaveCSS("border-bottom-style", "solid");
-  await expect(overview(page).locator("button.tile")).toHaveText([/3\s*All plants/, /1\s*Needs water/, /0\s*Problems/, /1\s*Sensor issues/]);
-  await expect(tile(page, "All plants")).toHaveAttribute("aria-pressed", "true");
+  await expect(overview(page).locator("button.tile")).toHaveText([/^\s*3\s*Plants\s*$/, /^\s*1\s*Needs water\s*$/, /^\s*0\s*Problems\s*$/, /^\s*1\s*Sensor issue\s*$/]);
+  await expect(tile(page, "Plants")).toHaveAttribute("aria-pressed", "true");
   await expect(cards(page)).toHaveCount(3);
   await expect(cards(page).first()).toContainText("Needs water");
   await expect(cards(page).first()).toContainText("Soil moisture 12% is below the minimum of 20%");
@@ -876,11 +876,11 @@ test("tile filters, search, authoritative detail and native links", async ({ pag
   await expect(page.getByRole("link", { name: "Create automation" })).toHaveAttribute("href", `/config/automation/edit/new?add_automation_element=trigger&target_device_id=device-${id(1)}`);
   await backToOverview(page);
   await expect(overview(page).getByLabel("Search plants", { exact: true })).toHaveValue("aloe vera");
-  await tile(page, "Sensor issues").click();
+  await tile(page, "Sensor issue").click();
   await expect(overview(page).getByText("No plants match", { exact: true })).toBeVisible();
   await button(page, "Show all plants").click();
   await expect(overview(page).getByLabel("Search plants", { exact: true })).toHaveValue("");
-  await tile(page, "Sensor issues").click();
+  await tile(page, "Sensor issue").click();
   await expect(cards(page)).toHaveCount(1);
   await expect(cards(page).first()).toContainText("No recent data");
   await button(page, "Garden Fern").click();
