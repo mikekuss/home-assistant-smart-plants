@@ -631,7 +631,7 @@
   "services": {
     "log_care": {
       "name": "Log care",
-      "description": "Logs care for Smart Plants plants or marks care tasks as done. Target a plant or one of its entities to log care for the plant, or a care task entity to mark that task as done. Logging watering also keeps Needs water off for 24 hours.",
+      "description": "Logs care for Smart Plants plants or marks care tasks as done. Target a plant or one of its entities to log care for the plant, or a care task entity to mark that task as done. Logging watering also keeps Needs water and Too wet off for 24 hours.",
       "fields": {
         "kind": {
           "name": "Care type",

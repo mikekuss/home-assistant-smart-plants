@@ -298,7 +298,7 @@ def test_default_stale_after_is_one_day() -> None:
     assert DEFAULT_STALE_AFTER_SECONDS == 86_400
 
 
-def test_watering_grace_suppresses_only_needs_water_and_preserves_score() -> None:
+def test_watering_grace_suppresses_needs_water_and_preserves_score() -> None:
     config = _config()
     readings = {"sensor.a": _reading(10, now=0)}
     ordinary = evaluate(config, readings, now=0)
@@ -316,6 +316,21 @@ def test_watering_grace_suppresses_only_needs_water_and_preserves_score() -> Non
     assert grace.computed_percent == ordinary.computed_percent
     assert grace.too_wet == ordinary.too_wet
     assert grace.sensor_stale == ordinary.sensor_stale
+
+
+def test_watering_grace_suppresses_too_wet_while_the_soil_drains() -> None:
+    config = _config()
+    soaked = {"sensor.a": _reading(95, now=0)}
+    ordinary = evaluate(config, soaked, now=0)
+    grace = evaluate(config, soaked, now=0, previous_too_wet=True, watering_grace=True)
+    assert ordinary.too_wet is True
+    assert grace.too_wet is False
+    assert grace.needs_water is False
+    assert grace.health_score == ordinary.health_score
+    assert grace.computed_percent == 95
+    # Still soaked once the grace is over: a real problem.
+    after = evaluate(config, soaked, now=0, previous_too_wet=grace.too_wet)
+    assert after.too_wet is True
 
 
 def test_watering_grace_does_not_make_unavailable_moisture_available() -> None:
