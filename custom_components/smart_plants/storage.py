@@ -73,6 +73,7 @@ _MINOR_PLANT_ARCHIVE: Final = 18
 _MINOR_STALE_AFTER_DEFAULTS: Final = 19
 _MINOR_STRESS_THRESHOLD_DEFAULTS: Final = 20
 _MINOR_DETECTED_WATERING: Final = 21
+_MINOR_WINTER_THRESHOLDS: Final = 22
 
 # The staleness window every reading was stored with by default before minor
 # 19. It was always written out, so it cannot be told apart from a value a user
@@ -684,6 +685,20 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                         "older storage cannot contain watering detection"
                     )
                 archived["watering_detection"] = False
+
+        if old_major_version == 1 and old_minor_version < _MINOR_WINTER_THRESHOLDS:
+            # Minor 22 adds winter values: thresholds that replace the normal
+            # ones during the rest period or in dormant storage. Existing
+            # plants have none. Winter values cannot come from an older
+            # minor, so the load fails closed instead of guessing.
+            for plant in data["plants"]:
+                if not isinstance(plant, dict):
+                    continue
+                if plant.get("winter_thresholds") is not None:
+                    raise SmartPlantsInvalidStorageError(
+                        "older storage cannot contain winter values"
+                    )
+                plant["winter_thresholds"] = None
 
         # Home Assistant writes the result back right after this returns.
         # Check it first, so storage that fails to migrate never replaces

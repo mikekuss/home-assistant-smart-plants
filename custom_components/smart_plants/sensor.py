@@ -54,7 +54,8 @@ from .entity import (
     async_setup_platform_lifecycle,
 )
 from .illuminance_evaluator import LIGHT_LUX
-from .roles import EntityRole, RoleDefinition, entity_factories
+from .roles import EntityRole, RoleDefinition, entity_factories, require_role
+from .winter import winter_config
 
 if TYPE_CHECKING:
     import asyncio
@@ -179,7 +180,8 @@ class _MoistureSensor(_MoistureControlledSensor):
         plant = self._manager.snapshot.plants.get(self._plant_id)
         if plant is None:
             return {}
-        config = plant.moisture
+        # While winter values apply these are the winter thresholds.
+        config = winter_config(require_role(ROLE_MOISTURE), plant, dt_util.now().date())
         return {
             "min_threshold_percent": config.moisture_min,
             "target_threshold_percent": config.moisture_target,

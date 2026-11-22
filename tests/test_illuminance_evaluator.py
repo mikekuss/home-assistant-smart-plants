@@ -426,3 +426,19 @@ def test_assignment_earns_the_morning_grace_without_a_report() -> None:
     assert not evaluate(
         config, {"sensor.a": reading}, now=later.timestamp(), now_datetime=later
     ).quiet_expected
+
+
+def test_light_target_of_zero_turns_the_alert_off() -> None:
+    # Winter values for a plant resting in the dark set the target to 0 lx.
+    # An alert that was on before ends instead of waiting for the clear value.
+    now = datetime(2026, 1, 1, 12, tzinfo=UTC).timestamp()
+    result = evaluate(
+        _config(stress_threshold_overrides={"target_lux": 0.0, "clear_lux": 200.0}),
+        {"sensor.a": _reading(0, now=now)},
+        now=now,
+        now_datetime=datetime(2026, 1, 1, 12, tzinfo=UTC),
+        light_samples=(LightSample(now - 1, 0.0), LightSample(now, 0.0)),
+        previous_low_light=True,
+    )
+    assert result.low_light.available is True
+    assert result.low_light.low_light is False

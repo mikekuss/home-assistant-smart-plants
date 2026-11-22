@@ -190,6 +190,21 @@ describe("card", () => {
     expect(all).toContain("Temperature 29.5 °C is above the maximum of 28 °C");
     expect(all).toContain("Not watered yet");
   });
+  it("shows only a snowflake next to the status while winter values apply", async () => {
+    const winterState = (active: boolean) => ({ entity_id: "binary_sensor.office_aloe_sensor_stale", state: "off", attributes: { snoozed: false, snoozed_until: null, winter_values: active, winter_reason: active ? "dormant_storage" : null } });
+    const active = await mount(cardHass({ "binary_sensor.office_aloe_sensor_stale": winterState(true) }));
+    const icon = $(active, ".chiprow sp-winter-icon") as HTMLElement & { label: string };
+    expect(icon.label).toBe("Winter values apply");
+    await (icon as unknown as { updateComplete: Promise<unknown> }).updateComplete;
+    expect(icon.shadowRoot!.querySelector("[role=img]")?.getAttribute("aria-label")).toBe("Winter values apply");
+    expect(deepText(active)).not.toContain("Winter");
+    document.body.replaceChildren();
+    const inactive = await mount(cardHass({ "binary_sensor.office_aloe_sensor_stale": winterState(false) }));
+    expect($(inactive, "sp-winter-icon")).toBeNull();
+    document.body.replaceChildren();
+    // A plant without winter values has no such attributes.
+    expect($(await mount(cardHass()), "sp-winter-icon")).toBeNull();
+  });
   it("shows no sensors with an Assign link for admins only", async () => {
     const empty = { "sensor.office_aloe_soil_moisture": unavailable("sensor.office_aloe_soil_moisture"), "binary_sensor.office_aloe_needs_water": unavailable("binary_sensor.office_aloe_needs_water"),
       "binary_sensor.office_aloe_sensor_stale": { entity_id: "binary_sensor.office_aloe_sensor_stale", state: "off", attributes: { sources: 0 } },

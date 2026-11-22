@@ -11,7 +11,7 @@ import time
 from collections import OrderedDict, deque
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -20,6 +20,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import (
     async_call_later,
     async_track_point_in_utc_time,
+    async_track_time_change,
 )
 from homeassistant.util import dt as dt_util
 
@@ -79,6 +80,7 @@ from .models import (
     archived_image_ids,
     normalize_acquired_at,
     parse_care_schedule,
+    parse_winter_thresholds,
     require_iso_date,
     validate_care_task_instructions,
     validate_care_task_name,
@@ -93,6 +95,7 @@ from .roles import (
 )
 from .storage import SmartPlantsStorageError, SmartPlantsStore, _utcnow_iso
 from .watering_detector import DETECTION_QUIET
+from .winter import winter_config, winter_reason
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -310,6 +313,15 @@ class SmartPlantsManager:
         # plant_id -> (snoozed_until, attempt, cancel) for a snooze that ended
         # but whose cleared record could not be saved yet.
         self._snooze_retries: dict[str, tuple[str, int, CALLBACK_TYPE]] = {}
+        # plant_id -> role -> the config its controller was last given. With
+        # winter values that differs from the stored config while winter
+        # applies, so a new day can change it without a plant change.
+        self._controller_configs: dict[str, dict[str, Any]] = {}
+        # plant_id -> why winter values applied when its controllers were last
+        # synced, so the nightly check notices a change even for a role whose
+        # config stays the same.
+        self._winter_reasons: dict[str, str | None] = {}
+        self._unsub_winter_check: CALLBACK_TYPE | None = None
 
     def wizard_start(self) -> dict[str, Any]:
         """Reserve a bounded capability without writing inventory or registries."""
@@ -605,9 +617,11 @@ class SmartPlantsManager:
             await tracker.async_load()
             tracker.start()
             self._sync_snooze_timers()
+            self._sync_winter_check()
             self._loaded = True
         except BaseException:
             self._cancel_snooze_timers()
+            self._stop_winter_check()
             if self._unsub_registry is not None:
                 self._unsub_registry()
                 self._unsub_registry = None
@@ -629,6 +643,7 @@ class SmartPlantsManager:
 
     def _create_controllers(self, plant: PlantRecord, *, start: bool) -> None:
         self._synced_plants[plant.id] = plant
+        self._winter_reasons[plant.id] = _winter_state(plant, _local_date())
         by_role = self._controllers.setdefault(plant.id, {})
         for definition in role_definitions():
             self._create_controller(by_role, definition, plant, start=start)
@@ -651,9 +666,10 @@ class SmartPlantsManager:
         """
         if not definition.always_present and plant.role_config(definition.key) is None:
             return
-        config = definition.config_for(plant)
+        config = winter_config(definition, plant, _local_date())
         if config is None or not isinstance(config, definition.config_type):
             return
+        self._controller_configs.setdefault(plant.id, {})[definition.key] = config
         controller = definition.controller_factory(
             self._hass,
             plant.id,
@@ -676,6 +692,8 @@ class SmartPlantsManager:
             for controller in by_role.values():
                 controller.close()
         self._controllers.clear()
+        self._controller_configs.clear()
+        self._winter_reasons.clear()
 
     def _sync_controllers_for(self, event: PlantEvent) -> None:
         """
@@ -695,6 +713,8 @@ class SmartPlantsManager:
             self._create_controllers(event.plant, start=True)
         elif isinstance(event, PlantDeletedEvent):
             self._synced_plants.pop(event.plant_id, None)
+            self._controller_configs.pop(event.plant_id, None)
+            self._winter_reasons.pop(event.plant_id, None)
             deleted = self._controllers.pop(event.plant_id, {})
             for controller in deleted.values():
                 controller.close()
@@ -736,6 +756,8 @@ class SmartPlantsManager:
         if existing is None:
             # Controllers are only missing for a plant that was never active.
             return
+        today = _local_date()
+        self._winter_reasons[plant.id] = _winter_state(plant, today)
         moisture_controller = existing.get("moisture")
         if moisture_controller is not None and base.care_events != plant.care_events:
             moisture_controller.set_care_events(plant.care_events)
@@ -756,10 +778,87 @@ class SmartPlantsManager:
                     start=plant.lifecycle_state == "active",
                 )
                 continue
-            previous = definition.config_for(base)
-            current = definition.config_for(plant)
-            if previous != current:
-                controller.reconfigure(current)
+            self._reconfigure_controller(
+                plant.id,
+                definition.key,
+                controller,
+                winter_config(definition, plant, today),
+            )
+
+    def _reconfigure_controller(
+        self, plant_id: str, role: str, controller: Any, config: Any
+    ) -> bool:
+        """Hand ``config`` to a controller unless it already has it."""
+        configs = self._controller_configs.setdefault(plant_id, {})
+        if configs.get(role) == config:
+            return False
+        configs[role] = config
+        controller.reconfigure(config)
+        return True
+
+    def _sync_winter_check(self) -> None:
+        """
+        Re-check winter values each night, when a rest period may start or end.
+
+        The check only runs while at least one plant has winter values.
+        """
+        if self._closing or not any(
+            plant.winter_thresholds is not None
+            for plant in self._snapshot.plants.values()
+        ):
+            self._stop_winter_check()
+            return
+        if self._unsub_winter_check is not None:
+            return
+
+        @callback
+        def _check(_now: datetime) -> None:
+            if not self._closing:
+                self._sync_winter_configs()
+
+        self._unsub_winter_check = async_track_time_change(
+            self._hass, _check, hour=0, minute=0, second=5
+        )
+
+    def _stop_winter_check(self) -> None:
+        if self._unsub_winter_check is not None:
+            self._unsub_winter_check()
+            self._unsub_winter_check = None
+
+    def _sync_winter_configs(self) -> None:
+        """
+        Give controllers the thresholds that apply today.
+
+        Only plants with winter values can change here. When one of their
+        roles switches between winter and normal values, every role of the
+        plant re-evaluates, so all its entities report the new winter state.
+        """
+        today = _local_date()
+        for plant in self._snapshot.plants.values():
+            if plant.winter_thresholds is None or plant.lifecycle_state != "active":
+                continue
+            by_role = self._controllers.get(plant.id)
+            if not by_role:
+                continue
+            state = _winter_state(plant, today)
+            reason_changed = self._winter_reasons.get(plant.id) != state
+            self._winter_reasons[plant.id] = state
+            changed: set[str] = set()
+            for definition in role_definitions():
+                controller = by_role.get(definition.key)
+                if controller is not None and self._reconfigure_controller(
+                    plant.id,
+                    definition.key,
+                    controller,
+                    winter_config(definition, plant, today),
+                ):
+                    changed.add(definition.key)
+            if not changed and not reason_changed:
+                continue
+            configs = self._controller_configs[plant.id]
+            for role, controller in by_role.items():
+                if role not in changed:
+                    controller.reconfigure(configs[role])
 
     async def async_unload(self) -> None:
         # Close admission before waiting so queued mutations cannot overtake
@@ -767,6 +866,7 @@ class SmartPlantsManager:
         self._closing = True
         self._wizard_drafts.clear()
         self._cancel_snooze_timers()
+        self._stop_winter_check()
         if self._unsub_registry is not None:
             try:
                 self._unsub_registry()
@@ -1382,6 +1482,32 @@ class SmartPlantsManager:
             current = self._require_plant(plant_id)
             self._require_expected_revision(current, expected_revision)
             updated = current.with_next_revision(rest_period=parsed)
+            change = await self._async_publish_plant_change(current, updated)
+        await self._dispatch_event(change)
+        return updated
+
+    async def async_set_winter_thresholds(
+        self,
+        plant_id: str,
+        *,
+        expected_revision: int,
+        winter_thresholds: Mapping[str, Mapping[str, object]] | None,
+    ) -> PlantRecord:
+        """Replace the plant's winter values; ``None`` removes them."""
+        try:
+            parsed = parse_winter_thresholds(
+                None
+                if winter_thresholds is None
+                else {role: dict(values) for role, values in winter_thresholds.items()}
+            )
+        except (TypeError, ValueError) as err:
+            raise SmartPlantsValidationError(str(err)) from err
+        self._raise_if_unavailable()
+        async with self._mutation_lock:
+            self._raise_if_unavailable()
+            current = self._require_plant(plant_id)
+            self._require_expected_revision(current, expected_revision)
+            updated = current.with_next_revision(winter_thresholds=parsed)
             change = await self._async_publish_plant_change(current, updated)
         await self._dispatch_event(change)
         return updated
@@ -3543,6 +3669,7 @@ class SmartPlantsManager:
             ) from err
         self._snapshot = snapshot
         self._sync_snooze_timers()
+        self._sync_winter_check()
 
 
 _IMAGE_OPERATION_KINDS = frozenset({"create_image", "replace_image", "delete_image"})
@@ -4252,6 +4379,18 @@ def _validate_species(
         return PlantSpecies.from_storage(value.as_storage())
     except ValueError as err:
         raise SmartPlantsValidationError(str(err)) from err
+
+
+def _winter_state(plant: PlantRecord, today: date) -> str | None:
+    """Return why ``plant``'s winter values apply today, or ``None``."""
+    if plant.winter_thresholds is None:
+        return None
+    return winter_reason(plant, today)
+
+
+def _local_date() -> date:
+    """Return today's date in Home Assistant's time zone."""
+    return dt_util.now().date()
 
 
 def _validate_placement(value: object) -> PlantPlacement | None:

@@ -84,6 +84,12 @@ describe("plant view", () => {
     expect(plant.overview.roles.moisture).toBeUndefined();
     expect(plant.moreInfoEntity).toBe("sensor.office_aloe_temperature");
   });
+  it("reads the winter state like the snooze", () => {
+    const stale = (attributes: Record<string, unknown>) => cardHass({ "binary_sensor.office_aloe_sensor_stale": { entity_id: "binary_sensor.office_aloe_sensor_stale", state: "off", attributes } });
+    expect(view(stale({ winter_values: true, winter_reason: "rest_period" })).overview.winter).toEqual({ active: true, reason: "rest_period", until: null, roles: [] });
+    expect(view(stale({ winter_values: false, winter_reason: null })).overview.winter).toEqual({ active: false, reason: null, until: null, roles: [] });
+    expect(view(stale({ snoozed: false })).overview.winter).toBeNull();
+  });
   it("shows a paused plant without readings", () => {
     const hass = cardHass();
     for (const id of Object.keys(hass.states)) if (id.startsWith("sensor.office") || id.startsWith("binary_sensor.office")) hass.states[id] = { entity_id: id, state: "unavailable", attributes: {} };

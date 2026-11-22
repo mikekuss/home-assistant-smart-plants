@@ -218,6 +218,20 @@ Sensors have no snooze attributes. The recorder doesn't store them. An unavailab
 sensor shows no attributes, so a state condition on `snoozed: false` doesn't match then. The
 *Plant is not snoozed* condition avoids that, see [Conditions](automations.md#conditions).
 
+## Winter values
+
+Each problem binary sensor of a plant with
+[winter values](sensors-and-health.md#winter-values) also gets:
+
+| Attribute | Value |
+| --- | --- |
+| `winter_values` | `true` while the winter values apply, otherwise `false` |
+| `winter_reason` | `rest_period`, `dormant_storage`, or `null` while they don't apply |
+
+Plants without winter values don't have these attributes. The recorder doesn't store them.
+While winter values apply, the soil moisture sensor's threshold attributes show the winter
+values. The threshold number entities keep the normal values.
+
 ## Paused plants
 
 A paused plant's entities stay registered and become unavailable until you resume it. Home

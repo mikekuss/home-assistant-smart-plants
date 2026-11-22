@@ -17,6 +17,19 @@ export interface RoleReading {
   clear: { min: number | null; max: number | null };
   last_reported: string | null;
   sources: string[];
+  // While winter values replace this check's thresholds, the range it uses
+  // the rest of the year; `range` is then the winter range. Older backends
+  // and plants without winter values leave it out or send null.
+  normal_range?: TargetRange | null;
+}
+export type WinterReason = "dormant_storage" | "rest_period";
+// The winter state of a plant with winter values: whether they apply today,
+// why, and the last day of the rest period when that is the reason.
+export interface WinterView {
+  active: boolean;
+  reason: WinterReason | null;
+  until: string | null;
+  roles: string[];
 }
 export interface PlantProblem { role: string; kind: string }
 // One care task's state today, ordered by the backend: overdue, due, then by
@@ -60,6 +73,8 @@ export interface PlantOverview {
   resting: boolean;
   // When the plant's alert snooze ends; a snooze never changes status, problems or care.
   snoozed_until: string | null;
+  // Null or missing for a plant without winter values.
+  winter?: WinterView | null;
 }
 
 const READING_STATES: readonly ReadingState[] = ["ok", "low", "high", "stale", "unavailable"];
@@ -99,24 +114,35 @@ function parseRestPeriod(raw: unknown): RestPeriod | null | undefined {
 function parseReading(raw: unknown): RoleReading | null {
   if (!isRecord(raw) || !isRecord(raw.range)) return null;
   // Older backends send no clear values.
-  const { value, unit, state, range, clear = null, last_reported, sources } = raw;
+  const { value, unit, state, range, clear = null, last_reported, sources, normal_range = null } = raw;
   if (!numOrNull(value) || !(unit === null || typeof unit === "string") || !READING_STATES.includes(state as ReadingState)) return null;
   if (!numOrNull(range.min) || !numOrNull(range.target) || !numOrNull(range.max) || !strOrNull(last_reported)) return null;
   const parsedClear = clear === null ? { min: null, max: null }
     : isRecord(clear) && numOrNull(clear.min) && numOrNull(clear.max) ? { min: clear.min, max: clear.max } : null;
   if (!parsedClear) return null;
   if (!Array.isArray(sources) || !sources.every(s => typeof s === "string")) return null;
+  if (!(normal_range === null || (isRecord(normal_range) && numOrNull(normal_range.min) && (normal_range.target === undefined || numOrNull(normal_range.target)) && numOrNull(normal_range.max)))) return null;
   return {
     value, unit: unit ?? "", state: state as ReadingState, range: { min: range.min, target: range.target, max: range.max },
     clear: parsedClear, last_reported, sources: [...sources],
+    normal_range: normal_range === null ? null : { min: normal_range.min as number | null, target: (normal_range.target ?? null) as number | null, max: normal_range.max as number | null },
   };
+}
+
+// Older backends send no winter state; undefined marks a malformed one.
+export function parseWinter(raw: unknown): WinterView | null | undefined {
+  if (raw === undefined || raw === null) return null;
+  if (!isRecord(raw) || typeof raw.active !== "boolean" || !(raw.reason === null || raw.reason === "dormant_storage" || raw.reason === "rest_period")) return undefined;
+  if (!dateOrNull(raw.until) || !Array.isArray(raw.roles) || !raw.roles.every(role => typeof role === "string")) return undefined;
+  if (raw.active !== (raw.reason !== null)) return undefined;
+  return { active: raw.active, reason: raw.reason, until: raw.until, roles: [...raw.roles as string[]] };
 }
 
 // Validates one overview entry; returns null for anything malformed so a bad
 // entry never renders guessed values. Unknown roles are skipped.
 export function parseOverview(raw: unknown): PlantOverview | null {
   if (!isRecord(raw)) return null;
-  const { plant_id, revision, lifecycle_state, status, problems, roles, last_watered_at, image, care, rest_period, resting, snoozed_until } = raw;
+  const { plant_id, revision, lifecycle_state, status, problems, roles, last_watered_at, image, care, rest_period, resting, snoozed_until, winter } = raw;
   if (typeof plant_id !== "string" || typeof revision !== "number" || (lifecycle_state !== "active" && lifecycle_state !== "disabled")) return null;
   if (!isPlantStatus(status) || !Array.isArray(problems) || !isRecord(roles) || !strOrNull(last_watered_at)) return null;
   if (!(image === null || (isRecord(image) && typeof image.id === "string"))) return null;
@@ -127,6 +153,8 @@ export function parseOverview(raw: unknown): PlantOverview | null {
   if (parsedRest === undefined || (parsedRest === null && resting)) return null;
   // Older backends send no snooze at all.
   if (snoozed_until !== undefined && !timestampOrNull(snoozed_until)) return null;
+  const parsedWinter = parseWinter(winter);
+  if (parsedWinter === undefined) return null;
   const parsedProblems = problems.filter((p): p is PlantProblem => isRecord(p) && typeof p.role === "string" && typeof p.kind === "string").map(p => ({ role: p.role, kind: p.kind }));
   if (parsedProblems.length !== problems.length) return null;
   const parsedRoles: Partial<Record<ReadingRole, RoleReading>> = {};
@@ -136,7 +164,7 @@ export function parseOverview(raw: unknown): PlantOverview | null {
     if (!reading) return null;
     parsedRoles[role] = reading;
   }
-  return { plant_id, revision, lifecycle_state, status, problems: parsedProblems, roles: parsedRoles, last_watered_at, image: image === null ? null : { id: (image as { id: string }).id }, care: parsedCare, rest_period: parsedRest, resting, snoozed_until: (snoozed_until ?? null) as string | null };
+  return { plant_id, revision, lifecycle_state, status, problems: parsedProblems, roles: parsedRoles, last_watered_at, image: image === null ? null : { id: (image as { id: string }).id }, care: parsedCare, rest_period: parsedRest, resting, snoozed_until: (snoozed_until ?? null) as string | null, winter: parsedWinter };
 }
 
 // ---- Chip and reason text ----

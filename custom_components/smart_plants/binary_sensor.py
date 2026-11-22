@@ -14,7 +14,9 @@ available so it can reflect "no assigned source" (off) versus
 "assigned source missing" (on).
 
 Every binary sensor carries ``snoozed`` and ``snoozed_until`` attributes
-for the plant's alert snooze; a snooze never changes a state.
+for the plant's alert snooze; a snooze never changes a state. The problem
+sensors of a plant with winter values add ``winter_values`` and
+``winter_reason``.
 
 Care entities are managed by ``CareEntityLifecycle``: one "due" binary
 sensor per care task and one plant-wide "care due" binary sensor while the
@@ -65,6 +67,7 @@ from .entity import (
 from .plant_status import STRESS_ROLE_ORDER, input_problems, stress_problems
 from .report import collect_plants, select_plants
 from .roles import EntityRole, RoleDefinition, entity_factories
+from .winter import winter_reason
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -95,10 +98,12 @@ ROLE_SOIL_TEMPERATURE_STRESS = "soil_temperature_stress"
 ROLE_CO2_STRESS = "co2_stress"
 ROLE_CONDUCTIVITY_STRESS = "conductivity_stress"
 
-# Automations read the snooze from the live state. Most plants are never
-# snoozed, so recording these attributes with every state would only grow
-# the history.
-SNOOZE_ATTRIBUTES = frozenset({"snoozed", "snoozed_until"})
+# Automations read the snooze and the winter state from the live state. Most
+# plants are never snoozed and have no winter values, so recording these
+# attributes with every state would only grow the history.
+SNOOZE_ATTRIBUTES = frozenset(
+    {"snoozed", "snoozed_until", "winter_values", "winter_reason"}
+)
 
 
 class SmartPlantsBinarySensorEntity(SmartPlantsEntity, BinarySensorEntity):
@@ -112,6 +117,9 @@ class SmartPlantsBinarySensorEntity(SmartPlantsEntity, BinarySensorEntity):
 
     PLATFORM = PLATFORM
     _unrecorded_attributes = SNOOZE_ATTRIBUTES
+    # Problem sensors report whether winter values apply; care reminders
+    # don't depend on thresholds.
+    _reports_winter = True
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -119,11 +127,22 @@ class SmartPlantsBinarySensorEntity(SmartPlantsEntity, BinarySensorEntity):
         snoozed_until = (
             None if plant is None else plant.active_snoozed_until(dt_util.utcnow())
         )
-        return {
+        attributes = {
             **self._alert_attributes(),
             "snoozed": snoozed_until is not None,
             "snoozed_until": snoozed_until,
         }
+        if (
+            self._reports_winter
+            and plant is not None
+            and plant.winter_thresholds is not None
+        ):
+            # Only plants with winter values carry these, so every other
+            # plant's attributes stay as they were.
+            reason = winter_reason(plant, dt_util.now().date())
+            attributes["winter_values"] = reason is not None
+            attributes["winter_reason"] = reason
+        return attributes
 
     def _alert_attributes(self) -> dict[str, Any]:
         """Return the attributes of this sensor's own alert."""
@@ -860,6 +879,8 @@ def _iso_timestamp(value: datetime | None) -> str | None:
 class _CareTaskDueBinary(SmartPlantsBinarySensorEntity):
     """On while one care task is due or overdue."""
 
+    _reports_winter = False
+
     # The live reading changes with every sensor update, and a forecast
     # task's coverage with every forecast fetch; keep them out of the
     # recorder so history does not grow with each value.
@@ -951,6 +972,8 @@ class _CareTaskDueBinary(SmartPlantsBinarySensorEntity):
 
 class _CareDueBinary(SmartPlantsBinarySensorEntity):
     """On while any of the plant's care tasks is due or overdue."""
+
+    _reports_winter = False
 
     _attr_translation_key = ROLE_CARE_DUE
 

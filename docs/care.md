@@ -185,3 +185,7 @@ houseplants don't need one.
 A task off during rest shows *Resting until* *date* and is due again on the first day of the
 growing season. Once-a-year tasks, reading tasks and watering alerts don't change. **Edit**
 changes the rest period, and **Remove** in the editor clears it.
+
+A plant that stays cool and dry while it rests can also get
+[winter values](sensors-and-health.md#winter-values): other thresholds that apply during the
+rest period.

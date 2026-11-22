@@ -128,6 +128,9 @@ Open the plant's **Settings** tab.
   thresholds**, change the values and select **Save thresholds**. **Inherit all built-in
   defaults** resets a check.
 
+- **Add winter values**, at the end of **Other targets**, sets other thresholds for the rest
+  period or dormant storage. See [Winter values](sensors-and-health.md#winter-values).
+
 The defaults are in [Sensors and health](sensors-and-health.md#built-in-thresholds).
 
 ## Add a photo

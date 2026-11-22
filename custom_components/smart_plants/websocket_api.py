@@ -58,6 +58,7 @@ Commands (all admin-only):
   Reading care tasks cannot be skipped (``invalid_format``).
 * ``smart_plants/care_tasks/undo_skip`` -> ``{"plant": PlantView}``
 * ``smart_plants/plants/set_rest_period`` -> ``{"plant": PlantView}``
+* ``smart_plants/plants/set_winter_thresholds`` -> ``{"plant": PlantView}``
 * ``smart_plants/plants/snooze`` -> ``{"plant": PlantView}``; ``until`` is an
   ISO timestamp with an offset, in the future and at most 366 days ahead,
   or ``null`` to end the snooze. ``PlantView.snoozed_until`` holds the end
@@ -196,6 +197,7 @@ from .manager import (
 )
 from .models import (
     CARE_TASK_INSTRUCTIONS_MAX_LEN,
+    WINTER_THRESHOLD_ROLES,
     ArchivedPlant,
     PlantPlacement,
     PlantRecord,
@@ -1045,6 +1047,38 @@ async def _handle_set_rest_period(
             msg["plant_id"],
             expected_revision=msg["expected_revision"],
             rest_period=msg["rest_period"],
+        )
+        return {"plant": _plant_view(plant)}
+
+    await _run_mutation(hass, connection, msg, mutate)
+
+
+_WINTER_THRESHOLDS_SCHEMA = vol.Any(
+    None,
+    vol.Schema(
+        {vol.In(WINTER_THRESHOLD_ROLES): vol.Schema({str: vol.Any(int, float)})}
+    ),
+)
+
+
+@websocket_command(
+    {
+        vol.Required("type"): "smart_plants/plants/set_winter_thresholds",
+        vol.Required("plant_id"): _plant_id,
+        vol.Required("expected_revision"): _positive_int,
+        vol.Required("winter_thresholds"): _WINTER_THRESHOLDS_SCHEMA,
+    }
+)
+@require_admin
+@async_response
+async def _handle_set_winter_thresholds(
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
+) -> None:
+    async def mutate(manager: SmartPlantsManager) -> dict[str, Any]:
+        plant = await manager.async_set_winter_thresholds(
+            msg["plant_id"],
+            expected_revision=msg["expected_revision"],
+            winter_thresholds=msg["winter_thresholds"],
         )
         return {"plant": _plant_view(plant)}
 
@@ -2233,6 +2267,7 @@ def async_register(hass: HomeAssistant) -> None:
     async_register_command(hass, _handle_care_task_skip)
     async_register_command(hass, _handle_care_task_undo_skip)
     async_register_command(hass, _handle_set_rest_period)
+    async_register_command(hass, _handle_set_winter_thresholds)
     async_register_command(hass, _handle_snooze)
     async_register_command(hass, _handle_snooze_many)
     async_register_command(hass, _handle_restore_snoozes)

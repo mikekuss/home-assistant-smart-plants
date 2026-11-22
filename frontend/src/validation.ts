@@ -54,7 +54,14 @@ export function validPlant(v: unknown): boolean {
     (v.care_tasks === undefined || validCareTasks(v.care_tasks)) &&
     (v.rest_period === undefined || v.rest_period === null || monthRange(v.rest_period, ["start_month", "end_month"])) &&
     (v.snoozed_until === undefined || v.snoozed_until === null || timestamp(v.snoozed_until)) &&
-    (v.watering_detection === undefined || v.watering_detection === null || typeof v.watering_detection === "boolean");
+    (v.watering_detection === undefined || v.watering_detection === null || typeof v.watering_detection === "boolean") &&
+    (v.winter_thresholds === undefined || v.winter_thresholds === null || winterThresholds(v.winter_thresholds));
+}
+const WINTER_ROLES = ["temperature", "moisture", "illuminance", "conductivity", "humidity"];
+// Winter values: one or more known checks, each a map of finite numbers.
+function winterThresholds(v: unknown): boolean {
+  return object(v) && Object.keys(v).length > 0 && Object.entries(v).every(([role, values]) => WINTER_ROLES.includes(role) &&
+    object(values) && Object.keys(values).length > 0 && Object.values(values).every(value => typeof value === "number" && Number.isFinite(value)));
 }
 const TASK_ID = /^[0-9a-f]{32}$/;
 const isoDate = (v: unknown) => typeof v === "string" && /^\d{4}-\d\d-\d\d$/.test(v) && Number.isFinite(Date.parse(v));
@@ -247,6 +254,13 @@ export function validResponse(msg: Record<string, unknown>, v: unknown): boolean
     return validCareHistory({ revision: v.plant.revision, events: [...events].sort(compareCareEvents), summary: v.summary });
   }
   if (CARE_TASK_COMMANDS.has(command) || command === "smart_plants/plants/set_rest_period") return careTaskResponse(command, msg, v);
+  // The reply carries the plant one revision later with the checks that were
+  // sent, or without winter values after null.
+  if (command === "smart_plants/plants/set_winter_thresholds") {
+    if (!exactKeys(v, ["plant"]) || !validPlant(v.plant) || !object(v.plant) || v.plant.id !== msg.plant_id || v.plant.revision !== Number(msg.expected_revision) + 1) return false;
+    const stored = v.plant.winter_thresholds ?? null; const sent = msg.winter_thresholds;
+    return sent === null ? stored === null : object(sent) && object(stored) && sameJson(Object.keys(stored).sort(), Object.keys(sent).sort());
+  }
   if (command === "smart_plants/care/delete") {
     if (!validPlant(v.plant) || !object(v.plant) || v.plant.id !== msg.plant_id || !Array.isArray(v.plant.care_events)) return false;
     return v.plant.revision === Number(msg.expected_revision) + 1 &&

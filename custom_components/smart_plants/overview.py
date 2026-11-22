@@ -24,6 +24,7 @@ from .models import ReadingSchedule
 from .moisture_evaluator import HYSTERESIS_OFFSET
 from .plant_status import evaluate_plant_status, role_state
 from .roles import role_definitions
+from .winter import winter_config, winter_view
 
 if TYPE_CHECKING:
     from datetime import date, datetime, tzinfo
@@ -277,6 +278,8 @@ def plant_overview(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str,
     disabled = plant.lifecycle_state == "disabled"
     evaluations: dict[str, Any] = {}
     roles: dict[str, Any] = {}
+    tz = dt_util.get_default_time_zone()
+    today = dt_util.now(tz).date()
     for definition in role_definitions():
         controller = manager.get_role_controller(plant.id, definition.key)
         evaluations[definition.key] = (
@@ -285,12 +288,15 @@ def plant_overview(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str,
         config = definition.config_for(plant)
         if config is None or not getattr(config, "sources", ()):
             continue
-        roles[definition.key] = _role_view(
-            definition.key, config, controller, disabled=disabled
+        applied = winter_config(definition, plant, today)
+        role = _role_view(definition.key, applied, controller, disabled=disabled)
+        # While winter values apply, ``range`` is the winter range and
+        # ``normal_range`` the range the role uses the rest of the year.
+        role["normal_range"] = (
+            _role_range(definition.key, config) if applied != config else None
         )
+        roles[definition.key] = role
     result = evaluate_plant_status(disabled=disabled, evaluations=evaluations)
-    tz = dt_util.get_default_time_zone()
-    today = dt_util.now(tz).date()
     return {
         "plant_id": plant.id,
         "revision": plant.revision,
@@ -306,4 +312,5 @@ def plant_overview(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str,
         ),
         "resting": is_resting(plant.rest_period, today),
         "snoozed_until": plant.snoozed_until,
+        "winter": winter_view(plant, today),
     }

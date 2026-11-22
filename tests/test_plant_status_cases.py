@@ -154,6 +154,7 @@ def _manager(case: dict[str, Any], evaluations: dict[str, Any]) -> SimpleNamespa
         care_events=(),
         snoozed_until=None,
         active_snoozed_until=lambda _now: None,
+        winter_thresholds=None,
         image=None,
     )
 

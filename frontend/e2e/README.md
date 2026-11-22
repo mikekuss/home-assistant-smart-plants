@@ -32,6 +32,7 @@ conflicts, lost responses and delays.
 | `plant-page.spec.ts` | Plant page tabs and header |
 | `care-plan.spec.ts` | Care tasks, reading tasks, rest period |
 | `snooze.spec.ts` | Snooze dialogs and chips |
+| `winter.spec.ts` | Winter values: dormant storage hint, editor, header chip and Settings card |
 | `notifications.spec.ts` | Notifications dialog |
 | `automations.spec.ts` | Automations card |
 | `card.spec.ts` | Dashboard card |
