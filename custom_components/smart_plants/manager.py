@@ -85,7 +85,12 @@ from .models import (
     validate_care_tasks,
 )
 from .reading_tracker import ReadingTracker
-from .roles import require_role, role_definitions
+from .roles import (
+    keep_species_thresholds,
+    require_role,
+    role_definitions,
+    with_species_threshold_defaults,
+)
 from .storage import SmartPlantsStorageError, SmartPlantsStore, _utcnow_iso
 from .watering_detector import DETECTION_QUIET
 
@@ -1730,13 +1735,9 @@ class SmartPlantsManager:
                 category, "category", _CATEGORY_MAX_LEN
             )
         if watering_detection is not _UNSET:
-            if watering_detection is not None and not isinstance(
-                watering_detection, bool
-            ):
-                raise SmartPlantsValidationError(
-                    "watering_detection must be a boolean or null"
-                )
-            changes["watering_detection"] = watering_detection
+            changes["watering_detection"] = _validate_watering_detection(
+                watering_detection
+            )
 
         self._raise_if_unavailable()
         async with self._mutation_lock:
@@ -1747,6 +1748,17 @@ class SmartPlantsManager:
                 # Nothing to change; skip the revision bump and disk write.
                 return current
             updated = current.with_next_revision(**changes)
+            if "species" in changes and changes["species"] != current.species:
+                # Values a provider species supplied stay, as the plant's own,
+                # instead of claiming to come from a species it no longer has.
+                for definition in role_definitions():
+                    if definition.species_threshold_defaults is None:
+                        continue
+                    configured = updated.role_config(definition.key)
+                    if configured is not None:
+                        updated = updated.with_role_config(
+                            definition.key, keep_species_thresholds(configured)
+                        )
             await self._async_apply_with_reconciliation(
                 target_snapshot=self._snapshot.with_plant(updated),
                 kind="update_plant",
@@ -2506,6 +2518,19 @@ class SmartPlantsManager:
             for definition in role_definitions():
                 apply = definition.apply_threshold_defaults
                 if apply is None:
+                    continue
+                if definition.species_threshold_defaults is not None:
+                    # A role without a sensor stays unconfigured; it picks up
+                    # the species values when it gets its first sensor.
+                    configured = updated.role_config(definition.key)
+                    if configured is None:
+                        continue
+                    updated = updated.with_role_config(
+                        definition.key,
+                        with_species_threshold_defaults(
+                            definition, configured, cleaned_species
+                        ),
+                    )
                     continue
                 supplied = cleaned_species.snapshot.threshold_defaults.get(
                     definition.key, {}
@@ -3975,6 +4000,13 @@ def _build_care_event(  # noqa: PLR0913
     except (TypeError, ValueError) as err:
         raise SmartPlantsValidationError(str(err)) from err
     return event
+
+
+def _validate_watering_detection(value: object) -> bool | None:
+    """Return a plant's watering detection choice: on, off or None for placement."""
+    if value is not None and not isinstance(value, bool):
+        raise SmartPlantsValidationError("watering_detection must be a boolean or null")
+    return value
 
 
 def _without_detected_watering(current: PlantRecord, occurred_at: str) -> PlantRecord:

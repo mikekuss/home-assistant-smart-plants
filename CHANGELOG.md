@@ -8,6 +8,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- A species from OpenPlantBook now also sets when *Temperature stress* and *Humidity stress* turn
+  on. Its preferred temperature range and air humidity range become the triggers, and the clear
+  values keep the built-in gap. Values you entered still win. When the species values don't fit
+  them, the reading keeps the built-in values and the species is still applied. **Edit
+  thresholds** marks a species value as *Species default*, and the species preview lists the
+  imported ranges and says when one won't be used. Saving manual species details keeps these
+  values as your own. Readings a plant already had keep the built-in values until you refresh
+  its species.
 - **Log waterings from the soil moisture sensor.** When a plant's soil moisture rises by 15
   points or more within an hour, Smart Plants logs a watering at that time, unless one was logged
   in the 6 hours before. The entry's `provenance` is `sensor`. Waterings nobody logged by hand

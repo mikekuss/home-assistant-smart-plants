@@ -441,6 +441,9 @@ def _normalize_profile(payload: Any, locale: str) -> SpeciesProfile:
                     "provider returned invalid moisture thresholds"
                 )
             thresholds[target] = value
+    humidity = _optional_humidity_range(
+        payload.get("min_env_humid"), payload.get("max_env_humid")
+    )
     min_temp = _optional_temperature(payload.get("min_temp"))
     max_temp = _optional_temperature(payload.get("max_temp"))
     if min_temp is not None and max_temp is not None and min_temp > max_temp:
@@ -460,6 +463,7 @@ def _normalize_profile(payload: Any, locale: str) -> SpeciesProfile:
             "category": optional["category"],
             **care,
             **{f"moisture_{key}": value for key, value in thresholds.items()},
+            **{f"humidity_{key}": value for key, value in humidity.items()},
             "min_temperature": min_temp,
             "max_temperature": max_temp,
             "survival_min_temperature": survival,
@@ -481,7 +485,11 @@ def _normalize_profile(payload: Any, locale: str) -> SpeciesProfile:
         confidence=None,
         care_text=care,
         field_sources=fields,
-        threshold_defaults={"moisture": thresholds} if thresholds else {},
+        threshold_defaults={
+            role: values
+            for role, values in (("moisture", thresholds), ("humidity", humidity))
+            if values
+        },
         min_temperature=min_temp,
         max_temperature=max_temp,
         survival_min_temperature=survival,
@@ -494,6 +502,24 @@ def _normalize_profile(payload: Any, locale: str) -> SpeciesProfile:
             "provider returned oversized species data"
         ) from err
     return SpeciesProfile(snapshot)
+
+
+def _optional_humidity_range(low: object, high: object) -> dict[str, int]:
+    """
+    Return the plausible part of an air humidity range in percent.
+
+    Species data is crowd-sourced. A value that isn't a whole percentage is
+    left out instead of rejecting the whole species, and an inverted range is
+    left out as a whole.
+    """
+    values = {
+        key: value
+        for key, value in (("min", low), ("max", high))
+        if _is_pure_int(value) and 0 < value < PERCENT_MAX
+    }
+    if "min" in values and "max" in values and values["min"] >= values["max"]:
+        return {}
+    return values
 
 
 def _optional_temperature(value: object) -> float | None:

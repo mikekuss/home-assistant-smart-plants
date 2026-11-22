@@ -71,7 +71,8 @@ _MINOR_FORECAST_READINGS: Final = 16
 _MINOR_PEST_CONTROL: Final = 17
 _MINOR_PLANT_ARCHIVE: Final = 18
 _MINOR_STALE_AFTER_DEFAULTS: Final = 19
-_MINOR_DETECTED_WATERING: Final = 20
+_MINOR_STRESS_THRESHOLD_DEFAULTS: Final = 20
+_MINOR_DETECTED_WATERING: Final = 21
 
 # The staleness window every reading was stored with by default before minor
 # 19. It was always written out, so it cannot be told apart from a value a user
@@ -631,8 +632,24 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                             else DEFAULT_STALE_AFTER_SECONDS
                         )
 
+        if (
+            old_major_version == 1
+            and old_minor_version < _MINOR_STRESS_THRESHOLD_DEFAULTS
+        ):
+            # Minor 20 lets a species supply the temperature and air
+            # humidity problem thresholds. Existing plants have none from a
+            # species and keep the built-in values they used so far; a
+            # species refresh brings in the species values.
+            for plant in data["plants"]:
+                roles = plant.get("roles") if isinstance(plant, dict) else None
+                if not isinstance(roles, dict):
+                    continue
+                for role in ("temperature", "humidity"):
+                    config = roles.get(role)
+                    if isinstance(config, dict):
+                        config.setdefault("species_defaults", {})
         if old_major_version == 1 and old_minor_version < _MINOR_DETECTED_WATERING:
-            # Minor 20 lets a plant log a watering when its soil moisture
+            # Minor 21 lets a plant log a watering when its soil moisture
             # jumps. Existing plants keep logging waterings only by hand, so
             # they get detection off; new plants follow their placement.
             # A detected watering, with the "sensor" provenance, or a choice

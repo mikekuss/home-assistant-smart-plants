@@ -37,7 +37,8 @@ interface ThresholdEditorSpec {
   readonly max: string;
   readonly step: string;
   readonly labels: Record<string, MessageKey>;   // per-key label, `{unit}` placeholder
-  readonly validate: (input: Record<string, string>, l: Localizer) => { values: Record<string, number | null>; error: string | null };
+  // `defaults` are the role's inherited values, which a species can supply.
+  readonly validate: (input: Record<string, string>, l: Localizer, defaults: Record<string, number>) => { values: Record<string, number | null>; error: string | null };
   readonly seed: (persisted: Partial<Record<string, number | null>> | null | undefined) => Record<string, string>;
 }
 const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
@@ -49,7 +50,7 @@ const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
     unit: "°C",
     min: "-40", max: "80", step: "0.1",
     labels: { cold_threshold_celsius: "threshold_field.cold_trigger", cold_clear_celsius: "threshold_field.cold_clear", hot_clear_celsius: "threshold_field.hot_clear", hot_threshold_celsius: "threshold_field.hot_trigger" },
-    validate: (input, l) => validateTemperatureStressOverrides(input as never, l),
+    validate: (input, l, defaults) => validateTemperatureStressOverrides(input as never, l, defaults),
     seed: persisted => temperatureStressInput(persisted as never),
   },
   {
@@ -60,7 +61,7 @@ const THRESHOLD_EDITORS: readonly ThresholdEditorSpec[] = [
     unit: "%",
     min: "0", max: "100", step: "0.1",
     labels: { dry_threshold_percent: "threshold_field.dry_trigger", dry_clear_percent: "threshold_field.dry_clear", damp_clear_percent: "threshold_field.damp_clear", damp_threshold_percent: "threshold_field.damp_trigger" },
-    validate: (input, l) => validateHumidityStressOverrides(input as never, l),
+    validate: (input, l, defaults) => validateHumidityStressOverrides(input as never, l, defaults),
     seed: persisted => humidityStressInput(persisted as never),
   },
   {
@@ -1339,7 +1340,7 @@ export class SmartPlantsPanel extends LitElement {
     if (this._dialog === "retire") return this._renderRetireDialog(this._base);
     const base = this._base; const preview = this._preview; const l = this._l;
     return html`<dialog aria-labelledby="dialog-title" @cancel=${(e: Event) => { e.preventDefault(); this._closeDialog(); }} @keydown=${(e: KeyboardEvent) => this._trapFocus(e)}><h2 id="dialog-title" tabindex="-1">${this._dialog === "delete" ? l.t("dialog.delete_title", { name: base.name }) : l.t("dialog.species_title")}</h2>
-      ${this._dialog === "delete" ? html`<p>${l.t("dialog.delete_body")}</p><p>${l.t("dialog.delete_retire_hint")}</p>` : preview ? snapshotView(l, preview.snapshot, preview) : html`<p>${l.t("dialog.preview_invalid")}</p>`}
+      ${this._dialog === "delete" ? html`<p>${l.t("dialog.delete_body")}</p><p>${l.t("dialog.delete_retire_hint")}</p>` : preview ? snapshotView(l, preview.snapshot, preview, base) : html`<p>${l.t("dialog.preview_invalid")}</p>`}
       <div class="actions"><button @click=${() => this._closeDialog()}>${l.t("common.cancel")}</button>${this._dialog === "delete" ? html`<button class="retire-instead" ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => { this._dialog = "retire"; void this.updateComplete.then(() => { const dialog = this.shadowRoot?.querySelector("dialog"); if (dialog && !dialog.open) dialog.showModal(); dialog?.querySelector<HTMLElement>("h2")?.focus(); }); }}>${l.t("dialog.delete_retire_instead")}</button>` : nothing}<button class="primary" ?disabled=${this._formBusy || this._blocked || !!this._conflict || (this._dialog === "species" && !preview)} @click=${() => {
         const kind = this._dialog; this._closeDialog();
         if (!this.hass) return;
@@ -1762,6 +1763,24 @@ export class SmartPlantsPanel extends LitElement {
     }
     return out;
   }
+  // The values a blank field inherits. Temperature and air humidity can take
+  // them from the species (`species_defaults`); the rest are built-in values.
+  private _inheritedThresholds(spec: ThresholdEditorSpec, plant: PlantRecord): { values: Record<string, number>; species: Set<string> } {
+    const raw = plant.roles?.[spec.configRole];
+    const stored = raw && typeof raw === "object" ? (raw as Record<string, unknown>)["species_defaults"] : undefined;
+    const values: Record<string, number> = { ...spec.defaults };
+    const species = new Set<string>();
+    if (stored && typeof stored === "object") {
+      for (const key of spec.keys) {
+        const entry = (stored as Record<string, unknown>)[key];
+        const value = entry && typeof entry === "object" ? (entry as { value?: unknown }).value : undefined;
+        if (typeof value !== "number" || !Number.isFinite(value)) continue;
+        values[key] = value;
+        species.add(key);
+      }
+    }
+    return { values, species };
+  }
   private _toggleThresholdEdit(spec: ThresholdEditorSpec, plant: PlantRecord): void {
     if (this._thresholdRole === spec.problemRole && this._thresholdEdits !== null) {
       this._thresholdRole = null; this._thresholdEdits = null; this._thresholdBaseline = null; this._thresholdError = ""; this._pendingThresholdSwitch = null; return;
@@ -1800,15 +1819,16 @@ export class SmartPlantsPanel extends LitElement {
     const edits = this._thresholdEdits;
     if (!edits) return nothing;
     const l = this._l;
-    const effective = (key: string) => { const raw = edits[key]!.trim(); const n = Number(raw); return raw === "" ? l.number(spec.defaults[key]!) : Number.isFinite(n) ? l.number(n) : raw; };
-    const field = (key: string) => html`<label>${l.t(spec.labels[key]!, { unit: spec.unit })}<input type="number" step=${spec.step} min=${spec.min} max=${spec.max} inputmode="decimal" .value=${edits[key]} @input=${(e: Event) => this._editThreshold({ [key]: (e.target as HTMLInputElement).value })}></label><small>${l.t("threshold.default_effective", { default: l.number(spec.defaults[key]!), effective: effective(key), unit: spec.unit })}</small><button type="button" @click=${() => this._editThreshold({ [key]: "" })}>${l.t("threshold.inherit")}</button>`;
+    const inherited = this._inheritedThresholds(spec, plant);
+    const effective = (key: string) => { const raw = edits[key]!.trim(); const n = Number(raw); return raw === "" ? l.number(inherited.values[key]!) : Number.isFinite(n) ? l.number(n) : raw; };
+    const field = (key: string) => html`<label>${l.t(spec.labels[key]!, { unit: spec.unit })}<input type="number" step=${spec.step} min=${spec.min} max=${spec.max} inputmode="decimal" .value=${edits[key]} @input=${(e: Event) => this._editThreshold({ [key]: (e.target as HTMLInputElement).value })}></label><small>${l.t(inherited.species.has(key) ? "threshold.species_default_effective" : "threshold.default_effective", { default: l.number(inherited.values[key]!), effective: effective(key), unit: spec.unit })}</small><button type="button" @click=${() => this._editThreshold({ [key]: "" })}>${l.t("threshold.inherit")}</button>`;
     return html`<div id=${`${spec.problemRole}-editor`} class="threshold-editor" role="group" aria-label=${l.t("threshold.group_label", { label: l.t(`problem_phrase.${spec.problemRole}`) })}>
       <p>${l.t(`threshold_intro.${spec.problemRole}`)}</p>
       <fieldset ?disabled=${this._formBusy || this._blocked || !!this._conflict}>
         <div class="grid">${spec.keys.map(k => html`<div>${field(k)}</div>`)}</div>
         ${this._thresholdError ? html`<p class="error" role="alert">${this._thresholdError}</p>` : nothing}
         <div class="actions">
-          <button type="button" @click=${() => this._editThreshold(Object.fromEntries(spec.keys.map(k => [k, ""])))}>${l.t("threshold.inherit_all")}</button>
+          <button type="button" @click=${() => this._editThreshold(Object.fromEntries(spec.keys.map(k => [k, ""])))}>${l.t(inherited.species.size ? "threshold.inherit_all_species" : "threshold.inherit_all")}</button>
           <button type="button" @click=${() => { this._thresholdRole = null; this._thresholdEdits = null; this._thresholdBaseline = null; this._thresholdError = ""; this._pendingThresholdSwitch = null; }}>${l.t("common.cancel")}</button>
           <button type="button" class="primary" @click=${() => void this._saveThresholds(spec, plant)}>${l.t("threshold.save")}</button>
         </div>
@@ -1817,7 +1837,7 @@ export class SmartPlantsPanel extends LitElement {
   }
   private async _saveThresholds(spec: ThresholdEditorSpec, plant: PlantRecord): Promise<void> {
     if (!this.hass || !this._thresholdEdits || this._formBusy || this._blocked || this._conflict) return;
-    const { values, error } = spec.validate(this._thresholdEdits, this._l);
+    const { values, error } = spec.validate(this._thresholdEdits, this._l, this._inheritedThresholds(spec, plant).values);
     if (error) { this._thresholdError = error; return; }
     this._thresholdError = "";
     const hass = this.hass;
@@ -2502,7 +2522,7 @@ export class SmartPlantsPanel extends LitElement {
           ${areaPicker}<div class="actions"><button type="button" ?disabled=${disabled} @click=${() => { this._edit({ area: this._baseArea }); this._closeSetting("area"); }}>${l.t("common.cancel")}</button><button type="button" class="primary" ?disabled=${disabled || !!this._registryError || this._areaReview} @click=${() => void this._save("area")}>${l.t("detail.save_area")}</button></div>`, this._areaReview)}
         ${this._renderPhotoRow(plant)}
         ${this._settingRow("species", l.t("settings.species"), speciesValue, snapshot ? l.t("settings.change_species") : l.t("settings.find_species"), () => html`
-          ${plant.species ? snapshotView(l, plant.species.snapshot) : nothing}<fieldset ?disabled=${disabled}>
+          ${plant.species ? snapshotView(l, plant.species.snapshot, undefined, plant) : nothing}<fieldset ?disabled=${disabled}>
           ${plant.species?.snapshot.provider_ref ? html`<button type="button" @click=${() => void this._previewSpecies()}>${l.t("species.preview_refresh")}</button>` : nothing}
           ${selectField(l, l.t("species.provider"), this._provider, [{ value: "manual", label: l.t("species.manual") }, ...(this._capabilities?.providers.filter(p => p.available && p.search_supported).map(p => ({ value: p.provider, label: p.provider === "openplantbook" ? "OpenPlantBook" : p.provider })) ?? [])], v => { this._providerRequest++; this._provider = v; this._preview = null; this._results = []; })}
           ${this._provider === "manual" ? html`${textField(l.t("species.common_name"), edit.common, v => this._edit({ common: v }))}${textField(l.t("species.scientific_name"), edit.latin, v => this._edit({ latin: v }))}<p class="small muted">${l.t("species.manual_hint")}</p><div class="actions">${this._saveButton("species", l.t("species.save_manual"))}</div>`

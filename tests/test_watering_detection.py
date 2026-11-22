@@ -512,7 +512,7 @@ def _older_storage(plant: dict[str, Any]) -> dict[str, Any]:
     return {
         "key": STORAGE_KEY,
         "version": STORAGE_MAJOR_VERSION,
-        "minor_version": 19,
+        "minor_version": 20,
         "data": {
             "revision": 1,
             "plants": [plant],
