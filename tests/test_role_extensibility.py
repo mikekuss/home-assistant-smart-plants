@@ -63,9 +63,13 @@ class _SyntheticController:
     def close(self) -> None:
         self.calls.append("close")
 
-    def reconfigure(self, config: Any) -> None:
+    def reconfigure(self, config: Any, *, clear_alert: bool = False) -> None:
+        del clear_alert
         self.config = config
         self.calls.append("reconfigure")
+
+    def refresh(self) -> None:
+        self.calls.append("refresh")
 
 
 async def test_synthetic_role_registers_through_controller_seam(
@@ -103,6 +107,7 @@ async def test_synthetic_role_registers_through_controller_seam(
     payload["rest_period"] = None
     payload["snoozed_until"] = None
     payload["watering_detection"] = None
+    payload["winter_thresholds"] = None
     hass_storage[STORAGE_KEY] = {
         "version": STORAGE_MAJOR_VERSION,
         "minor_version": STORAGE_MINOR_VERSION,

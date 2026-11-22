@@ -232,7 +232,14 @@ function careStateOf(task, rest, p) {
 }
 // Mirrors the backend overview: one status per plant from the same evaluation
 // the entities use, plus the moisture reading and the last watering.
+// Winter values apply in dormant storage or during the rest period, as the backend decides.
+function winterOf(p) {
+  if (!p.winter_thresholds) return null;
+  const reason = p.placement?.mode === "dormant_storage" ? "dormant_storage" : p.rest_period && restMonths(p.rest_period).includes(Number(today().slice(5, 7))) ? "rest_period" : null;
+  return { active: reason !== null, reason, until: null, roles: Object.keys(p.winter_thresholds).sort() };
+}
 function overviewOf(p) {
+  const winter = winterOf(p); const winterTemperature = winter?.active ? p.winter_thresholds.temperature : undefined;
   const e = p.lifecycle_state === "disabled" ? unavailable : state.evaluations[p.id] ?? unavailable;
   const sources = p.roles.moisture?.sources ?? [];
   // Soil moisture is optional: without it, a plant with other sensors is healthy here.
@@ -248,13 +255,16 @@ function overviewOf(p) {
     problems: kind ? [{ role: "moisture", kind }] : [],
     roles: {
       ...sources.length ? { moisture: { value: e.computed_available ? e.computed_percent : null, unit: "%", state: e.needs_water ? "low" : e.too_wet ? "high" : e.sensor_stale ? "stale" : e.computed_available ? "ok" : "unavailable", range: { min: bound("min"), target: bound("target"), max: bound("max") }, clear: { min: bound("min") + 2, max: bound("max") - 2 }, last_reported: e.computed_available ? now : null, sources: sources.map(s => s.entity_id) } } : {},
-      ...p.roles.temperature?.sources?.length ? { temperature: { value: sourceValue(p, { role: "temperature" }), unit: "°C", state: "ok", range: { min: 10, target: null, max: 30 }, clear: { min: 12, max: 28 }, last_reported: now, sources: p.roles.temperature.sources.map(s => s.entity_id) } } : {},
+      ...p.roles.temperature?.sources?.length ? { temperature: { value: sourceValue(p, { role: "temperature" }), unit: "°C", state: "ok",
+        ...winterTemperature ? { range: { min: winterTemperature.cold_threshold_celsius, target: null, max: winterTemperature.hot_threshold_celsius }, clear: { min: winterTemperature.cold_clear_celsius, max: winterTemperature.hot_clear_celsius }, normal_range: { min: 10, target: null, max: 30 } }
+          : { range: { min: 10, target: null, max: 30 }, clear: { min: 12, max: 28 } }, last_reported: now, sources: p.roles.temperature.sources.map(s => s.entity_id) } } : {},
     },
     last_watered_at: watered?.occurred_at ?? null,
     image: p.image ? { id: p.image.id } : null,
     care: (p.care_tasks ?? []).map(task => careStateOf(task, p.rest_period, p)).sort((a, b) => ({ overdue: 0, due: 1 }[a.status] ?? 2) - ({ overdue: 0, due: 1 }[b.status] ?? 2) || (a.next_due ?? "").localeCompare(b.next_due ?? "")),
     rest_period: p.rest_period ?? null,
     snoozed_until: p.snoozed_until ?? null,
+    winter,
     resting: !!p.rest_period && restMonths(p.rest_period).includes(Number(today().slice(5, 7))),
   };
 }
@@ -278,6 +288,8 @@ if (params.has("care")) state.seedCare();
 if (params.has("reading")) state.seedReading(params.has("cold"), params.has("winter"));
 if (params.has("forecast")) state.seedForecast(params.has("frost"), params.has("short"));
 if (params.has("suggest")) state.seedSuggestions();
+// Opt-in dormant storage for the first plant.
+if (params.has("dormant")) state.plants[0].placement = { mode: "dormant_storage", exposure: null, rain_exposure: null, container: true };
 // Opt-in snoozed first plant; tests pin the clock so the end date reads the same.
 if (params.has("snoozed")) state.plants[0].snoozed_until = "2026-10-30T23:59:59Z";
 // Opt-in notification setup: one notify entity, one legacy notify service and
@@ -473,6 +485,7 @@ async function respond(message) {
       task.last_done_at = new Date(occurred).toISOString().replace(/\.\d+Z$/, "Z");
       return { plant: revise(p, {}), event_id: event.id };
     }
+    case "smart_plants/plants/set_winter_thresholds": return { plant: revise(p, { winter_thresholds: message.winter_thresholds }) };
     case "smart_plants/plants/set_rest_period": {
       if (message.rest_period && restMonths(message.rest_period).length === 12) reject("invalid_format");
       return { plant: revise(p, { rest_period: message.rest_period }) };

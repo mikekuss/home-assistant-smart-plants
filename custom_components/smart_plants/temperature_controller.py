@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 from homeassistant.util import dt as dt_util
 
+from .models import thresholds_changed
 from .source_tracker import SourceTracker
 from .temperature_evaluator import TemperatureEvaluation, TemperatureReading, evaluate
 
@@ -82,8 +83,34 @@ class TemperaturePlantController:
         self._active = False
         self._tracker.close()
 
-    def reconfigure(self, config: TemperatureConfig) -> None:
+    def _clear_alert(self, previous: TemperatureConfig) -> None:
+        """
+        Forget an alert that was on if its side's thresholds changed.
+
+        Used when other thresholds take over, such as winter values: an alert
+        that was on must not wait for a clear value that belongs to the new
+        thresholds. A side whose thresholds stay the same keeps its alert.
+        """
+        side = self._previous_temperature_stress
+        keys: tuple[str, ...] = ()
+        if side == "cold":
+            keys = ("cold_threshold_celsius", "cold_clear_celsius")
+        if side == "hot":
+            keys = ("hot_threshold_celsius", "hot_clear_celsius")
+        if keys and thresholds_changed(previous, self._config, keys):
+            self._previous_temperature_stress = None
+
+    def refresh(self) -> None:
+        """Evaluate again with the current config and notify listeners."""
+        self._recompute_and_notify(dt_util.utcnow())
+
+    def reconfigure(
+        self, config: TemperatureConfig, *, clear_alert: bool = False
+    ) -> None:
+        previous = self._config
         self._config = config
+        if clear_alert:
+            self._clear_alert(previous)
         self._tracker.configure(
             config.sources, stale_after=timedelta(seconds=config.stale_after_seconds)
         )

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from homeassistant.util import dt as dt_util
 
 from .humidity_evaluator import HumidityEvaluation, HumidityReading, evaluate
+from .models import thresholds_changed
 from .source_tracker import SourceTracker
 
 if TYPE_CHECKING:
@@ -82,8 +83,32 @@ class HumidityPlantController:
         self._active = False
         self._tracker.close()
 
-    def reconfigure(self, config: HumidityConfig) -> None:
+    def _clear_alert(self, previous: HumidityConfig) -> None:
+        """
+        Forget an alert that was on if its side's thresholds changed.
+
+        Used when other thresholds take over, such as winter values: an alert
+        that was on must not wait for a clear value that belongs to the new
+        thresholds. A side whose thresholds stay the same keeps its alert.
+        """
+        side = self._previous_humidity_stress
+        keys: tuple[str, ...] = ()
+        if side == "dry":
+            keys = ("dry_threshold_percent", "dry_clear_percent")
+        if side == "damp":
+            keys = ("damp_threshold_percent", "damp_clear_percent")
+        if keys and thresholds_changed(previous, self._config, keys):
+            self._previous_humidity_stress = None
+
+    def refresh(self) -> None:
+        """Evaluate again with the current config and notify listeners."""
+        self._recompute_and_notify(dt_util.utcnow())
+
+    def reconfigure(self, config: HumidityConfig, *, clear_alert: bool = False) -> None:
+        previous = self._config
         self._config = config
+        if clear_alert:
+            self._clear_alert(previous)
         self._tracker.configure(
             config.sources, stale_after=timedelta(seconds=config.stale_after_seconds)
         )

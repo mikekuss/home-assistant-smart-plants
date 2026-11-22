@@ -201,8 +201,28 @@ class IlluminancePlantController:
             now = wake_at
         self._recompute_and_notify(now)
 
-    def reconfigure(self, config: IlluminanceConfig) -> None:
+    def _clear_alert(self, previous: IlluminanceConfig) -> None:
+        """
+        Forget whether the alert was on, so the next evaluation starts fresh.
+
+        Used when other thresholds take over, such as winter values: an alert
+        that was on must not wait for a clear value that belongs to the new
+        thresholds. The caller only asks when the thresholds changed.
+        """
+        del previous
+        self._previous_low_light = False
+
+    def refresh(self) -> None:
+        """Evaluate again with the current config and notify listeners."""
+        self._recompute_and_notify(dt_util.utcnow())
+
+    def reconfigure(
+        self, config: IlluminanceConfig, *, clear_alert: bool = False
+    ) -> None:
+        previous = self._config
         self._config = config
+        if clear_alert:
+            self._clear_alert(previous)
         self._tracker.configure(
             config.sources, stale_after=timedelta(seconds=config.stale_after_seconds)
         )

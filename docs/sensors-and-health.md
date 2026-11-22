@@ -148,6 +148,49 @@ its values don't fit a value you entered, or leave too little room between trigg
 the reading keeps the built-in values; the species is still applied. In **Edit thresholds** a
 value from the species reads *Species default*.
 
+## Winter values
+
+Some plants spend the winter cool, dry and dark, for example an oleander in a garage at 5 °C.
+With its normal thresholds it would report *Too cold*, *Needs water* and *Low light* all
+winter. Winter values are a second set of thresholds that replace the normal ones while winter
+applies. Most plants don't need them, and a plant without winter values doesn't change.
+
+Winter applies to a plant with winter values:
+
+- during its [rest period](care.md#set-a-rest-period), or
+- while its placement is **Dormant storage** (under **More details**).
+
+Either one is enough. Dormant storage has no end date: winter values apply until you change
+the placement.
+
+To add them, open the plant's **Settings** tab, expand **Other targets** and select **Add winter
+values**. The editor shows one group per check the plant has a sensor for: temperature, soil
+moisture, light, fertilizer level and air humidity. It starts from the current values. Change
+only what should be different in winter; a check you leave as it is keeps its normal values.
+The values where an alert turns off again keep the same distance as the normal ones. The editor
+suggests:
+
+- for temperature, the lowest temperature the species survives, when OpenPlantBook has it,
+- for soil moisture, about two thirds of the normal *Needs water below* and three quarters of
+  *Ideal*,
+- for light, 0 lx, which turns the low light alert off,
+- for fertilizer level, half the normal lower bound.
+
+It suggests nothing for air humidity, because dry heating air is a real problem in winter. A
+temperature floor below the species' survival temperature shows a warning.
+
+While winter values apply, the plant page shows **Winter values until end of** *month* (rest
+period) or **Winter values · dormant storage**. Select it to see what changes, such as
+*Temperature 0–35 °C instead of 10–35 °C*. Ranges that use a winter value show a snowflake, and
+the overview and the dashboard card show a snowflake next to the status. A plant in dormant
+storage without winter values that reports *Too cold*, *Low light* or *Needs water* offers
+**Add winter values** next to the problem.
+
+The problem sensors use the winter values while they apply, so automations keep working
+without changes. The binary sensors of a plant with winter values report whether they apply,
+see [Winter values](entities.md#winter-values). Snoozing and pausing work as before. Retiring a
+plant drops its winter values, like its other custom thresholds.
+
 ## Health score
 
 The **Health score** sensor goes from 0 to 100. The panel shows it on the **Sensors** tab

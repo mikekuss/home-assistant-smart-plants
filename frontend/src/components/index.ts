@@ -6,3 +6,4 @@ export { SpPlantAvatar } from "./sp-plant-avatar.js";
 export { SpEmptyState } from "./sp-empty-state.js";
 export { SpHistoryChart } from "./sp-history-chart.js";
 export { SpSnoozeChip } from "./sp-snooze-chip.js";
+export { SpWinterIcon } from "./sp-winter-icon.js";

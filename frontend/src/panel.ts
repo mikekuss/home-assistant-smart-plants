@@ -139,6 +139,8 @@ import { validState } from "./validation.js";
 import { SNOOZE_PRESETS, activeSnooze, addDays, snoozeChipText, snoozeDateRange, snoozeDateText, snoozeEndDate, snoozeUntil, validSnoozeDate } from "./snooze.js";
 import type { SnoozeChoice } from "./snooze.js";
 import { styles } from "./styles.js";
+import { WINTER_SPECS, changeParts, fieldHint, localWinterReason, nextText, normalThresholds, showWinterHint, survivalWarning, winterChip, winterDraft, winterEditorRoles, winterLines, winterPayload, winterReasonText, winterSuggestion, winterThresholds, winterWhen } from "./winter.js";
+import type { WinterDraft, WinterLine, WinterRole, WinterThresholds } from "./winter.js";
 import "./wizard.js";
 import "./views/notifications.js";
 import "./views/archive.js";
@@ -269,7 +271,7 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _imageUrl: string | null = null;
   @state() private _imageLoading = false;
   @state() private _imageError: string | null = null;
-  @state() private _dialog: "delete" | "retire" | "species" | "care_task" | "care_automate" | "care_rest" | "snooze" | "snooze_all" | null = null;
+  @state() private _dialog: "delete" | "retire" | "species" | "care_task" | "care_automate" | "care_rest" | "snooze" | "snooze_all" | "winter" | "winter_remove" | null = null;
   // How many plants are retired. The archive menu item shows only above zero.
   @state() private _archivedCount = 0;
   // Live plant records the panel could not read; never shown as deleted.
@@ -280,6 +282,9 @@ export class SmartPlantsPanel extends LitElement {
   private _removing: string | null = null;
   // Choice in the Snooze alerts and Snooze all plants dialogs.
   @state() private _snoozeDraft: { choice: SnoozeChoice; date: string; error: string } | null = null;
+  // Winter values editor draft, and whether the header's winter box is open.
+  @state() private _winterDraft: WinterDraft | null = null;
+  @state() private _winterOpen = false;
   // Rest period editor draft.
   @state() private _restEditor: { draft: RestDraft; error: string } | null = null;
   // Care task editor and the task shown in the Automate… sheet.
@@ -754,6 +759,7 @@ export class SmartPlantsPanel extends LitElement {
     if (view.kind === "create") this._wizardStarted = true;
     if (view.kind === "detail") {
       this._detailSection = "overview"; this._expanded = new Set(); this._opened = new Set(); this._settingsOpen = new Set(); this._moistureMode = null;
+      this._winterOpen = false;
       this._careFilter = "all"; this._careFormOpen = false; this._careEditingId = null; this._careTaskId = null; this._careKind = "watering"; this._careFields = {};
       const now = new Date(); this._careDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16); this._careNote = "";
       const plant = this._plantById(view.plantId); if (plant) this._beginEdit(plant);
@@ -1329,7 +1335,7 @@ export class SmartPlantsPanel extends LitElement {
     void this.updateComplete.then(() => { if (context !== this._context || this._dialog !== kind) return; const dialog = this.shadowRoot?.querySelector("dialog"); if (dialog && !dialog.open) dialog.showModal(); dialog?.querySelector<HTMLElement>(kind === "delete" || kind === "retire" ? "button" : "h2")?.focus(); });
   }
   private _closeDialog(): void {
-    this.shadowRoot?.querySelector("dialog")?.close(); this._dialog = null; this._taskEditor = null; this._automateTaskId = null; this._restEditor = null; this._snoozeDraft = null;
+    this.shadowRoot?.querySelector("dialog")?.close(); this._dialog = null; this._taskEditor = null; this._automateTaskId = null; this._restEditor = null; this._snoozeDraft = null; this._winterDraft = null;
     const target = this._focusReturn?.isConnected && !this._focusReturn.matches(":disabled") ? this._focusReturn : this.shadowRoot?.querySelector<HTMLElement>("h1");
     target?.focus(); this._focusReturn = null;
   }
@@ -1338,6 +1344,8 @@ export class SmartPlantsPanel extends LitElement {
     if (this._dialog === "care_task" || this._dialog === "care_automate" || this._dialog === "care_rest") return this._renderCareDialog(this._base.id);
     if (this._dialog === "snooze") return this._renderSnoozeDialog(this._base.id);
     if (this._dialog === "retire") return this._renderRetireDialog(this._base);
+    if (this._dialog === "winter") return this._renderWinterDialog(this._base.id);
+    if (this._dialog === "winter_remove") return this._renderWinterRemoveDialog(this._base.id);
     const base = this._base; const preview = this._preview; const l = this._l;
     return html`<dialog aria-labelledby="dialog-title" @cancel=${(e: Event) => { e.preventDefault(); this._closeDialog(); }} @keydown=${(e: KeyboardEvent) => this._trapFocus(e)}><h2 id="dialog-title" tabindex="-1">${this._dialog === "delete" ? l.t("dialog.delete_title", { name: base.name }) : l.t("dialog.species_title")}</h2>
       ${this._dialog === "delete" ? html`<p>${l.t("dialog.delete_body")}</p><p>${l.t("dialog.delete_retire_hint")}</p>` : preview ? snapshotView(l, preview.snapshot, preview, base) : html`<p>${l.t("dialog.preview_invalid")}</p>`}
@@ -1732,7 +1740,11 @@ export class SmartPlantsPanel extends LitElement {
     const currentSpec = this._thresholdRole ? _EDITOR_BY_PROBLEM_ROLE[this._thresholdRole] : null;
     const currentLabel = currentSpec ? l.t(`problem_phrase.${currentSpec.problemRole}`) : "";
     const pendingLabel = pending ? l.t(`problem_phrase.${pending.spec.problemRole}`) : "";
+    // While winter values apply, the problem sensors report the winter limits,
+    // so the values listed here are those; Edit thresholds changes the normal ones.
+    const winterNow = !!this._overview[plant.id]?.winter?.active;
     return html`<p class="small muted">${l.t("other_targets.intro")}</p>
+      ${winterNow ? html`<p class="notice winter-in-use" role="note">${l.t("winter.other_targets_active")}</p>` : nothing}
       ${pending ? html`<p class="notice threshold-switch-alert" role="alert">${l.t("section.advanced_diagnostics_switch_prompt", { current: currentLabel, pending: pendingLabel })}
         <button type="button" class="primary" @click=${() => this._confirmDiscardAndSwitch()}>${l.t("section.advanced_diagnostics_switch_discard")}</button>
         <button type="button" @click=${() => { this._pendingThresholdSwitch = null; }}>${l.t("section.advanced_diagnostics_switch_keep")}</button>
@@ -1744,7 +1756,9 @@ export class SmartPlantsPanel extends LitElement {
         const saved = this._thresholdSaved[row.role];
         return html`<dt>${row.label}</dt><dd>${thresholds.length ? html`<ul class="thresholds" aria-label=${l.t("section.effective_thresholds_label", { label: row.label })}>${thresholds.map(t => html`<li><span class="threshold-label">${t.label}</span>: <span class="threshold-value">${t.value === null ? "—" : `${l.number(t.value)} ${t.unit}`}</span></li>`)}</ul>` : nothing}
           <button class="threshold-toggle btn outline sm" type="button" aria-expanded=${editing ? "true" : "false"} aria-controls=${`${row.role}-editor`} ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._toggleThresholdEdit(spec, plant)}>${editing ? l.t("section.advanced_diagnostics_cancel_edit") : l.t("section.advanced_diagnostics_edit_thresholds")}</button>${editing ? this._renderThresholdEditor(spec, plant) : nothing}${saved && !editing ? html`<p class="notice" role="status">${saved}</p>` : nothing}</dd>`;
-      })}</dl>` : html`<p>${l.t("other_targets.none")}</p>`}`;
+      })}</dl>` : html`<p>${l.t("other_targets.none")}</p>`}
+      ${!winterThresholds(plant) && winterEditorRoles(plant).length ? html`<div class="winter-entry"><ha-icon aria-hidden="true" icon="mdi:snowflake"></ha-icon><span>${l.t("winter.add_hint")}</span>
+        <button type="button" class="btn text sm" ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._openWinterEditor(plant)}><ha-icon aria-hidden="true" icon="mdi:plus"></ha-icon>${l.t("winter.add")}</button></div>` : nothing}`;
   }
   // Problem binaries report a reason code; unknown codes are shown verbatim.
   private _problemReason(code: string): string {
@@ -2323,6 +2337,154 @@ export class SmartPlantsPanel extends LitElement {
       this._sourceSaved = { ...this._sourceSaved, [role]: this._l.t("sensors.saved", { role: readingLabel(this._l, role) }) };
     }
   }
+  // ---- Winter values ----
+  private _openWinterEditor(plant: PlantRecord): void {
+    if (this._dialog) this._closeDialog();
+    this._winterDraft = winterDraft(plant);
+    this._openDialog("winter");
+  }
+  private _editWinter(role: WinterRole, fields: Record<string, string>): void {
+    const draft = this._winterDraft;
+    if (draft) this._winterDraft = { ...draft, [role]: { ...draft[role], ...fields } };
+  }
+  // Shows where the placement is chosen: Settings, More details.
+  private _changePlacement(): void {
+    if (this._dialog) this._closeDialog();
+    this._winterOpen = false;
+    this._goTo("settings", '[data-section="more_details"] select', "more_details");
+  }
+  private _setRestFromWinter(plant: PlantRecord): void {
+    if (this._dialog) this._closeDialog();
+    this._openRestEditor(plant);
+  }
+  // Writes the plant's winter values. Returns the written plant, or null after an error.
+  private async _writeWinter(plantId: string, thresholds: WinterThresholds | null): Promise<PlantRecord | null> {
+    const hass = this.hass;
+    if (!hass || this._formBusy || this._blocked) return null;
+    const context = this._context;
+    this._formBusy = true; this._error = ""; this._request++;
+    try {
+      const plant = await this._withRevision(plantId, revision => api.setWinterThresholds(hass, plantId, revision, thresholds as Record<string, Record<string, number>> | null));
+      if (context !== this._context) return null;
+      // The open plant follows this write instead of reporting it as a change made elsewhere.
+      this._formBusy = false; this._adopt(plant); this._followQuickWrite(plant);
+      return plant;
+    } catch (e) {
+      if (context === this._context) this._error = this._friendly(e);
+      return null;
+    } finally {
+      if (context === this._context) { this._formBusy = false; void this._refresh(false); }
+    }
+  }
+  private async _saveWinter(plantId: string): Promise<void> {
+    const plant = this._plantById(plantId); const draft = this._winterDraft; const l = this._l;
+    if (!plant || !draft) return;
+    const { thresholds, errors } = winterPayload(plant, draft, l);
+    if (Object.keys(errors).length) return;
+    const written = await this._writeWinter(plantId, thresholds);
+    if (!written) return;
+    this._closeDialog();
+    this._toast(l.t(thresholds === null ? "winter.removed" : "winter.saved"));
+  }
+  // Removes the winter values after the confirmation; Undo puts them back.
+  private async _removeWinter(plantId: string): Promise<void> {
+    const before = this._plantById(plantId); const l = this._l;
+    const previous = before ? winterThresholds(before) : null;
+    this._closeDialog();
+    if (!previous) return;
+    const written = await this._writeWinter(plantId, null);
+    if (written) this._toast(l.t("winter.removed"), { text: l.t("winter.undo"), action: () => void this._writeWinter(plantId, previous).then(plant => { this._toast(l.t(plant ? "winter.restored" : "winter.undo_failed")); }) });
+  }
+  private _renderWinterLine(line: WinterLine) {
+    if (!line.changed) return html`<li class="same">${this._l.t("winter.same_summary", { check: line.check })}</li>`;
+    const parts = changeParts(this._l, line);
+    return html`<li>${parts.before}<strong>${line.check}</strong>${parts.after}</li>`;
+  }
+  // The "never applies" notice, with links to what would make winter apply.
+  private _renderWinterNever(plant: PlantRecord) {
+    const l = this._l;
+    return html`<div class="winter-never" role="note"><p>${l.t("winter.never")}</p>
+      <div class="row"><button type="button" class="btn text sm" @click=${() => this._setRestFromWinter(plant)}>${l.t("care_plan.rest_set")}</button>
+        <button type="button" class="btn text sm" @click=${() => this._changePlacement()}>${l.t("winter.change_placement")}</button></div></div>`;
+  }
+  // Settings: the plant's winter values, between the soil moisture targets and More targets.
+  private _renderWinterCard(plant: PlantRecord) {
+    if (!winterThresholds(plant)) return nothing;
+    const l = this._l; const o = this._overview[plant.id];
+    const disabled = this._formBusy || this._blocked || !!this._conflict;
+    const today = this._today();
+    const active = o?.winter ? o.winter.active : localWinterReason(plant, today) !== null;
+    const when = winterWhen(l, plant);
+    // A paused plant evaluates nothing, so its winter values wait until it resumes.
+    const paused = plant.lifecycle_state === "disabled";
+    const next = paused ? l.t("winter.paused") : !active && plant.rest_period ? nextText(l, plant, today) : null;
+    return html`<section class="sp-card winter-card" aria-labelledby="winter-heading"><div class="card-h"><h3 id="winter-heading"><ha-icon aria-hidden="true" icon="mdi:snowflake"></ha-icon>${l.t("winter.title")}${active ? html`<span class="winter-badge">${l.t("winter.active_now")}</span>` : nothing}</h3></div>
+      <div class="card-b">${when ? html`<p class="small muted">${when}${next ? html` ${next}` : nothing}</p>` : this._renderWinterNever(plant)}
+        <ul class="winter-lines">${winterLines(l, plant).map(line => this._renderWinterLine(line))}</ul>
+        <div class="row"><span class="spacer"></span><button type="button" class="btn danger sm" ?disabled=${disabled} @click=${() => this._openDialog("winter_remove")}>${l.t("winter.remove")}</button>
+          <button type="button" class="btn filled sm" ?disabled=${disabled} @click=${() => this._openWinterEditor(plant)}>${l.t("winter.edit")}</button></div></div></section>`;
+  }
+  // Under the header chip: why winter values apply and what they change.
+  private _renderWinterBox(plant: PlantRecord, winter: NonNullable<PlantOverview["winter"]>) {
+    const l = this._l;
+    return html`<div class="winter-box" id="winter-box"><p>${winterReasonText(l, plant, winter, this._today())}</p>
+      <ul>${winterLines(l, plant).filter(line => line.changed).map(line => this._renderWinterLine(line))}</ul>
+      <button type="button" class="btn text sm" ?disabled=${this._formBusy || this._blocked || !!this._conflict} @click=${() => this._openWinterEditor(plant)}>${l.t("winter.edit")}</button></div>`;
+  }
+  private _renderWinterDialog(plantId: string) {
+    const plant = this._plantById(plantId); const draft = this._winterDraft;
+    if (!plant || !draft) return nothing;
+    const l = this._l; const busy = this._formBusy || this._blocked || !!this._conflict;
+    const when = winterWhen(l, plant);
+    const { thresholds, errors } = winterPayload(plant, draft, l);
+    // Nothing to save when no check differs and the plant has no winter values to remove.
+    const unchanged = thresholds === null && !winterThresholds(plant);
+    const roles = winterEditorRoles(plant);
+    return html`<dialog class="care-dialog winter-dialog" aria-labelledby="dialog-title" aria-describedby="winter-intro" @cancel=${(e: Event) => { e.preventDefault(); if (!this._formBusy) this._closeDialog(); }} @keydown=${(e: KeyboardEvent) => this._trapFocus(e)}>
+      <h2 id="dialog-title" tabindex="-1">${l.t("winter.editor_title", { name: plant.name })}</h2>
+      <div class="dialog-body">
+        <p class="muted" id="winter-intro">${l.t("winter.editor_intro")}</p>
+        ${when ? html`<p class="winter-when">${l.t("winter.editor_when", { when })}</p>` : this._renderWinterNever(plant)}
+        ${roles.map(role => this._renderWinterGroup(plant, role, draft[role] ?? {}, errors[role]))}
+        ${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}
+        <div class="actions dialog-actions"><span class="spacer"></span>
+          <button type="button" @click=${() => this._closeDialog()}>${l.t("common.cancel")}</button>
+          <button type="button" class="primary" ?disabled=${busy || unchanged || Object.keys(errors).length > 0} @click=${() => void this._saveWinter(plant.id)}>${l.t("winter.save")}</button></div>
+      </div></dialog>`;
+  }
+  private _renderWinterGroup(plant: PlantRecord, role: WinterRole, fields: Record<string, string>, error: string | undefined) {
+    const l = this._l; const spec = WINTER_SPECS[role];
+    const normal = normalThresholds(plant, role);
+    const suggestion = winterSuggestion(l, plant, role, fields, normal);
+    const warning = role === "temperature" ? survivalWarning(l, plant, fields) : null;
+    const errorId = `winter-${role}-error`;
+    return html`<fieldset class="winter-group"><legend><ha-icon aria-hidden="true" .icon=${ROLE_META[role].icon}></ha-icon>${readingLabel(l, role)}</legend>
+      <div class="winter-fields">${spec.fields.map(field => {
+        const hint = fieldHint(l, role, field.key, fields[field.key], normal);
+        const warn = warning !== null && field.key === "cold_threshold_celsius";
+        const hintId = `winter-${role}-${field.key}-hint`;
+        return html`<div class="winter-field"><label>${l.t(field.label)}<span class="field-suffix"><input type="number" step=${spec.step} inputmode="decimal" class=${warn ? "warn" : hint.changed ? "changed" : ""}
+            .value=${fields[field.key] ?? ""} aria-invalid=${error ? "true" : "false"} aria-describedby=${error ? `${hintId} ${errorId}` : hintId}
+            @input=${(e: Event) => this._editWinter(role, { [field.key]: (e.target as HTMLInputElement).value })}><span aria-hidden="true">${spec.unit}</span></span></label>
+          <small id=${hintId} class=${warn ? "warn" : ""}>${warn ? warning : hint.text}${role === "illuminance" ? html` · ${l.t("winter.light_off_hint")}` : nothing}</small></div>`;
+      })}</div>
+      ${error ? html`<p class="error-text small" id=${errorId} role="alert">${error}</p>` : nothing}
+      ${suggestion ? html`<div class="winter-suggestion"><ha-icon aria-hidden="true" icon="mdi:snowflake"></ha-icon><span>${suggestion.text}</span>
+        <button type="button" class="btn text sm" @click=${() => this._editWinter(role, suggestion.apply)}>${l.t("winter.use")}</button></div>` : nothing}
+    </fieldset>`;
+  }
+  private _renderWinterRemoveDialog(plantId: string) {
+    const plant = this._plantById(plantId);
+    if (!plant) return nothing;
+    const l = this._l; const busy = this._formBusy || this._blocked || !!this._conflict;
+    return html`<dialog class="care-dialog winter-remove-dialog" aria-labelledby="dialog-title" aria-describedby="winter-remove-body" @cancel=${(e: Event) => { e.preventDefault(); this._closeDialog(); }} @keydown=${(e: KeyboardEvent) => this._trapFocus(e)}>
+      <h2 id="dialog-title" tabindex="-1">${l.t("winter.remove_title")}</h2>
+      <div class="dialog-body"><p id="winter-remove-body">${l.t("winter.remove_body", { name: plant.name })}</p>
+        <div class="actions dialog-actions"><span class="spacer"></span>
+          <button type="button" @click=${() => this._closeDialog()}>${l.t("common.cancel")}</button>
+          <button type="button" class="primary" ?disabled=${busy} @click=${() => void this._removeWinter(plant.id)}>${l.t("winter.remove")}</button></div>
+      </div></dialog>`;
+  }
   // ---- Plant page ----
   private _renderHeader(plant: PlantRecord) {
     const l = this._l; const o = this._overview[plant.id];
@@ -2331,6 +2493,7 @@ export class SmartPlantsPanel extends LitElement {
     const chip = o ? chipText(l, o) : null;
     const snoozed = snoozeChipText(l, plant.snoozed_until, this._today(), this._timeZone());
     const busy = this._formBusy || this._blocked || !!this._conflict;
+    const winter = winterChip(l, plant, o?.winter);
     return html`<div class="sp-card header-card">
       <div class="hero">
         <sp-plant-avatar size="large" .src=${this._imageUrl} .name=${plant.name} .l=${l} @photo-error=${() => { this._imageError = l.t("photo.decode_failed"); }}></sp-plant-avatar>
@@ -2338,9 +2501,11 @@ export class SmartPlantsPanel extends LitElement {
           <h2 class="hero-name">${plant.name}</h2>
           <div class="hero-meta">${areaId ? html`<span><ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${this._areaName(areaId)}</span>` : nothing}
             <span><ha-icon aria-hidden="true" icon="mdi:leaf"></ha-icon>${species ? html`<i>${species}</i>` : l.t("detail.no_species")}</span></div>
-          ${(o && chip) || snoozed ? html`<div class="hero-status">${o && chip ? html`<sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip>` : nothing}
+          ${(o && chip) || snoozed || winter ? html`<div class="hero-status">${o && chip ? html`<sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip>` : nothing}
             ${snoozed ? html`<span class="snooze"><sp-snooze-chip .label=${snoozed}></sp-snooze-chip><button type="button" class="btn text sm" ?disabled=${busy} aria-label=${l.t("snooze.resume_label", { name: plant.name })} @click=${() => this._resumeSnooze(plant.id)}>${l.t("snooze.resume")}</button></span>` : nothing}
-            ${o ? html`<span class="reason">${headerReason(l, o)}</span>` : nothing}</div>` : nothing}
+            ${winter ? html`<button type="button" class="winter-chip" aria-expanded=${this._winterOpen ? "true" : "false"} aria-controls="winter-box" @click=${() => { this._winterOpen = !this._winterOpen; }}><ha-icon aria-hidden="true" icon="mdi:snowflake"></ha-icon><span>${winter}</span><ha-icon class="caret" aria-hidden="true" .icon=${this._winterOpen ? "mdi:menu-up" : "mdi:menu-down"}></ha-icon></button>` : nothing}
+            ${o ? html`<span class="reason">${headerReason(l, o)}${showWinterHint(plant, o) ? html` · ${l.t("winter.hint_storage")} <button type="button" class="btn text sm" ?disabled=${busy} @click=${() => this._openWinterEditor(plant)}>${l.t("winter.add")}</button>` : nothing}</span>` : nothing}</div>` : nothing}
+          ${winter && this._winterOpen && o?.winter ? this._renderWinterBox(plant, o.winter) : nothing}
           ${this._renderCareChips(plant, o)}
         </div>
         <div class="hero-actions">
@@ -2539,6 +2704,7 @@ export class SmartPlantsPanel extends LitElement {
           <div class="row"><button type="button" class="btn text sm" @click=${() => this._edit({ moisture: { ...edit.moisture!, threshold_overrides: { min: null, target: null, max: null } } })}>${l.t("targets.reset")}</button><span class="spacer"></span>
             <button type="button" class="btn filled sm" @click=${() => void this._save("moisture")}>${l.t("targets.save")}</button></div></fieldset>`
           : html`<p class="error" role="alert">${l.t("moisture.incompatible")}</p>`}</div></section>
+      ${this._renderWinterCard(plant)}
       ${this._expander("other_targets", "mdi:tune-variant", l.t("other_targets.heading"), l.t("other_targets.secondary"), () => this._renderOtherTargets(plant))}
       ${this._expander("more_details", "mdi:tag-outline", l.t("more_details.heading"), l.t("more_details.secondary"), () => html`
         <fieldset ?disabled=${disabled}>${placementEditor(l, edit.placement, v => this._edit({ placement: v }))}

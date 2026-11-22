@@ -2853,6 +2853,68 @@ class RestPeriod:
         return {"start_month": self.start_month, "end_month": self.end_month}
 
 
+def thresholds_changed(previous: Any, config: Any, keys: Iterable[str]) -> bool:
+    """Return whether any of ``keys`` has another effective threshold."""
+    return any(
+        previous.effective_stress_threshold(key)
+        != config.effective_stress_threshold(key)
+        for key in keys
+    )
+
+
+# Roles whose problem thresholds a plant can replace with winter values.
+WINTER_THRESHOLD_ROLES: Final = (
+    "temperature",
+    "moisture",
+    "illuminance",
+    "conductivity",
+    "humidity",
+)
+
+
+def _role_threshold_overrides(config: Any) -> Mapping[str, Any]:
+    if isinstance(config, MoistureConfig):
+        return config.threshold_overrides
+    return cast("Mapping[str, Any]", config.stress_threshold_overrides)
+
+
+def parse_winter_thresholds(data: object) -> dict[str, dict[str, Any]] | None:
+    """
+    Return validated winter thresholds, or ``None`` for a plant without any.
+
+    Each listed role carries every threshold key of that role with a number,
+    so the winter set is a complete range of its own and stays valid whatever
+    the plant's normal thresholds or species do later. A role that isn't
+    listed keeps its normal thresholds in winter.
+    """
+    if data is None:
+        return None
+    if not isinstance(data, dict) or not data:
+        raise ValueError("winter thresholds must be a non-empty object or null")
+    if not set(data) <= set(WINTER_THRESHOLD_ROLES):
+        raise ValueError("winter thresholds have an unsupported role")
+    from .roles import require_role  # noqa: PLC0415
+
+    parsed: dict[str, dict[str, Any]] = {}
+    for role in WINTER_THRESHOLD_ROLES:
+        if role not in data:
+            continue
+        values = data[role]
+        if not isinstance(values, dict):
+            raise ValueError(f"winter thresholds for {role} must be an object")
+        if any(value is None for value in values.values()):
+            raise ValueError(f"winter thresholds for {role} must all be numbers")
+        definition = require_role(role)
+        apply = definition.apply_threshold_overrides
+        if apply is None:
+            raise ValueError(f"winter thresholds for {role} are not supported")
+        # The role's own override rules check the keys, each value and the
+        # order of the range.
+        config = apply(definition.default_config(), values)
+        parsed[role] = dict(_role_threshold_overrides(config))
+    return parsed
+
+
 @dataclass(frozen=True, slots=True)
 class IntervalSchedule:
     """Repeat a care task every ``every`` ``unit`` after it was last done."""
@@ -3306,6 +3368,10 @@ class PlantRecord:
     # placement (see ``detects_waterings``), ``True`` and ``False`` are a
     # choice made for this plant.
     watering_detection: bool | None = None
+    # Thresholds that replace the normal ones while winter applies: during the
+    # rest period or while the plant is in dormant storage. ``None`` when the
+    # plant has no winter values.
+    winter_thresholds: Mapping[str, Mapping[str, Any]] | None = None
     # ``care_summary(care_events)``, derived on first use. Ordering the care
     # history is the costly part, and every reader of one record (overview,
     # entities, WebSocket replies) needs the same summary.
@@ -3317,6 +3383,10 @@ class PlantRecord:
         object.__setattr__(self, "extra_roles", _deep_freeze(self.extra_roles))
         object.__setattr__(self, "care_events", tuple(self.care_events))
         object.__setattr__(self, "care_tasks", tuple(self.care_tasks))
+        if self.winter_thresholds is not None:
+            object.__setattr__(
+                self, "winter_thresholds", _deep_freeze(self.winter_thresholds)
+            )
 
     def detects_waterings(self) -> bool:
         """
@@ -3404,6 +3474,7 @@ class PlantRecord:
                     "rest_period",
                     "snoozed_until",
                     "watering_detection",
+                    "winter_thresholds",
                 }
             ),
             "plant record",
@@ -3472,6 +3543,9 @@ class PlantRecord:
         rest_period = (
             RestPeriod.from_storage(rest_data) if rest_data is not None else None
         )
+        if require_roles and "winter_thresholds" not in data:
+            raise ValueError("plant winter_thresholds is required")
+        winter_thresholds = parse_winter_thresholds(data.get("winter_thresholds"))
         from .roles import ROLE_METADATA  # noqa: PLC0415
 
         for key, value in raw_roles.items():
@@ -3531,6 +3605,7 @@ class PlantRecord:
             rest_period=rest_period,
             snoozed_until=snoozed_until,
             watering_detection=watering_detection,
+            winter_thresholds=winter_thresholds,
         )
 
     def as_storage(self) -> dict[str, Any]:
@@ -3572,6 +3647,11 @@ class PlantRecord:
             else None,
             "snoozed_until": self.snoozed_until,
             "watering_detection": self.watering_detection,
+            "winter_thresholds": (
+                _deep_thaw(self.winter_thresholds)
+                if self.winter_thresholds is not None
+                else None
+            ),
             "roles": {
                 **extra_roles,
                 "moisture": self.moisture.as_storage(),

@@ -9,6 +9,7 @@ import { ROLE_META, formatRange, formatValue, readingLabel, relativeTime } from 
 import type { ReadingRole } from "../status.js";
 import type { CareEvent, HAState } from "../types.js";
 import { chartRowStyles, shownGroups } from "../components/sp-history-chart.js";
+import { winterRangeText } from "../winter.js";
 import { HISTORY_RANGES, RANGE_SPECS, chartBand, dryingEstimate, dryingText, historySummary, withLiveValue } from "../history-model.js";
 import type { HistoryPoint, HistoryRange } from "../history-model.js";
 
@@ -115,11 +116,13 @@ export function renderKeyReadings(l: Localizer, overview: PlantOverview | undefi
   return html`<ul class="keyreads" aria-label=${l.t("detail.key_readings")}>${readings.map(([role, reading]) => {
     const tone = readingTone(role, reading);
     const range = formatRange(l, role, reading.range, reading.unit);
-    const detail = reading.state === "stale" && reading.last_reported ? l.t("moisture_bar.last_update", { age: relativeTime(l, reading.last_reported, now) }) : range;
+    const stale = reading.state === "stale" && reading.last_reported;
+    const detail = stale ? l.t("moisture_bar.last_update", { age: relativeTime(l, reading.last_reported!, now) }) : range;
     const outside = tone === "water" || tone === "wet" || tone === "bad";
+    const winter = stale ? null : winterRangeText(l, role, reading);
     return html`<li class="kr"><span class="kr-label"><ha-icon aria-hidden="true" .icon=${ROLE_META[role].icon}></ha-icon>${readingLabel(l, role)}</span>
       <span class="kr-value tone-${tone}">${readingValue(l, reading)}${outside ? html`<span class="sr-only">, ${readingStateText(l, reading, now)}</span>` : nothing}</span>
-      ${detail ? html`<span class="kr-range">${detail}</span>` : nothing}</li>`;
+      ${winter ? html`<span class="kr-range">${renderWinterRange(winter)}</span>` : detail ? html`<span class="kr-range">${detail}</span>` : nothing}</li>`;
   })}</ul>`;
 }
 
@@ -128,10 +131,17 @@ export function renderReadingRow(l: Localizer, role: ReadingRole, reading: RoleR
   const tone = readingTone(role, reading);
   const names = reading.sources.map(id => friendlyName(l, states, id)).join(", ");
   const range = formatRange(l, role, reading.range, reading.unit);
+  const winter = winterRangeText(l, role, reading);
   return html`<li class="li"><span class="ic tone-${tone}" aria-hidden="true"><ha-icon .icon=${ROLE_META[role].icon}></ha-icon></span>
     <span class="li-main"><span class="li-title">${readingLabel(l, role)}</span>
       <span class="li-sub">${names ? html`${names} · ` : nothing}<span class="state tone-${tone}">${readingStateText(l, reading, now)}</span></span></span>
-    <span class="li-end"><span class="li-value">${readingValue(l, reading)}</span>${range ? html`<span class="li-sub">${range}</span>` : nothing}</span></li>`;
+    <span class="li-end"><span class="li-value">${readingValue(l, reading)}</span>${winter ? html`<span class="li-sub">${renderWinterRange(winter)}</span>` : range ? html`<span class="li-sub">${range}</span>` : nothing}</span></li>`;
+}
+
+// A winter range in blue with a snowflake; the tooltip and the screen reader
+// text name the normal range.
+export function renderWinterRange(winter: { text: string; tooltip: string }) {
+  return html`<span class="winter-range" title=${winter.tooltip}>${winter.text}<ha-icon aria-hidden="true" icon="mdi:snowflake"></ha-icon><span class="sr-only">. ${winter.tooltip}</span></span>`;
 }
 
 // Units of the plant's own sensors, for a plant that has no current reading.
@@ -309,6 +319,43 @@ export const plantStyles = css`
   .hero-meta ha-icon { --mdc-icon-size: 17px; }
   .hero-status { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
   .reason { font-size: 13.5px; color: var(--sp-text-secondary); overflow-wrap: anywhere; hyphens: auto; }
+  .reason .btn.text.sm { min-height: 0; padding: 0 4px; vertical-align: baseline; }
+  .winter-range { display: inline-flex; align-items: center; gap: 4px; color: color-mix(in srgb, var(--sp-info) 62%, #000); }
+  .winter-range ha-icon { --mdc-icon-size: 15px; }
+  .winter-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; max-width: 100%; padding: 2px 10px 2px 7px; border: 0; border-radius: 13px; font: inherit; font-size: 13px; font-weight: 500; line-height: 1.3; cursor: pointer;
+    background: color-mix(in srgb, var(--sp-info) 14%, transparent); color: color-mix(in srgb, var(--sp-info) 62%, #000); text-align: start; }
+  .winter-chip ha-icon { --mdc-icon-size: 17px; flex: none; }
+  .winter-chip .caret { --mdc-icon-size: 16px; }
+  .winter-chip:focus-visible { outline: 2px solid var(--sp-info); outline-offset: 2px; }
+  .winter-box { margin-top: 10px; padding: 12px 14px; border-radius: 10px; background: color-mix(in srgb, var(--sp-info) 10%, transparent); font-size: 13.5px; }
+  .winter-box p { margin: 0 0 6px; }
+  .winter-box ul { margin: 0 0 6px; padding-inline-start: 20px; }
+  .winter-box li { margin: 2px 0; }
+  .winter-card .card-h h3 { display: flex; align-items: center; gap: 8px; }
+  .winter-card .card-h ha-icon { color: color-mix(in srgb, var(--sp-info) 62%, #000); }
+  .winter-badge { padding: 2px 10px; border-radius: 12px; font-size: 12.5px; font-weight: 500; background: color-mix(in srgb, var(--sp-info) 14%, transparent); color: color-mix(in srgb, var(--sp-info) 62%, #000); }
+  .winter-lines { list-style: none; margin: 6px 0 0; padding: 0; font-size: 14px; }
+  .winter-lines li { margin: 4px 0; }
+  .winter-lines li.same { color: var(--sp-text-secondary); }
+  .winter-never { margin: 8px 0; padding: 10px 12px; border-radius: 8px; background: color-mix(in srgb, var(--sp-warning) 14%, transparent); font-size: 13.5px; }
+  .winter-never p { margin: 0 0 4px; }
+  .winter-entry { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--divider-color, #e0e0e0); font-size: 13.5px; color: var(--sp-text-secondary); }
+  .winter-entry > ha-icon { color: color-mix(in srgb, var(--sp-info) 62%, #000); --mdc-icon-size: 20px; }
+  .winter-entry span { flex: 1 1 16em; }
+  .winter-dialog .winter-when { margin: 8px 0 4px; padding: 10px 12px; border-radius: 8px; background: color-mix(in srgb, var(--sp-text) 5%, transparent); }
+  .winter-dialog .winter-when.never { background: color-mix(in srgb, var(--sp-warning) 14%, transparent); }
+  .winter-group { margin: 0; padding: 12px 0; border: 0; border-top: 1px solid var(--divider-color, #e0e0e0); min-width: 0; }
+  .winter-group legend { display: flex; align-items: center; gap: 6px; padding: 0; font-weight: 500; }
+  .winter-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(9em, 1fr)); gap: 10px; margin-top: 8px; }
+  .winter-field label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+  .winter-field input { box-sizing: border-box; width: 100%; }
+  .winter-field input.changed { outline: 2px solid var(--sp-info); outline-offset: -1px; }
+  .winter-field input.warn { outline: 2px solid var(--sp-warning); outline-offset: -1px; }
+  .winter-field small { display: block; margin-top: 2px; font-size: 12px; color: var(--sp-text-secondary); }
+  .winter-field small.warn { color: color-mix(in srgb, var(--sp-warning) 70%, var(--sp-text)); }
+  .winter-suggestion { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--sp-info) 10%, transparent); font-size: 13px; }
+  .winter-suggestion > ha-icon { color: color-mix(in srgb, var(--sp-info) 62%, #000); --mdc-icon-size: 18px; }
+  .winter-suggestion span { flex: 1 1 14em; }
   .hero-status .snooze { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; max-width: 100%; }
   .pd .hero-status .snooze .btn.sm { min-height: 32px; padding: 2px 10px; }
 

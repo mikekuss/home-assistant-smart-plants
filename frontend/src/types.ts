@@ -126,6 +126,10 @@ export interface PlantRecord {
   // Log a watering when the soil moisture jumps: null follows the placement,
   // true or false is the plant's own choice. See detectsWaterings().
   watering_detection?: boolean | null;
+  // Thresholds that replace the normal ones in winter, per check (temperature,
+  // moisture, illuminance, conductivity, humidity), each with every threshold
+  // key of that check; null without winter values.
+  winter_thresholds?: Record<string, Record<string, number>> | null;
 }
 
 // A retired plant: no device or entities any more, only a plain record with

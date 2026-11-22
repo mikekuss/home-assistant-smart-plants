@@ -126,6 +126,10 @@ export const api = {
   async setRestPeriod(hass: HomeAssistantLike, plantId: string, revision: number, restPeriod: RestPeriod | null): Promise<PlantRecord> {
     return (await send<{ plant: PlantRecord }>(hass, { type: "smart_plants/plants/set_rest_period", plant_id: plantId, expected_revision: revision, rest_period: restPeriod })).plant;
   },
+  // Replaces the plant's winter values; null removes them.
+  async setWinterThresholds(hass: HomeAssistantLike, plantId: string, revision: number, winterThresholds: Record<string, Record<string, number>> | null): Promise<PlantRecord> {
+    return (await send<{ plant: PlantRecord }>(hass, { type: "smart_plants/plants/set_winter_thresholds", plant_id: plantId, expected_revision: revision, winter_thresholds: winterThresholds })).plant;
+  },
   async info(hass: HomeAssistantLike): Promise<PanelCapabilities> {
     const result = await send<PanelCapabilities>(hass, { type: "smart_plants/panel/info" });
     if (!result || result.api_version !== 1 || result.schema_version !== 1 || !Array.isArray(result.providers) ||

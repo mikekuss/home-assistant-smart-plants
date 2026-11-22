@@ -7,7 +7,7 @@
 // (custom_components/smart_plants/plant_status.py), read back from the binary
 // sensors that report the same evaluations. A shared fixture
 // (tests/fixtures/plant_status_cases.json) runs through both so they agree.
-import type { PlantOverview, PlantProblem, RoleReading } from "../overview-model.js";
+import type { PlantOverview, PlantProblem, RoleReading, WinterView } from "../overview-model.js";
 import { READING_ROLES } from "../status.js";
 import type { PlantStatus, ReadingRole, ReadingState, TargetRange } from "../status.js";
 
@@ -344,6 +344,15 @@ export function plantView(hass: CardHassData, deviceId: string): CardPlant {
   // Every plant binary sensor carries the snooze; the stale sensor stays available longest.
   const snoozeSource = [state("binary_sensor.sensor_stale"), needsWater, ...STRESS_SIGNALS.map(s => state(`binary_sensor.${s.sensor}`))]
     .find(s => s && typeof s.attributes.snoozed_until === "string");
+  // A plant with winter values carries them on every binary sensor, like the snooze.
+  const winterSource = [state("binary_sensor.sensor_stale"), needsWater, ...STRESS_SIGNALS.map(s => state(`binary_sensor.${s.sensor}`))]
+    .find(s => s && typeof s.attributes.winter_values === "boolean");
+  const winterReason = winterSource?.attributes.winter_reason;
+  const winter: WinterView | null = winterSource ? {
+    active: winterSource.attributes.winter_values === true,
+    reason: winterReason === "rest_period" || winterReason === "dormant_storage" ? winterReason : null,
+    until: null, roles: [],
+  } : null;
   const firstReading = READING_ROLES.filter(r => r !== "moisture").map(r => entities.get(`sensor.${r}`)).find(id => id !== undefined && numState(hass.states[id]) !== null);
   const moistureId = entities.get("sensor.moisture") ?? null;
   const staleAttrs = state("binary_sensor.sensor_stale")?.attributes;
@@ -354,6 +363,7 @@ export function plantView(hass: CardHassData, deviceId: string): CardPlant {
     plant_id: plantId, revision: 0, lifecycle_state: paused ? "disabled" : "active", status, problems, roles,
     last_watered_at: lastWatered ?? null, image: null, care: [], rest_period: null, resting: false,
     snoozed_until: (snoozeSource?.attributes.snoozed_until as string | undefined) ?? null,
+    winter,
   };
   return {
     kind: "plant", deviceId, plantId, name: deviceName(device), area: (device.area_id && hass.areas?.[device.area_id]?.name) || null,

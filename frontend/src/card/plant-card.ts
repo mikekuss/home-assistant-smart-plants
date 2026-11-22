@@ -13,6 +13,7 @@ import "../components/sp-plant-avatar.js";
 import "../components/sp-reading-chip.js";
 import "../components/sp-snooze-chip.js";
 import "../components/sp-status-chip.js";
+import "../components/sp-winter-icon.js";
 import { themeFallbacks } from "../components/shared-styles.js";
 import { createLocalizer } from "../localize.js";
 import type { HALocale, Localizer, MessageKey } from "../localize.js";
@@ -362,7 +363,7 @@ export class SmartPlantsPlantCardContent extends LitElement {
       <div class="head"><sp-plant-avatar .src=${this._photo} .name=${plant.name} .l=${l} @photo-error=${() => this._dropPhoto()}></sp-plant-avatar>
         <div class="title"><h2>${canOpen ? html`<button type="button" class="name" title=${label} @click=${() => this._open(plant)}>${plant.name}</button>` : plant.name}</h2>
           ${plant.area || plant.species ? html`<span class="sub" title=${[plant.area, plant.species].filter(Boolean).join(" · ")}>${plant.area ? html`<ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>` : nothing}<span class="subtext">${plant.area ?? nothing}${plant.area && plant.species ? " · " : ""}${plant.species ? html`<i>${plant.species}</i>` : nothing}</span></span>` : nothing}</div></div>
-      <div class="status"><div class="chiprow"><sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip>${snoozed ? html`<sp-snooze-chip .label=${snoozed}></sp-snooze-chip>` : nothing}</div>${reason ? html`<span class="reason" title=${reason}>${reason}</span>` : nothing}</div>
+      <div class="status"><div class="chiprow"><sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip>${snoozed ? html`<sp-snooze-chip .label=${snoozed}></sp-snooze-chip>` : nothing}${!paused && o.winter?.active ? html`<sp-winter-icon .label=${l.t("winter.icon_label")}></sp-winter-icon>` : nothing}</div>${reason ? html`<span class="reason" title=${reason}>${reason}</span>` : nothing}</div>
       ${plant.careDue ? html`<p class="care"><ha-icon aria-hidden="true" icon="mdi:calendar-check-outline"></ha-icon><span>${l.t("plant_card.care_due")}</span></p>` : nothing}
       ${config.show_readings !== false ? this._renderReadings(plant, l) : nothing}
       ${config.show_watering !== false ? html`<div class="foot">${plant.lastWatered !== undefined ? this._renderWatered(l, plant.lastWatered, now) : nothing}

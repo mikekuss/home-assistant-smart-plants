@@ -160,6 +160,20 @@
           },
           "snoozed_until": {
             "name": "Snoozed until"
+          },
+          "winter_values": {
+            "name": "Winter values",
+            "state": {
+              "true": "Active",
+              "false": "Not active"
+            }
+          },
+          "winter_reason": {
+            "name": "Winter values reason",
+            "state": {
+              "rest_period": "Rest period",
+              "dormant_storage": "Dormant storage"
+            }
           }
         }
       },
@@ -175,6 +189,20 @@
           },
           "snoozed_until": {
             "name": "Snoozed until"
+          },
+          "winter_values": {
+            "name": "Winter values",
+            "state": {
+              "true": "Active",
+              "false": "Not active"
+            }
+          },
+          "winter_reason": {
+            "name": "Winter values reason",
+            "state": {
+              "rest_period": "Rest period",
+              "dormant_storage": "Dormant storage"
+            }
           }
         }
       },
@@ -190,6 +218,20 @@
           },
           "snoozed_until": {
             "name": "Snoozed until"
+          },
+          "winter_values": {
+            "name": "Winter values",
+            "state": {
+              "true": "Active",
+              "false": "Not active"
+            }
+          },
+          "winter_reason": {
+            "name": "Winter values reason",
+            "state": {
+              "rest_period": "Rest period",
+              "dormant_storage": "Dormant storage"
+            }
           }
         }
       },
@@ -205,6 +247,20 @@
           },
           "snoozed_until": {
             "name": "Snoozed until"
+          },
+          "winter_values": {
+            "name": "Winter values",
+            "state": {
+              "true": "Active",
+              "false": "Not active"
+            }
+          },
+          "winter_reason": {
+            "name": "Winter values reason",
+            "state": {
+              "rest_period": "Rest period",
+              "dormant_storage": "Dormant storage"
+            }
           }
         }
       },
@@ -220,6 +276,20 @@
           },
           "snoozed_until": {
             "name": "Snoozed until"
+          },
+          "winter_values": {
+            "name": "Winter values",
+            "state": {
+              "true": "Active",
+              "false": "Not active"
+            }
+          },
+          "winter_reason": {
+            "name": "Winter values reason",
+            "state": {
+              "rest_period": "Rest period",
+              "dormant_storage": "Dormant storage"
+            }
           }
         }
       },
@@ -235,6 +305,20 @@
           },
           "snoozed_until": {
             "name": "Snoozed until"
+          },
+          "winter_values": {
+            "name": "Winter values",
+            "state": {
+              "true": "Active",
+              "false": "Not active"
+            }
+          },
+          "winter_reason": {
+            "name": "Winter values reason",
+            "state": {
+              "rest_period": "Rest period",
+              "dormant_storage": "Dormant storage"
+            }
           }
         }
       },
@@ -250,6 +334,20 @@
           },
           "snoozed_until": {
             "name": "Snoozed until"
+          },
+          "winter_values": {
+            "name": "Winter values",
+            "state": {
+              "true": "Active",
+              "false": "Not active"
+            }
+          },
+          "winter_reason": {
+            "name": "Winter values reason",
+            "state": {
+              "rest_period": "Rest period",
+              "dormant_storage": "Dormant storage"
+            }
           }
         }
       },
@@ -265,6 +363,20 @@
           },
           "snoozed_until": {
             "name": "Snoozed until"
+          },
+          "winter_values": {
+            "name": "Winter values",
+            "state": {
+              "true": "Active",
+              "false": "Not active"
+            }
+          },
+          "winter_reason": {
+            "name": "Winter values reason",
+            "state": {
+              "rest_period": "Rest period",
+              "dormant_storage": "Dormant storage"
+            }
           }
         }
       },
@@ -280,6 +392,20 @@
           },
           "snoozed_until": {
             "name": "Snoozed until"
+          },
+          "winter_values": {
+            "name": "Winter values",
+            "state": {
+              "true": "Active",
+              "false": "Not active"
+            }
+          },
+          "winter_reason": {
+            "name": "Winter values reason",
+            "state": {
+              "rest_period": "Rest period",
+              "dormant_storage": "Dormant storage"
+            }
           }
         }
       },
@@ -295,6 +421,20 @@
           },
           "snoozed_until": {
             "name": "Snoozed until"
+          },
+          "winter_values": {
+            "name": "Winter values",
+            "state": {
+              "true": "Active",
+              "false": "Not active"
+            }
+          },
+          "winter_reason": {
+            "name": "Winter values reason",
+            "state": {
+              "rest_period": "Rest period",
+              "dormant_storage": "Dormant storage"
+            }
           }
         }
       },
