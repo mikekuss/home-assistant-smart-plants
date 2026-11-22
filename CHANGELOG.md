@@ -28,6 +28,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- On a phone, opening **Several sensors for one reading** or **Troubleshooting** on the Sensors
+  tab no longer lays the section's content over the next card. The section now grows to fit its
+  content.
 - The overview tiles and the plant count use the singular for one plant: *1 Problem* and
   *1 of 1 plant* instead of *1 Problems* and *1 of 1 plants*, in English, German and Italian.
   The tile for all plants reads **Plants**.
