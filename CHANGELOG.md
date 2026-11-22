@@ -13,8 +13,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   values keep the built-in gap. Values you entered still win. When the species values don't fit
   them, the reading keeps the built-in values and the species is still applied. **Edit
   thresholds** marks a species value as *Species default*, and the species preview lists the
-  imported ranges. Plants that already have a species keep the built-in values until you
-  refresh the species.
+  imported ranges and says when one won't be used. Saving manual species details keeps these
+  values as your own. Readings a plant already had keep the built-in values until you refresh
+  its species.
 
 ### Changed
 

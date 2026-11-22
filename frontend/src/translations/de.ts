@@ -153,6 +153,8 @@ export const de: Catalog = {
   "snapshot.imported_ranges": "Importierte Problembereiche",
   "snapshot.temperature_range": "Temperatur {min}–{max} °C",
   "snapshot.humidity_range": "Luftfeuchtigkeit {min}–{max} %",
+  "snapshot.temperature_range_not_applied": "Der Temperaturbereich wird nicht verwendet: Er passt nicht zu den eigenen Temperaturwerten dieser Pflanze oder ist zu schmal. Temperaturstress behält die eingebauten Werte.",
+  "snapshot.humidity_range_not_applied": "Der Bereich der Luftfeuchtigkeit wird nicht verwendet: Er passt nicht zu den eigenen Feuchtigkeitswerten dieser Pflanze oder ist zu schmal. Luftfeuchtestress behält die eingebauten Werte.",
   "snapshot.care_notes": "Pflegehinweise",
   "snapshot.source_details": "Quellendetails",
   "snapshot.field_attribution": "Quellenangabe je Feld",

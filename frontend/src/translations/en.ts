@@ -152,6 +152,8 @@ export const en = {
   "snapshot.imported_ranges": "Imported problem ranges",
   "snapshot.temperature_range": "Temperature {min}–{max} °C",
   "snapshot.humidity_range": "Air humidity {min}–{max} %",
+  "snapshot.temperature_range_not_applied": "The temperature range isn't used: it doesn't fit this plant's own temperature values, or it's too narrow. Temperature stress keeps the built-in values.",
+  "snapshot.humidity_range_not_applied": "The air humidity range isn't used: it doesn't fit this plant's own humidity values, or it's too narrow. Humidity stress keeps the built-in values.",
   "snapshot.care_notes": "Care notes",
   "snapshot.source_details": "Source details",
   "snapshot.field_attribution": "Field attribution",

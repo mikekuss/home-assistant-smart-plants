@@ -186,6 +186,35 @@ export function validateHumidityStressOverrides(input: HumidityStressInput, l: L
   }
   return { values, error: null };
 }
+// The thresholds a provider species supplies, derived as roles.py does: the
+// end of a range is where a problem starts, and the value where it clears
+// keeps the built-in gap on that side. A manual species supplies none.
+export function speciesStressDefaults(snapshot: SpeciesSnapshot): { temperature: Record<string, number>; humidity: Record<string, number> } {
+  const temperature: Record<string, number> = {}; const humidity: Record<string, number> = {};
+  if (snapshot.source_status !== "provider") return { temperature, humidity };
+  const t = TEMPERATURE_STRESS_BUILTIN_DEFAULTS; const h = HUMIDITY_STRESS_BUILTIN_DEFAULTS;
+  if (typeof snapshot.min_temperature === "number") Object.assign(temperature, { cold_threshold_celsius: snapshot.min_temperature, cold_clear_celsius: snapshot.min_temperature + t.cold_clear_celsius! - t.cold_threshold_celsius! });
+  if (typeof snapshot.max_temperature === "number") Object.assign(temperature, { hot_threshold_celsius: snapshot.max_temperature, hot_clear_celsius: snapshot.max_temperature - (t.hot_threshold_celsius! - t.hot_clear_celsius!) });
+  const range = snapshot.threshold_defaults.humidity;
+  if (typeof range?.min === "number") Object.assign(humidity, { dry_threshold_percent: range.min, dry_clear_percent: range.min + h.dry_clear_percent! - h.dry_threshold_percent! });
+  if (typeof range?.max === "number") Object.assign(humidity, { damp_threshold_percent: range.max, damp_clear_percent: range.max - (h.damp_threshold_percent! - h.damp_clear_percent!) });
+  return { temperature, humidity };
+}
+// The species ranges a plant can't take: with its own values, or on their
+// own, they don't make a valid range, so the reading keeps the built-in
+// values, as the backend does. `plant` is null for a plant not created yet.
+export function speciesRangesNotApplied(snapshot: SpeciesSnapshot, plant: PlantRecord | null): ("temperature" | "humidity")[] {
+  const derived = speciesStressDefaults(snapshot);
+  const own = (role: string, keys: readonly string[]): Record<string, string> => {
+    const raw = plant?.roles?.[role];
+    const overrides = raw && typeof raw === "object" ? (raw as Record<string, unknown>)["stress_threshold_overrides"] : undefined;
+    return Object.fromEntries(keys.map(key => { const value = overrides && typeof overrides === "object" ? (overrides as Record<string, unknown>)[key] : undefined; return [key, typeof value === "number" ? String(value) : ""]; }));
+  };
+  const out: ("temperature" | "humidity")[] = [];
+  if (Object.keys(derived.temperature).length && validateTemperatureStressOverrides(own("temperature", TEMPERATURE_STRESS_KEYS) as TemperatureStressInput, ENGLISH, { ...TEMPERATURE_STRESS_BUILTIN_DEFAULTS, ...derived.temperature }).error) out.push("temperature");
+  if (Object.keys(derived.humidity).length && validateHumidityStressOverrides(own("humidity", HUMIDITY_STRESS_KEYS) as HumidityStressInput, ENGLISH, { ...HUMIDITY_STRESS_BUILTIN_DEFAULTS, ...derived.humidity }).error) out.push("humidity");
+  return out;
+}
 export function humidityStressInput(persisted: Partial<Record<HumidityStressKey, number | null>> | null | undefined): HumidityStressInput {
   const out: HumidityStressInput = { dry_threshold_percent: "", dry_clear_percent: "", damp_clear_percent: "", damp_threshold_percent: "" };
   if (!persisted) return out;

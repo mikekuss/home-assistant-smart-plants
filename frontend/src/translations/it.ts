@@ -153,6 +153,8 @@ export const it: LanguageCatalog = {
   "snapshot.imported_ranges": "Intervalli dei problemi importati",
   "snapshot.temperature_range": "Temperatura {min}–{max} °C",
   "snapshot.humidity_range": "Umidità dell'aria {min}–{max} %",
+  "snapshot.temperature_range_not_applied": "L'intervallo di temperatura non viene usato: non è compatibile con i valori di temperatura impostati per questa pianta, oppure è troppo stretto. Stress da temperatura mantiene i valori predefiniti.",
+  "snapshot.humidity_range_not_applied": "L'intervallo di umidità dell'aria non viene usato: non è compatibile con i valori di umidità impostati per questa pianta, oppure è troppo stretto. Stress da umidità dell'aria mantiene i valori predefiniti.",
   "snapshot.care_notes": "Note di cura",
   "snapshot.source_details": "Dettagli della fonte",
   "snapshot.field_attribution": "Fonte per campo",

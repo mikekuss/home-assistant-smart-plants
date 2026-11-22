@@ -459,6 +459,28 @@ def _humidity_species_defaults(snapshot: SpeciesSnapshot) -> dict[str, float]:
     return values
 
 
+def keep_species_thresholds(config: Any) -> Any:
+    """
+    Return ``config`` with the species' values turned into its own overrides.
+
+    Used when a plant's species changes without a provider apply, for example
+    to manual details: the values stay as they are, but they no longer claim
+    to come from a species the plant doesn't have. A threshold the user set
+    keeps the user's value. The effective thresholds don't change, so the
+    result is as valid as ``config``.
+    """
+    from dataclasses import replace  # noqa: PLC0415
+
+    species_defaults = getattr(config, "species_defaults", None)
+    if not species_defaults:
+        return config
+    overrides = dict(config.stress_threshold_overrides)
+    for key, default in species_defaults.items():
+        if overrides.get(key) is None:
+            overrides[key] = default.value
+    return replace(config, stress_threshold_overrides=overrides, species_defaults={})
+
+
 def with_species_threshold_defaults(
     definition: RoleDefinition, config: Any, species: PlantSpecies | None
 ) -> Any:

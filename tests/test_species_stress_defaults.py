@@ -327,6 +327,67 @@ async def test_manual_species_supplies_nothing(hass: HomeAssistant) -> None:
     assert _temperature(plant).species_defaults == {}
 
 
+async def test_changing_the_species_keeps_its_values_as_the_plants_own(
+    hass: HomeAssistant,
+) -> None:
+    manager = await _manager(hass)
+    plant = await manager.async_create_plant(name="Aloe")
+    plant = await _with_sensors(manager, plant, "temperature", "humidity")
+    plant = await manager.async_set_role_threshold_overrides(
+        plant.id,
+        role="temperature",
+        expected_revision=plant.revision,
+        values={
+            "cold_threshold_celsius": 5.0,
+            "cold_clear_celsius": None,
+            "hot_threshold_celsius": None,
+            "hot_clear_celsius": None,
+        },
+    )
+    applied = await _apply(manager, plant, **RANGES)
+    profile = ManualSpeciesProvider.profile(
+        common_name="Aloe", latin_name="Aloe vera", category=None
+    )
+
+    changed = await manager.async_update_plant(
+        plant.id,
+        expected_revision=applied.revision,
+        species=PlantSpecies(provider="manual", snapshot=profile.snapshot),
+    )
+
+    temperature, humidity = _temperature(changed), _humidity(changed)
+    # Nothing claims to come from the old species any more ...
+    assert temperature.species_defaults == {}
+    assert humidity.species_defaults == {}
+    # ... but every threshold keeps its value, now as the plant's own, and
+    # the value the user set stays.
+    assert _effective(temperature) == {
+        **SPECIES_TEMPERATURE,
+        "cold_threshold_celsius": 5.0,
+    }
+    assert _effective(humidity) == SPECIES_HUMIDITY
+    assert dict(temperature.stress_threshold_overrides) == {
+        **SPECIES_TEMPERATURE,
+        "cold_threshold_celsius": 5.0,
+    }
+    assert dict(humidity.stress_threshold_overrides) == SPECIES_HUMIDITY
+
+
+async def test_other_changes_keep_the_species_values(hass: HomeAssistant) -> None:
+    manager = await _manager(hass)
+    plant = await manager.async_create_plant(name="Aloe")
+    plant = await _with_sensors(manager, plant, "temperature")
+    applied = await _apply(manager, plant, **RANGES)
+
+    renamed = await manager.async_update_plant(
+        plant.id, expected_revision=applied.revision, name="Aloe vera"
+    )
+
+    assert (
+        _temperature(renamed).species_defaults == _temperature(applied).species_defaults
+    )
+
+
 # --- Stored data ---------------------------------------------------------------
 
 
