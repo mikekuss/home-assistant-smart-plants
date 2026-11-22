@@ -83,6 +83,10 @@ class MoistureEvaluation:
     sensor_stale: bool
     computed_available: bool
     reasons: tuple[str, ...] = ()
+    # Stable keys of the sources that formed ``computed_percent``, so a
+    # caller can tell a change of the sources behind it from a change of
+    # their readings.
+    members: tuple[str, ...] = ()
 
 
 def parse_measurement(value: object, unit: object) -> float | None:  # noqa: PLR0911
@@ -221,6 +225,7 @@ def evaluate(  # noqa: PLR0913, PLR0912, PLR0915
         valid_values.append((stable_key, percent))
 
     computed: float | None = None
+    members: tuple[str, ...] = ()
     if config.aggregation == "primary":
         primary = next(
             (src for src in sources if src.entity_id == config.primary_entity_id), None
@@ -234,8 +239,10 @@ def evaluate(  # noqa: PLR0913, PLR0912, PLR0915
                 reasons.append(f"primary_invalid:{primary.entity_id}")
             else:
                 computed = match
+                members = (primary_key,)
     else:
         values = [v for _eid, v in valid_values]
+        members = tuple(key for key, _v in valid_values)
         if not values:
             reasons.append("no_valid_members")
         elif config.aggregation == "average":
@@ -286,6 +293,7 @@ def evaluate(  # noqa: PLR0913, PLR0912, PLR0915
         sensor_stale=stale_any,
         computed_available=True,
         reasons=tuple(reasons),
+        members=members,
     )
 
 

@@ -3617,9 +3617,10 @@ class ArchivedPlant:
 
     The live plant, its device and its entities are gone. What stays is
     what the user wants to look back on, and enough to bring the plant back:
-    identity, species, photo, care log, dates, the area and the assigned
-    sensors. Thresholds, care tasks, the rest period and the snooze are not
-    kept. The record is read-only; only restore and delete change it.
+    identity, species, photo, care log, dates, the area, the assigned sensors
+    and the choice about detected waterings. Thresholds, care tasks, the rest
+    period and the snooze are not kept. The record is read-only; only restore
+    and delete change it.
     """
 
     id: str
@@ -3641,6 +3642,8 @@ class ArchivedPlant:
     device_id: str | None = None
     # Role key -> assigned sources, the main source first.
     sources: Mapping[str, tuple[SensorSource, ...]] = field(default_factory=dict)
+    # PlantRecord.watering_detection, so a restored plant keeps the choice.
+    watering_detection: bool | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "tags", tuple(self.tags))
@@ -3695,6 +3698,7 @@ class ArchivedPlant:
             area_name=area_name,
             device_id=device_id,
             sources=sources,
+            watering_detection=plant.watering_detection,
         )
 
     @classmethod
@@ -3721,6 +3725,7 @@ class ArchivedPlant:
                     "area_name",
                     "device_id",
                     "sources",
+                    "watering_detection",
                 }
             ),
             "archived plant",
@@ -3762,6 +3767,11 @@ class ArchivedPlant:
         species_data = data.get("species")
         placement_data = data.get("placement")
         image_data = data.get("image")
+        watering_detection = data.get("watering_detection")
+        if watering_detection is not None and not isinstance(watering_detection, bool):
+            raise ValueError(
+                "archived plant watering_detection must be a boolean or null"
+            )
         return cls(
             id=_require_identifier(data.get("id"), "archived plant id"),
             revision=_require_positive_int(
@@ -3801,6 +3811,7 @@ class ArchivedPlant:
             ),
             device_id=device_id,
             sources=_archived_sources_from_storage(data["sources"]),
+            watering_detection=watering_detection,
         )
 
     def as_storage(self) -> dict[str, Any]:
@@ -3826,6 +3837,7 @@ class ArchivedPlant:
                 role: [source.as_storage() for source in items]
                 for role, items in self.sources.items()
             },
+            "watering_detection": self.watering_detection,
         }
 
 

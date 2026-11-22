@@ -117,7 +117,7 @@ export function validPlantList(plants: unknown[]): { plants: unknown[]; rejected
 }
 export function validCareEvent(v: unknown): boolean {
   if (!object(v) || v.schema_version !== 2 || !text(v.id, 36) || !["watering", "fertilizing", "pruning", "repotting", "pest_control", "note", "task"].includes(String(v.kind)) ||
-    !["manual", "action", "automation"].includes(String(v.provenance)) || !(v.task_id === null || (typeof v.task_id === "string" && TASK_ID.test(v.task_id))) ||
+    !["manual", "action", "automation", "sensor"].includes(String(v.provenance)) || !(v.task_id === null || (typeof v.task_id === "string" && TASK_ID.test(v.task_id))) ||
     !timestamp(v.occurred_at) || !/(?:Z|[+-]\d\d:\d\d)$/.test(String(v.occurred_at)) ||
     typeof v.local_date !== "string" || !/^\d{4}-\d\d-\d\d$/.test(v.local_date) || v.local_date !== String(v.occurred_at).slice(0, 10) ||
     !timestamp(v.created_at) || !timestamp(v.updated_at) || !object(v.payload)) return false;

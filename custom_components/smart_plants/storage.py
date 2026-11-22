@@ -653,6 +653,16 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                     raise SmartPlantsInvalidStorageError(
                         "older storage cannot contain detected waterings"
                     )
+            # Retired plants keep the choice for a restore, the same as the
+            # plants that existed before.
+            for archived in data.get("archived_plants", []):
+                if not isinstance(archived, dict):
+                    continue
+                if archived.get("watering_detection") is not None:
+                    raise SmartPlantsInvalidStorageError(
+                        "older storage cannot contain watering detection"
+                    )
+                archived["watering_detection"] = False
 
         # Home Assistant writes the result back right after this returns.
         # Check it first, so storage that fails to migrate never replaces

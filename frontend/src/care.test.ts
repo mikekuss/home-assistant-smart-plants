@@ -26,6 +26,13 @@ describe("manual watering", () => {
     expect(panel.shadowRoot?.textContent).toContain("Current entry");
     expect(panel.shadowRoot?.textContent).not.toContain("No care recorded yet.");
   });
+  it("says in the history that a watering came from the soil moisture sensor", async () => {
+    const event: CareEvent = { schema_version: 2, id: "e6e6553a-f34c-4d88-864c-c94a74f97dfa", kind: "watering", provenance: "sensor", task_id: null, occurred_at: "2026-01-01T00:30:00+02:00", local_date: "2026-01-01", created_at: "2026-01-03T00:00:00Z", updated_at: "2026-01-03T00:00:00Z", payload: { note: null } };
+    const h = harness([structuredClone(sample)], msg => msg.type === "smart_plants/care/list" ? { revision: 1, events: [event], summary: { watering_count: 1, last_watered_at: event.occurred_at, last_watered_local_date: event.local_date } } : undefined);
+    const panel = new SmartPlantsPanel(); panel.hass = h.hass; document.body.append(panel);
+    await settle(panel); await click(panel, "Aloe"); await click(panel, "Care");
+    expect(panel.shadowRoot?.querySelector(".care-history .li-sub")?.textContent).toContain("logged from the soil moisture sensor");
+  });
   it("records a dated event, renders history and retains its note across a revision conflict", async () => {
     const plant = structuredClone(sample);
     plant.care_events = [];

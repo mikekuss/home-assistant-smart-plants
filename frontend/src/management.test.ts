@@ -297,6 +297,25 @@ describe("detail saves and conflict review", () => {
     // inserted, which browsers do, so check the attribute the panel renders.
     expect(field(off.shadowRoot!, "Log waterings from the soil moisture sensor").querySelector("option[selected]")?.getAttribute("value")).toBe("off");
   });
+  it("keeps an unsaved watering detection choice when the plant changes elsewhere, and lists it in a conflict", async () => {
+    let current = structuredClone(sample);
+    const h = harness([sample], msg => msg.type === "smart_plants/plants/list" ? { plants: [current] } : undefined);
+    const el = await detail(h.hass);
+    await fill(el, "Log waterings from the soil moisture sensor", "off");
+    // A watering logged elsewhere updates the record; the choice stays.
+    current = { ...current, revision: 2, watering_detection: null };
+    h.events.get("disconnected")!(); h.events.get("ready")!(); await settle(el);
+    expect(field(el.shadowRoot!, "Log waterings from the soil moisture sensor").value).toBe("off");
+    document.body.replaceChildren();
+    let plant = { ...structuredClone(sample), watering_detection: null as boolean | null }; const writes: Record<string, unknown>[] = [];
+    const h2 = harness([plant], msg => {
+      if (msg.type === "smart_plants/plants/list") return { plants: [plant] };
+      if (msg.type === "smart_plants/plants/update") { writes.push(msg); plant = { ...plant, revision: 2, watering_detection: true }; throw { code: "revision_conflict", message: "stale" }; }
+      return undefined;
+    });
+    const el2 = await detail(h2.hass); await fill(el2, "Name", "Renamed"); await click(el2, "Save name");
+    expect(el2.shadowRoot?.textContent).toContain("Log waterings from the soil moisture sensor: null → true");
+  });
   it("lists only the details that are set and offers to add the rest", async () => {
     const about = (el: SmartPlantsPanel) => el.shadowRoot!.querySelector<HTMLElement>("section[aria-labelledby=about-heading]")!;
     const el = await detail(harness().hass, "Overview");

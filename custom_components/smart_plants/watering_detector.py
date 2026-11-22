@@ -36,6 +36,17 @@ class WateringDetector:
         self._samples: deque[tuple[datetime, float]] = deque()
         self._last_detected: datetime | None = None
 
+    def reset(self) -> None:
+        """
+        Forget the readings, for example when the sensors behind them change.
+
+        A sensor that drops out of an average, comes back after a restart, or
+        is added or swapped moves the value at once without any water. The
+        time of the last detected watering stays, so its quiet time still
+        counts.
+        """
+        self._samples.clear()
+
     def observe(
         self, now: datetime, value: float, care_events: Iterable[CareEvent]
     ) -> bool:

@@ -14,6 +14,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   now count for *Last watered* and the 24-hour grace. By default the plant's **Placement**
   decides: on indoors and in a greenhouse, off elsewhere, where rain raises the soil moisture
   too. **Settings** > **More details** sets it per plant. Existing plants start with it off.
+  The care history marks these entries, a watering logged within 6 hours replaces the detected
+  one, and a change of the sensors behind the value doesn't count as a watering.
 - The add-plant wizard asks for the **Placement** in its first step, and an info icon below
   **Placement** explains what it changes.
 

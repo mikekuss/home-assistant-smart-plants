@@ -72,6 +72,7 @@ export const en = {
   "conflict_field.name": "Name",
   "conflict_field.acquired_at": "Acquired",
   "conflict_field.placement": "Placement",
+  "conflict_field.watering_detection": "Log waterings from the soil moisture sensor",
   "conflict_field.category": "Category",
   "conflict_field.tags": "Tags",
   "conflict_field.species": "Species",
@@ -280,6 +281,7 @@ export const en = {
   "role_phrase.co2": "CO₂",
 
   "care.heading": "Care history",
+  "care.from_sensor": "logged from the soil moisture sensor",
   "care.watering_count_one": "{count} watering event.",
   "care.watering_count_other": "{count} watering events.",
   "care.last_watered": "Last watered: {date}.",

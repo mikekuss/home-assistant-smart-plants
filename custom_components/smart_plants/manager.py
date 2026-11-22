@@ -87,6 +87,7 @@ from .models import (
 from .reading_tracker import ReadingTracker
 from .roles import require_role, role_definitions
 from .storage import SmartPlantsStorageError, SmartPlantsStore, _utcnow_iso
+from .watering_detector import DETECTION_QUIET
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -1103,8 +1104,11 @@ class SmartPlantsManager:
             self._raise_if_unavailable()
             current = self._require_plant(plant_id)
             self._require_optional_expected_revision(current, expected_revision)
+            base = current
+            if kind == "watering" and provenance != "sensor":
+                base = _without_detected_watering(current, occurred_at)
             updated, event = _with_care_event(
-                current,
+                base,
                 kind=kind,
                 occurred_at=occurred_at,
                 payload=payload,
@@ -2846,6 +2850,7 @@ class SmartPlantsManager:
                 category=record.category,
                 image=record.image,
                 care_events=record.care_events,
+                watering_detection=record.watering_detection,
             )
             moisture_values = {
                 key: value
@@ -3970,6 +3975,32 @@ def _build_care_event(  # noqa: PLR0913
     except (TypeError, ValueError) as err:
         raise SmartPlantsValidationError(str(err)) from err
     return event
+
+
+def _without_detected_watering(current: PlantRecord, occurred_at: str) -> PlantRecord:
+    """
+    Return the plant without the detected waterings a logged one replaces.
+
+    A watering logged within the detector's quiet time of one Smart Plants
+    detected is the same watering, so the logged entry, with its time and
+    note, takes the detected one's place instead of adding a second.
+    """
+    when = dt_util.parse_datetime(occurred_at)
+    if when is None:
+        return current
+    kept = tuple(
+        event
+        for event in current.care_events
+        if not (
+            event.kind == "watering"
+            and event.provenance == "sensor"
+            and (detected := dt_util.parse_datetime(event.occurred_at)) is not None
+            and abs(when - detected) < DETECTION_QUIET
+        )
+    )
+    if len(kept) == len(current.care_events):
+        return current
+    return replace(current, care_events=kept)
 
 
 def _care_append_changes(current: PlantRecord, event: CareEvent) -> dict[str, Any]:

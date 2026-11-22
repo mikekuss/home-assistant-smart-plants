@@ -729,7 +729,7 @@ export class SmartPlantsPanel extends LitElement {
   }
   private _areaName(id: string): string { return this._areas.find(a => a.area_id === id)?.name ?? (id || this._l.t("area.none")); }
   private _setConflict(before: PlantRecord, after: PlantRecord): void {
-    const fields = ["name", "acquired_at", "placement", "category", "tags", "species", "image", "lifecycle_state", "roles"] as const;
+    const fields = ["name", "acquired_at", "placement", "watering_detection", "category", "tags", "species", "image", "lifecycle_state", "roles"] as const;
     const changes = fields.filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k])).map(k => k === "roles" ? this._l.t("conflict.roles_changed") : `${this._l.t(`conflict_field.${k}`)}: ${JSON.stringify(before[k])} → ${JSON.stringify(after[k])}`);
     this._conflict = { before, after, changes }; this._preview = null; this._providerRequest++;
   }
@@ -1160,7 +1160,7 @@ export class SmartPlantsPanel extends LitElement {
           const extra = careDetails(l, event, fieldLabel);
           const when = l.recordedDateTime(event.occurred_at);
           return html`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${CARE_ICONS[event.kind]}></ha-icon></span>
-            <span class="li-main"><span class="li-title">${eventTitle(event)}</span><span class="li-sub"><time datetime=${event.occurred_at}>${when}</time>${extra.map(part => html` · <span class="prose">${part}</span>`)}</span></span>
+            <span class="li-main"><span class="li-title">${eventTitle(event)}</span><span class="li-sub"><time datetime=${event.occurred_at}>${when}</time>${event.provenance === "sensor" ? ` · ${l.t("care.from_sensor")}` : nothing}${extra.map(part => html` · <span class="prose">${part}</span>`)}</span></span>
             <ha-dropdown @wa-select=${(e: CustomEvent<{ item: { value: string } }>) => { if (e.detail.item.value === "edit") { this._careTaskId = null; this._editCare(event); this._goTo("care", "#care-form select, #care-form input"); } else if (e.detail.item.value === "delete") void this._deleteCare(plant, event); }}>
               <button slot="trigger" type="button" class="icon-btn" ?disabled=${busy} aria-label=${l.t("care.event_menu", { kind: kindLabel(event.kind), date: when })}><ha-icon aria-hidden="true" icon="mdi:dots-vertical"></ha-icon></button>
               <ha-dropdown-item value="edit" ?disabled=${busy}>${l.t("care.edit_kind", { kind: kindPhrase(event.kind) })}<ha-icon slot="icon" icon="mdi:pencil-outline"></ha-icon></ha-dropdown-item>
@@ -1260,6 +1260,7 @@ export class SmartPlantsPanel extends LitElement {
     if (edits.name !== before.name) retained.name = edits.name;
     if (edits.acquired !== (before.acquired_at ?? "")) retained.acquired = edits.acquired;
     if (JSON.stringify(edits.placement) !== JSON.stringify(before.placement)) retained.placement = edits.placement;
+    if (edits.wateringDetection !== (before.watering_detection ?? null)) retained.wateringDetection = edits.wateringDetection;
     if (edits.category !== (before.category ?? "")) retained.category = edits.category;
     if (JSON.stringify(tags(edits.tagText)) !== JSON.stringify(before.tags)) retained.tagText = edits.tagText;
     if (edits.area !== this._baseArea) retained.area = edits.area;

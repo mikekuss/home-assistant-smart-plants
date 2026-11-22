@@ -726,7 +726,8 @@ function gt(e) {
 	].includes(String(e.kind)) || ![
 		"manual",
 		"action",
-		"automation"
+		"automation",
+		"sensor"
 	].includes(String(e.provenance)) || !(e.task_id === null || typeof e.task_id == "string" && rt.test(e.task_id)) || !j(e.occurred_at) || !/(?:Z|[+-]\d\d:\d\d)$/.test(String(e.occurred_at)) || typeof e.local_date != "string" || !/^\d{4}-\d\d-\d\d$/.test(e.local_date) || e.local_date !== String(e.occurred_at).slice(0, 10) || !j(e.created_at) || !j(e.updated_at) || !D(e.payload)) return !1;
 	let t = e.payload, n = (e) => e === null || O(e, 500) && e === e.trim();
 	return e.kind === "watering" || e.kind === "task" ? Object.keys(t).length === 1 && Object.hasOwn(t, "note") && n(t.note) : e.kind === "fertilizing" ? Object.keys(t).length === 4 && (t.product === null || O(t.product, 120) && t.product === t.product.trim()) && (t.amount === null || typeof t.amount == "number" && Number.isFinite(t.amount) && t.amount > 0 && t.amount <= 1e5) && (t.amount === null && t.unit === null || t.amount !== null && ["g", "mL"].includes(String(t.unit))) && n(t.note) : e.kind === "pruning" ? Object.keys(t).length === 2 && (t.part === null || O(t.part, 120) && t.part === t.part.trim()) && n(t.note) : e.kind === "repotting" ? Object.keys(t).length === 3 && (t.container === null || O(t.container, 120) && t.container === t.container.trim()) && (t.medium === null || O(t.medium, 120) && t.medium === t.medium.trim()) && n(t.note) : e.kind === "pest_control" ? Object.keys(t).length === 3 && (t.pest === null || O(t.pest, 120) && t.pest === t.pest.trim()) && (t.product === null || O(t.product, 120) && t.product === t.product.trim()) && n(t.note) : Object.keys(t).length === 1 && O(t.text, 1e3) && t.text === t.text.trim();
@@ -2025,6 +2026,7 @@ var Hn = {
 	"conflict_field.name": "Name",
 	"conflict_field.acquired_at": "Angeschafft",
 	"conflict_field.placement": "Standort",
+	"conflict_field.watering_detection": "Gießen über den Bodenfeuchtesensor eintragen",
 	"conflict_field.category": "Kategorie",
 	"conflict_field.tags": "Tags",
 	"conflict_field.species": "Art",
@@ -2219,6 +2221,7 @@ var Hn = {
 	"role_phrase.soil_temperature": "Bodentemperatur",
 	"role_phrase.co2": "CO₂",
 	"care.heading": "Pflegeverlauf",
+	"care.from_sensor": "vom Bodenfeuchtesensor eingetragen",
 	"care.watering_count_one": "{count} Gießvorgang.",
 	"care.watering_count_other": "{count} Gießvorgänge.",
 	"care.last_watered": "Zuletzt gegossen: {date}.",
@@ -3279,6 +3282,7 @@ var Hn = {
 	"conflict_field.name": "Name",
 	"conflict_field.acquired_at": "Acquired",
 	"conflict_field.placement": "Placement",
+	"conflict_field.watering_detection": "Log waterings from the soil moisture sensor",
 	"conflict_field.category": "Category",
 	"conflict_field.tags": "Tags",
 	"conflict_field.species": "Species",
@@ -3473,6 +3477,7 @@ var Hn = {
 	"role_phrase.soil_temperature": "soil temperature",
 	"role_phrase.co2": "CO₂",
 	"care.heading": "Care history",
+	"care.from_sensor": "logged from the soil moisture sensor",
 	"care.watering_count_one": "{count} watering event.",
 	"care.watering_count_other": "{count} watering events.",
 	"care.last_watered": "Last watered: {date}.",
@@ -4533,6 +4538,7 @@ var Hn = {
 	"conflict_field.name": "Nome",
 	"conflict_field.acquired_at": "Data di acquisto",
 	"conflict_field.placement": "Posizione",
+	"conflict_field.watering_detection": "Registra le annaffiature dal sensore del terreno",
 	"conflict_field.category": "Categoria",
 	"conflict_field.tags": "Tag",
 	"conflict_field.species": "Specie",
@@ -4727,6 +4733,7 @@ var Hn = {
 	"role_phrase.soil_temperature": "temperatura del terreno",
 	"role_phrase.co2": "CO₂",
 	"care.heading": "Registro delle cure",
+	"care.from_sensor": "registrata dal sensore del terreno",
 	"care.watering_count_one": "{count} annaffiatura.",
 	"care.watering_count_other": "{count} annaffiature.",
 	"care.last_watered": "Ultima annaffiatura: {date}.",
@@ -11567,6 +11574,7 @@ var $ = class e extends S {
 			"name",
 			"acquired_at",
 			"placement",
+			"watering_detection",
 			"category",
 			"tags",
 			"species",
@@ -12059,7 +12067,7 @@ var $ = class e extends S {
       <div class="care-content">${n ? n.events.length ? l.length ? b`<ul class="list" aria-label=${t.t("care.events_label")}>${l.map((n) => {
 			let s = eo(t, n, r), c = t.recordedDateTime(n.occurred_at);
 			return b`<li class="li"><span class="ic tonal" aria-hidden="true"><ha-icon .icon=${Ia[n.kind]}></ha-icon></span>
-            <span class="li-main"><span class="li-title">${g(n)}</span><span class="li-sub"><time datetime=${n.occurred_at}>${c}</time>${s.map((e) => b` · <span class="prose">${e}</span>`)}</span></span>
+            <span class="li-main"><span class="li-title">${g(n)}</span><span class="li-sub"><time datetime=${n.occurred_at}>${c}</time>${n.provenance === "sensor" ? ` · ${t.t("care.from_sensor")}` : x}${s.map((e) => b` · <span class="prose">${e}</span>`)}</span></span>
             <ha-dropdown @wa-select=${(t) => {
 				t.detail.item.value === "edit" ? (this._careTaskId = null, this._editCare(n), this._goTo("care", "#care-form select, #care-form input")) : t.detail.item.value === "delete" && this._deleteCare(e, n);
 			}}>
@@ -12186,7 +12194,7 @@ var $ = class e extends S {
 	_rebaseEdits(e, t, n) {
 		if (!this._edits) return;
 		let r = this._edits, i = this._areaReview, a = this._sourceRole, o = this._sourceEdits, s = this._sourceBaseline, c = this._thresholdRole, l = this._thresholdEdits, u = this._thresholdBaseline, d = {};
-		r.name !== e.name && (d.name = r.name), r.acquired !== (e.acquired_at ?? "") && (d.acquired = r.acquired), JSON.stringify(r.placement) !== JSON.stringify(e.placement) && (d.placement = r.placement), r.category !== (e.category ?? "") && (d.category = r.category), JSON.stringify(Bi(r.tagText)) !== JSON.stringify(e.tags) && (d.tagText = r.tagText), r.area !== this._baseArea && (d.area = r.area), r.common !== (e.species?.snapshot.common_name ?? "") && (d.common = r.common), r.latin !== (e.species?.snapshot.latin_name ?? "") && (d.latin = r.latin);
+		r.name !== e.name && (d.name = r.name), r.acquired !== (e.acquired_at ?? "") && (d.acquired = r.acquired), JSON.stringify(r.placement) !== JSON.stringify(e.placement) && (d.placement = r.placement), r.wateringDetection !== (e.watering_detection ?? null) && (d.wateringDetection = r.wateringDetection), r.category !== (e.category ?? "") && (d.category = r.category), JSON.stringify(Bi(r.tagText)) !== JSON.stringify(e.tags) && (d.tagText = r.tagText), r.area !== this._baseArea && (d.area = r.area), r.common !== (e.species?.snapshot.common_name ?? "") && (d.common = r.common), r.latin !== (e.species?.snapshot.latin_name ?? "") && (d.latin = r.latin);
 		let f = V(e), p = V(t);
 		if (r.moisture && f && p) {
 			let e = Si(p);

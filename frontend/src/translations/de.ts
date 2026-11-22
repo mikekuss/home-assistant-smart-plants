@@ -73,6 +73,7 @@ export const de: Catalog = {
   "conflict_field.name": "Name",
   "conflict_field.acquired_at": "Angeschafft",
   "conflict_field.placement": "Standort",
+  "conflict_field.watering_detection": "Gießen über den Bodenfeuchtesensor eintragen",
   "conflict_field.category": "Kategorie",
   "conflict_field.tags": "Tags",
   "conflict_field.species": "Art",
@@ -281,6 +282,7 @@ export const de: Catalog = {
   "role_phrase.co2": "CO₂",
 
   "care.heading": "Pflegeverlauf",
+  "care.from_sensor": "vom Bodenfeuchtesensor eingetragen",
   "care.watering_count_one": "{count} Gießvorgang.",
   "care.watering_count_other": "{count} Gießvorgänge.",
   "care.last_watered": "Zuletzt gegossen: {date}.",

@@ -22,7 +22,11 @@ from custom_components.smart_plants.const import (
     STORAGE_MAJOR_VERSION,
 )
 from custom_components.smart_plants.manager import SmartPlantsManager
-from custom_components.smart_plants.models import PlantPlacement, PlantRecord
+from custom_components.smart_plants.models import (
+    ArchivedPlant,
+    PlantPlacement,
+    PlantRecord,
+)
 from custom_components.smart_plants.storage import (
     SmartPlantsInvalidStorageError,
     SmartPlantsStore,
@@ -92,6 +96,20 @@ def test_a_logged_watering_wins() -> None:
     later = WateringDetector()
     assert later.observe(T0, 14, older) is False
     assert later.observe(T0 + timedelta(minutes=2), 95, older) is True
+
+
+def test_reset_forgets_the_readings_but_not_the_quiet_time() -> None:
+    detector = WateringDetector()
+    assert detector.observe(T0, 10, ()) is False
+    detector.reset()
+    # 10 is forgotten: from 40 to 50 is no watering.
+    assert detector.observe(T0 + timedelta(minutes=1), 40, ()) is False
+    assert detector.observe(T0 + timedelta(minutes=2), 50, ()) is False
+    assert detector.observe(T0 + timedelta(minutes=3), 90, ()) is True
+    detector.reset()
+    assert detector.observe(T0 + timedelta(minutes=4), 10, ()) is False
+    # Still within the quiet time of the watering just detected.
+    assert detector.observe(T0 + timedelta(minutes=5), 90, ()) is False
 
 
 def test_a_new_watering_counts_after_the_quiet_time() -> None:
@@ -291,6 +309,91 @@ async def test_switching_takes_effect_without_a_reload(
     assert len(_waterings(manager, plant.id)) == 2
 
 
+SOIL_2 = "sensor.mock_soil_2"
+
+
+async def _two_sensor_plant(
+    manager: SmartPlantsManager, hass: HomeAssistant
+) -> PlantRecord:
+    """Create an indoor plant averaging two soil sensors at 20 % and 60 %."""
+    hass.states.async_set(SOIL, "20", PERCENT)
+    hass.states.async_set(SOIL_2, "60", PERCENT)
+    plant = await manager.async_create_plant(
+        name="Aloe", placement=PlantPlacement(mode="indoor")
+    )
+    plant = await manager.async_set_moisture_sources(
+        plant.id,
+        expected_revision=plant.revision,
+        sources=[{"entity_id": SOIL}, {"entity_id": SOIL_2}],
+    )
+    plant = await manager.async_set_moisture_aggregation(
+        plant.id, expected_revision=plant.revision, aggregation="average"
+    )
+    await hass.async_block_till_done()
+    return plant
+
+
+async def _set(hass: HomeAssistant, freezer: Any, minutes: int, **states: str) -> None:
+    freezer.move_to(T0 + timedelta(minutes=minutes))
+    for entity_id, state in states.items():
+        hass.states.async_set(entity_id, state, PERCENT)
+    await hass.async_block_till_done()
+
+
+async def test_a_sensor_dropping_out_or_coming_back_logs_nothing(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    freezer.move_to(T0)
+    manager = await _setup(hass)
+    plant = await _two_sensor_plant(manager, hass)
+    await _set(hass, freezer, 1, **{SOIL: "20", SOIL_2: "60"})
+
+    # The 20 % sensor drops out: the average jumps from 40 to 60.
+    await _set(hass, freezer, 5, **{SOIL: "unavailable"})
+    # It comes back: the average falls to 40 again.
+    await _set(hass, freezer, 10, **{SOIL: "20"})
+    # After a restart both return one at a time, the low one first.
+    await _set(hass, freezer, 20, **{SOIL: "unavailable", SOIL_2: "unavailable"})
+    await _set(hass, freezer, 21, **{SOIL: "20"})
+    await _set(hass, freezer, 22, **{SOIL_2: "60"})
+
+    assert _waterings(manager, plant.id) == []
+
+
+async def test_adding_a_sensor_logs_nothing(hass: HomeAssistant, freezer: Any) -> None:
+    freezer.move_to(T0)
+    manager = await _setup(hass)
+    plant = await _plant(manager, hass)
+    hass.states.async_set(SOIL_2, "60", PERCENT)
+    await _set(hass, freezer, 1, **{SOIL: "20"})
+
+    plant = await manager.async_set_moisture_sources(
+        plant.id,
+        expected_revision=_revision(manager, plant.id),
+        sources=[{"entity_id": SOIL}, {"entity_id": SOIL_2}],
+    )
+    plant = await manager.async_set_moisture_aggregation(
+        plant.id, expected_revision=plant.revision, aggregation="average"
+    )
+    await _set(hass, freezer, 3, **{SOIL: "20", SOIL_2: "60"})
+
+    assert _waterings(manager, plant.id) == []
+
+
+async def test_a_watering_with_two_sensors_is_still_logged(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    freezer.move_to(T0)
+    manager = await _setup(hass)
+    plant = await _two_sensor_plant(manager, hass)
+    await _set(hass, freezer, 1, **{SOIL: "20", SOIL_2: "60"})
+
+    await _set(hass, freezer, 3, **{SOIL: "70", SOIL_2: "90"})
+
+    (event,) = _waterings(manager, plant.id)
+    assert event.provenance == "sensor"
+
+
 async def test_a_watering_logged_by_hand_is_not_doubled(
     hass: HomeAssistant, freezer: Any
 ) -> None:
@@ -307,6 +410,68 @@ async def test_a_watering_logged_by_hand_is_not_doubled(
 
     (event,) = _waterings(manager, plant.id)
     assert event.provenance == "manual"
+
+
+async def test_a_watering_logged_soon_after_replaces_the_detected_one(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    freezer.move_to(T0)
+    manager = await _setup(hass)
+    plant = await _plant(manager, hass)
+    await _water(hass, freezer, T0)
+    (detected,) = _waterings(manager, plant.id)
+    assert detected.provenance == "sensor"
+
+    # Watered pressed half an hour later: one watering, the one logged by hand.
+    logged_at = T0 + timedelta(minutes=30)
+    freezer.move_to(logged_at)
+    await manager.async_add_watering(
+        plant.id,
+        expected_revision=None,
+        occurred_at=logged_at.isoformat(),
+        note="Rain water",
+    )
+    (event,) = _waterings(manager, plant.id)
+    assert event.provenance == "manual"
+    assert event.payload["note"] == "Rain water"
+
+    # A detected watering more than 6 hours away stays.
+    await _water(hass, freezer, T0 + timedelta(hours=8))
+    later = T0 + timedelta(hours=15)
+    freezer.move_to(later)
+    await manager.async_add_watering(
+        plant.id, expected_revision=None, occurred_at=later.isoformat(), note=None
+    )
+    assert [e.provenance for e in _waterings(manager, plant.id)] == [
+        "manual",
+        "sensor",
+        "manual",
+    ]
+
+
+async def test_a_restored_plant_keeps_its_choice(hass: HomeAssistant) -> None:
+    manager = await _setup(hass)
+    plant = await _plant(manager, hass)
+    plant = await manager.async_update_plant(
+        plant.id, expected_revision=plant.revision, watering_detection=False
+    )
+    record = await manager.async_archive_plant(
+        plant.id, expected_revision=plant.revision
+    )
+    assert record.watering_detection is False
+
+    restored = await manager.async_restore_plant(
+        plant.id,
+        expected_revision=record.revision,
+        name="Aloe",
+        include_sources_in_use=False,
+        expected_name_taken=False,
+        expected_sources_in_use=[],
+    )
+
+    assert restored.watering_detection is False
+    # Indoors, so it would follow the placement to on without the choice.
+    assert restored.detects_waterings() is False
 
 
 async def test_the_choice_is_set_over_the_websocket(
@@ -381,6 +546,32 @@ async def test_existing_plants_get_detection_off(
     assert plant.watering_detection is False
     # Indoors, so it would follow the placement to on without the migration.
     assert plant.detects_waterings() is False
+
+
+async def test_retired_plants_get_detection_off(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    archived = ArchivedPlant.from_plant(
+        PlantRecord(
+            id="r",
+            revision=1,
+            name="Fern",
+            created_at="2026-01-01T00:00:00Z",
+            placement=PlantPlacement(mode="indoor"),
+        ),
+        archived_at="2026-02-01T00:00:00Z",
+        area_id=None,
+        area_name=None,
+        device_id=None,
+    ).as_storage()
+    del archived["watering_detection"]
+    stored = _older_storage(_older_plant())
+    stored["data"]["archived_plants"] = [archived]
+    hass_storage[STORAGE_KEY] = stored
+
+    snapshot = await SmartPlantsStore(hass).async_load()
+
+    assert snapshot.archived_plants["r"].watering_detection is False
 
 
 async def test_older_storage_cannot_hold_a_choice(

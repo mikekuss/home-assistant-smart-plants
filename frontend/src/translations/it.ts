@@ -73,6 +73,7 @@ export const it: LanguageCatalog = {
   "conflict_field.name": "Nome",
   "conflict_field.acquired_at": "Data di acquisto",
   "conflict_field.placement": "Posizione",
+  "conflict_field.watering_detection": "Registra le annaffiature dal sensore del terreno",
   "conflict_field.category": "Categoria",
   "conflict_field.tags": "Tag",
   "conflict_field.species": "Specie",
@@ -281,6 +282,7 @@ export const it: LanguageCatalog = {
   "role_phrase.co2": "CO₂",
 
   "care.heading": "Registro delle cure",
+  "care.from_sensor": "registrata dal sensore del terreno",
   "care.watering_count_one": "{count} annaffiatura.",
   "care.watering_count_other": "{count} annaffiature.",
   "care.last_watered": "Ultima annaffiatura: {date}.",

@@ -35,8 +35,13 @@ of the rise:
   the pot changes it by a few points a day.
 - A watering logged in the 6 hours before, by hand or by Smart Plants, wins, so a watering is
   never logged twice. The soil settling after a watering doesn't log another one either.
-- The entry has no note, and its `provenance` is `sensor` in the WebSocket API. Edit or
-  delete it like any other entry.
+- A watering you log within 6 hours of one Smart Plants detected, for example with
+  **Watered**, takes its place with your time and note instead of adding a second one.
+- The care history marks the entry *logged from the soil moisture sensor*. It has no note, and
+  its `provenance` is `sensor` in the WebSocket API. Edit or delete it like any other entry.
+- With several sensors, the value can jump without any water when a sensor drops out, comes
+  back, is added or is swapped. Smart Plants then starts watching afresh instead of logging a
+  watering. The same happens after a change to the sensors or how they combine.
 - Smart Plants keeps the readings of the last hour in memory only, so it can't recognize a
   watering while Home Assistant restarts.
 
@@ -50,8 +55,9 @@ decides by default:
 
 To choose for one plant, open **Settings** > **More details** and set **Log waterings from the
 soil moisture sensor** to **On** or **Off**. **Follow placement** goes back to the default and
-says what it means for the plant right now. The add-plant wizard asks for the placement in its
-first step, and the info icon below **Placement** explains this.
+says what it means for the plant right now. A retired plant keeps this choice when you restore
+it. The add-plant wizard asks for the placement in its first step, and the info icon below
+**Placement** explains this.
 
 Each plant keeps up to 256 entries. Beyond that, Smart Plants removes the oldest watering
 first, then the oldest note, then the oldest entry that isn't the latest of its type. All
