@@ -196,14 +196,19 @@ def targets_all_plants(hass: HomeAssistant, target: Mapping[str, Any] | None) ->
     Return whether a target means all plants.
 
     That is a target without anything in it, or one that names the All plants
-    entity. Mixed with other targets, all plants wins. Only a direct entity
-    reference counts: an area or label holding the entity selects as usual.
+    entity, by entity ID or registry ID. Mixed with other targets, all plants
+    wins. Only a direct entity reference counts: an area or label holding the
+    entity selects as usual.
     """
     if not has_target(target):
         return True
     entity_id = all_plants_entity_id(hass)
-    return entity_id is not None and entity_id in cv.ensure_list(
-        (target or {}).get(ATTR_ENTITY_ID)
+    if entity_id is None:
+        return False
+    registry = er.async_get(hass)
+    return any(
+        isinstance(ref, str) and er.async_resolve_entity_id(registry, ref) == entity_id
+        for ref in cv.ensure_list((target or {}).get(ATTR_ENTITY_ID))
     )
 
 

@@ -202,7 +202,10 @@ export class SmartPlantsArchive extends LitElement {
     try {
       const check = await api.restoreCheck(hass, detail.id);
       if (this._dialog !== "restore" || this._detail !== detail) return;
-      if (check.name_taken && !before.name_taken) this._name = check.suggested_name;
+      // When the sensors are as before, the chosen name was refused because
+      // another plant has it, so offer the free name instead.
+      const ids = (c: RestoreCheck) => c.sources_in_use.map(item => item.entity_id).sort().join(",");
+      if (check.name_taken && (!before.name_taken || ids(check) === ids(before))) this._name = check.suggested_name;
       this._shareSensors = false; this._check = check;
       this._dialogError = this.l.t("archive.restore_changed");
     } catch (e) { this._dialogError = this._friendly(e); }

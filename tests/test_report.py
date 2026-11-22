@@ -23,6 +23,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import label_registry as lr
 from homeassistant.util import dt as dt_util
 
@@ -389,6 +390,24 @@ async def test_action_reports_real_plants(hass: HomeAssistant) -> None:
     )
     assert device is not None
     assert aloe["device_id"] == device.id
+
+
+async def test_action_all_plants_by_registry_id(hass: HomeAssistant) -> None:
+    entry = await setup_integration(hass)
+    manager = manager_of(entry)
+    aloe_id = await watered_plant(hass, manager, "Aloe")
+    await watered_plant(hass, manager, "Fern", soil="sensor.mock_soil_fern")
+    await set_soil(hass, "10")
+    await set_soil(hass, "10", "sensor.mock_soil_fern")
+    all_plants = er.async_get(hass).async_get("binary_sensor.smart_plants_all_plants")
+    assert all_plants is not None
+
+    # The All plants entity wins over the other target, by its registry ID too.
+    result = await get_report(
+        hass, entity_id=[entity_of(hass, aloe_id, "sensor_stale"), all_plants.id]
+    )
+
+    assert [plant["plant"] for plant in result["plants"]] == ["Aloe", "Fern"]
 
 
 async def test_action_label_target_and_snooze(hass: HomeAssistant) -> None:

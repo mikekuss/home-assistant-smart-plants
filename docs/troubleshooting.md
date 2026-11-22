@@ -60,6 +60,8 @@ On an iPhone or iPad the panel doesn't offer HEIC, so iOS hands over a JPEG copy
 ### "Smart Plants storage is full"
 
 All plants share one storage file of at most 8 MiB. Delete old care entries or long notes.
+When an update converts the stored data, the file can end up a little over the limit. Smart
+Plants still starts, but every change says the storage is full until you delete entries.
 
 ## Readings and status
 

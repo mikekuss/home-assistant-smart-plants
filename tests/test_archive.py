@@ -644,6 +644,36 @@ async def test_restore_refuses_a_name_taken_since_the_check(
     assert manager.snapshot.pending_operations == ()
 
 
+async def test_restore_refuses_a_replacement_name_taken_since_the_check(
+    hass: HomeAssistant,
+) -> None:
+    entry = await _setup(hass)
+    manager = _manager(entry)
+    plant = await _plant(hass, entry)
+    record = await manager.async_archive_plant(
+        plant.id, expected_revision=plant.revision
+    )
+    await hass.async_block_till_done()
+    await manager.async_create_plant(name="Basil")
+    check = manager.restore_check(plant.id)
+    assert check["name_taken"] is True
+    assert check["suggested_name"] == "Basil 2"
+    # Another panel takes the suggested name while the dialog is open.
+    await manager.async_create_plant(name="basil 2")
+
+    with pytest.raises(SmartPlantsRestoreConflictError):
+        await manager.async_restore_plant(
+            plant.id,
+            expected_revision=record.revision,
+            name="Basil 2",
+            include_sources_in_use=False,
+            expected_name_taken=True,
+            expected_sources_in_use=[],
+        )
+    assert plant.id in manager.snapshot.archived_plants
+    assert manager.restore_check(plant.id)["suggested_name"] == "Basil 3"
+
+
 async def test_restore_refuses_sensors_changed_since_the_check(
     hass: HomeAssistant,
 ) -> None:

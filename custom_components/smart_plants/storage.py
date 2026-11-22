@@ -86,6 +86,10 @@ _SPECIES_CARE_RANGE_KEYS: Final = (
 _LEGACY_CARE_EVENT_SCHEMA: Final = 1
 _LEGACY_SPECIES_TEXT_MAX: Final = 500
 _INVENTORY_MAX_BYTES: Final = 8 * 1024 * 1024
+# Loading accepts a little more than a save may write. A migration can add a
+# few bytes to storage that was saved just under the limit, and that storage
+# must still load; saves keep the strict limit, so it cannot grow further.
+_INVENTORY_LOAD_HEADROOM_BYTES: Final = 64 * 1024
 # The inventory as it was before the last migration, in its original version.
 STORAGE_BACKUP_KEY: Final = f"{STORAGE_KEY}.backup"
 
@@ -651,7 +655,7 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
         # Home Assistant writes the result back right after this returns.
         # Check it first, so storage that fails to migrate never replaces
         # the backup of the last inventory that converted cleanly.
-        _snapshot_from_payload(data, require_roles=True)
+        _snapshot_from_payload(data, require_roles=True, loading=True)
         await self._async_write_backup(
             old_major_version, old_minor_version, original_data
         )
@@ -733,7 +737,7 @@ class SmartPlantsStore:
                     "Smart Plants storage file was previously quarantined as corrupt"
                 )
             return InventorySnapshot.empty()
-        return _snapshot_from_payload(stored, require_roles=True)
+        return _snapshot_from_payload(stored, require_roles=True, loading=True)
 
     async def async_save(self, snapshot: InventorySnapshot) -> None:
         # HA's Store swallows WriteError/SerializationError inside
@@ -905,7 +909,7 @@ def _strip_legacy_envelope(data: object) -> dict[str, Any]:
 
 
 def _snapshot_from_payload(  # noqa: PLR0912
-    data: object, *, require_roles: bool = False
+    data: object, *, require_roles: bool = False, loading: bool = False
 ) -> InventorySnapshot:
     inventory = _strip_legacy_envelope(data)
     try:
@@ -914,7 +918,10 @@ def _snapshot_from_payload(  # noqa: PLR0912
         raise SmartPlantsInvalidStorageError(
             "Smart Plants storage must be JSON serializable"
         ) from err
-    if encoded_size > _INVENTORY_MAX_BYTES:
+    size_limit = _INVENTORY_MAX_BYTES
+    if loading:
+        size_limit += _INVENTORY_LOAD_HEADROOM_BYTES
+    if encoded_size > size_limit:
         raise _SmartPlantsStorageLimitError(
             "Smart Plants storage exceeds its size limit"
         )
