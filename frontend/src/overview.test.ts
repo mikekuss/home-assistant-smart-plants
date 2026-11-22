@@ -36,8 +36,8 @@ afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); });
 describe("overview view", () => {
   it("counts statuses in the summary tiles and filters with them", async () => {
     const el = await mountView();
-    expect(qa(el, ".tile").map(t => `${t.querySelector(".lbl")!.textContent} ${t.querySelector(".num")!.textContent}`)).toEqual(["All plants 3", "Needs water 1", "Problems 1", "Sensor issues 1"]);
-    expect(tile(el, "All plants").getAttribute("aria-pressed")).toBe("true");
+    expect(qa(el, ".tile").map(t => `${t.querySelector(".lbl")!.textContent} ${t.querySelector(".num")!.textContent}`)).toEqual(["Plants 3", "Needs water 1", "Problem 1", "Sensor issue 1"]);
+    expect(tile(el, "Plants").getAttribute("aria-pressed")).toBe("true");
     tile(el, "Needs water").click(); await settle(el);
     expect(tile(el, "Needs water").getAttribute("aria-pressed")).toBe("true");
     expect(cardNames(el)).toEqual(["Basil"]);
@@ -50,7 +50,7 @@ describe("overview view", () => {
     const dry = (p: PlantRecord, snoozedUntil: string | null): PlantOverview => ({ ...overview.basil!, ...overviewFor(p), status: "needs_water", problems: [{ role: "moisture", kind: "needs_water" }], snoozed_until: snoozedUntil });
     const counts = (el: SmartPlantsOverview) => qa(el, ".tile").map(t => `${t.querySelector(".lbl")!.textContent} ${t.querySelector(".num")!.textContent}`);
     const snoozed = await mountView({ plants: [...plants, fern], overview: { ...overview, basil: dry(basil, "2026-09-30T23:59:59+00:00"), fern: dry(fern, null) } });
-    expect(counts(snoozed)).toEqual(["All plants 4", "Needs water 1", "Problems 1", "Sensor issues 1"]);
+    expect(counts(snoozed)).toEqual(["Plants 4", "Needs water 1", "Problem 1", "Sensor issue 1"]);
     expect(cardNames(snoozed)).toEqual(["Fern", "Monstera", "Peace Lily", "Basil"]);
     expect(qa(snoozed, ".card sp-snooze-chip")).toHaveLength(1);
     expect(qa(snoozed, ".card sp-status-chip").map(c => (c as unknown as { status: string }).status)).toEqual(["needs_water", "too_wet", "no_sensors", "needs_water"]);
@@ -58,7 +58,7 @@ describe("overview view", () => {
     expect(cardNames(snoozed)).toEqual(["Fern"]);
     document.body.replaceChildren();
     const ended = await mountView({ plants: [...plants, fern], overview: { ...overview, basil: dry(basil, "2026-09-28T11:00:00+00:00"), fern: dry(fern, null) } });
-    expect(counts(ended)).toEqual(["All plants 4", "Needs water 2", "Problems 1", "Sensor issues 1"]);
+    expect(counts(ended)).toEqual(["Plants 4", "Need water 2", "Problem 1", "Sensor issue 1"]);
     expect(cardNames(ended)).toEqual(["Basil", "Fern", "Monstera", "Peace Lily"]);
     expect(qa(ended, ".card sp-snooze-chip")).toHaveLength(0);
   });
@@ -131,9 +131,19 @@ describe("overview view", () => {
     expect(qa(el, ".card .tonal").every(b => (b as HTMLButtonElement).disabled)).toBe(true);
     expect((q(el, ".fab") as HTMLButtonElement).disabled).toBe(true);
   });
+  it("uses the singular for one and the plural otherwise", async () => {
+    const italian = await mountView({ l: createLocalizer({ language: "it" }) });
+    // Tiles: all plants, needs water, problems, sensor issues.
+    expect(qa(italian, ".tile").map(t => `${t.querySelector(".num")!.textContent} ${t.querySelector(".lbl")!.textContent}`)).toEqual(["3 Piante", "1 Da annaffiare", "1 Problema", "1 Problema ai sensori"]);
+    expect(q(italian, ".countline p")!.textContent).toBe("3 di 3 piante");
+    const en = createLocalizer({ language: "en" });
+    expect(en.tn(0, "overview.tile_count_problems_one", "overview.tile_count_problems_other")).toBe("Problems");
+    expect(en.tn(2, "overview.tile_count_water_one", "overview.tile_count_water_other")).toBe("Need water");
+    expect(en.tn(1, "list.count_filtered_one", "list.count_filtered_other", { shown: 1, total: 1 })).toBe("1 of 1 plant");
+  });
   it("renders German labels", async () => {
     const el = await mountView({ l: createLocalizer({ language: "de" }) });
-    expect(qa(el, ".tile .lbl").map(t => t.textContent)).toEqual(["Alle Pflanzen", "Braucht Wasser", "Probleme", "Sensorprobleme"]);
+    expect(qa(el, ".tile .lbl").map(t => t.textContent)).toEqual(["Pflanzen", "Braucht Wasser", "Problem", "Sensorproblem"]);
     expect(q(el, ".card .reason")!.textContent).toBe("Bodenfeuchte 34 % liegt unter dem Minimum von 60 %");
   });
 });

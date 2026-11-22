@@ -2036,7 +2036,8 @@ var Hn = {
 	"source_field.aggregation": "Kombination der Messwerte",
 	"source_field.stale_after_seconds": "Zeit bis „Keine Daten“",
 	"list.loading": "Pflanzen werden geladen …",
-	"list.count_filtered": "{shown} von {total} Pflanzen",
+	"list.count_filtered_one": "{shown} von {total} Pflanze",
+	"list.count_filtered_other": "{shown} von {total} Pflanzen",
 	"detail.not_found": "Pflanze nicht gefunden – sie wurde möglicherweise in einer anderen Sitzung gelöscht.",
 	"detail.sections_label": "Pflanzenbereiche",
 	"detail.tab_overview": "Übersicht",
@@ -2542,6 +2543,16 @@ var Hn = {
 	"overview.tile_water": "Braucht Wasser",
 	"overview.tile_problems": "Probleme",
 	"overview.tile_sensors": "Sensorprobleme",
+	"overview.tile_count_all_one": "Pflanze",
+	"overview.tile_count_all_other": "Pflanzen",
+	"overview.tile_count_water_one": "Braucht Wasser",
+	"overview.tile_count_water_other": "Brauchen Wasser",
+	"overview.tile_count_problems_one": "Problem",
+	"overview.tile_count_problems_other": "Probleme",
+	"overview.tile_count_sensors_one": "Sensorproblem",
+	"overview.tile_count_sensors_other": "Sensorprobleme",
+	"overview.tile_count_care_one": "Pflege fällig",
+	"overview.tile_count_care_other": "Pflege fällig",
 	"overview.search": "Pflanzen suchen",
 	"overview.sort_button": "Sortierung: {sort}",
 	"overview.sort_attention": "Handlungsbedarf zuerst",
@@ -3271,7 +3282,8 @@ var Hn = {
 	"source_field.aggregation": "how readings are combined",
 	"source_field.stale_after_seconds": "not-updating time",
 	"list.loading": "Loading plants…",
-	"list.count_filtered": "{shown} of {total} plants",
+	"list.count_filtered_one": "{shown} of {total} plant",
+	"list.count_filtered_other": "{shown} of {total} plants",
 	"detail.not_found": "Plant not found — it may have been deleted in another session.",
 	"detail.sections_label": "Plant sections",
 	"detail.tab_overview": "Overview",
@@ -3777,6 +3789,16 @@ var Hn = {
 	"overview.tile_water": "Needs water",
 	"overview.tile_problems": "Problems",
 	"overview.tile_sensors": "Sensor issues",
+	"overview.tile_count_all_one": "Plant",
+	"overview.tile_count_all_other": "Plants",
+	"overview.tile_count_water_one": "Needs water",
+	"overview.tile_count_water_other": "Need water",
+	"overview.tile_count_problems_one": "Problem",
+	"overview.tile_count_problems_other": "Problems",
+	"overview.tile_count_sensors_one": "Sensor issue",
+	"overview.tile_count_sensors_other": "Sensor issues",
+	"overview.tile_count_care_one": "Care due",
+	"overview.tile_count_care_other": "Care due",
 	"overview.search": "Search plants",
 	"overview.sort_button": "Sort: {sort}",
 	"overview.sort_attention": "Needs attention first",
@@ -4506,7 +4528,8 @@ var Hn = {
 	"source_field.aggregation": "come si combinano le letture",
 	"source_field.stale_after_seconds": "tempo senza aggiornamenti",
 	"list.loading": "Caricamento delle piante…",
-	"list.count_filtered": "{shown} di {total} piante",
+	"list.count_filtered_one": "{shown} di {total} pianta",
+	"list.count_filtered_other": "{shown} di {total} piante",
 	"detail.not_found": "Pianta non trovata: potrebbe essere stata eliminata in un'altra sessione.",
 	"detail.sections_label": "Sezioni della pianta",
 	"detail.tab_overview": "Panoramica",
@@ -5012,6 +5035,16 @@ var Hn = {
 	"overview.tile_water": "Da annaffiare",
 	"overview.tile_problems": "Problemi",
 	"overview.tile_sensors": "Problemi ai sensori",
+	"overview.tile_count_all_one": "Pianta",
+	"overview.tile_count_all_other": "Piante",
+	"overview.tile_count_water_one": "Da annaffiare",
+	"overview.tile_count_water_other": "Da annaffiare",
+	"overview.tile_count_problems_one": "Problema",
+	"overview.tile_count_problems_other": "Problemi",
+	"overview.tile_count_sensors_one": "Problema ai sensori",
+	"overview.tile_count_sensors_other": "Problemi ai sensori",
+	"overview.tile_count_care_one": "Cura da fare",
+	"overview.tile_count_care_other": "Cure da fare",
 	"overview.search": "Cerca piante",
 	"overview.sort_button": "Ordina: {sort}",
 	"overview.sort_attention": "Prima quelle da controllare",
@@ -10632,26 +10665,31 @@ Qc = Z, Qc.styles = [
 var al, ol = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", sl = {
 	all: {
 		label: "overview.tile_all",
+		count: ["overview.tile_count_all_one", "overview.tile_count_all_other"],
 		icon: "mdi:sprout",
 		tone: "var(--sp-primary)"
 	},
 	water: {
 		label: "overview.tile_water",
+		count: ["overview.tile_count_water_one", "overview.tile_count_water_other"],
 		icon: "mdi:water-alert",
 		tone: "var(--sp-warning)"
 	},
 	problems: {
 		label: "overview.tile_problems",
+		count: ["overview.tile_count_problems_one", "overview.tile_count_problems_other"],
 		icon: "mdi:alert-circle",
 		tone: "var(--sp-error)"
 	},
 	sensors: {
 		label: "overview.tile_sensors",
+		count: ["overview.tile_count_sensors_one", "overview.tile_count_sensors_other"],
 		icon: "mdi:clock-alert-outline",
 		tone: "var(--sp-disabled)"
 	},
 	care: {
 		label: "overview.tile_care",
+		count: ["overview.tile_count_care_one", "overview.tile_count_care_other"],
 		icon: "mdi:calendar-check-outline",
 		tone: "var(--sp-care)"
 	}
@@ -10738,7 +10776,7 @@ var al, ol = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 	}
 	_renderResults() {
 		let e = this.l, t = this._items(), n = t.filter((e) => un(this._filter, e.status, e.careDue, e.snoozed) && fn(e, this._query)), r = this._filter !== "all";
-		return b`<div class="countline"><p role="status">${e.t("list.count_filtered", {
+		return b`<div class="countline"><p role="status">${e.tn(t.length, "list.count_filtered_one", "list.count_filtered_other", {
 			shown: n.length,
 			total: t.length
 		})}${r ? ` · ${e.t(sl[this._filter].label)}` : ""}</p>
@@ -10770,7 +10808,7 @@ var al, ol = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 			this._filter = this._filter === e && e !== "all" ? "all" : e;
 		}}>
       <span class="ico" aria-hidden="true"><ha-icon .icon=${n.icon}></ha-icon></span>
-      <span class="txt"><span class="num">${this.l.number(t)}</span><span class="lbl">${this.l.t(n.label)}</span></span></button>`;
+      <span class="txt"><span class="num">${this.l.number(t)}</span><span class="lbl">${this.l.tn(t, ...n.count)}</span></span></button>`;
 	}
 	_renderList(e) {
 		return this._sort === "area" ? gn(e).map((e) => b`<h2 class="group-heading"><ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${e.area ?? this.l.t("overview.no_area")} <span class="n">· ${this.l.number(e.items.length)}</span></h2>
