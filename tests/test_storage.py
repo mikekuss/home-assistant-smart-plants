@@ -102,6 +102,7 @@ async def test_current_version_round_trip(
                     "care_tasks": [],
                     "rest_period": None,
                     "snoozed_until": None,
+                    "watering_detection": None,
                 }
             ],
             "pending_operations": [],
@@ -1251,6 +1252,7 @@ async def test_load_normalizes_date_only_acquired_at(
         "care_tasks": [],
         "rest_period": None,
         "snoozed_until": None,
+        "watering_detection": None,
     }
     timestamped = {**plant, "id": "plant-2", "acquired_at": "2024-03-01T08:30:00Z"}
     _seed(

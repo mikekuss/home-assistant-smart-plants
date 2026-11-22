@@ -103,6 +103,9 @@ test("German add-plant wizard keeps every step accessible", async ({ page }, inf
   await expect(page.getByText("Schritt 1 von 3 · Pflanze", { exact: true })).toBeVisible();
   await page.getByLabel("Pflanzenname", { exact: true }).fill("Basilikum");
   await page.getByLabel("Bereich", { exact: true }).selectOption("office");
+  await page.getByLabel("Standort", { exact: true }).selectOption("indoor");
+  await page.locator("smart-plants-wizard").getByText("Was der Standort ändert", { exact: true }).click();
+  await expect(page.locator("smart-plants-wizard").getByText(/^Der Standort entscheidet auch/)).toBeVisible();
   await audit(page, info, "german-wizard-plant");
   await button(page, "Weiter").click();
   await expect(page.getByRole("heading", { name: "Vorschläge aus Office", exact: true })).toBeVisible();
@@ -112,7 +115,7 @@ test("German add-plant wizard keeps every step accessible", async ({ page }, inf
   await button(page, "Weiter").click();
   await page.locator("smart-plants-wizard").getByRole("button", { name: /^Art und Gießziele/ }).click();
   await page.locator("smart-plants-wizard").getByRole("button", { name: /^Weitere Details/ }).click();
-  for (const label of ["Braucht Wasser unter", "Ideal", "Zu nass über", "Anschaffungsdatum", "Standort", "Kategorie", "Tags"]) await expect(page.getByLabel(label, { exact: true })).toBeVisible();
+  for (const label of ["Braucht Wasser unter", "Ideal", "Zu nass über", "Anschaffungsdatum", "Kategorie", "Tags"]) await expect(page.getByLabel(label, { exact: true })).toBeVisible();
   await audit(page, info, "german-wizard-review");
   await button(page, "Pflanze erstellen").click();
   await expect(page.getByRole("heading", { name: "Basilikum ist bereit", exact: true })).toBeVisible();

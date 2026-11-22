@@ -576,6 +576,7 @@ def _plant(tasks: list[dict[str, Any]]) -> dict[str, Any]:
         "care_tasks": tasks,
         "rest_period": None,
         "snoozed_until": None,
+        "watering_detection": None,
     }
 
 

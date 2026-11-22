@@ -389,6 +389,7 @@ test("overview prioritizes plant summaries with compact filters and native-style
 test("wizard creates soil moisture and two more sensors in one request and keeps every choice on the way back", async ({ page }) => {
   await start(page);
   await page.getByLabel("Area", { exact: true }).selectOption("office");
+  await page.getByLabel("Placement", { exact: true }).selectOption("indoor");
   await next(page);
   await expect(page.getByRole("heading", { name: "Suggested from Office", exact: true })).toBeVisible();
   await page.getByLabel("Soil moisture sensor", { exact: true }).selectOption("sensor.soil");
@@ -401,13 +402,13 @@ test("wizard creates soil moisture and two more sensors in one request and keeps
   await button(page, "Back").click();
   await expect(page.getByLabel("Plant name", { exact: true })).toHaveValue("Manual Aloe");
   await expect(page.getByLabel("Area", { exact: true })).toHaveValue("office");
+  await expect(page.getByLabel("Placement", { exact: true })).toHaveValue("indoor");
   await next(page);
   for (const name of ["Soil probe", "Living room temperature", "Pot battery"]) await expect(wizard(page).getByText(name, { exact: true })).toBeVisible();
   await next(page);
   await expect(wizard(page).getByText("Living room temperature, Pot battery", { exact: true })).toBeVisible();
   await section(page, "More details");
   await page.getByLabel("Date acquired", { exact: true }).fill("2026-09-01");
-  await page.getByLabel("Placement", { exact: true }).selectOption("indoor");
   await page.getByLabel("Category", { exact: true }).fill("Succulent");
   await page.getByLabel("Tags", { exact: true }).fill("sunny, office, sunny");
   await section(page, "Species and watering targets");

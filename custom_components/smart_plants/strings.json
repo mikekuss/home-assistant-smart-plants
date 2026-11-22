@@ -53,7 +53,6 @@
         "title": "Smart Plants options",
         "data": {
           "preserve_inventory_on_removal": "Preserve inventory when the integration is removed",
-          "detect_watering": "Log waterings from the soil moisture sensor",
           "forecast_refresh_minutes": "Forecast refresh interval",
           "openplantbook_enabled": "Use OpenPlantBook",
           "openplantbook_client_id": "OpenPlantBook client ID",
@@ -61,7 +60,6 @@
         },
         "data_description": {
           "preserve_inventory_on_removal": "When this is off, deleting the Smart Plants integration also deletes all plants, their care history and photos for good. Turn it on before you delete the integration if you might reinstall it.",
-          "detect_watering": "When a plant's soil moisture rises by 15 points or more within an hour, Smart Plants logs a watering for it, unless one was logged within 6 hours. Useful when nobody presses Watered. Off by default, because it writes to the care history by itself.",
           "forecast_refresh_minutes": "How often Smart Plants fetches the forecast of a weather entity that a forecast reading task watches, from 15 to 180 minutes. A change of the weather entity still fetches it again, at most once every 5 minutes.",
           "openplantbook_enabled": "Search OpenPlantBook for a plant's species and use its moisture range. Smart Plants works without it.",
           "openplantbook_client_id": "The client ID of your OpenPlantBook API credentials.",

@@ -13,9 +13,7 @@ from homeassistant.exceptions import ConfigEntryError
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
-    CONF_DETECT_WATERING,
     CONF_PRESERVE_INVENTORY_ON_REMOVAL,
-    DEFAULT_DETECT_WATERING,
     DEFAULT_PRESERVE_INVENTORY_ON_REMOVAL,
     DOMAIN,
 )
@@ -156,9 +154,6 @@ async def async_setup_entry(  # noqa: PLR0915
         hass,
         reconciler=reconciler,
         forecast_refresh_interval=timedelta(minutes=refresh_minutes(entry.options)),
-        detect_watering=bool(
-            entry.options.get(CONF_DETECT_WATERING, DEFAULT_DETECT_WATERING)
-        ),
     )
     provider_service: SpeciesProviderService | None = None
 

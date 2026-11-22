@@ -27,8 +27,7 @@ task as done.
 
 ### Waterings from the soil moisture sensor
 
-Smart Plants can log a watering by itself when nobody presses **Watered**. Turn on **Log
-waterings from the soil moisture sensor** in the [options](installation.md#options). Then a
+Smart Plants can log a watering by itself when nobody presses **Watered**. Where it's on, a
 rise of a plant's soil moisture by 15 points or more within an hour logs a watering at the time
 of the rise:
 
@@ -41,7 +40,18 @@ of the rise:
 - Smart Plants keeps the readings of the last hour in memory only, so it can't recognize a
   watering while Home Assistant restarts.
 
-The option is off by default because it writes to the care history by itself.
+Outdoors, rain raises the soil moisture just the same, so the **Placement** of the plant
+decides by default:
+
+- **On** for an indoor plant and in a greenhouse.
+- **Off** in the other placements, and for a plant without a placement.
+- **Off** for plants that existed before Smart Plants could detect waterings, whatever their
+  placement, because it writes to the care history by itself.
+
+To choose for one plant, open **Settings** > **More details** and set **Log waterings from the
+soil moisture sensor** to **On** or **Off**. **Follow placement** goes back to the default and
+says what it means for the plant right now. The add-plant wizard asks for the placement in its
+first step, and the info icon below **Placement** explains this.
 
 Each plant keeps up to 256 entries. Beyond that, Smart Plants removes the oldest watering
 first, then the oldest note, then the oldest entry that isn't the latest of its type. All

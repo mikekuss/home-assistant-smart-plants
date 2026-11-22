@@ -632,14 +632,21 @@ class _SmartPlantsHAStore(Store[dict[str, Any]]):
                         )
 
         if old_major_version == 1 and old_minor_version < _MINOR_DETECTED_WATERING:
-            # Minor 20 adds the "sensor" provenance for a watering that Smart
-            # Plants logged itself after a sudden rise of the soil moisture.
-            # Older storage cannot contain one.
+            # Minor 20 lets a plant log a watering when its soil moisture
+            # jumps. Existing plants keep logging waterings only by hand, so
+            # they get detection off; new plants follow their placement.
+            # A detected watering, with the "sensor" provenance, or a choice
+            # for the plant cannot come from an older minor.
             for plant in data["plants"]:
-                events = plant.get("care_events") if isinstance(plant, dict) else None
-                if not isinstance(events, list):
+                if not isinstance(plant, dict):
                     continue
-                if any(
+                if plant.get("watering_detection") is not None:
+                    raise SmartPlantsInvalidStorageError(
+                        "older storage cannot contain watering detection"
+                    )
+                plant["watering_detection"] = False
+                events = plant.get("care_events")
+                if isinstance(events, list) and any(
                     isinstance(event, dict) and event.get("provenance") == "sensor"
                     for event in events
                 ):

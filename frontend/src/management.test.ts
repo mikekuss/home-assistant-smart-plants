@@ -270,12 +270,32 @@ describe("detail saves and conflict review", () => {
   it("saves identity, taxonomy and native area independently with revisions", async () => {
     const h = harness(); const el = await detail(h.hass);
     await fill(el, "Name", "Renamed"); await fill(el, "Placement", "balcony"); await click(el, "Save placement and date");
-    expect(h.calls.find(c => c.type === "smart_plants/plants/update")).toEqual({ type: "smart_plants/plants/update", plant_id: sample.id, expected_revision: 1, name: "Renamed", acquired_at: null, placement: { mode: "balcony", exposure: null, rain_exposure: null, container: null } });
+    expect(h.calls.find(c => c.type === "smart_plants/plants/update")).toEqual({ type: "smart_plants/plants/update", plant_id: sample.id, expected_revision: 1, name: "Renamed", acquired_at: null, placement: { mode: "balcony", exposure: null, rain_exposure: null, container: null }, watering_detection: null });
     await fill(el, "Category", "succulent"); await fill(el, "Tags (comma-separated)", "pot, pot, terrace"); await click(el, "Save category and tags");
     expect(h.calls.filter(c => c.type === "smart_plants/plants/update").at(-1)).toEqual({ type: "smart_plants/plants/update", plant_id: sample.id, expected_revision: 1, category: "succulent", tags: ["pot", "terrace"] });
     await fill(el, "Home Assistant area", "garden"); await click(el, "Save area");
     expect(h.calls.find(c => c.type === "smart_plants/plants/set_area")).toEqual({ type: "smart_plants/plants/set_area", plant_id: sample.id, expected_revision: 1, area_id: "garden" });
     expect(h.calls.filter(c => c.type === "smart_plants/plants/update").every(c => !("area_id" in c))).toBe(true);
+  });
+  it("sets per plant whether waterings are logged from the soil sensor", async () => {
+    const h = harness(); const el = await detail(h.hass);
+    const detection = () => field(el.shadowRoot!, "Log waterings from the soil moisture sensor") as HTMLSelectElement;
+    const follow = () => [...detection().options].find(o => o.value === "")!.textContent;
+    // Without a placement the plant follows it, which means off.
+    expect(detection().value).toBe(""); expect(follow()).toBe("Follow placement (off)");
+    await fill(el, "Placement", "indoor"); expect(follow()).toBe("Follow placement (on)");
+    await fill(el, "Placement", "outdoor"); await fill(el, "Log waterings from the soil moisture sensor", "on");
+    await click(el, "Save placement and date");
+    expect(h.calls.find(c => c.type === "smart_plants/plants/update")).toMatchObject({ placement: { mode: "outdoor" }, watering_detection: true });
+    // The info icon under Placement explains what it changes.
+    const tip = el.shadowRoot!.querySelector<HTMLDetailsElement>("details.info-tip")!;
+    expect(tip.querySelector("summary")?.textContent).toContain("What placement changes");
+    expect(tip.querySelector("p")?.textContent).toContain("Indoors and in a greenhouse it does.");
+    document.body.replaceChildren();
+    const off = await detail(harness([{ ...sample, watering_detection: false }]).hass);
+    // happy-dom doesn't apply a `selected` attribute set after the option is
+    // inserted, which browsers do, so check the attribute the panel renders.
+    expect(field(off.shadowRoot!, "Log waterings from the soil moisture sensor").querySelector("option[selected]")?.getAttribute("value")).toBe("off");
   });
   it("lists only the details that are set and offers to add the rest", async () => {
     const about = (el: SmartPlantsPanel) => el.shadowRoot!.querySelector<HTMLElement>("section[aria-labelledby=about-heading]")!;

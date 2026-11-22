@@ -531,6 +531,8 @@ _UPDATE_FIELDS: dict[vol.Marker | str, Any] = {
         [vol.All(str, vol.Length(min=1, max=60))], vol.Length(max=32)
     ),
     vol.Optional("category"): vol.Any(str, None),
+    # ``None`` follows the placement; ``True`` or ``False`` is the plant's own.
+    vol.Optional("watering_detection"): vol.Any(bool, None),
     # ``area_id`` is intentionally NOT accepted here; use
     # ``smart_plants/plants/set_area`` to change or clear the device area
     # so the intent is durable and idempotent across restarts.
@@ -568,6 +570,7 @@ async def _handle_update(
         "acquired_at",
         "tags",
         "category",
+        "watering_detection",
     ):
         if key in msg:
             kwargs[key] = msg[key]

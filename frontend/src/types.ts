@@ -123,6 +123,9 @@ export interface PlantRecord {
   rest_period?: RestPeriod | null;
   // When the plant's alert snooze ends (UTC timestamp), or null.
   snoozed_until?: string | null;
+  // Log a watering when the soil moisture jumps: null follows the placement,
+  // true or false is the plant's own choice. See detectsWaterings().
+  watering_detection?: boolean | null;
 }
 
 // A retired plant: no device or entities any more, only a plain record with

@@ -81,6 +81,7 @@ export interface UpdatePlantInput {
   tags?: string[];
   placement?: PlantPlacement | null;
   species?: PlantSpecies | null;
+  watering_detection?: boolean | null;
   // ``area_id`` intentionally omitted; use ``api.setArea`` to change or
   // clear the device area so the intent is applied exactly once and
   // survives restart.

@@ -53,7 +53,8 @@ export function validPlant(v: unknown): boolean {
     (v.care_events === undefined || (Array.isArray(v.care_events) && v.care_events.length <= 256 && v.care_events.every(validCareEvent))) &&
     (v.care_tasks === undefined || validCareTasks(v.care_tasks)) &&
     (v.rest_period === undefined || v.rest_period === null || monthRange(v.rest_period, ["start_month", "end_month"])) &&
-    (v.snoozed_until === undefined || v.snoozed_until === null || timestamp(v.snoozed_until));
+    (v.snoozed_until === undefined || v.snoozed_until === null || timestamp(v.snoozed_until)) &&
+    (v.watering_detection === undefined || v.watering_detection === null || typeof v.watering_detection === "boolean");
 }
 const TASK_ID = /^[0-9a-f]{32}$/;
 const isoDate = (v: unknown) => typeof v === "string" && /^\d{4}-\d\d-\d\d$/.test(v) && Number.isFinite(Date.parse(v));

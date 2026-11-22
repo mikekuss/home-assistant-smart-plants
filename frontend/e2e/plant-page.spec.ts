@@ -111,6 +111,9 @@ test("tabs follow the keyboard and every tab passes axe", async ({ page }, info)
   await expand(page, "More details");
   await expect(page.getByLabel("Needs water below", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Too wet above", { exact: true })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Log waterings from the soil moisture sensor", exact: true })).toBeVisible();
+  await page.locator("smart-plants-panel").getByText("What placement changes", { exact: true }).click();
+  await expect(page.locator("smart-plants-panel").getByText(/^Placement also decides/)).toBeVisible();
   await audit(page, info, "tab-settings-expanded");
 });
 

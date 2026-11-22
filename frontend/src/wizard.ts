@@ -2,7 +2,7 @@ import { LitElement, css, html, nothing } from "lit";
 import type { PropertyValues, TemplateResult } from "lit";
 import { property, state } from "lit/decorators.js";
 import { api, ApiError } from "./api.js";
-import { placementLabel, snapshotView } from "./editors.js";
+import { placementInfo, placementLabel, snapshotView } from "./editors.js";
 import { isDefined } from "./ha-elements.js";
 import type { HaElement } from "./ha-elements.js";
 import { createLocalizer, isMessageKey } from "./localize.js";
@@ -12,7 +12,7 @@ import type { SourceRole } from "./model.js";
 import { imageAccept, prepareImage } from "./image.js";
 import { READING_ROLES, ROLE_META, formatValue, readingLabel } from "./status.js";
 import type { ReadingRole } from "./status.js";
-import { srOnly, themeFallbacks } from "./components/shared-styles.js";
+import { infoTip, srOnly, themeFallbacks } from "./components/shared-styles.js";
 import type { HAArea, HADevice, HAEntity, HAState, HomeAssistantLike, MoistureInput, PanelCapabilities, PlantPlacement, PlantRecord, SensorSource, SpeciesSearchResult, SpeciesSnapshot, WizardCreateInput, WizardDraft, WizardPreview } from "./types.js";
 import { SPECIES_QUERY_MAX, inputMaxLength, withinChars } from "./text.js";
 
@@ -33,7 +33,7 @@ const STORAGE_ERROR_KEYS = new Set(["api_error.storage_full", "api_error.pending
 // final request is built once and resent unchanged on retry, so an uncertain
 // result can never create a second plant.
 export class SmartPlantsWizard extends LitElement {
-  static styles = [themeFallbacks, srOnly, css`
+  static styles = [themeFallbacks, srOnly, infoTip, css`
     :host { display: block; container-type: inline-size; color: var(--sp-text);
       --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000);
       /* Secondary text a little darker than the theme's so it keeps 4.5:1 on tinted rows and filled fields. */
@@ -524,6 +524,8 @@ export class SmartPlantsWizard extends LitElement {
 
   private renderPlant() {
     const l = this.l;
+    const language = this.hass?.locale?.language ?? this.hass?.language ?? l.language;
+    const capital = (text: string) => text.charAt(0).toLocaleUpperCase(language) + text.slice(1);
     const areaPicker = isDefined("ha-area-picker") && this.hass
       ? html`<ha-area-picker .hass=${this.hass} .label=${l.t("wizard.area")} .value=${this.area || undefined} .noAdd=${true} .disabled=${this.busy || this.blocked} @value-changed=${(e: CustomEvent<{ value?: string }>) => { this.area = e.detail.value ?? ""; }}></ha-area-picker>`
       : html`<div class="field"><label for="area">${l.t("wizard.area")}</label><select id="area" aria-describedby="area-helper" @change=${(e: Event) => { this.area = (e.target as HTMLSelectElement).value; }}>
@@ -534,6 +536,10 @@ export class SmartPlantsWizard extends LitElement {
       <div class="stack">
         <label class="field">${l.t("wizard.plant_name")}<input required maxlength=${inputMaxLength(200)} autocomplete="off" .value=${this.name} @input=${(e: Event) => { this.name = (e.target as HTMLInputElement).value; }} @keydown=${(e: KeyboardEvent) => { if (e.key === "Enter") void this.next(); }}></label>
         <div>${areaPicker}<div class="helper" id="area-helper">${l.t("wizard.area_helper")}</div></div>
+        <div><div class="field"><label for="placement">${l.t("placement.label")}</label><select id="placement" ?disabled=${this.busy || this.blocked} @change=${(e: Event) => { this.placement = (e.target as HTMLSelectElement).value; }}>
+          <option value="" ?selected=${!this.placement}>${l.t("common.not_specified")}</option>
+          ${placements.map(p => html`<option value=${p} ?selected=${p === this.placement}>${capital(placementLabel(l, p))}</option>`)}</select><ha-icon class="trail" aria-hidden="true" icon="mdi:menu-down"></ha-icon></div>
+          ${placementInfo(l, l.t("placement.info"))}</div>
         ${this.renderPhoto()}
       </div>`;
   }
@@ -695,12 +701,8 @@ export class SmartPlantsWizard extends LitElement {
     const date = isDefined("ha-selector") && this.hass
       ? html`<ha-selector .hass=${this.hass} .selector=${{ date: {} }} .label=${l.t("wizard.acquired_date")} .value=${this.acquired || undefined} .required=${false} @value-changed=${(e: CustomEvent<{ value?: string | null }>) => { this.acquired = e.detail.value ?? ""; }}></ha-selector>`
       : html`<label class="field">${l.t("wizard.acquired_date")}<input type="date" lang=${language} .value=${this.acquired} @input=${(e: Event) => { this.acquired = (e.target as HTMLInputElement).value; }}></label>`;
-    const capital = (text: string) => text.charAt(0).toLocaleUpperCase(language) + text.slice(1);
     return html`<div class="two">
       ${date}
-      <div class="field"><label for="placement">${l.t("placement.label")}</label><select id="placement" @change=${(e: Event) => { this.placement = (e.target as HTMLSelectElement).value; }}>
-        <option value="" ?selected=${!this.placement}>${l.t("common.not_specified")}</option>
-        ${placements.map(p => html`<option value=${p} ?selected=${p === this.placement}>${capital(placementLabel(l, p))}</option>`)}</select><ha-icon class="trail" aria-hidden="true" icon="mdi:menu-down"></ha-icon></div>
       <label class="field">${l.t("taxonomy.category")}<input maxlength=${inputMaxLength(60)} .value=${this.category} @input=${(e: Event) => { this.category = (e.target as HTMLInputElement).value; }}></label>
       <div><label class="field">${l.t("wizard.tags")}<input maxlength=${inputMaxLength(2000)} aria-describedby="tags-hint" .value=${this.tagText} @input=${(e: Event) => { this.tagText = (e.target as HTMLInputElement).value; }}></label><div class="helper" id="tags-hint">${l.t("wizard.tags_hint")}</div></div>
     </div>`;

@@ -1,11 +1,20 @@
 import { ENGLISH, isMessageKey } from "./localize.js";
 import type { Localizer, MessageKey } from "./localize.js";
-import type { HADevice, HAEntity, HAState, MoistureInput, MoistureRoleConfig, PlantRecord, PlantSpecies, RoleSourceConfig, RoleSourceInput, SensorSource, SpeciesSnapshot } from "./types.js";
+import type { HADevice, HAEntity, HAState, MoistureInput, MoistureRoleConfig, PlantPlacement, PlantRecord, PlantSpecies, RoleSourceConfig, RoleSourceInput, SensorSource, SpeciesSnapshot } from "./types.js";
 import { withinChars } from "./text.js";
 
 export const keys = ["min", "target", "max"] as const;
 export const builtin = { min: 15, target: 35, max: 55 };
 export const placements = ["indoor", "outdoor", "balcony", "greenhouse", "covered_outdoor", "dormant_storage"];
+// Placements where rain can't reach the pot, so a sudden rise of the soil
+// moisture is a watering. Matches WATERING_DETECTION_PLACEMENTS in models.py.
+export const wateringDetectionPlacements: readonly string[] = ["indoor", "greenhouse"];
+// Whether a sudden rise of the soil moisture logs a watering: the plant's own
+// choice, or else its placement.
+export function detectsWaterings(choice: boolean | null | undefined, placement: PlantPlacement | null): boolean {
+  if (typeof choice === "boolean") return choice;
+  return placement !== null && wateringDetectionPlacements.includes(placement.mode);
+}
 // The non-moisture problem binaries surfaced by the read-only diagnostics section.
 // Moisture problems (needs_water, too_wet, sensor_stale) are already summarized
 // in the detail header; this list intentionally excludes them so both places

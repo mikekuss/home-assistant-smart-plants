@@ -1,9 +1,11 @@
 """
 Waterings recognized from a sudden rise of the soil moisture.
 
-With the option on, a rise of 15 points or more within an hour logs a watering
-with the provenance "sensor", unless a watering was logged in the 6 hours
-before. With the option off, which is the default, nothing is logged.
+Where detection is on, a rise of 15 points or more within an hour logs a
+watering with the provenance "sensor", unless a watering was logged in the 6
+hours before. Each plant decides: by default it follows the placement (on
+indoors and in a greenhouse, off elsewhere and without a placement), or it has
+its own choice. Plants stored before detection existed have it off.
 """
 
 from __future__ import annotations
@@ -14,14 +16,13 @@ from typing import Any
 import pytest
 from custom_components.smart_plants.care import CareEvent
 from custom_components.smart_plants.const import (
-    CONF_DETECT_WATERING,
     DOMAIN,
     SINGLETON_UNIQUE_ID,
     STORAGE_KEY,
     STORAGE_MAJOR_VERSION,
 )
 from custom_components.smart_plants.manager import SmartPlantsManager
-from custom_components.smart_plants.models import PlantRecord
+from custom_components.smart_plants.models import PlantPlacement, PlantRecord
 from custom_components.smart_plants.storage import (
     SmartPlantsInvalidStorageError,
     SmartPlantsStore,
@@ -30,6 +31,7 @@ from custom_components.smart_plants.watering_detector import WateringDetector
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
 SOIL = "sensor.mock_soil"
 PERCENT = {"unit_of_measurement": "%"}
@@ -102,16 +104,60 @@ def test_a_new_watering_counts_after_the_quiet_time() -> None:
     assert detector.observe(T0 + timedelta(hours=7, minutes=5), 80, ()) is True
 
 
+# --- Which plants detect waterings ----------------------------------------
+
+
+def _record(placement: str | None, *, choice: bool | None = None) -> PlantRecord:
+    return PlantRecord(
+        id="p",
+        revision=1,
+        name="Aloe",
+        created_at="2026-01-01T00:00:00Z",
+        placement=PlantPlacement(mode=placement) if placement is not None else None,
+        watering_detection=choice,
+    )
+
+
+@pytest.mark.parametrize(
+    ("placement", "expected"),
+    [
+        ("indoor", True),
+        ("greenhouse", True),
+        ("outdoor", False),
+        ("balcony", False),
+        ("covered_outdoor", False),
+        ("dormant_storage", False),
+        (None, False),
+    ],
+)
+def test_detection_follows_the_placement(
+    placement: str | None,
+    expected: bool,  # noqa: FBT001
+) -> None:
+    assert _record(placement).detects_waterings() is expected
+
+
+def test_a_choice_for_the_plant_wins_over_the_placement() -> None:
+    assert _record("outdoor", choice=True).detects_waterings() is True
+    assert _record("indoor", choice=False).detects_waterings() is False
+
+
+def test_the_choice_is_stored() -> None:
+    for choice in (None, True, False):
+        stored = _record("indoor", choice=choice).as_storage()
+        assert stored["watering_detection"] is choice
+        assert PlantRecord.from_storage(stored).watering_detection is choice
+    with pytest.raises(ValueError, match="watering_detection"):
+        PlantRecord.from_storage(
+            {**_record("indoor").as_storage(), "watering_detection": "on"}
+        )
+
+
 # --- Integration --------------------------------------------------------------
 
 
-async def _setup(hass: HomeAssistant, *, detect: bool) -> SmartPlantsManager:
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={},
-        unique_id=SINGLETON_UNIQUE_ID,
-        options={CONF_DETECT_WATERING: detect},
-    )
+async def _setup(hass: HomeAssistant) -> SmartPlantsManager:
+    entry = MockConfigEntry(domain=DOMAIN, data={}, unique_id=SINGLETON_UNIQUE_ID)
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
@@ -119,9 +165,17 @@ async def _setup(hass: HomeAssistant, *, detect: bool) -> SmartPlantsManager:
     return manager
 
 
-async def _plant(manager: SmartPlantsManager, hass: HomeAssistant) -> PlantRecord:
+async def _plant(
+    manager: SmartPlantsManager,
+    hass: HomeAssistant,
+    *,
+    placement: str | None = "indoor",
+) -> PlantRecord:
     hass.states.async_set(SOIL, "14", PERCENT)
-    plant = await manager.async_create_plant(name="Aloe")
+    plant = await manager.async_create_plant(
+        name="Aloe",
+        placement=PlantPlacement(mode=placement) if placement is not None else None,
+    )
     plant = await manager.async_set_moisture_sources(
         plant.id, expected_revision=plant.revision, sources=[{"entity_id": SOIL}]
     )
@@ -135,10 +189,28 @@ def _waterings(manager: SmartPlantsManager, plant_id: str) -> list[CareEvent]:
     return [event for event in current.care_events if event.kind == "watering"]
 
 
-async def test_option_on_logs_the_watering(hass: HomeAssistant, freezer: Any) -> None:
+def _revision(manager: SmartPlantsManager, plant_id: str) -> int:
+    current = manager.get_plant(plant_id)
+    assert current is not None
+    return current.revision
+
+
+async def _water(hass: HomeAssistant, freezer: Any, at: datetime) -> None:
+    freezer.move_to(at)
+    hass.states.async_set(SOIL, "14", PERCENT)
+    await hass.async_block_till_done()
+    freezer.move_to(at + timedelta(minutes=1))
+    hass.states.async_set(SOIL, "95", PERCENT)
+    await hass.async_block_till_done()
+
+
+async def test_an_indoor_plant_logs_the_watering(
+    hass: HomeAssistant, freezer: Any
+) -> None:
     freezer.move_to(T0)
-    manager = await _setup(hass, detect=True)
+    manager = await _setup(hass)
     plant = await _plant(manager, hass)
+    assert plant.watering_detection is None
 
     freezer.move_to(T0 + timedelta(minutes=1))
     hass.states.async_set(SOIL, "95", PERCENT)
@@ -160,10 +232,13 @@ async def test_option_on_logs_the_watering(hass: HomeAssistant, freezer: Any) ->
     assert len(_waterings(manager, plant.id)) == 1
 
 
-async def test_option_off_logs_nothing(hass: HomeAssistant, freezer: Any) -> None:
+@pytest.mark.parametrize("placement", ["outdoor", None])
+async def test_an_outdoor_plant_or_one_without_placement_logs_nothing(
+    hass: HomeAssistant, freezer: Any, placement: str | None
+) -> None:
     freezer.move_to(T0)
-    manager = await _setup(hass, detect=False)
-    plant = await _plant(manager, hass)
+    manager = await _setup(hass)
+    plant = await _plant(manager, hass, placement=placement)
 
     freezer.move_to(T0 + timedelta(minutes=1))
     hass.states.async_set(SOIL, "95", PERCENT)
@@ -172,11 +247,55 @@ async def test_option_off_logs_nothing(hass: HomeAssistant, freezer: Any) -> Non
     assert _waterings(manager, plant.id) == []
 
 
+async def test_switching_takes_effect_without_a_reload(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    freezer.move_to(T0)
+    manager = await _setup(hass)
+    plant = await _plant(manager, hass)
+
+    # Off for this plant, although it is indoors.
+    plant = await manager.async_update_plant(
+        plant.id,
+        expected_revision=_revision(manager, plant.id),
+        watering_detection=False,
+    )
+    await _water(hass, freezer, T0 + timedelta(minutes=10))
+    assert _waterings(manager, plant.id) == []
+
+    # Back to following the placement: indoors, so on.
+    plant = await manager.async_update_plant(
+        plant.id,
+        expected_revision=_revision(manager, plant.id),
+        watering_detection=None,
+    )
+    await _water(hass, freezer, T0 + timedelta(hours=1))
+    assert len(_waterings(manager, plant.id)) == 1
+
+    # Moved outdoors, still following the placement: off.
+    plant = await manager.async_update_plant(
+        plant.id,
+        expected_revision=_revision(manager, plant.id),
+        placement=PlantPlacement(mode="outdoor"),
+    )
+    await _water(hass, freezer, T0 + timedelta(hours=8))
+    assert len(_waterings(manager, plant.id)) == 1
+
+    # On for this plant, although it is outdoors.
+    plant = await manager.async_update_plant(
+        plant.id,
+        expected_revision=_revision(manager, plant.id),
+        watering_detection=True,
+    )
+    await _water(hass, freezer, T0 + timedelta(hours=16))
+    assert len(_waterings(manager, plant.id)) == 2
+
+
 async def test_a_watering_logged_by_hand_is_not_doubled(
     hass: HomeAssistant, freezer: Any
 ) -> None:
     freezer.move_to(T0)
-    manager = await _setup(hass, detect=True)
+    manager = await _setup(hass)
     plant = await _plant(manager, hass)
     await manager.async_add_watering(
         plant.id, expected_revision=None, occurred_at=T0.isoformat(), note=None
@@ -190,15 +309,42 @@ async def test_a_watering_logged_by_hand_is_not_doubled(
     assert event.provenance == "manual"
 
 
-async def test_older_storage_cannot_hold_a_detected_watering(
-    hass: HomeAssistant, hass_storage: dict[str, Any]
+async def test_the_choice_is_set_over_the_websocket(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator
 ) -> None:
-    plant = PlantRecord(
-        id="p", revision=1, name="Aloe", created_at="2026-01-01T00:00:00Z"
-    ).as_storage()
-    event = _watering(T0).as_storage()
-    plant["care_events"] = [{**event, "provenance": "sensor"}]
-    hass_storage[STORAGE_KEY] = {
+    manager = await _setup(hass)
+    plant = await _plant(manager, hass)
+    client = await hass_ws_client(hass)
+
+    await client.send_json_auto_id(
+        {
+            "type": "smart_plants/plants/update",
+            "plant_id": plant.id,
+            "expected_revision": plant.revision,
+            "watering_detection": False,
+        }
+    )
+    reply = await client.receive_json()
+    assert reply["success"], reply
+    assert reply["result"]["plant"]["watering_detection"] is False
+
+    await client.send_json_auto_id(
+        {
+            "type": "smart_plants/plants/update",
+            "plant_id": plant.id,
+            "expected_revision": reply["result"]["plant"]["revision"],
+            "watering_detection": "on",
+        }
+    )
+    refused = await client.receive_json()
+    assert refused["success"] is False
+
+
+# --- Storage ------------------------------------------------------------------
+
+
+def _older_storage(plant: dict[str, Any]) -> dict[str, Any]:
+    return {
         "key": STORAGE_KEY,
         "version": STORAGE_MAJOR_VERSION,
         "minor_version": 19,
@@ -210,5 +356,49 @@ async def test_older_storage_cannot_hold_a_detected_watering(
             "archived_plants": [],
         },
     }
+
+
+def _older_plant() -> dict[str, Any]:
+    plant = PlantRecord(
+        id="p",
+        revision=1,
+        name="Aloe",
+        created_at="2026-01-01T00:00:00Z",
+        placement=PlantPlacement(mode="indoor"),
+    ).as_storage()
+    del plant["watering_detection"]
+    return plant
+
+
+async def test_existing_plants_get_detection_off(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    hass_storage[STORAGE_KEY] = _older_storage(_older_plant())
+
+    snapshot = await SmartPlantsStore(hass).async_load()
+
+    plant = snapshot.plants["p"]
+    assert plant.watering_detection is False
+    # Indoors, so it would follow the placement to on without the migration.
+    assert plant.detects_waterings() is False
+
+
+async def test_older_storage_cannot_hold_a_choice(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    hass_storage[STORAGE_KEY] = _older_storage(
+        {**_older_plant(), "watering_detection": True}
+    )
+    with pytest.raises(SmartPlantsInvalidStorageError, match="watering detection"):
+        await SmartPlantsStore(hass).async_load()
+
+
+async def test_older_storage_cannot_hold_a_detected_watering(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    plant = _older_plant()
+    event = _watering(T0).as_storage()
+    plant["care_events"] = [{**event, "provenance": "sensor"}]
+    hass_storage[STORAGE_KEY] = _older_storage(plant)
     with pytest.raises(SmartPlantsInvalidStorageError, match="detected waterings"):
         await SmartPlantsStore(hass).async_load()

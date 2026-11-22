@@ -37,8 +37,10 @@ Select **Add plant**. The wizard has three steps and saves nothing until you sel
 ![Add-plant wizard, first step](images/create-wizard.png)
 
 1. **Plant.** Enter a name and pick an **Area**. The plant's device goes into that area, and
-   sensors from the same area are suggested in the next step. You can add a photo. Large
-   photos are scaled down.
+   sensors from the same area are suggested in the next step. **Placement** says whether the
+   plant is indoors, outdoors, on a balcony and so on; it also decides whether waterings are
+   [logged from the soil moisture sensor](care.md#waterings-from-the-soil-moisture-sensor).
+   You can add a photo. Large photos are scaled down.
 2. **Sensors.** Pick a **Soil moisture sensor**. It drives the watering alerts. Sensors from
    the area appear under **Suggested from** *area*. **Add another sensor** adds temperature,
    humidity, light, fertilizer level, soil temperature, CO₂ or battery. Without a sensor, the
@@ -48,7 +50,7 @@ Select **Add plant**. The wizard has three steps and saves nothing until you sel
      common and scientific name. The soil moisture targets **Needs water below**, **Ideal**
      and **Too wet above** start at the defaults or the species values. Change one to set it
      for this plant.
-   - **More details.** Date acquired, placement, category and tags.
+   - **More details.** Date acquired, category and tags.
 
 Select **Create plant**. Smart Plants creates the device with its entities. The last screen
 offers **Open plant**, **Set up notifications**, **Back to plants** and **Add another plant**.
@@ -142,7 +144,8 @@ change them.
 
 On the **Settings** tab, **Rename** changes the name of the plant and its device. Entity IDs
 stay the same. **Change area** moves the device. **More details** holds placement, sun and
-rain exposure, container, date acquired, category and tags.
+rain exposure, container, whether waterings are [logged from the soil moisture
+sensor](care.md#waterings-from-the-soil-moisture-sensor), date acquired, category and tags.
 
 If someone else saves the same plant while you edit, the panel shows what changed before you
 save.

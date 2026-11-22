@@ -243,12 +243,9 @@ class SmartPlantsManager:
         *,
         reconciler: SmartPlantsDeviceReconciler | None = None,
         forecast_refresh_interval: timedelta = REFRESH_INTERVAL,
-        detect_watering: bool = False,
     ) -> None:
         self._hass = hass
         self._forecast_refresh_interval = forecast_refresh_interval
-        # Log a watering when a plant's soil moisture jumps (an option).
-        self._detect_watering = detect_watering
         self._store = SmartPlantsStore(hass)
         self._mutation_lock = asyncio.Lock()
         self._snapshot = InventorySnapshot.empty()
@@ -662,7 +659,7 @@ class SmartPlantsManager:
             if callable(set_care_events):
                 set_care_events(plant.care_events)
             set_detection = getattr(controller, "set_watering_detection", None)
-            if self._detect_watering and callable(set_detection):
+            if plant.detects_waterings() and callable(set_detection):
                 set_detection(self._handle_detected_watering)
         by_role[definition.key] = controller
         if start:
@@ -736,6 +733,13 @@ class SmartPlantsManager:
         moisture_controller = existing.get("moisture")
         if moisture_controller is not None and base.care_events != plant.care_events:
             moisture_controller.set_care_events(plant.care_events)
+        if (
+            moisture_controller is not None
+            and base.detects_waterings() != plant.detects_waterings()
+        ):
+            moisture_controller.set_watering_detection(
+                self._handle_detected_watering if plant.detects_waterings() else None
+            )
         for definition in role_definitions():
             controller = existing.get(definition.key)
             if controller is None:
@@ -1695,6 +1699,7 @@ class SmartPlantsManager:
         placement: PlantPlacement | None = _UNSET,
         tags: Iterable[str] = _UNSET,
         category: str | None = _UNSET,
+        watering_detection: bool | None = _UNSET,
     ) -> PlantRecord:
         # ``area_id`` is deliberately absent here: the device area is
         # authoritative on HA's registry once the device exists, so any
@@ -1720,6 +1725,14 @@ class SmartPlantsManager:
             changes["category"] = _validate_optional_short_string(
                 category, "category", _CATEGORY_MAX_LEN
             )
+        if watering_detection is not _UNSET:
+            if watering_detection is not None and not isinstance(
+                watering_detection, bool
+            ):
+                raise SmartPlantsValidationError(
+                    "watering_detection must be a boolean or null"
+                )
+            changes["watering_detection"] = watering_detection
 
         self._raise_if_unavailable()
         async with self._mutation_lock:
