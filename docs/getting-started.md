@@ -12,9 +12,9 @@ users can use the [dashboard card](dashboard-card.md).
 
 The overview has:
 
-- **Tiles** that filter the list: **All plants**, **Needs water**, **Problems** and
-  **Sensor issues**, plus **Care due** while a care task is due. Select a tile again to show
-  all plants.
+- **Tiles** that count and filter the plants: **Plants** (all of them), **Needs water**,
+  **Problems** and **Sensor issues**, plus **Care due** while a care task is due. A tile with
+  one plant uses the singular, such as *1 Problem*. Select a tile again to show all plants.
 - **Search** by name, area, species, category or tag, and a **sort** menu: **Needs attention
   first**, **Name** or **Group by area**.
 - **One card per plant** with its photo, status and reason, soil moisture bar, other readings,
@@ -156,7 +156,7 @@ lasts until the end of that day in Home Assistant's time zone.
 ![Snooze dialog for a plant](images/snooze.png)
 
 A snoozed plant shows **Snoozed until** *date* with **Resume**. Its status and readings stay
-real. The tiles other than **All plants** leave it out of their counts.
+real. The tiles other than **Plants** leave it out of their counts.
 
 To snooze every plant, select **⋮ > Snooze all plants…** on the overview (shown from two active
 plants). A plant snoozed until later keeps its own end. **Resume all** ends every snooze. Both

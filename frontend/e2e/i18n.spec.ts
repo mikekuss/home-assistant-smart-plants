@@ -29,7 +29,7 @@ test("German inventory, detail tabs and sensors use the German catalog", async (
   await page.goto(`${url}?seed&lang=de`);
   await expect(button(page, "Menü")).toBeVisible();
   const tiles = page.getByRole("group", { name: "Nach Status filtern" });
-  await expect(tiles.getByRole("button")).toHaveText([/3\s*Alle Pflanzen/, /1\s*Braucht Wasser/, /0\s*Probleme/, /1\s*Sensorprobleme/]);
+  await expect(tiles.getByRole("button")).toHaveText([/^\s*3\s*Pflanzen\s*$/, /^\s*1\s*Braucht Wasser\s*$/, /^\s*0\s*Probleme\s*$/, /^\s*1\s*Sensorproblem\s*$/]);
   await expect(page.getByRole("status").filter({ hasText: "3 von 3 Pflanzen" })).toBeVisible();
   const card = page.locator("smart-plants-overview article.card", { hasText: "Office Aloe" });
   await expect(card).toContainText("Braucht Wasser");

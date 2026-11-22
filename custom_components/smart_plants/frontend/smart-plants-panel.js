@@ -2036,7 +2036,8 @@ var Hn = {
 	"source_field.aggregation": "Kombination der Messwerte",
 	"source_field.stale_after_seconds": "Zeit bis „Keine Daten“",
 	"list.loading": "Pflanzen werden geladen …",
-	"list.count_filtered": "{shown} von {total} Pflanzen",
+	"list.count_filtered_one": "{shown} von {total} Pflanze",
+	"list.count_filtered_other": "{shown} von {total} Pflanzen",
 	"detail.not_found": "Pflanze nicht gefunden – sie wurde möglicherweise in einer anderen Sitzung gelöscht.",
 	"detail.sections_label": "Pflanzenbereiche",
 	"detail.tab_overview": "Übersicht",
@@ -2549,6 +2550,16 @@ var Hn = {
 	"overview.tile_water": "Braucht Wasser",
 	"overview.tile_problems": "Probleme",
 	"overview.tile_sensors": "Sensorprobleme",
+	"overview.tile_count_all_one": "Pflanze",
+	"overview.tile_count_all_other": "Pflanzen",
+	"overview.tile_count_water_one": "Braucht Wasser",
+	"overview.tile_count_water_other": "Brauchen Wasser",
+	"overview.tile_count_problems_one": "Problem",
+	"overview.tile_count_problems_other": "Probleme",
+	"overview.tile_count_sensors_one": "Sensorproblem",
+	"overview.tile_count_sensors_other": "Sensorprobleme",
+	"overview.tile_count_care_one": "Pflege fällig",
+	"overview.tile_count_care_other": "Pflege fällig",
 	"overview.search": "Pflanzen suchen",
 	"overview.sort_button": "Sortierung: {sort}",
 	"overview.sort_attention": "Handlungsbedarf zuerst",
@@ -3278,7 +3289,8 @@ var Hn = {
 	"source_field.aggregation": "how readings are combined",
 	"source_field.stale_after_seconds": "not-updating time",
 	"list.loading": "Loading plants…",
-	"list.count_filtered": "{shown} of {total} plants",
+	"list.count_filtered_one": "{shown} of {total} plant",
+	"list.count_filtered_other": "{shown} of {total} plants",
 	"detail.not_found": "Plant not found — it may have been deleted in another session.",
 	"detail.sections_label": "Plant sections",
 	"detail.tab_overview": "Overview",
@@ -3791,6 +3803,16 @@ var Hn = {
 	"overview.tile_water": "Needs water",
 	"overview.tile_problems": "Problems",
 	"overview.tile_sensors": "Sensor issues",
+	"overview.tile_count_all_one": "Plant",
+	"overview.tile_count_all_other": "Plants",
+	"overview.tile_count_water_one": "Needs water",
+	"overview.tile_count_water_other": "Need water",
+	"overview.tile_count_problems_one": "Problem",
+	"overview.tile_count_problems_other": "Problems",
+	"overview.tile_count_sensors_one": "Sensor issue",
+	"overview.tile_count_sensors_other": "Sensor issues",
+	"overview.tile_count_care_one": "Care due",
+	"overview.tile_count_care_other": "Care due",
 	"overview.search": "Search plants",
 	"overview.sort_button": "Sort: {sort}",
 	"overview.sort_attention": "Needs attention first",
@@ -4520,7 +4542,8 @@ var Hn = {
 	"source_field.aggregation": "come si combinano le letture",
 	"source_field.stale_after_seconds": "tempo senza aggiornamenti",
 	"list.loading": "Caricamento delle piante…",
-	"list.count_filtered": "{shown} di {total} piante",
+	"list.count_filtered_one": "{shown} di {total} pianta",
+	"list.count_filtered_other": "{shown} di {total} piante",
 	"detail.not_found": "Pianta non trovata: potrebbe essere stata eliminata in un'altra sessione.",
 	"detail.sections_label": "Sezioni della pianta",
 	"detail.tab_overview": "Panoramica",
@@ -5033,6 +5056,16 @@ var Hn = {
 	"overview.tile_water": "Da annaffiare",
 	"overview.tile_problems": "Problemi",
 	"overview.tile_sensors": "Problemi ai sensori",
+	"overview.tile_count_all_one": "Pianta",
+	"overview.tile_count_all_other": "Piante",
+	"overview.tile_count_water_one": "Da annaffiare",
+	"overview.tile_count_water_other": "Da annaffiare",
+	"overview.tile_count_problems_one": "Problema",
+	"overview.tile_count_problems_other": "Problemi",
+	"overview.tile_count_sensors_one": "Problema ai sensori",
+	"overview.tile_count_sensors_other": "Problemi ai sensori",
+	"overview.tile_count_care_one": "Cura da fare",
+	"overview.tile_count_care_other": "Cure da fare",
 	"overview.search": "Cerca piante",
 	"overview.sort_button": "Ordina: {sort}",
 	"overview.sort_attention": "Prima quelle da controllare",
@@ -7444,18 +7477,21 @@ function Za(e, t, n) {
 	return Object.entries(t.payload).filter(([, e]) => e !== null && e !== "").map(([t, r]) => `${n(t)}: ${typeof r == "number" && t === "amount" ? e.number(r) : String(r)}`);
 }
 function Qa(e) {
-	let { key: t, icon: n, header: r, secondary: i, open: a, native: o, toggle: s, content: c } = e;
-	return o ? b`<ha-expansion-panel class="expander" data-section=${t} outlined .header=${r} .secondary=${i} .expanded=${a}
+	let { key: t, icon: n, header: r, secondary: i, open: a, rendered: o, native: s, toggle: c, willOpen: l, content: u } = e;
+	return s ? b`<ha-expansion-panel class="expander" data-section=${t} outlined .header=${r} .secondary=${i} .expanded=${a}
+      @expanded-will-change=${(e) => {
+		e.target === e.currentTarget && e.detail.expanded && l();
+	}}
       @expanded-changed=${(e) => {
-		e.target === e.currentTarget && s(e.detail.expanded);
+		e.target === e.currentTarget && c(e.detail.expanded);
 	}}>
       <ha-icon slot="leading-icon" aria-hidden="true" .icon=${n}></ha-icon>
-      ${a ? b`<div class="expander-body">${c()}</div>` : x}</ha-expansion-panel>` : b`<details class="expander" data-section=${t} ?open=${a} @toggle=${(e) => {
+      ${a || o ? b`<div class="expander-body">${u()}</div>` : x}</ha-expansion-panel>` : b`<details class="expander" data-section=${t} ?open=${a} @toggle=${(e) => {
 		let t = e.currentTarget.open;
-		t !== a && s(t);
+		t !== a && c(t);
 	}}>
     <summary><ha-icon aria-hidden="true" .icon=${n}></ha-icon><span class="summary-text"><span class="summary-title">${r}</span><span class="summary-sub">${i}</span></span></summary>
-    <div class="expander-body">${c()}</div></details>`;
+    <div class="expander-body">${u()}</div></details>`;
 }
 var $a = o`
   .pd { container: plant / inline-size; display: flex; flex-direction: column; gap: 16px; padding-bottom: 32px; --sp-primary-strong: color-mix(in srgb, var(--sp-primary) 78%, #000); }
@@ -10703,26 +10739,31 @@ el = Z, el.styles = [
 var sl, cl = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/docs/getting-started.md", ll = {
 	all: {
 		label: "overview.tile_all",
+		count: ["overview.tile_count_all_one", "overview.tile_count_all_other"],
 		icon: "mdi:sprout",
 		tone: "var(--sp-primary)"
 	},
 	water: {
 		label: "overview.tile_water",
+		count: ["overview.tile_count_water_one", "overview.tile_count_water_other"],
 		icon: "mdi:water-alert",
 		tone: "var(--sp-warning)"
 	},
 	problems: {
 		label: "overview.tile_problems",
+		count: ["overview.tile_count_problems_one", "overview.tile_count_problems_other"],
 		icon: "mdi:alert-circle",
 		tone: "var(--sp-error)"
 	},
 	sensors: {
 		label: "overview.tile_sensors",
+		count: ["overview.tile_count_sensors_one", "overview.tile_count_sensors_other"],
 		icon: "mdi:clock-alert-outline",
 		tone: "var(--sp-disabled)"
 	},
 	care: {
 		label: "overview.tile_care",
+		count: ["overview.tile_count_care_one", "overview.tile_count_care_other"],
 		icon: "mdi:calendar-check-outline",
 		tone: "var(--sp-care)"
 	}
@@ -10809,7 +10850,7 @@ var sl, cl = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 	}
 	_renderResults() {
 		let e = this.l, t = this._items(), n = t.filter((e) => un(this._filter, e.status, e.careDue, e.snoozed) && fn(e, this._query)), r = this._filter !== "all";
-		return b`<div class="countline"><p role="status">${e.t("list.count_filtered", {
+		return b`<div class="countline"><p role="status">${e.tn(t.length, "list.count_filtered_one", "list.count_filtered_other", {
 			shown: n.length,
 			total: t.length
 		})}${r ? ` · ${e.t(ll[this._filter].label)}` : ""}</p>
@@ -10841,7 +10882,7 @@ var sl, cl = "https://github.com/mikekuss/home-assistant-smart-plants/blob/main/
 			this._filter = this._filter === e && e !== "all" ? "all" : e;
 		}}>
       <span class="ico" aria-hidden="true"><ha-icon .icon=${n.icon}></ha-icon></span>
-      <span class="txt"><span class="num">${this.l.number(t)}</span><span class="lbl">${this.l.t(n.label)}</span></span></button>`;
+      <span class="txt"><span class="num">${this.l.number(t)}</span><span class="lbl">${this.l.tn(t, ...n.count)}</span></span></button>`;
 	}
 	_renderList(e) {
 		return this._sort === "area" ? gn(e).map((e) => b`<h2 class="group-heading"><ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${e.area ?? this.l.t("overview.no_area")} <span class="n">· ${this.l.number(e.items.length)}</span></h2>
@@ -11192,7 +11233,7 @@ function zl(e, t) {
 }
 var $ = class e extends S {
 	constructor(...e) {
-		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => Lt(e) ? e : "moisture")(Rl(kl)), this._historyRange = ((e) => xn(e) ? e : "7d")(Rl(Al)), this._history = null, this._careError = "", this._careLoadError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._statusRead = !1, this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._archivedCount = 0, this._rejected = [], this._removing = null, this._snoozeDraft = null, this._restEditor = null, this._taskEditor = null, this._automateTaskId = null, this._carePending = /* @__PURE__ */ new Set(), this._careTaskId = null, this._wizardStarted = !1, this._notificationsOpen = !1, this._notificationsReturn = null, this._notifications = null, this._notificationsFor = null, this._notificationsRequest = 0, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._moistureSourceError = "", this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._thumbnailRetries = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._registriesDue = !1, this._registryLive = !1, this._ownWriteAt = -Infinity, this._relatedFor = null, this._relatedRequest = 0, this._relatedAt = -Infinity, this._registryChanged = () => {
+		super(...e), this.narrow = !1, this._plants = [], this._loading = !0, this._error = "", this._notice = "", this._view = { kind: "list" }, this._detailSection = "overview", this._formBusy = !1, this._capabilities = null, this._updateAvailable = !1, this._blocked = !0, this._areas = [], this._entities = [], this._devices = [], this._states = {}, this._evaluations = {}, this._health = {}, this._healthError = "", this._careHistory = null, this._historyRole = ((e) => Lt(e) ? e : "moisture")(Rl(kl)), this._historyRange = ((e) => xn(e) ? e : "7d")(Rl(Al)), this._history = null, this._careError = "", this._careLoadError = "", this._careDate = "", this._careNote = "", this._careKind = "watering", this._careFields = {}, this._careEditingId = null, this._registryError = "", this._areaReview = !1, this._overview = {}, this._overviewError = "", this._statusRead = !1, this._thumbnails = {}, this._watering = /* @__PURE__ */ new Set(), this._edits = null, this._conflict = null, this._allSensors = !1, this._preview = null, this._provider = "manual", this._query = "", this._results = [], this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), this._imageUrl = null, this._imageLoading = !1, this._imageError = null, this._dialog = null, this._archivedCount = 0, this._rejected = [], this._removing = null, this._snoozeDraft = null, this._restEditor = null, this._taskEditor = null, this._automateTaskId = null, this._carePending = /* @__PURE__ */ new Set(), this._careTaskId = null, this._wizardStarted = !1, this._notificationsOpen = !1, this._notificationsReturn = null, this._notifications = null, this._notificationsFor = null, this._notificationsRequest = 0, this._creationNotice = "", this._creationPhoto = "", this._createdPlantId = null, this._thresholdRole = null, this._thresholdEdits = null, this._thresholdBaseline = null, this._thresholdError = "", this._thresholdSaved = {}, this._pendingThresholdSwitch = null, this._sourceRole = null, this._sourceEdits = null, this._sourceBaseline = null, this._sourceError = "", this._sourceUnavailable = null, this._sourceSaved = {}, this._pendingSourceSwitch = null, this._sourceMode = "combine", this._moistureMode = null, this._moistureSourceError = "", this._expanded = /* @__PURE__ */ new Set(), this._opened = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._careFilter = "all", this._careFormOpen = !1, this._allSourceSensors = !1, this._base = null, this._baseArea = "", this._imageKey = null, this._imageRequest = 0, this._thumbnailKeys = {}, this._thumbnailAborts = /* @__PURE__ */ new Map(), this._thumbnailRetries = /* @__PURE__ */ new Map(), this._request = 0, this._careRequest = 0, this._historyRequest = 0, this._historyLoadedAt = 0, this._providerRequest = 0, this._context = 0, this._subscriptionGeneration = 0, this._focusReturn = null, this._registriesDue = !1, this._registryLive = !1, this._ownWriteAt = -Infinity, this._relatedFor = null, this._relatedRequest = 0, this._relatedAt = -Infinity, this._registryChanged = () => {
 			this._refresh();
 		}, this._ready = () => {
 			this._thumbnailRetries.clear(), this._refresh();
@@ -11570,7 +11611,7 @@ var $ = class e extends S {
 	_show(e) {
 		let t = wl.exec(this.route?.path ?? "");
 		if (t && (e.kind !== "detail" || encodeURIComponent(e.plantId) !== t[1]) && this._clearRoute(), Tl.test(this.route?.path ?? "") && e.kind !== "notifications" && this._clearRoute(), El.test(this.route?.path ?? "") && e.kind !== "archive" && this._clearRoute(), this._context++, this._closeDialog(), this._formBusy = !1, this._notificationsOpen = !1, this._notificationsReturn = null, this._providerRequest++, this._view = e, this._error = "", this._notice = "", this._healthError = "", this._careHistory = null, this._careError = "", this._careLoadError = "", this._forgetRelated(), this._related = [], this._relatedAllPlants = [], this._relatedExpanded = /* @__PURE__ */ new Set(), e.kind === "create" && (this._wizardStarted = !0), e.kind === "detail") {
-			this._detailSection = "overview", this._expanded = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._moistureMode = null, this._careFilter = "all", this._careFormOpen = !1, this._careEditingId = null, this._careTaskId = null, this._careKind = "watering", this._careFields = {};
+			this._detailSection = "overview", this._expanded = /* @__PURE__ */ new Set(), this._opened = /* @__PURE__ */ new Set(), this._settingsOpen = /* @__PURE__ */ new Set(), this._moistureMode = null, this._careFilter = "all", this._careFormOpen = !1, this._careEditingId = null, this._careTaskId = null, this._careKind = "watering", this._careFields = {};
 			let t = /* @__PURE__ */ new Date();
 			this._careDate = (/* @__PURE__ */ new Date(t.getTime() - t.getTimezoneOffset() * 6e4)).toISOString().slice(0, 16), this._careNote = "";
 			let n = this._plantById(e.plantId);
@@ -13308,8 +13349,12 @@ var $ = class e extends S {
 			secondary: r,
 			content: i,
 			open: this._expanded.has(e),
+			rendered: this._opened.has(e),
 			native: Y("ha-expansion-panel"),
-			toggle: (t) => this._setExpanded(e, t)
+			toggle: (t) => this._setExpanded(e, t),
+			willOpen: () => {
+				this._opened = /* @__PURE__ */ new Set([...this._opened, e]);
+			}
 		});
 	}
 	async _saveRoleSources(e, t) {
@@ -13680,7 +13725,7 @@ gl = $, gl.styles = [
 ], gl.bundleVersion = cc(import.meta.url), K([C({ attribute: !1 })], $.prototype, "hass", void 0), K([C({ attribute: !1 })], $.prototype, "panel", void 0), K([C({
 	type: Boolean,
 	reflect: !0
-})], $.prototype, "narrow", void 0), K([C({ attribute: !1 })], $.prototype, "route", void 0), K([w()], $.prototype, "_plants", void 0), K([w()], $.prototype, "_loading", void 0), K([w()], $.prototype, "_error", void 0), K([w()], $.prototype, "_notice", void 0), K([w()], $.prototype, "_view", void 0), K([w()], $.prototype, "_detailSection", void 0), K([w()], $.prototype, "_formBusy", void 0), K([w()], $.prototype, "_capabilities", void 0), K([w()], $.prototype, "_updateAvailable", void 0), K([w()], $.prototype, "_blocked", void 0), K([w()], $.prototype, "_areas", void 0), K([w()], $.prototype, "_entities", void 0), K([w()], $.prototype, "_devices", void 0), K([w()], $.prototype, "_states", void 0), K([w()], $.prototype, "_evaluations", void 0), K([w()], $.prototype, "_health", void 0), K([w()], $.prototype, "_healthError", void 0), K([w()], $.prototype, "_careHistory", void 0), K([w()], $.prototype, "_historyRole", void 0), K([w()], $.prototype, "_historyRange", void 0), K([w()], $.prototype, "_history", void 0), K([w()], $.prototype, "_careError", void 0), K([w()], $.prototype, "_careLoadError", void 0), K([w()], $.prototype, "_careDate", void 0), K([w()], $.prototype, "_careNote", void 0), K([w()], $.prototype, "_careKind", void 0), K([w()], $.prototype, "_careFields", void 0), K([w()], $.prototype, "_careEditingId", void 0), K([w()], $.prototype, "_registryError", void 0), K([w()], $.prototype, "_areaReview", void 0), K([w()], $.prototype, "_overview", void 0), K([w()], $.prototype, "_overviewError", void 0), K([w()], $.prototype, "_statusRead", void 0), K([w()], $.prototype, "_thumbnails", void 0), K([w()], $.prototype, "_watering", void 0), K([w()], $.prototype, "_edits", void 0), K([w()], $.prototype, "_conflict", void 0), K([w()], $.prototype, "_allSensors", void 0), K([w()], $.prototype, "_preview", void 0), K([w()], $.prototype, "_provider", void 0), K([w()], $.prototype, "_query", void 0), K([w()], $.prototype, "_results", void 0), K([w()], $.prototype, "_related", void 0), K([w()], $.prototype, "_relatedAllPlants", void 0), K([w()], $.prototype, "_relatedExpanded", void 0), K([w()], $.prototype, "_imageUrl", void 0), K([w()], $.prototype, "_imageLoading", void 0), K([w()], $.prototype, "_imageError", void 0), K([w()], $.prototype, "_dialog", void 0), K([w()], $.prototype, "_archivedCount", void 0), K([w()], $.prototype, "_rejected", void 0), K([w()], $.prototype, "_snoozeDraft", void 0), K([w()], $.prototype, "_restEditor", void 0), K([w()], $.prototype, "_taskEditor", void 0), K([w()], $.prototype, "_automateTaskId", void 0), K([w()], $.prototype, "_carePending", void 0), K([w()], $.prototype, "_careTaskId", void 0), K([w()], $.prototype, "_wizardStarted", void 0), K([w()], $.prototype, "_notificationsOpen", void 0), K([w()], $.prototype, "_notifications", void 0), K([w()], $.prototype, "_creationNotice", void 0), K([w()], $.prototype, "_creationPhoto", void 0), K([w()], $.prototype, "_createdPlantId", void 0), K([w()], $.prototype, "_thresholdRole", void 0), K([w()], $.prototype, "_thresholdEdits", void 0), K([w()], $.prototype, "_thresholdBaseline", void 0), K([w()], $.prototype, "_thresholdError", void 0), K([w()], $.prototype, "_thresholdSaved", void 0), K([w()], $.prototype, "_pendingThresholdSwitch", void 0), K([w()], $.prototype, "_sourceRole", void 0), K([w()], $.prototype, "_sourceEdits", void 0), K([w()], $.prototype, "_sourceBaseline", void 0), K([w()], $.prototype, "_sourceError", void 0), K([w()], $.prototype, "_sourceUnavailable", void 0), K([w()], $.prototype, "_sourceSaved", void 0), K([w()], $.prototype, "_pendingSourceSwitch", void 0), K([w()], $.prototype, "_sourceMode", void 0), K([w()], $.prototype, "_moistureMode", void 0), K([w()], $.prototype, "_moistureSourceError", void 0), K([w()], $.prototype, "_expanded", void 0), K([w()], $.prototype, "_settingsOpen", void 0), K([w()], $.prototype, "_careFilter", void 0), K([w()], $.prototype, "_careFormOpen", void 0), K([w()], $.prototype, "_allSourceSensors", void 0);
+})], $.prototype, "narrow", void 0), K([C({ attribute: !1 })], $.prototype, "route", void 0), K([w()], $.prototype, "_plants", void 0), K([w()], $.prototype, "_loading", void 0), K([w()], $.prototype, "_error", void 0), K([w()], $.prototype, "_notice", void 0), K([w()], $.prototype, "_view", void 0), K([w()], $.prototype, "_detailSection", void 0), K([w()], $.prototype, "_formBusy", void 0), K([w()], $.prototype, "_capabilities", void 0), K([w()], $.prototype, "_updateAvailable", void 0), K([w()], $.prototype, "_blocked", void 0), K([w()], $.prototype, "_areas", void 0), K([w()], $.prototype, "_entities", void 0), K([w()], $.prototype, "_devices", void 0), K([w()], $.prototype, "_states", void 0), K([w()], $.prototype, "_evaluations", void 0), K([w()], $.prototype, "_health", void 0), K([w()], $.prototype, "_healthError", void 0), K([w()], $.prototype, "_careHistory", void 0), K([w()], $.prototype, "_historyRole", void 0), K([w()], $.prototype, "_historyRange", void 0), K([w()], $.prototype, "_history", void 0), K([w()], $.prototype, "_careError", void 0), K([w()], $.prototype, "_careLoadError", void 0), K([w()], $.prototype, "_careDate", void 0), K([w()], $.prototype, "_careNote", void 0), K([w()], $.prototype, "_careKind", void 0), K([w()], $.prototype, "_careFields", void 0), K([w()], $.prototype, "_careEditingId", void 0), K([w()], $.prototype, "_registryError", void 0), K([w()], $.prototype, "_areaReview", void 0), K([w()], $.prototype, "_overview", void 0), K([w()], $.prototype, "_overviewError", void 0), K([w()], $.prototype, "_statusRead", void 0), K([w()], $.prototype, "_thumbnails", void 0), K([w()], $.prototype, "_watering", void 0), K([w()], $.prototype, "_edits", void 0), K([w()], $.prototype, "_conflict", void 0), K([w()], $.prototype, "_allSensors", void 0), K([w()], $.prototype, "_preview", void 0), K([w()], $.prototype, "_provider", void 0), K([w()], $.prototype, "_query", void 0), K([w()], $.prototype, "_results", void 0), K([w()], $.prototype, "_related", void 0), K([w()], $.prototype, "_relatedAllPlants", void 0), K([w()], $.prototype, "_relatedExpanded", void 0), K([w()], $.prototype, "_imageUrl", void 0), K([w()], $.prototype, "_imageLoading", void 0), K([w()], $.prototype, "_imageError", void 0), K([w()], $.prototype, "_dialog", void 0), K([w()], $.prototype, "_archivedCount", void 0), K([w()], $.prototype, "_rejected", void 0), K([w()], $.prototype, "_snoozeDraft", void 0), K([w()], $.prototype, "_restEditor", void 0), K([w()], $.prototype, "_taskEditor", void 0), K([w()], $.prototype, "_automateTaskId", void 0), K([w()], $.prototype, "_carePending", void 0), K([w()], $.prototype, "_careTaskId", void 0), K([w()], $.prototype, "_wizardStarted", void 0), K([w()], $.prototype, "_notificationsOpen", void 0), K([w()], $.prototype, "_notifications", void 0), K([w()], $.prototype, "_creationNotice", void 0), K([w()], $.prototype, "_creationPhoto", void 0), K([w()], $.prototype, "_createdPlantId", void 0), K([w()], $.prototype, "_thresholdRole", void 0), K([w()], $.prototype, "_thresholdEdits", void 0), K([w()], $.prototype, "_thresholdBaseline", void 0), K([w()], $.prototype, "_thresholdError", void 0), K([w()], $.prototype, "_thresholdSaved", void 0), K([w()], $.prototype, "_pendingThresholdSwitch", void 0), K([w()], $.prototype, "_sourceRole", void 0), K([w()], $.prototype, "_sourceEdits", void 0), K([w()], $.prototype, "_sourceBaseline", void 0), K([w()], $.prototype, "_sourceError", void 0), K([w()], $.prototype, "_sourceUnavailable", void 0), K([w()], $.prototype, "_sourceSaved", void 0), K([w()], $.prototype, "_pendingSourceSwitch", void 0), K([w()], $.prototype, "_sourceMode", void 0), K([w()], $.prototype, "_moistureMode", void 0), K([w()], $.prototype, "_moistureSourceError", void 0), K([w()], $.prototype, "_expanded", void 0), K([w()], $.prototype, "_opened", void 0), K([w()], $.prototype, "_settingsOpen", void 0), K([w()], $.prototype, "_careFilter", void 0), K([w()], $.prototype, "_careFormOpen", void 0), K([w()], $.prototype, "_allSourceSensors", void 0);
 function Bl(e) {
 	let t = e.roles ?? {};
 	return It.flatMap((e) => {

@@ -96,7 +96,7 @@ test("a snoozed plant shows the grey chip on its overview card and leaves the co
   await expect(card.getByRole("button", { name: /Resume/ })).toHaveCount(0);
   await expect(page.locator("smart-plants-overview article.card sp-snooze-chip")).toHaveCount(1);
   // The card keeps its real status, but the Needs water tile leaves the snoozed plant out.
-  await expect(page.getByRole("button", { name: /Needs water/ })).toContainText("0");
+  await expect(page.getByRole("button", { name: /^0 Needs? water$/ })).toBeVisible();
   await audit(page, info, "snooze-overview");
 });
 

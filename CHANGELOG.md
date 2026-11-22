@@ -26,6 +26,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- On a phone, opening **Several sensors for one reading** or **Troubleshooting** on the Sensors
+  tab no longer lays the section's content over the next card. The section now grows to fit its
+  content.
+- The overview tiles and the plant count use the singular for one plant: *1 Problem* and
+  *1 of 1 plant* instead of *1 Problems* and *1 of 1 plants*, in English, German and Italian.
+  The tile for all plants reads **Plants**.
 - Home Assistant 2026.11 no longer logs deprecation warnings for Smart Plants' device lookups.
   The report for all plants, `smart_plants.log_care` on a plant device and archiving a plant used
   device registry calls that stop working in Home Assistant 2027.8 to 2027.10.
