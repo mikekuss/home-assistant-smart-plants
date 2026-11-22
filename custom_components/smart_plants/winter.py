@@ -13,6 +13,7 @@ from datetime import date
 from typing import TYPE_CHECKING, Any, Final, Literal
 
 from .care_schedule import is_resting, rest_period_bounds
+from .models import MoistureConfig
 
 if TYPE_CHECKING:
     from .models import PlantRecord
@@ -43,6 +44,28 @@ def winter_active(plant: PlantRecord, today: date) -> bool:
     return (
         plant.winter_thresholds is not None and winter_reason(plant, today) is not None
     )
+
+
+def winter_values_apply(
+    definition: RoleDefinition, plant: PlantRecord, today: date
+) -> bool:
+    """Return whether the role's winter values replace its thresholds today."""
+    winter = plant.winter_thresholds
+    return (
+        winter is not None
+        and definition.key in winter
+        and winter_reason(plant, today) is not None
+    )
+
+
+def effective_thresholds(config: Any) -> tuple[float, ...]:
+    """Return the thresholds a role config evaluates against, in key order."""
+    if isinstance(config, MoistureConfig):
+        return (config.moisture_min, config.moisture_target, config.moisture_max)
+    overrides = getattr(config, "stress_threshold_overrides", None)
+    if overrides is None:
+        return ()
+    return tuple(float(config.effective_stress_threshold(key)) for key in overrides)
 
 
 def winter_config(definition: RoleDefinition, plant: PlantRecord, today: date) -> Any:

@@ -759,6 +759,7 @@ export class SmartPlantsPanel extends LitElement {
     if (view.kind === "create") this._wizardStarted = true;
     if (view.kind === "detail") {
       this._detailSection = "overview"; this._expanded = new Set(); this._opened = new Set(); this._settingsOpen = new Set(); this._moistureMode = null;
+      this._winterOpen = false;
       this._careFilter = "all"; this._careFormOpen = false; this._careEditingId = null; this._careTaskId = null; this._careKind = "watering"; this._careFields = {};
       const now = new Date(); this._careDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16); this._careNote = "";
       const plant = this._plantById(view.plantId); if (plant) this._beginEdit(plant);
@@ -2392,7 +2393,7 @@ export class SmartPlantsPanel extends LitElement {
     this._closeDialog();
     if (!previous) return;
     const written = await this._writeWinter(plantId, null);
-    if (written) this._toast(l.t("winter.removed"), { text: l.t("winter.undo"), action: () => void this._writeWinter(plantId, previous).then(plant => { if (plant) this._toast(l.t("winter.restored")); }) });
+    if (written) this._toast(l.t("winter.removed"), { text: l.t("winter.undo"), action: () => void this._writeWinter(plantId, previous).then(plant => { this._toast(l.t(plant ? "winter.restored" : "winter.undo_failed")); }) });
   }
   private _renderWinterLine(line: WinterLine) {
     if (!line.changed) return html`<li class="same">${this._l.t("winter.same_summary", { check: line.check })}</li>`;

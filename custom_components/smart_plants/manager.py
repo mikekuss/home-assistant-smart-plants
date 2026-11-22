@@ -95,7 +95,12 @@ from .roles import (
 )
 from .storage import SmartPlantsStorageError, SmartPlantsStore, _utcnow_iso
 from .watering_detector import DETECTION_QUIET
-from .winter import winter_config, winter_reason
+from .winter import (
+    effective_thresholds,
+    winter_config,
+    winter_reason,
+    winter_values_apply,
+)
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -317,6 +322,8 @@ class SmartPlantsManager:
         # winter values that differs from the stored config while winter
         # applies, so a new day can change it without a plant change.
         self._controller_configs: dict[str, dict[str, Any]] = {}
+        # plant_id -> roles whose controller currently evaluates winter values.
+        self._winter_roles: dict[str, set[str]] = {}
         # plant_id -> why winter values applied when its controllers were last
         # synced, so the nightly check notices a change even for a role whose
         # config stays the same.
@@ -670,6 +677,11 @@ class SmartPlantsManager:
         if config is None or not isinstance(config, definition.config_type):
             return
         self._controller_configs.setdefault(plant.id, {})[definition.key] = config
+        winter_roles = self._winter_roles.setdefault(plant.id, set())
+        if winter_values_apply(definition, plant, _local_date()):
+            winter_roles.add(definition.key)
+        else:
+            winter_roles.discard(definition.key)
         controller = definition.controller_factory(
             self._hass,
             plant.id,
@@ -693,6 +705,7 @@ class SmartPlantsManager:
                 controller.close()
         self._controllers.clear()
         self._controller_configs.clear()
+        self._winter_roles.clear()
         self._winter_reasons.clear()
 
     def _sync_controllers_for(self, event: PlantEvent) -> None:
@@ -714,6 +727,7 @@ class SmartPlantsManager:
         elif isinstance(event, PlantDeletedEvent):
             self._synced_plants.pop(event.plant_id, None)
             self._controller_configs.pop(event.plant_id, None)
+            self._winter_roles.pop(event.plant_id, None)
             self._winter_reasons.pop(event.plant_id, None)
             deleted = self._controllers.pop(event.plant_id, {})
             for controller in deleted.values():
@@ -778,22 +792,45 @@ class SmartPlantsManager:
                     start=plant.lifecycle_state == "active",
                 )
                 continue
-            self._reconfigure_controller(
-                plant.id,
-                definition.key,
-                controller,
-                winter_config(definition, plant, today),
-            )
+            self._reconfigure_controller(plant, definition, controller, today)
 
     def _reconfigure_controller(
-        self, plant_id: str, role: str, controller: Any, config: Any
+        self,
+        plant: PlantRecord,
+        definition: RoleDefinition,
+        controller: Any,
+        today: date,
     ) -> bool:
-        """Hand ``config`` to a controller unless it already has it."""
-        configs = self._controller_configs.setdefault(plant_id, {})
-        if configs.get(role) == config:
+        """
+        Hand the role's config for ``today`` to its controller, if it changed.
+
+        When winter values take over, end, or change while they apply, the
+        thresholds the alert latched on no longer hold, so the controller
+        evaluates once without the latch. A plant at 5 °C that was Too cold
+        below 10 °C must not stay Too cold all winter because the winter
+        clear value is never reached. Edits of the normal thresholds keep the
+        latch, as before.
+        """
+        role = definition.key
+        config = winter_config(definition, plant, today)
+        configs = self._controller_configs.setdefault(plant.id, {})
+        previous = configs.get(role)
+        if previous == config:
             return False
+        winter_roles = self._winter_roles.setdefault(plant.id, set())
+        was_winter = role in winter_roles
+        is_winter = winter_values_apply(definition, plant, today)
+        if is_winter:
+            winter_roles.add(role)
+        else:
+            winter_roles.discard(role)
+        clear_alert = (
+            (was_winter or is_winter)
+            and previous is not None
+            and effective_thresholds(previous) != effective_thresholds(config)
+        )
         configs[role] = config
-        controller.reconfigure(config)
+        controller.reconfigure(config, clear_alert=clear_alert)
         return True
 
     def _sync_winter_check(self) -> None:
@@ -847,18 +884,17 @@ class SmartPlantsManager:
             for definition in role_definitions():
                 controller = by_role.get(definition.key)
                 if controller is not None and self._reconfigure_controller(
-                    plant.id,
-                    definition.key,
-                    controller,
-                    winter_config(definition, plant, today),
+                    plant, definition, controller, today
                 ):
                     changed.add(definition.key)
             if not changed and not reason_changed:
                 continue
-            configs = self._controller_configs[plant.id]
+            # The other roles only need to report the new winter state; their
+            # config is the same, so their state (such as the watering
+            # detector) stays.
             for role, controller in by_role.items():
                 if role not in changed:
-                    controller.reconfigure(configs[role])
+                    controller.refresh()
 
     async def async_unload(self) -> None:
         # Close admission before waiting so queued mutations cannot overtake

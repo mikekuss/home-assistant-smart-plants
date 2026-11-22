@@ -11,9 +11,12 @@ import { formatRange, formatValue, readingLabel } from "./status.js";
 import type { TargetRange } from "./status.js";
 import { monthName, monthRange } from "./care-plan.js";
 import type { PlantRecord } from "./types.js";
+import { WINTER_ROLES } from "./validation.js";
 
 // Checks a plant can give winter values, in the order the editor lists them.
-export const WINTER_ROLES = ["temperature", "moisture", "illuminance", "conductivity", "humidity"] as const;
+export { WINTER_ROLES };
+// The highest light threshold the backend accepts.
+const LOW_LIGHT_MAX_LUX = 200_000;
 export type WinterRole = typeof WINTER_ROLES[number];
 export type WinterThresholds = Partial<Record<WinterRole, Record<string, number>>>;
 export type { WinterReason, WinterView } from "./overview-model.js";
@@ -146,7 +149,10 @@ export function deriveWinterValues(role: WinterRole, bounds: Record<string, numb
 // `values` holds every threshold key; null while a field is invalid.
 export function validateWinterRole(role: WinterRole, fields: Record<string, string>, normal: Record<string, number>, l: Localizer): { values: Record<string, number> | null; error: string | null } {
   const spec = WINTER_SPECS[role];
-  const fail = { values: null, error: l.t(spec.error) };
+  // The light clear value keeps the normal distance above the target and
+  // can't pass the 200,000 lx limit, so the target's upper bound depends on it.
+  const lightMax = LOW_LIGHT_MAX_LUX - (normal.clear_lux! - normal.target_lux!);
+  const fail = { values: null, error: role === "illuminance" ? l.t(spec.error, { max: l.number(lightMax) }) : l.t(spec.error) };
   const bounds: Record<string, number> = {};
   for (const field of spec.fields) {
     const value = parseField(fields[field.key]);

@@ -313,6 +313,31 @@ describe("winter values on the plant page", () => {
     await click(el, "Settings");
     expect(shadow(el).querySelector(".winter-badge")?.textContent).toBe("Active now");
   });
+  it("says so when Undo after Remove can't run", async () => {
+    const { el, h } = await mount(plant({ winter_thresholds: winterSet }));
+    await openSettings(el);
+    const toasts: { message: string; action?: { text: string; action: () => void } }[] = [];
+    el.addEventListener("hass-notification", e => toasts.push((e as CustomEvent).detail));
+    await click(el, "Remove");
+    const confirm = shadow(el).querySelector("dialog.winter-remove-dialog")!;
+    [...confirm.querySelectorAll("button")].find(b => b.textContent?.trim() === "Remove")!.click(); await settle(el); await settle(el);
+    const writes = h.calls.filter(c => c.type === "smart_plants/plants/set_winter_thresholds").length;
+    // Another save is still running.
+    (el as unknown as { _formBusy: boolean })._formBusy = true;
+    toasts.at(-1)!.action!.action(); await settle(el); await settle(el);
+    expect(h.calls.filter(c => c.type === "smart_plants/plants/set_winter_thresholds").length).toBe(writes);
+    expect(toasts.at(-1)?.message).toBe("Couldn't put the winter values back. Add them again under Settings.");
+  });
+  it("closes the winter box when another plant is opened", async () => {
+    const { el } = await mount(plant({ winter_thresholds: winterSet, rest_period: { start_month: 12, end_month: 2 } }), activeOverview);
+    shadow(el).querySelector<HTMLButtonElement>(".winter-chip")!.click(); await settle(el);
+    expect(shadow(el).querySelector("#winter-box")).not.toBeNull();
+    const panel = el as unknown as { _show(view: { kind: string; plantId?: string }): void };
+    panel._show({ kind: "list" }); await settle(el);
+    panel._show({ kind: "detail", plantId: plant().id }); await settle(el);
+    expect(shadow(el).querySelector("#winter-box")).toBeNull();
+    expect(shadow(el).querySelector(".winter-chip")?.getAttribute("aria-expanded")).toBe("false");
+  });
   it("uses the dormant storage wording when storage applies", async () => {
     const storage = { mode: "dormant_storage", exposure: null, rain_exposure: null, container: null };
     const { el } = await mount(plant({ winter_thresholds: winterSet, placement: storage, rest_period: { start_month: 12, end_month: 2 } }), p => ({ ...activeOverview(p), winter: { active: true, reason: "dormant_storage", until: null, roles: ["temperature"] } }));

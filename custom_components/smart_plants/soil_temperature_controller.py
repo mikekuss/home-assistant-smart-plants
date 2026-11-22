@@ -86,8 +86,26 @@ class SoilTemperaturePlantController:
         self._active = False
         self._tracker.close()
 
-    def reconfigure(self, config: SoilTemperatureConfig) -> None:
+    def _clear_alert(self) -> None:
+        """
+        Forget whether the alert was on, so the next evaluation starts fresh.
+
+        Used when other thresholds take over, such as winter values: an alert
+        that was on must not wait for a clear value that belongs to the new
+        thresholds.
+        """
+        self._previous_soil_temperature_stress = None
+
+    def refresh(self) -> None:
+        """Evaluate again with the current config and notify listeners."""
+        self._recompute_and_notify(dt_util.utcnow())
+
+    def reconfigure(
+        self, config: SoilTemperatureConfig, *, clear_alert: bool = False
+    ) -> None:
         self._config = config
+        if clear_alert:
+            self._clear_alert()
         self._tracker.configure(
             config.sources, stale_after=timedelta(seconds=config.stale_after_seconds)
         )

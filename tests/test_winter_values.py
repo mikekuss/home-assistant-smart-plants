@@ -60,6 +60,7 @@ WINTER_TEMPERATURE = {
 WINTER_MOISTURE = {"min": 10, "target": 25, "max": 55}
 WINTER_LIGHT = {"target_lux": 0.0, "clear_lux": 200.0}
 # Midday UTC, so the local date is the same in every test time zone.
+PERCENT = {"unit_of_measurement": "%"}
 JANUARY = datetime(2027, 1, 15, 12, 0, tzinfo=UTC)
 JUNE = datetime(2026, 6, 15, 12, 0, tzinfo=UTC)
 
@@ -588,3 +589,136 @@ async def test_retiring_a_plant_drops_its_winter_values(
 
     assert restored.winter_thresholds is None
     assert not _winter_check_armed(manager)
+
+
+# --- Alerts that are on when the thresholds switch ---------------------------
+
+
+async def test_alert_on_before_winter_starts_fresh_with_winter_values(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    # Too cold below the normal 10 °C at 5 °C. The winter floor is 4 °C and
+    # clears at 6 °C: the alert must end when winter starts, not wait for 6 °C.
+    freezer.move_to(JUNE)
+    manager = _manager(await _setup(hass))
+    plant = await _garage_oleander(hass, manager, winter=False)
+    plant = await manager.async_set_winter_thresholds(
+        plant.id,
+        expected_revision=plant.revision,
+        winter_thresholds={
+            "temperature": {
+                **WINTER_TEMPERATURE,
+                "cold_threshold_celsius": 4.0,
+                "cold_clear_celsius": 6.0,
+            }
+        },
+    )
+    await hass.async_block_till_done()
+    assert _temperature_stress(manager, plant.id) == "cold_stress"
+
+    await manager.async_update_plant(
+        plant.id,
+        expected_revision=plant.revision,
+        placement=PlantPlacement(mode="dormant_storage"),
+    )
+    await hass.async_block_till_done()
+
+    assert _temperature_stress(manager, plant.id) == "temperature_ok"
+
+
+async def test_editing_winter_values_while_they_apply_starts_fresh(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(JANUARY)
+    manager = _manager(await _setup(hass))
+    plant = await _garage_oleander(hass, manager, winter=False)
+    plant = await manager.async_set_winter_thresholds(
+        plant.id,
+        expected_revision=plant.revision,
+        winter_thresholds={
+            "temperature": {
+                **WINTER_TEMPERATURE,
+                "cold_threshold_celsius": 6.0,
+                "cold_clear_celsius": 8.0,
+            }
+        },
+    )
+    await hass.async_block_till_done()
+    assert _temperature_stress(manager, plant.id) == "cold_stress"
+
+    await manager.async_set_winter_thresholds(
+        plant.id,
+        expected_revision=plant.revision,
+        winter_thresholds={
+            "temperature": {
+                **WINTER_TEMPERATURE,
+                "cold_threshold_celsius": 4.0,
+                "cold_clear_celsius": 6.0,
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert _temperature_stress(manager, plant.id) == "temperature_ok"
+
+
+async def test_needs_water_before_winter_starts_fresh_with_winter_values(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    # Needs water below the normal 15 %, still at 11 %. The winter minimum is
+    # 10 % and clears at 12 %: the alert ends when dormant storage starts.
+    freezer.move_to(JUNE)
+    manager = _manager(await _setup(hass))
+    hass.states.async_set(
+        "sensor.mock_pot_moisture", "14", {"unit_of_measurement": "%"}
+    )
+    plant = await manager.async_create_plant(name="Oleander")
+    plant = await manager.async_set_role_sources(
+        plant.id,
+        role="moisture",
+        expected_revision=plant.revision,
+        sources=[{"entity_id": "sensor.mock_pot_moisture"}],
+    )
+    plant = await manager.async_set_winter_thresholds(
+        plant.id,
+        expected_revision=plant.revision,
+        winter_thresholds={"moisture": WINTER_MOISTURE},
+    )
+    await hass.async_block_till_done()
+    controller = manager.get_role_controller(plant.id, "moisture")
+    assert controller is not None
+    assert controller.current_evaluation.needs_water is True
+    hass.states.async_set(
+        "sensor.mock_pot_moisture", "11", {"unit_of_measurement": "%"}
+    )
+    await hass.async_block_till_done()
+    assert controller.current_evaluation.needs_water is True
+
+    await manager.async_update_plant(
+        plant.id,
+        expected_revision=plant.revision,
+        placement=PlantPlacement(mode="dormant_storage"),
+    )
+    await hass.async_block_till_done()
+
+    assert controller.current_evaluation.needs_water is False
+
+
+async def test_paused_plant_overview_shows_normal_ranges(
+    hass: HomeAssistant, hass_ws_client: WebSocketGenerator, freezer: Any
+) -> None:
+    entry = await _setup(hass)
+    client = await hass_ws_client(hass)
+    freezer.move_to(JANUARY)
+    manager = _manager(entry)
+    plant = await _garage_oleander(hass, manager)
+    await manager.async_disable_plant(plant.id, expected_revision=plant.revision)
+    await hass.async_block_till_done()
+
+    overview = await _send(client, {"type": "smart_plants/plants/overview"})
+    (summary,) = overview["result"]["plants"]
+
+    assert summary["winter"]["active"] is False
+    temperature = summary["roles"]["temperature"]
+    assert temperature["normal_range"] is None
+    assert temperature["range"]["min"] == 10.0

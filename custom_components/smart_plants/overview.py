@@ -288,7 +288,8 @@ def plant_overview(manager: SmartPlantsManager, plant: PlantRecord) -> dict[str,
         config = definition.config_for(plant)
         if config is None or not getattr(config, "sources", ()):
             continue
-        applied = winter_config(definition, plant, today)
+        # A paused plant evaluates nothing, so it shows its normal ranges.
+        applied = config if disabled else winter_config(definition, plant, today)
         role = _role_view(definition.key, applied, controller, disabled=disabled)
         # While winter values apply, ``range`` is the winter range and
         # ``normal_range`` the range the role uses the rest of the year.

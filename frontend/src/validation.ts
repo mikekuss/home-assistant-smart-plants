@@ -57,10 +57,11 @@ export function validPlant(v: unknown): boolean {
     (v.watering_detection === undefined || v.watering_detection === null || typeof v.watering_detection === "boolean") &&
     (v.winter_thresholds === undefined || v.winter_thresholds === null || winterThresholds(v.winter_thresholds));
 }
-const WINTER_ROLES = ["temperature", "moisture", "illuminance", "conductivity", "humidity"];
+// The checks that can have winter values; winter.ts uses the same list.
+export const WINTER_ROLES = ["temperature", "moisture", "illuminance", "conductivity", "humidity"] as const;
 // Winter values: one or more known checks, each a map of finite numbers.
 function winterThresholds(v: unknown): boolean {
-  return object(v) && Object.keys(v).length > 0 && Object.entries(v).every(([role, values]) => WINTER_ROLES.includes(role) &&
+  return object(v) && Object.keys(v).length > 0 && Object.entries(v).every(([role, values]) => (WINTER_ROLES as readonly string[]).includes(role) &&
     object(values) && Object.keys(values).length > 0 && Object.values(values).every(value => typeof value === "number" && Number.isFinite(value)));
 }
 const TASK_ID = /^[0-9a-f]{32}$/;

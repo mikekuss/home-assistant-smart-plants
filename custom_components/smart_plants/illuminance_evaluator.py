@@ -323,15 +323,7 @@ def _evaluate_low_light(  # noqa: PLR0913
             clear_lux=clear_lux,
         )
     brightest = max(sample.lux for sample in recent)
-    # A target of 0 lx turns the alert off: no reading is below it, and an
-    # alert that was on when the target dropped to 0 ends instead of waiting
-    # for the clear value in a dark room.
-    if target_lux <= 0:
-        low_light = False
-    elif previous_low_light:
-        low_light = brightest < clear_lux
-    else:
-        low_light = brightest < target_lux
+    low_light = brightest < clear_lux if previous_low_light else brightest < target_lux
     return LowLightEvaluation(
         low_light=low_light,
         available=True,
