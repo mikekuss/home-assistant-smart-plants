@@ -7408,6 +7408,9 @@ function Ya(e, t, n) {
 function Xa(e) {
 	let { key: t, icon: n, header: r, secondary: i, open: a, native: o, toggle: s, content: c } = e;
 	return o ? b`<ha-expansion-panel class="expander" data-section=${t} outlined .header=${r} .secondary=${i} .expanded=${a}
+      @expanded-will-change=${(e) => {
+		e.target === e.currentTarget && e.detail.expanded && s(!0);
+	}}
       @expanded-changed=${(e) => {
 		e.target === e.currentTarget && s(e.detail.expanded);
 	}}>

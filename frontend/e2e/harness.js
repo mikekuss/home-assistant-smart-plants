@@ -759,7 +759,7 @@ if (!customElements.get("ha-tab-group-tab")) {
 if (!customElements.get("ha-expansion-panel")) {
   customElements.define("ha-expansion-panel", class extends HTMLElement {
     constructor() {
-      super(); this.attachShadow({ mode: "open" }).innerHTML = `<style>:host{display:block;border:1px solid var(--divider-color,#e0e0e0);border-radius:12px}#summary{display:flex;align-items:center;gap:14px;padding:12px 16px;min-height:48px;cursor:pointer}.text{display:flex;flex-direction:column;flex:1}.secondary{font-size:13px;color:var(--secondary-text-color,#6f6f6f)}.container{padding:0 16px 16px}.container[hidden]{display:none}</style><div id="summary" role="button" tabindex="0" aria-expanded="false" aria-controls="sect1"><slot name="leading-icon"></slot><div class="text"><span class="header"></span><span class="secondary"></span></div></div><div class="container" id="sect1" role="region" aria-labelledby="summary" hidden><slot></slot></div>`;
+      super(); this.attachShadow({ mode: "open" }).innerHTML = `<style>:host{display:block;border:1px solid var(--divider-color,#e0e0e0);border-radius:12px}#summary{display:flex;align-items:center;gap:14px;padding:12px 16px;min-height:48px;cursor:pointer}.text{display:flex;flex-direction:column;flex:1}.secondary{font-size:13px;color:var(--secondary-text-color,#6f6f6f)}.container{padding:0 16px 16px;box-sizing:border-box}.container[hidden]{display:none}</style><div id="summary" role="button" tabindex="0" aria-expanded="false" aria-controls="sect1"><slot name="leading-icon"></slot><div class="text"><span class="header"></span><span class="secondary"></span></div></div><div class="container" id="sect1" role="region" aria-labelledby="summary" hidden><slot></slot></div>`;
       const summary = this.shadowRoot.querySelector("#summary");
       summary.addEventListener("click", () => this.toggle());
       summary.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); this.toggle(); } });
@@ -768,7 +768,20 @@ if (!customElements.get("ha-expansion-panel")) {
     set secondary(value) { this._secondary = value; this.render(); }
     set expanded(value) { this._expanded = Boolean(value); this.render(); }
     get expanded() { return Boolean(this._expanded); }
-    toggle() { this.expanded = !this.expanded; this.dispatchEvent(new CustomEvent("expanded-changed", { detail: { expanded: this.expanded } })); }
+    // Like Home Assistant: announce the change, give the content one frame to
+    // render, measure it, then fix that height until the height transition
+    // ends. `window.__holdExpanderHeight` keeps it fixed, as when a browser
+    // misses the transition end.
+    async toggle() {
+      const next = !this.expanded;
+      this.dispatchEvent(new CustomEvent("expanded-will-change", { detail: { expanded: next } }));
+      const container = this.shadowRoot.querySelector(".container");
+      if (next) { container.hidden = false; await new Promise(resolve => requestAnimationFrame(() => resolve())); }
+      container.style.height = next ? `${container.scrollHeight}px` : "";
+      this.expanded = next;
+      this.dispatchEvent(new CustomEvent("expanded-changed", { detail: { expanded: this.expanded } }));
+      if (!window.__holdExpanderHeight) requestAnimationFrame(() => container.style.removeProperty("height"));
+    }
     render() {
       this.shadowRoot.querySelector(".header").textContent = this._header ?? "";
       this.shadowRoot.querySelector(".secondary").textContent = this._secondary ?? "";

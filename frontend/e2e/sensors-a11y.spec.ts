@@ -128,3 +128,22 @@ test("malformed role: Change refuses fail-closed with a row-scoped alert, axe", 
   await expect(page.locator("smart-plants-panel div#humidity-sources-editor")).toBeVisible();
   await expect(alert).toHaveCount(0);
 });
+
+// Home Assistant's expansion panel measures its content one frame after it
+// announces the change. If the content isn't rendered by then and the browser
+// misses the transition end, as seen on iOS, the panel keeps the empty height
+// and the content spills over the next card.
+test("an opened section is as tall as its content", async ({ page }) => {
+  await page.addInitScript(() => { (window as unknown as { __holdExpanderHeight: boolean }).__holdExpanderHeight = true; });
+  await openSensors(page);
+  await page.getByRole("button", { name: /^Troubleshooting/ }).click();
+  for (const section of ["combine", "troubleshooting"]) {
+    const panel = page.locator(`smart-plants-panel ha-expansion-panel[data-section="${section}"]`);
+    await expect(panel.locator(".expander-body")).toBeVisible();
+    const fits = await panel.evaluate(element => {
+      const container = element.shadowRoot!.querySelector<HTMLElement>(".container")!;
+      return container.scrollHeight <= container.clientHeight + 1;
+    });
+    expect(fits, section).toBe(true);
+  }
+});

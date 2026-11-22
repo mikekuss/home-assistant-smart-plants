@@ -242,7 +242,13 @@ export function careDetails(l: Localizer, event: CareEvent, fieldLabel: (key: st
 export function expander(options: { key: string; icon: string; header: string; secondary: string; open: boolean; native: boolean; toggle: (open: boolean) => void; content: () => TemplateResult | typeof nothing }) {
   const { key, icon, header, secondary, open, native, toggle, content } = options;
   if (native) {
+    // Home Assistant's panel measures the content one frame after
+    // expanded-will-change and animates to that height. The content is only
+    // rendered while open, so it has to be in place before that measurement:
+    // otherwise the panel keeps the empty height when the transition end is
+    // missed (seen on iOS), and the content spills over the next card.
     return html`<ha-expansion-panel class="expander" data-section=${key} outlined .header=${header} .secondary=${secondary} .expanded=${open}
+      @expanded-will-change=${(e: CustomEvent<{ expanded: boolean }>) => { if (e.target === e.currentTarget && e.detail.expanded) toggle(true); }}
       @expanded-changed=${(e: CustomEvent<{ expanded: boolean }>) => { if (e.target === e.currentTarget) toggle(e.detail.expanded); }}>
       <ha-icon slot="leading-icon" aria-hidden="true" .icon=${icon}></ha-icon>
       ${open ? html`<div class="expander-body">${content()}</div>` : nothing}</ha-expansion-panel>`;
