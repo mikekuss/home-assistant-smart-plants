@@ -43,6 +43,7 @@ from .models import (
     IlluminanceConfig,
     MoistureConfig,
     SoilTemperatureConfig,
+    SpeciesThresholdDefault,
     TemperatureConfig,
     ThresholdDefault,
     require_co2_stress_threshold,
@@ -66,7 +67,7 @@ from .models import (
 if TYPE_CHECKING:
     from .entity import EntityFactory, SmartPlantsEntity
     from .manager import SmartPlantsManager
-    from .models import PlantRecord
+    from .models import PlantRecord, PlantSpecies, SpeciesSnapshot
 
 
 class RoleController(Protocol):
@@ -126,10 +127,20 @@ class RoleDefinition:
     stale_after_range: tuple[int, int] | None = None
     apply_threshold_overrides: Callable[[Any, Mapping[str, object]], Any] | None = None
     apply_threshold_defaults: Callable[[Any, Mapping[str, object]], Any] | None = None
+    # Derives problem-sensor thresholds from a provider species. A role with
+    # this hook follows the plant's species: when the species is applied and
+    # when the role gets its first sensor.
+    species_threshold_defaults: (
+        Callable[[SpeciesSnapshot], Mapping[str, float]] | None
+    ) = None
 
     def config_for(self, plant: PlantRecord) -> Any | None:
         configured = plant.role_config(self.key)
-        return self.default_config() if configured is None else configured
+        if configured is not None:
+            return configured
+        return with_species_threshold_defaults(
+            self, self.default_config(), plant.species
+        )
 
 
 class _MoistureMeasurementAdapter:
@@ -344,6 +355,174 @@ def _apply_moisture_defaults(
     return candidate
 
 
+def _apply_temperature_defaults(
+    config: TemperatureConfig, values: Mapping[str, object]
+) -> TemperatureConfig:
+    """Replace the thresholds the species supplies; ``values`` may be partial."""
+    from dataclasses import replace  # noqa: PLC0415
+
+    if not set(values) <= set(TEMPERATURE_STRESS_OVERRIDE_KEYS):
+        raise ValueError("temperature species defaults have unknown thresholds")
+    defaults = {
+        key: SpeciesThresholdDefault.from_storage(
+            values[key],
+            f"temperature species default {key}",
+            require_temperature_stress_threshold,
+        )
+        for key in TEMPERATURE_STRESS_OVERRIDE_KEYS
+        if key in values
+    }
+    candidate = replace(config, species_defaults=defaults)
+    validate_temperature_stress_threshold_order(
+        candidate.effective_stress_threshold("cold_threshold_celsius"),
+        candidate.effective_stress_threshold("cold_clear_celsius"),
+        candidate.effective_stress_threshold("hot_clear_celsius"),
+        candidate.effective_stress_threshold("hot_threshold_celsius"),
+    )
+    return candidate
+
+
+def _apply_humidity_defaults(
+    config: HumidityConfig, values: Mapping[str, object]
+) -> HumidityConfig:
+    """Replace the thresholds the species supplies; ``values`` may be partial."""
+    from dataclasses import replace  # noqa: PLC0415
+
+    if not set(values) <= set(HUMIDITY_STRESS_OVERRIDE_KEYS):
+        raise ValueError("humidity species defaults have unknown thresholds")
+    defaults = {
+        key: SpeciesThresholdDefault.from_storage(
+            values[key],
+            f"humidity species default {key}",
+            require_humidity_stress_threshold,
+        )
+        for key in HUMIDITY_STRESS_OVERRIDE_KEYS
+        if key in values
+    }
+    candidate = replace(config, species_defaults=defaults)
+    validate_humidity_stress_threshold_order(
+        candidate.effective_stress_threshold("dry_threshold_percent"),
+        candidate.effective_stress_threshold("dry_clear_percent"),
+        candidate.effective_stress_threshold("damp_clear_percent"),
+        candidate.effective_stress_threshold("damp_threshold_percent"),
+    )
+    return candidate
+
+
+# A species range gives the value where a problem starts. The value where it
+# clears again keeps the built-in gap on the same side, so a species range
+# behaves like the built-in one, only shifted.
+_TEMPERATURE_SPECIES_COLD_CLEAR_GAP = (
+    TEMPERATURE_STRESS_BUILTIN_DEFAULTS["cold_clear_celsius"]
+    - TEMPERATURE_STRESS_BUILTIN_DEFAULTS["cold_threshold_celsius"]
+)
+_TEMPERATURE_SPECIES_HOT_CLEAR_GAP = (
+    TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_threshold_celsius"]
+    - TEMPERATURE_STRESS_BUILTIN_DEFAULTS["hot_clear_celsius"]
+)
+_HUMIDITY_SPECIES_DRY_CLEAR_GAP = (
+    HUMIDITY_STRESS_BUILTIN_DEFAULTS["dry_clear_percent"]
+    - HUMIDITY_STRESS_BUILTIN_DEFAULTS["dry_threshold_percent"]
+)
+_HUMIDITY_SPECIES_DAMP_CLEAR_GAP = (
+    HUMIDITY_STRESS_BUILTIN_DEFAULTS["damp_threshold_percent"]
+    - HUMIDITY_STRESS_BUILTIN_DEFAULTS["damp_clear_percent"]
+)
+
+
+def _temperature_species_defaults(snapshot: SpeciesSnapshot) -> dict[str, float]:
+    """Temperature thresholds from the species' preferred range."""
+    values: dict[str, float] = {}
+    if snapshot.min_temperature is not None:
+        values["cold_threshold_celsius"] = float(snapshot.min_temperature)
+        values["cold_clear_celsius"] = (
+            float(snapshot.min_temperature) + _TEMPERATURE_SPECIES_COLD_CLEAR_GAP
+        )
+    if snapshot.max_temperature is not None:
+        values["hot_threshold_celsius"] = float(snapshot.max_temperature)
+        values["hot_clear_celsius"] = (
+            float(snapshot.max_temperature) - _TEMPERATURE_SPECIES_HOT_CLEAR_GAP
+        )
+    return values
+
+
+def _humidity_species_defaults(snapshot: SpeciesSnapshot) -> dict[str, float]:
+    """Air humidity thresholds from the species' preferred range."""
+    supplied = snapshot.threshold_defaults.get("humidity", {})
+    values: dict[str, float] = {}
+    if (low := supplied.get("min")) is not None:
+        values["dry_threshold_percent"] = float(low)
+        values["dry_clear_percent"] = float(low) + _HUMIDITY_SPECIES_DRY_CLEAR_GAP
+    if (high := supplied.get("max")) is not None:
+        values["damp_threshold_percent"] = float(high)
+        values["damp_clear_percent"] = float(high) - _HUMIDITY_SPECIES_DAMP_CLEAR_GAP
+    return values
+
+
+def keep_species_thresholds(config: Any) -> Any:
+    """
+    Return ``config`` with the species' values turned into its own overrides.
+
+    Used when a plant's species changes without a provider apply, for example
+    to manual details: the values stay as they are, but they no longer claim
+    to come from a species the plant doesn't have. A threshold the user set
+    keeps the user's value. The effective thresholds don't change, so the
+    result is as valid as ``config``.
+    """
+    from dataclasses import replace  # noqa: PLC0415
+
+    species_defaults = getattr(config, "species_defaults", None)
+    if not species_defaults:
+        return config
+    overrides = dict(config.stress_threshold_overrides)
+    for key, default in species_defaults.items():
+        if overrides.get(key) is None:
+            overrides[key] = default.value
+    return replace(config, stress_threshold_overrides=overrides, species_defaults={})
+
+
+def with_species_threshold_defaults(
+    definition: RoleDefinition, config: Any, species: PlantSpecies | None
+) -> Any:
+    """
+    Return ``config`` with inherited thresholds that follow ``species``.
+
+    Only a species from a provider supplies values; every other key, and every
+    key of a plant without such a species, inherits the built-in value. When
+    the species values don't fit the plant's own overrides, or don't make a
+    valid range, the role keeps the built-in values instead, so accepting a
+    species never fails because of a problem-sensor threshold. The plant's
+    overrides always stay.
+    """
+    derive = definition.species_threshold_defaults
+    apply = definition.apply_threshold_defaults
+    if derive is None or apply is None:
+        return config
+    candidates: list[dict[str, object]] = []
+    if species is not None and species.snapshot.source_status == "provider":
+        provider_ref = species.snapshot.provider_ref
+        supplied = derive(species.snapshot) if provider_ref is not None else {}
+        if supplied:
+            candidates.append(
+                {
+                    key: {
+                        "value": value,
+                        "provider": species.provider,
+                        "provider_ref": provider_ref,
+                    }
+                    for key, value in supplied.items()
+                }
+            )
+    candidates.append({})
+    for defaults in candidates:
+        try:
+            return apply(config, defaults)
+        except ValueError:
+            continue
+    # Neither fits the plant's overrides: leave the role as it is.
+    return config
+
+
 def _replace_moisture_sources(
     config: MoistureConfig, sources: tuple[Any, ...], primary: str | None
 ) -> MoistureConfig:
@@ -416,7 +595,10 @@ def _apply_temperature_stress_overrides(
                 value, f"temperature stress override {key}"
             )
         )
-    builtins = TEMPERATURE_STRESS_BUILTIN_DEFAULTS
+    builtins = {
+        key: config.inherited_stress_threshold(key)
+        for key in TEMPERATURE_STRESS_OVERRIDE_KEYS
+    }
     effective: dict[str, float] = {
         key: (
             builtins[key] if overrides[key] is None else float(overrides[key])  # type: ignore[arg-type]
@@ -454,7 +636,10 @@ def _apply_humidity_stress_overrides(
                 value, f"humidity stress override {key}"
             )
         )
-    builtins = HUMIDITY_STRESS_BUILTIN_DEFAULTS
+    builtins = {
+        key: config.inherited_stress_threshold(key)
+        for key in HUMIDITY_STRESS_OVERRIDE_KEYS
+    }
     effective: dict[str, float] = {
         key: (builtins[key] if overrides[key] is None else float(overrides[key]))  # type: ignore[arg-type]
         for key in HUMIDITY_STRESS_OVERRIDE_KEYS
@@ -1029,6 +1214,8 @@ register_role(
         replace_stale_after=_replace_temperature_stale_after,
         stale_after_range=(MIN_STALE_AFTER_SECONDS, MAX_STALE_AFTER_SECONDS),
         apply_threshold_overrides=_apply_temperature_stress_overrides,
+        apply_threshold_defaults=_apply_temperature_defaults,
+        species_threshold_defaults=_temperature_species_defaults,
     )
 )
 
@@ -1065,6 +1252,8 @@ register_role(
         replace_stale_after=_replace_humidity_stale_after,
         stale_after_range=(MIN_STALE_AFTER_SECONDS, MAX_STALE_AFTER_SECONDS),
         apply_threshold_overrides=_apply_humidity_stress_overrides,
+        apply_threshold_defaults=_apply_humidity_defaults,
+        species_threshold_defaults=_humidity_species_defaults,
     )
 )
 

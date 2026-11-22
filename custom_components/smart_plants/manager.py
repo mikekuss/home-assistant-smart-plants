@@ -85,7 +85,12 @@ from .models import (
     validate_care_tasks,
 )
 from .reading_tracker import ReadingTracker
-from .roles import require_role, role_definitions
+from .roles import (
+    keep_species_thresholds,
+    require_role,
+    role_definitions,
+    with_species_threshold_defaults,
+)
 from .storage import SmartPlantsStorageError, SmartPlantsStore, _utcnow_iso
 
 if TYPE_CHECKING:
@@ -1690,6 +1695,17 @@ class SmartPlantsManager:
                 # Nothing to change; skip the revision bump and disk write.
                 return current
             updated = current.with_next_revision(**changes)
+            if "species" in changes and changes["species"] != current.species:
+                # Values a provider species supplied stay, as the plant's own,
+                # instead of claiming to come from a species it no longer has.
+                for definition in role_definitions():
+                    if definition.species_threshold_defaults is None:
+                        continue
+                    configured = updated.role_config(definition.key)
+                    if configured is not None:
+                        updated = updated.with_role_config(
+                            definition.key, keep_species_thresholds(configured)
+                        )
             await self._async_apply_with_reconciliation(
                 target_snapshot=self._snapshot.with_plant(updated),
                 kind="update_plant",
@@ -2449,6 +2465,19 @@ class SmartPlantsManager:
             for definition in role_definitions():
                 apply = definition.apply_threshold_defaults
                 if apply is None:
+                    continue
+                if definition.species_threshold_defaults is not None:
+                    # A role without a sensor stays unconfigured; it picks up
+                    # the species values when it gets its first sensor.
+                    configured = updated.role_config(definition.key)
+                    if configured is None:
+                        continue
+                    updated = updated.with_role_config(
+                        definition.key,
+                        with_species_threshold_defaults(
+                            definition, configured, cleaned_species
+                        ),
+                    )
                     continue
                 supplied = cleaned_species.snapshot.threshold_defaults.get(
                     definition.key, {}

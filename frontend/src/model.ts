@@ -121,7 +121,8 @@ export function parseTemperatureStressField(raw: string): number | null | "inval
 }
 // Validate an entire override map for temperature_stress and return the WebSocket
 // payload (all four keys, number | null) plus an inline error string if invalid.
-export function validateTemperatureStressOverrides(input: TemperatureStressInput, l: Localizer = ENGLISH): { values: Record<TemperatureStressKey, number | null>; error: string | null } {
+// `defaults` are the role's inherited values: built-in, or from the species.
+export function validateTemperatureStressOverrides(input: TemperatureStressInput, l: Localizer = ENGLISH, defaults: Record<string, number> = TEMPERATURE_STRESS_BUILTIN_DEFAULTS): { values: Record<TemperatureStressKey, number | null>; error: string | null } {
   const parsed: Partial<Record<TemperatureStressKey, number | null>> = {};
   for (const key of TEMPERATURE_STRESS_KEYS) {
     const result = parseTemperatureStressField(input[key]);
@@ -129,7 +130,7 @@ export function validateTemperatureStressOverrides(input: TemperatureStressInput
     parsed[key] = result;
   }
   const values = parsed as Record<TemperatureStressKey, number | null>;
-  const eff = (k: TemperatureStressKey) => values[k] ?? TEMPERATURE_STRESS_BUILTIN_DEFAULTS[k];
+  const eff = (k: TemperatureStressKey) => values[k] ?? defaults[k]!;
   const ct = eff("cold_threshold_celsius"), cc = eff("cold_clear_celsius"), hc = eff("hot_clear_celsius"), ht = eff("hot_threshold_celsius");
   if (!(ct < cc && cc < hc && hc < ht) || cc - ct < _TEMP_MIN_HYST || ht - hc < _TEMP_MIN_HYST || hc - cc < _TEMP_MIN_STABLE) {
     return { values, error: l.t("threshold_error.temperature_stress") };
@@ -170,7 +171,7 @@ export function parseHumidityStressField(raw: string): number | null | "invalid"
   if (rounded < _HUM_LOW || rounded > _HUM_HIGH) return "invalid";
   return rounded;
 }
-export function validateHumidityStressOverrides(input: HumidityStressInput, l: Localizer = ENGLISH): { values: Record<HumidityStressKey, number | null>; error: string | null } {
+export function validateHumidityStressOverrides(input: HumidityStressInput, l: Localizer = ENGLISH, defaults: Record<string, number> = HUMIDITY_STRESS_BUILTIN_DEFAULTS): { values: Record<HumidityStressKey, number | null>; error: string | null } {
   const parsed: Partial<Record<HumidityStressKey, number | null>> = {};
   for (const key of HUMIDITY_STRESS_KEYS) {
     const result = parseHumidityStressField(input[key]);
@@ -178,12 +179,41 @@ export function validateHumidityStressOverrides(input: HumidityStressInput, l: L
     parsed[key] = result;
   }
   const values = parsed as Record<HumidityStressKey, number | null>;
-  const eff = (k: HumidityStressKey) => values[k] ?? HUMIDITY_STRESS_BUILTIN_DEFAULTS[k];
+  const eff = (k: HumidityStressKey) => values[k] ?? defaults[k]!;
   const dt = eff("dry_threshold_percent"), dc = eff("dry_clear_percent"), pc = eff("damp_clear_percent"), pt = eff("damp_threshold_percent");
   if (!(dt < dc && dc < pc && pc < pt) || dc - dt < _HUM_MIN_HYST || pt - pc < _HUM_MIN_HYST || pc - dc < _HUM_MIN_STABLE) {
     return { values, error: l.t("threshold_error.humidity_stress") };
   }
   return { values, error: null };
+}
+// The thresholds a provider species supplies, derived as roles.py does: the
+// end of a range is where a problem starts, and the value where it clears
+// keeps the built-in gap on that side. A manual species supplies none.
+export function speciesStressDefaults(snapshot: SpeciesSnapshot): { temperature: Record<string, number>; humidity: Record<string, number> } {
+  const temperature: Record<string, number> = {}; const humidity: Record<string, number> = {};
+  if (snapshot.source_status !== "provider") return { temperature, humidity };
+  const t = TEMPERATURE_STRESS_BUILTIN_DEFAULTS; const h = HUMIDITY_STRESS_BUILTIN_DEFAULTS;
+  if (typeof snapshot.min_temperature === "number") Object.assign(temperature, { cold_threshold_celsius: snapshot.min_temperature, cold_clear_celsius: snapshot.min_temperature + t.cold_clear_celsius! - t.cold_threshold_celsius! });
+  if (typeof snapshot.max_temperature === "number") Object.assign(temperature, { hot_threshold_celsius: snapshot.max_temperature, hot_clear_celsius: snapshot.max_temperature - (t.hot_threshold_celsius! - t.hot_clear_celsius!) });
+  const range = snapshot.threshold_defaults.humidity;
+  if (typeof range?.min === "number") Object.assign(humidity, { dry_threshold_percent: range.min, dry_clear_percent: range.min + h.dry_clear_percent! - h.dry_threshold_percent! });
+  if (typeof range?.max === "number") Object.assign(humidity, { damp_threshold_percent: range.max, damp_clear_percent: range.max - (h.damp_threshold_percent! - h.damp_clear_percent!) });
+  return { temperature, humidity };
+}
+// The species ranges a plant can't take: with its own values, or on their
+// own, they don't make a valid range, so the reading keeps the built-in
+// values, as the backend does. `plant` is null for a plant not created yet.
+export function speciesRangesNotApplied(snapshot: SpeciesSnapshot, plant: PlantRecord | null): ("temperature" | "humidity")[] {
+  const derived = speciesStressDefaults(snapshot);
+  const own = (role: string, keys: readonly string[]): Record<string, string> => {
+    const raw = plant?.roles?.[role];
+    const overrides = raw && typeof raw === "object" ? (raw as Record<string, unknown>)["stress_threshold_overrides"] : undefined;
+    return Object.fromEntries(keys.map(key => { const value = overrides && typeof overrides === "object" ? (overrides as Record<string, unknown>)[key] : undefined; return [key, typeof value === "number" ? String(value) : ""]; }));
+  };
+  const out: ("temperature" | "humidity")[] = [];
+  if (Object.keys(derived.temperature).length && validateTemperatureStressOverrides(own("temperature", TEMPERATURE_STRESS_KEYS) as TemperatureStressInput, ENGLISH, { ...TEMPERATURE_STRESS_BUILTIN_DEFAULTS, ...derived.temperature }).error) out.push("temperature");
+  if (Object.keys(derived.humidity).length && validateHumidityStressOverrides(own("humidity", HUMIDITY_STRESS_KEYS) as HumidityStressInput, ENGLISH, { ...HUMIDITY_STRESS_BUILTIN_DEFAULTS, ...derived.humidity }).error) out.push("humidity");
+  return out;
 }
 export function humidityStressInput(persisted: Partial<Record<HumidityStressKey, number | null>> | null | undefined): HumidityStressInput {
   const out: HumidityStressInput = { dry_threshold_percent: "", dry_clear_percent: "", damp_clear_percent: "", damp_threshold_percent: "" };

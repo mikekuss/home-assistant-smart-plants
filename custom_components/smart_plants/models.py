@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, time
 from types import MappingProxyType
@@ -163,6 +163,48 @@ class ThresholdDefault:
         return {
             "value": self.value,
             "source": self.source,
+            "provider": self.provider,
+            "provider_ref": self.provider_ref,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SpeciesThresholdDefault:
+    """
+    A problem-sensor threshold that a species supplied, with its attribution.
+
+    Only values from a species are kept; a threshold without one inherits the
+    built-in value. Problem-sensor thresholds are decimal numbers, unlike the
+    whole-number moisture targets, and the role that owns one validates it.
+    """
+
+    value: float
+    provider: str
+    provider_ref: str
+
+    @classmethod
+    def from_storage(
+        cls,
+        data: object,
+        field_name: str,
+        require: Callable[[object, str], float],
+    ) -> Self:
+        if not isinstance(data, dict):
+            raise ValueError(f"{field_name} must be an object")
+        _require_no_extra_keys(
+            data, frozenset({"value", "provider", "provider_ref"}), field_name
+        )
+        return cls(
+            value=require(data.get("value"), f"{field_name} value"),
+            provider=_require_short_str(data.get("provider"), f"{field_name} provider"),
+            provider_ref=_require_str(
+                data.get("provider_ref"), f"{field_name} provider_ref"
+            ),
+        )
+
+    def as_storage(self) -> dict[str, Any]:
+        return {
+            "value": self.value,
             "provider": self.provider,
             "provider_ref": self.provider_ref,
         }
@@ -1228,6 +1270,29 @@ def _default_temperature_stress_overrides() -> Mapping[str, float | None]:
     return MappingProxyType(dict.fromkeys(TEMPERATURE_STRESS_OVERRIDE_KEYS, None))
 
 
+def _parse_species_defaults(
+    raw: object,
+    *,
+    keys: tuple[str, ...],
+    require: Callable[[object, str], float],
+    field_prefix: str,
+) -> dict[str, SpeciesThresholdDefault]:
+    """Parse the thresholds a species supplied; any subset of ``keys``."""
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError(f"{field_prefix} species_defaults must be an object")
+    if not set(raw) <= set(keys):
+        raise ValueError(f"{field_prefix} species_defaults has unknown thresholds")
+    return {
+        key: SpeciesThresholdDefault.from_storage(
+            raw[key], f"{field_prefix} species default {key}", require
+        )
+        for key in keys
+        if key in raw
+    }
+
+
 def _parse_stress_overrides(  # noqa: PLR0913
     raw: object,
     *,
@@ -1270,6 +1335,9 @@ class TemperatureConfig:
     stress_threshold_overrides: Mapping[str, float | None] = field(
         default_factory=_default_temperature_stress_overrides
     )
+    species_defaults: Mapping[str, SpeciesThresholdDefault] = field(
+        default_factory=lambda: MappingProxyType({})
+    )
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -1277,11 +1345,23 @@ class TemperatureConfig:
             "stress_threshold_overrides",
             MappingProxyType(dict(self.stress_threshold_overrides)),
         )
+        object.__setattr__(
+            self, "species_defaults", MappingProxyType(dict(self.species_defaults))
+        )
+
+    def inherited_stress_threshold(self, key: str) -> float:
+        """Return the value a threshold without an override uses."""
+        species = self.species_defaults.get(key)
+        return (
+            TEMPERATURE_STRESS_BUILTIN_DEFAULTS[key]
+            if species is None
+            else species.value
+        )
 
     def effective_stress_threshold(self, key: str) -> float:
         override = self.stress_threshold_overrides[key]
         if override is None:
-            return TEMPERATURE_STRESS_BUILTIN_DEFAULTS[key]
+            return self.inherited_stress_threshold(key)
         return override
 
     @classmethod
@@ -1297,6 +1377,7 @@ class TemperatureConfig:
                     "aggregation",
                     "stale_after_seconds",
                     "stress_threshold_overrides",
+                    "species_defaults",
                 }
             ),
             "temperature config",
@@ -1361,10 +1442,28 @@ class TemperatureConfig:
                 "temperature config stale_after_seconds is outside the allowed range"
             )
 
+        species_defaults = _parse_species_defaults(
+            data.get("species_defaults"),
+            keys=TEMPERATURE_STRESS_OVERRIDE_KEYS,
+            require=require_temperature_stress_threshold,
+            field_prefix="temperature",
+        )
+        builtins = {
+            key: species_defaults[key].value
+            if key in species_defaults
+            else TEMPERATURE_STRESS_BUILTIN_DEFAULTS[key]
+            for key in TEMPERATURE_STRESS_OVERRIDE_KEYS
+        }
         raw_overrides = data.get("stress_threshold_overrides")
         overrides: dict[str, float | None]
         if raw_overrides is None:
             overrides = dict.fromkeys(TEMPERATURE_STRESS_OVERRIDE_KEYS, None)
+            validate_temperature_stress_threshold_order(
+                builtins["cold_threshold_celsius"],
+                builtins["cold_clear_celsius"],
+                builtins["hot_clear_celsius"],
+                builtins["hot_threshold_celsius"],
+            )
         else:
             if not isinstance(raw_overrides, dict):
                 raise ValueError(
@@ -1386,7 +1485,6 @@ class TemperatureConfig:
                         raw_value, f"temperature stress override {key}"
                     )
                 )
-            builtins = TEMPERATURE_STRESS_BUILTIN_DEFAULTS
             effective_cold_threshold = (
                 overrides["cold_threshold_celsius"]
                 if overrides["cold_threshold_celsius"] is not None
@@ -1419,6 +1517,7 @@ class TemperatureConfig:
             aggregation=aggregation,  # type: ignore[arg-type]
             stale_after_seconds=stale_after_seconds,
             stress_threshold_overrides=overrides,
+            species_defaults=species_defaults,
         )
 
     def as_storage(self) -> dict[str, Any]:
@@ -1430,6 +1529,11 @@ class TemperatureConfig:
             "stress_threshold_overrides": {
                 key: self.stress_threshold_overrides[key]
                 for key in TEMPERATURE_STRESS_OVERRIDE_KEYS
+            },
+            "species_defaults": {
+                key: self.species_defaults[key].as_storage()
+                for key in TEMPERATURE_STRESS_OVERRIDE_KEYS
+                if key in self.species_defaults
             },
         }
 
@@ -1517,6 +1621,9 @@ class HumidityConfig:
     stress_threshold_overrides: Mapping[str, float | None] = field(
         default_factory=_default_humidity_stress_overrides
     )
+    species_defaults: Mapping[str, SpeciesThresholdDefault] = field(
+        default_factory=lambda: MappingProxyType({})
+    )
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -1524,11 +1631,21 @@ class HumidityConfig:
             "stress_threshold_overrides",
             MappingProxyType(dict(self.stress_threshold_overrides)),
         )
+        object.__setattr__(
+            self, "species_defaults", MappingProxyType(dict(self.species_defaults))
+        )
+
+    def inherited_stress_threshold(self, key: str) -> float:
+        """Return the value a threshold without an override uses."""
+        species = self.species_defaults.get(key)
+        return (
+            HUMIDITY_STRESS_BUILTIN_DEFAULTS[key] if species is None else species.value
+        )
 
     def effective_stress_threshold(self, key: str) -> float:
         override = self.stress_threshold_overrides[key]
         if override is None:
-            return HUMIDITY_STRESS_BUILTIN_DEFAULTS[key]
+            return self.inherited_stress_threshold(key)
         return override
 
     @classmethod
@@ -1544,6 +1661,7 @@ class HumidityConfig:
                     "aggregation",
                     "stale_after_seconds",
                     "stress_threshold_overrides",
+                    "species_defaults",
                 }
             ),
             "humidity config",
@@ -1605,10 +1723,28 @@ class HumidityConfig:
             raise ValueError(
                 "humidity config stale_after_seconds is outside the allowed range"
             )
+        species_defaults = _parse_species_defaults(
+            data.get("species_defaults"),
+            keys=HUMIDITY_STRESS_OVERRIDE_KEYS,
+            require=require_humidity_stress_threshold,
+            field_prefix="humidity",
+        )
+        inherited = {
+            key: species_defaults[key].value
+            if key in species_defaults
+            else HUMIDITY_STRESS_BUILTIN_DEFAULTS[key]
+            for key in HUMIDITY_STRESS_OVERRIDE_KEYS
+        }
+        validate_humidity_stress_threshold_order(
+            inherited["dry_threshold_percent"],
+            inherited["dry_clear_percent"],
+            inherited["damp_clear_percent"],
+            inherited["damp_threshold_percent"],
+        )
         overrides = _parse_stress_overrides(
             data.get("stress_threshold_overrides"),
             keys=HUMIDITY_STRESS_OVERRIDE_KEYS,
-            builtins=HUMIDITY_STRESS_BUILTIN_DEFAULTS,
+            builtins=inherited,
             require=require_humidity_stress_threshold,
             validate=lambda eff: validate_humidity_stress_threshold_order(
                 eff["dry_threshold_percent"],
@@ -1630,6 +1766,7 @@ class HumidityConfig:
             aggregation=aggregation,  # type: ignore[arg-type]
             stale_after_seconds=stale_after_seconds,
             stress_threshold_overrides=overrides,
+            species_defaults=species_defaults,
         )
 
     def as_storage(self) -> dict[str, Any]:
@@ -1641,6 +1778,11 @@ class HumidityConfig:
             "stress_threshold_overrides": {
                 key: self.stress_threshold_overrides[key]
                 for key in HUMIDITY_STRESS_OVERRIDE_KEYS
+            },
+            "species_defaults": {
+                key: self.species_defaults[key].as_storage()
+                for key in HUMIDITY_STRESS_OVERRIDE_KEYS
+                if key in self.species_defaults
             },
         }
 

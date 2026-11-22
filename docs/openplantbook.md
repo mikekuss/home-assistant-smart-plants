@@ -38,8 +38,25 @@ Smart Plants stores the species with the plant. OpenPlantBook's moisture minimum
 become the plant's defaults, and your own values stay. If the imported range doesn't fit your
 current targets, Smart Plants doesn't apply it. Change the **Soil moisture targets** first.
 
+OpenPlantBook's temperature and air humidity ranges become the defaults of the *Temperature
+stress* and *Humidity stress* sensors, see
+[Built-in thresholds](sensors-and-health.md#built-in-thresholds). A reading that gets its first
+sensor later takes them from the species too. These ranges never stop a species from being
+applied: when they don't fit your own values, the reading keeps the built-in ones, and the
+species preview says so below the ranges.
+
+For a plant that had its species before this version:
+
+- **Readings it already had** keep the built-in temperature and humidity values.
+- **A temperature reading it gets afterwards** takes the species range right away.
+- **The air humidity range** isn't in species data stored before this version, so a new
+  humidity reading keeps the built-in values.
+
+**Preview species refresh**, once accepted, brings both ranges to the readings the plant has.
+
 **Preview species refresh** fetches the latest data for a plant and shows the changes. Saving
-manual species details replaces the OpenPlantBook data.
+manual species details replaces the OpenPlantBook data. Temperature and humidity values that
+came from OpenPlantBook stay, as your own values.
 
 ## Data and privacy
 

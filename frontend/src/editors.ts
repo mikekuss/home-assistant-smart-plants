@@ -1,9 +1,9 @@
 import { html, nothing } from "lit";
-import { builtin, keys, ownEntityIds, placements, resolveSource, rolePhrase, roleSourceWarning, singleSourcePrimary, sourceWarning, speciesCommonName } from "./model.js";
+import { builtin, keys, ownEntityIds, placements, resolveSource, rolePhrase, roleSourceWarning, singleSourcePrimary, sourceWarning, speciesCommonName, speciesRangesNotApplied } from "./model.js";
 import type { RoleSourceSpec } from "./model.js";
 import { isMessageKey } from "./localize.js";
 import type { Localizer } from "./localize.js";
-import type { HAArea, HAEntity, HAState, MoistureInput, PlantPlacement, RoleSourceInput, SpeciesPreview, SpeciesSnapshot } from "./types.js";
+import type { HAArea, HAEntity, HAState, MoistureInput, PlantPlacement, PlantRecord, RoleSourceInput, SpeciesPreview, SpeciesSnapshot } from "./types.js";
 import { charCount, inputMaxLength, sliceChars } from "./text.js";
 
 export const value = (event: Event): string => (event.target as HTMLInputElement).value;
@@ -103,7 +103,9 @@ export function roleSourcesEditor(l: Localizer, spec: RoleSourceSpec, c: RoleSou
 // Shows the species name, the imported moisture targets and the care notes up
 // front. Provider metadata, per-field sources and the change list are kept in
 // a collapsed section because they matter only when checking where data came from.
-export function snapshotView(l: Localizer, snapshot: SpeciesSnapshot, preview?: SpeciesPreview) {
+// With `plant` (null before the plant exists) it also says which ranges the
+// plant can't take.
+export function snapshotView(l: Localizer, snapshot: SpeciesSnapshot, preview?: SpeciesPreview, plant?: PlantRecord | null) {
   const notSupplied = l.t("common.not_supplied");
   const fields: [string, string | null][] = [
     [l.t("snapshot.provider"), snapshot.provider], [l.t("snapshot.reference"), snapshot.provider_ref], [l.t("snapshot.attribution"), snapshot.attribution],
@@ -111,6 +113,16 @@ export function snapshotView(l: Localizer, snapshot: SpeciesSnapshot, preview?: 
     [l.t("snapshot.confidence"), snapshot.confidence === null ? notSupplied : l.number(snapshot.confidence)], [l.t("snapshot.category"), snapshot.category ?? notSupplied],
   ];
   const moisture = snapshot.threshold_defaults.moisture;
+  // Ranges that become the temperature and air humidity problem thresholds.
+  const bound = (value: number | null | undefined) => value === null || value === undefined ? "—" : l.number(value);
+  const humidity = snapshot.threshold_defaults.humidity;
+  // Only a provider species supplies them; a manual one only describes the plant.
+  const provider = snapshot.source_status === "provider";
+  const ranges = provider ? [
+    ...(typeof snapshot.min_temperature === "number" || typeof snapshot.max_temperature === "number" ? [l.t("snapshot.temperature_range", { min: bound(snapshot.min_temperature), max: bound(snapshot.max_temperature) })] : []),
+    ...(humidity?.min !== undefined || humidity?.max !== undefined ? [l.t("snapshot.humidity_range", { min: bound(humidity?.min), max: bound(humidity?.max) })] : []),
+  ] : [];
+  const notApplied = plant === undefined ? [] : speciesRangesNotApplied(snapshot, plant);
   const care = Object.entries(snapshot.care_text);
   const shortValue = (value: unknown): string => {
     const text = value === null || value === undefined ? "—" : typeof value === "string" ? value : JSON.stringify(value);
@@ -120,6 +132,8 @@ export function snapshotView(l: Localizer, snapshot: SpeciesSnapshot, preview?: 
   return html`<article><h3>${commonName ?? snapshot.latin_name ?? l.t("snapshot.species")}</h3>${snapshot.latin_name && snapshot.latin_name !== commonName ? html`<p><i>${snapshot.latin_name}</i></p>` : nothing}
     <p class="snapshot-targets">${l.t("snapshot.imported_defaults")}: ${keys.map(k => `${thresholdKeyLabel(l, k)} ${moisture?.[k] === undefined ? "—" : l.percent(moisture[k])}`).join(" · ")}</p>
     ${keys.some(k => moisture?.[k] === undefined) ? html`<p class="small muted">${l.t("snapshot.default_not_supplied")}</p>` : nothing}
+    ${ranges.length ? html`<p class="snapshot-ranges">${l.t("snapshot.imported_ranges")}: ${ranges.join(" · ")}</p>` : nothing}
+    ${notApplied.map(role => html`<p class="small muted snapshot-not-applied">${l.t(role === "temperature" ? "snapshot.temperature_range_not_applied" : "snapshot.humidity_range_not_applied")}</p>`)}
     ${care.length ? html`<details><summary>${l.t("snapshot.care_notes")}</summary>${care.map(([k, v]) => html`<h4>${k}</h4><p class="prose">${v}</p>`)}</details>` : nothing}
     <details><summary>${l.t("snapshot.source_details")}</summary>
       <dl>${fields.map(([k, v]) => html`<dt>${k}</dt><dd>${v}</dd>`)}</dl>
