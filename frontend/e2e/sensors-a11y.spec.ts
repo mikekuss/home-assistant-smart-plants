@@ -140,10 +140,28 @@ test("an opened section is as tall as its content", async ({ page }) => {
   for (const section of ["combine", "troubleshooting"]) {
     const panel = page.locator(`smart-plants-panel ha-expansion-panel[data-section="${section}"]`);
     await expect(panel.locator(".expander-body")).toBeVisible();
-    const fits = await panel.evaluate(element => {
+    // Once the opening animation is over, the held height fits the content.
+    await expect.poll(() => panel.evaluate(element => {
       const container = element.shadowRoot!.querySelector<HTMLElement>(".container")!;
       return container.scrollHeight <= container.clientHeight + 1;
-    });
-    expect(fits, section).toBe(true);
+    }), { message: section }).toBe(true);
   }
+});
+
+// Opening a section must leave the height to the panel's animation: once it
+// ends the section follows its content, so an editor opened inside it pushes
+// the next card down instead of covering it.
+test("an open section grows with its content", async ({ page }) => {
+  await openSensors(page);
+  const panel = page.locator('smart-plants-panel ha-expansion-panel[data-section="combine"]');
+  const fits = () => panel.evaluate(element => {
+    const container = element.shadowRoot!.querySelector<HTMLElement>(".container")!;
+    return container.scrollHeight <= container.clientHeight + 1;
+  });
+  await expect.poll(fits).toBe(true);
+  await roleRow(page, "Temperature").locator("button.source-toggle").click();
+  await expect(roleRow(page, "Temperature").getByRole("combobox", { name: "Combine readings", exact: true })).toBeVisible();
+  await expect.poll(fits).toBe(true);
+  const [section, next] = await Promise.all([panel.boundingBox(), page.locator('smart-plants-panel ha-expansion-panel[data-section="troubleshooting"]').boundingBox()]);
+  expect(next!.y).toBeGreaterThanOrEqual(section!.y + section!.height);
 });

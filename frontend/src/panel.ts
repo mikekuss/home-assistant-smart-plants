@@ -326,6 +326,8 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _moistureMode: SourceMode | null = null;
   @state() private _moistureSourceError = "";
   @state() private _expanded: ReadonlySet<Expandable> = new Set();
+  // Sections opened at least once keep their content rendered, see expander().
+  @state() private _opened: ReadonlySet<Expandable> = new Set();
   @state() private _settingsOpen: ReadonlySet<SettingRow> = new Set();
   @state() private _careFilter: CareEvent["kind"] | "all" = "all";
   @state() private _careFormOpen = false;
@@ -750,7 +752,7 @@ export class SmartPlantsPanel extends LitElement {
     this._forgetRelated(); this._related = []; this._relatedAllPlants = []; this._relatedExpanded = new Set();
     if (view.kind === "create") this._wizardStarted = true;
     if (view.kind === "detail") {
-      this._detailSection = "overview"; this._expanded = new Set(); this._settingsOpen = new Set(); this._moistureMode = null;
+      this._detailSection = "overview"; this._expanded = new Set(); this._opened = new Set(); this._settingsOpen = new Set(); this._moistureMode = null;
       this._careFilter = "all"; this._careFormOpen = false; this._careEditingId = null; this._careTaskId = null; this._careKind = "watering"; this._careFields = {};
       const now = new Date(); this._careDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16); this._careNote = "";
       const plant = this._plantById(view.plantId); if (plant) this._beginEdit(plant);
@@ -2264,7 +2266,7 @@ export class SmartPlantsPanel extends LitElement {
     void this._mutate(() => plant.lifecycle_state === "active" ? api.disable(hass, plant.id, plant.revision) : api.reenable(hass, plant.id, plant.revision));
   }
   private _expander(key: Expandable, icon: string, header: string, secondary: string, content: () => ReturnType<typeof html> | typeof nothing) {
-    return expander({ key, icon, header, secondary, content, open: this._expanded.has(key), native: isDefined("ha-expansion-panel"), toggle: open => this._setExpanded(key, open) });
+    return expander({ key, icon, header, secondary, content, open: this._expanded.has(key), rendered: this._opened.has(key), native: isDefined("ha-expansion-panel"), toggle: open => this._setExpanded(key, open), willOpen: () => { this._opened = new Set([...this._opened, key]); } });
   }
   private async _saveRoleSources(role: SourceRole, plant: PlantRecord): Promise<void> {
     if (!this.hass || !this._sourceEdits || this._formBusy || this._blocked || this._conflict) return;
