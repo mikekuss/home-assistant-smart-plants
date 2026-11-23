@@ -108,6 +108,26 @@ describe("winter values logic", () => {
     const draft = { ...winterDraft(p), temperature: { cold_threshold_celsius: "-2", hot_threshold_celsius: "35" } };
     expect(winterPayload(p, draft, ENGLISH).errors).toEqual({});
   });
+  it("offers soil temperature with the air's suggestion, inside the soil limits", () => {
+    const defaults = structuredClone(backendRoleDefaults) as Record<string, Record<string, unknown>>;
+    const roles = { ...plant().roles!, soil_temperature: { ...defaults.soil_temperature, ...source("sensor.mock_soil_temperature") } };
+    const p = plant({ species, roles });
+    expect(winterEditorRoles(p)).toEqual(["temperature", "soil_temperature", "moisture", "illuminance", "conductivity"]);
+    const normal = normalThresholds(p, "soil_temperature");
+    expect(normal).toEqual({ cold_threshold_celsius: 10, cold_clear_celsius: 12, hot_clear_celsius: 32, hot_threshold_celsius: 35 });
+    expect(winterDraft(p).soil_temperature).toEqual({ cold_threshold_celsius: "10", hot_threshold_celsius: "35" });
+    expect(winterSuggestion(ENGLISH, p, "soil_temperature", { cold_threshold_celsius: "10", hot_threshold_celsius: "35" }, normal)?.apply).toEqual({ cold_threshold_celsius: "0" });
+    expect(survivalWarning(ENGLISH, p, { cold_threshold_celsius: "-2" })).toBe("Colder than Oleander survives (0 °C).");
+    // The soil check accepts −20 to 60 °C: a hardy species gets no suggestion.
+    const hardy = { ...p, species: { ...species, snapshot: { ...species.snapshot, survival_min_temperature: -25 } } };
+    expect(winterSuggestion(ENGLISH, hardy, "soil_temperature", { cold_threshold_celsius: "10", hot_threshold_celsius: "35" }, normal)).toBeNull();
+    expect(winterSuggestion(ENGLISH, hardy, "temperature", { cold_threshold_celsius: "10", hot_threshold_celsius: "35" }, normalThresholds(hardy, "temperature"))?.apply).toEqual({ cold_threshold_celsius: "-25" });
+    expect(validateWinterRole("soil_temperature", { cold_threshold_celsius: "-25", hot_threshold_celsius: "35" }, normal, ENGLISH).error).toBe(ENGLISH.t("winter.error_soil_temperature"));
+    const draft = { ...winterDraft(p), soil_temperature: { cold_threshold_celsius: "2", hot_threshold_celsius: "35" } };
+    expect(winterPayload(p, draft, ENGLISH).thresholds).toEqual({ soil_temperature: { cold_threshold_celsius: 2, cold_clear_celsius: 4, hot_threshold_celsius: 35, hot_clear_celsius: 32 } });
+    const reading = { value: 5, unit: "°C", state: "ok", range: { min: 2, target: null, max: 35 }, clear: null, normal_range: { min: 10, target: null, max: 35 }, last_reported: null, sources: [] } as unknown as Parameters<typeof winterRangeText>[2];
+    expect(winterRangeText(ENGLISH, "soil_temperature", reading)).toEqual({ text: "2–35 °C", tooltip: "Winter value. Normally 10–35 °C." });
+  });
   it("describes what changes and when", () => {
     const p = plant({ winter_thresholds: winterSet, rest_period: { start_month: 12, end_month: 2 } });
     expect(winterLines(ENGLISH, p).map(line => line.changed ? `${line.check} ${line.winter} instead of ${line.normal}` : `${line.check}: same`)).toEqual([

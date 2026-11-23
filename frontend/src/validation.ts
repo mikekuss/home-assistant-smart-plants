@@ -58,7 +58,7 @@ export function validPlant(v: unknown): boolean {
     (v.winter_thresholds === undefined || v.winter_thresholds === null || winterThresholds(v.winter_thresholds));
 }
 // The checks that can have winter values; winter.ts uses the same list.
-export const WINTER_ROLES = ["temperature", "moisture", "illuminance", "conductivity", "humidity"] as const;
+export const WINTER_ROLES = ["temperature", "soil_temperature", "moisture", "illuminance", "conductivity", "humidity"] as const;
 // Winter values: one or more known checks, each a map of finite numbers.
 function winterThresholds(v: unknown): boolean {
   return object(v) && Object.keys(v).length > 0 && Object.entries(v).every(([role, values]) => (WINTER_ROLES as readonly string[]).includes(role) &&

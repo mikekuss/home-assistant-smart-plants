@@ -9,13 +9,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Added
 
 - Winter values: a plant kept cool, dry and dark over winter can get its own thresholds for
-  temperature, soil moisture, light, fertilizer level and air humidity. They replace the normal
-  ones during the plant's rest period or while its placement is dormant storage, so an oleander
-  in a 5 °C garage no longer reports *Too cold* all winter. Add them with **Add winter values**
-  under **Settings > Other targets**. The editor starts from the current values and suggests
-  winter values, such as the lowest temperature the species survives. While they apply, the
-  plant page says so, why and until when, and lists what changes. Plants without winter values
-  don't change.
+  temperature, soil temperature, soil moisture, light, fertilizer level and air humidity. They
+  replace the normal ones during the plant's rest period or while its placement is dormant
+  storage, so an oleander in a 5 °C garage no longer reports *Too cold* or *Soil temperature
+  stress* all winter. Add them with **Add winter values** under **Settings > Other targets**.
+  The editor starts from the current values and suggests winter values, such as the lowest
+  temperature the species survives. While they apply, the plant page says so, why and until
+  when, and lists what changes. Plants without winter values don't change.
 - A species from OpenPlantBook now also sets when *Temperature stress* and *Humidity stress* turn
   on. Its preferred temperature range and air humidity range become the triggers, and the clear
   values keep the built-in gap. Values you entered still win. When the species values don't fit
