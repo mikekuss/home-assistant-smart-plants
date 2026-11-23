@@ -139,7 +139,7 @@ import { validState } from "./validation.js";
 import { SNOOZE_PRESETS, activeSnooze, addDays, snoozeChipText, snoozeDateRange, snoozeDateText, snoozeEndDate, snoozeUntil, validSnoozeDate } from "./snooze.js";
 import type { SnoozeChoice } from "./snooze.js";
 import { styles } from "./styles.js";
-import { WINTER_SPECS, changeParts, fieldHint, localWinterReason, nextText, normalThresholds, showWinterHint, survivalWarning, winterChip, winterDraft, winterEditorRoles, winterLines, winterPayload, winterReasonText, winterSuggestion, winterThresholds, winterWhen } from "./winter.js";
+import { WINTER_SPECS, changeParts, fieldHint, localWinterReason, nextText, normalThresholds, showWinterHint, survivalWarning, winterChip, winterDraft, winterEditorRoles, winterLines, winterPayload, rebaseWinterDraft, sameWinterThresholds, winterReasonText, winterSuggestion, winterThresholds, winterWhen } from "./winter.js";
 import type { WinterDraft, WinterLine, WinterRole, WinterThresholds } from "./winter.js";
 import "./wizard.js";
 import "./views/notifications.js";
@@ -284,6 +284,12 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _snoozeDraft: { choice: SnoozeChoice; date: string; error: string } | null = null;
   // Winter values editor draft, and whether the header's winter box is open.
   @state() private _winterDraft: WinterDraft | null = null;
+  // What the winter editor started from: its first draft and the stored
+  // winter values. A change made somewhere else is merged against these.
+  private _winterBase: WinterDraft | null = null;
+  private _winterStored: WinterThresholds | null = null;
+  // Set when the winter values changed somewhere else while the editor was open.
+  @state() private _winterChanged = false;
   @state() private _winterOpen = false;
   // Rest period editor draft.
   @state() private _restEditor: { draft: RestDraft; error: string } | null = null;
@@ -632,6 +638,8 @@ export class SmartPlantsPanel extends LitElement {
           // Care-only changes (a task marked done by an automation, for example)
           // are taken over silently; a save in flight refreshes again when done.
           if (careOnlyChange(this._base, latest) && !this._conflict) { if (!this._formBusy) this._rebaseEdits(this._base, latest); }
+          // The open winter editor shows a change of only the winter values itself.
+          else if (this._dialog === "winter" && !this._conflict && careOnlyChange(this._base, latest, ["winter_thresholds"])) { this._absorbWinterChange(latest); if (!this._formBusy) this._rebaseEdits(this._base, latest); }
           else this._setConflict(this._base, latest);
         }
         // A record the panel cannot read is not a deletion; the notice says which.
@@ -737,8 +745,8 @@ export class SmartPlantsPanel extends LitElement {
   }
   private _areaName(id: string): string { return this._areas.find(a => a.area_id === id)?.name ?? (id || this._l.t("area.none")); }
   private _setConflict(before: PlantRecord, after: PlantRecord): void {
-    const fields = ["name", "acquired_at", "placement", "watering_detection", "category", "tags", "species", "image", "lifecycle_state", "roles"] as const;
-    const changes = fields.filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k])).map(k => k === "roles" ? this._l.t("conflict.roles_changed") : `${this._l.t(`conflict_field.${k}`)}: ${JSON.stringify(before[k])} → ${JSON.stringify(after[k])}`);
+    const fields = ["name", "acquired_at", "placement", "watering_detection", "category", "tags", "species", "image", "lifecycle_state", "roles", "winter_thresholds"] as const;
+    const changes = fields.filter(k => JSON.stringify(before[k]) !== JSON.stringify(after[k])).map(k => k === "roles" ? this._l.t("conflict.roles_changed") : k === "winter_thresholds" ? this._l.t("conflict.winter_changed") : `${this._l.t(`conflict_field.${k}`)}: ${JSON.stringify(before[k])} → ${JSON.stringify(after[k])}`);
     this._conflict = { before, after, changes }; this._preview = null; this._providerRequest++;
   }
   private _beginEdit(plant: PlantRecord): void {
@@ -1284,7 +1292,7 @@ export class SmartPlantsPanel extends LitElement {
       for (const k of keys) if (edits.moisture.threshold_overrides[k] !== beforeMoisture.threshold_overrides[k]) merged.threshold_overrides[k] = edits.moisture.threshold_overrides[k];
       retained.moisture = merged;
     }
-    const fields: Record<SaveKind, (keyof Edits)[]> = { identity: ["name", "acquired", "placement"], taxonomy: ["category", "tagText"], area: ["area"], species: ["common", "latin"], moisture: ["moisture"] };
+    const fields: Record<SaveKind, (keyof Edits)[]> = { identity: ["name", "acquired", "placement", "wateringDetection"], taxonomy: ["category", "tagText"], area: ["area"], species: ["common", "latin"], moisture: ["moisture"] };
     if (saved) for (const key of fields[saved]) delete retained[key];
     this._beginEdit(after); this._edit(retained); this._areaReview = areaReview;
     if (sourceRole && sourceEdits && sourceBaseline) {
@@ -1335,7 +1343,7 @@ export class SmartPlantsPanel extends LitElement {
     void this.updateComplete.then(() => { if (context !== this._context || this._dialog !== kind) return; const dialog = this.shadowRoot?.querySelector("dialog"); if (dialog && !dialog.open) dialog.showModal(); dialog?.querySelector<HTMLElement>(kind === "delete" || kind === "retire" ? "button" : "h2")?.focus(); });
   }
   private _closeDialog(): void {
-    this.shadowRoot?.querySelector("dialog")?.close(); this._dialog = null; this._taskEditor = null; this._automateTaskId = null; this._restEditor = null; this._snoozeDraft = null; this._winterDraft = null;
+    this.shadowRoot?.querySelector("dialog")?.close(); this._dialog = null; this._taskEditor = null; this._automateTaskId = null; this._restEditor = null; this._snoozeDraft = null; this._winterDraft = null; this._winterBase = null; this._winterStored = null; this._winterChanged = false;
     const target = this._focusReturn?.isConnected && !this._focusReturn.matches(":disabled") ? this._focusReturn : this.shadowRoot?.querySelector<HTMLElement>("h1");
     target?.focus(); this._focusReturn = null;
   }
@@ -2340,8 +2348,19 @@ export class SmartPlantsPanel extends LitElement {
   // ---- Winter values ----
   private _openWinterEditor(plant: PlantRecord): void {
     if (this._dialog) this._closeDialog();
-    this._winterDraft = winterDraft(plant);
+    this._winterDraft = winterDraft(plant); this._winterBase = this._winterDraft;
+    this._winterStored = winterThresholds(plant); this._winterChanged = false;
     this._openDialog("winter");
+  }
+  // The winter values changed somewhere else while the editor is open: fields
+  // the user hasn't touched show the new values, and the dialog says so.
+  private _absorbWinterChange(latest: PlantRecord): void {
+    const draft = this._winterDraft; const base = this._winterBase;
+    if (!draft || !base) return;
+    const stored = winterThresholds(latest);
+    if (sameWinterThresholds(stored, this._winterStored)) return;
+    const next = winterDraft(latest);
+    this._winterDraft = rebaseWinterDraft(draft, base, next); this._winterBase = next; this._winterStored = stored; this._winterChanged = true;
   }
   private _editWinter(role: WinterRole, fields: Record<string, string>): void {
     const draft = this._winterDraft;
@@ -2357,17 +2376,37 @@ export class SmartPlantsPanel extends LitElement {
     if (this._dialog) this._closeDialog();
     this._openRestEditor(plant);
   }
-  // Writes the plant's winter values. Returns the written plant, or null after an error.
-  private async _writeWinter(plantId: string, thresholds: WinterThresholds | null): Promise<PlantRecord | null> {
+  // Writes the plant's winter values. `expected` is what the stored winter
+  // values were when the user decided. After a revision conflict the write is
+  // sent again only when nothing but care changed meanwhile, so a change made
+  // somewhere else is never overwritten or saved over unseen. Returns the
+  // written plant, "changed" when the plant changed elsewhere (nothing
+  // written), or null after an error.
+  private async _writeWinter(plantId: string, expected: WinterThresholds | null, thresholds: WinterThresholds | null): Promise<PlantRecord | "changed" | null> {
     const hass = this.hass;
     if (!hass || this._formBusy || this._blocked) return null;
     const context = this._context;
     this._formBusy = true; this._error = ""; this._request++;
+    const send = (revision: number) => api.setWinterThresholds(hass, plantId, revision, thresholds as Record<string, Record<string, number>> | null);
     try {
-      const plant = await this._withRevision(plantId, revision => api.setWinterThresholds(hass, plantId, revision, thresholds as Record<string, Record<string, number>> | null));
+      const current = this._plantById(plantId);
+      if (!current) throw new ApiError("not_found", "Plant not found.");
+      if (!sameWinterThresholds(winterThresholds(current), expected)) return "changed";
+      let plant: PlantRecord;
+      try { plant = await send(current.revision); }
+      catch (e) {
+        if (!(e instanceof ApiError && e.code === "revision_conflict")) throw e;
+        await this._refresh(false);
+        const latest = this._plantById(plantId);
+        if (!latest) throw e;
+        if (!careOnlyChange(current, latest)) return context === this._context ? "changed" : null;
+        plant = await send(latest.revision);
+      }
       if (context !== this._context) return null;
-      // The open plant follows this write instead of reporting it as a change made elsewhere.
-      this._formBusy = false; this._adopt(plant); this._followQuickWrite(plant);
+      // The open plant follows this write instead of reporting it as a change
+      // made elsewhere, also when only care changed in between.
+      this._formBusy = false; this._adopt(plant);
+      if (this._base?.id === plant.id && !this._conflict && careOnlyChange(this._base, plant, ["winter_thresholds"])) this._rebaseEdits(this._base, plant);
       return plant;
     } catch (e) {
       if (context === this._context) this._error = this._friendly(e);
@@ -2381,8 +2420,9 @@ export class SmartPlantsPanel extends LitElement {
     if (!plant || !draft) return;
     const { thresholds, errors } = winterPayload(plant, draft, l);
     if (Object.keys(errors).length) return;
-    const written = await this._writeWinter(plantId, thresholds);
-    if (!written) return;
+    const written = await this._writeWinter(plantId, this._winterStored, thresholds);
+    // On "changed" the dialog stays open and shows the new values.
+    if (!written || written === "changed") return;
     this._closeDialog();
     this._toast(l.t(thresholds === null ? "winter.removed" : "winter.saved"));
   }
@@ -2392,8 +2432,8 @@ export class SmartPlantsPanel extends LitElement {
     const previous = before ? winterThresholds(before) : null;
     this._closeDialog();
     if (!previous) return;
-    const written = await this._writeWinter(plantId, null);
-    if (written) this._toast(l.t("winter.removed"), { text: l.t("winter.undo"), action: () => void this._writeWinter(plantId, previous).then(plant => { this._toast(l.t(plant ? "winter.restored" : "winter.undo_failed")); }) });
+    const written = await this._writeWinter(plantId, previous, null);
+    if (written && written !== "changed") this._toast(l.t("winter.removed"), { text: l.t("winter.undo"), action: () => void this._writeWinter(plantId, null, previous).then(plant => { this._toast(l.t(plant && plant !== "changed" ? "winter.restored" : "winter.undo_failed")); }) });
   }
   private _renderWinterLine(line: WinterLine) {
     if (!line.changed) return html`<li class="same">${this._l.t("winter.same_summary", { check: line.check })}</li>`;
@@ -2436,7 +2476,7 @@ export class SmartPlantsPanel extends LitElement {
     if (!plant || !draft) return nothing;
     const l = this._l; const busy = this._formBusy || this._blocked || !!this._conflict;
     const when = winterWhen(l, plant);
-    const { thresholds, errors } = winterPayload(plant, draft, l);
+    const { thresholds, errors, invalid } = winterPayload(plant, draft, l);
     // Nothing to save when no check differs and the plant has no winter values to remove.
     const unchanged = thresholds === null && !winterThresholds(plant);
     const roles = winterEditorRoles(plant);
@@ -2445,14 +2485,16 @@ export class SmartPlantsPanel extends LitElement {
       <div class="dialog-body">
         <p class="muted" id="winter-intro">${l.t("winter.editor_intro")}</p>
         ${when ? html`<p class="winter-when">${l.t("winter.editor_when", { when })}</p>` : this._renderWinterNever(plant)}
-        ${roles.map(role => this._renderWinterGroup(plant, role, draft[role] ?? {}, errors[role]))}
+        ${roles.map(role => this._renderWinterGroup(plant, role, draft[role] ?? {}, errors[role], invalid[role] ?? []))}
+        ${this._winterChanged && !this._conflict ? html`<p class="notice" role="status">${l.t("winter.changed_elsewhere")}</p>` : nothing}
+        ${this._conflict ? html`<p class="error" role="alert">${l.t("winter.conflict")}</p>` : nothing}
         ${this._error ? html`<p class="error" role="alert">${this._error}</p>` : nothing}
         <div class="actions dialog-actions"><span class="spacer"></span>
           <button type="button" @click=${() => this._closeDialog()}>${l.t("common.cancel")}</button>
           <button type="button" class="primary" ?disabled=${busy || unchanged || Object.keys(errors).length > 0} @click=${() => void this._saveWinter(plant.id)}>${l.t("winter.save")}</button></div>
       </div></dialog>`;
   }
-  private _renderWinterGroup(plant: PlantRecord, role: WinterRole, fields: Record<string, string>, error: string | undefined) {
+  private _renderWinterGroup(plant: PlantRecord, role: WinterRole, fields: Record<string, string>, error: string | undefined, invalid: readonly string[]) {
     const l = this._l; const spec = WINTER_SPECS[role];
     const normal = normalThresholds(plant, role);
     const suggestion = winterSuggestion(l, plant, role, fields, normal);
@@ -2463,8 +2505,9 @@ export class SmartPlantsPanel extends LitElement {
         const hint = fieldHint(l, role, field.key, fields[field.key], normal);
         const warn = warning !== null && field.key === "cold_threshold_celsius";
         const hintId = `winter-${role}-${field.key}-hint`;
+        const bad = !!error && invalid.includes(field.key);
         return html`<div class="winter-field"><label>${l.t(field.label)}<span class="field-suffix"><input type="number" step=${spec.step} inputmode="decimal" class=${warn ? "warn" : hint.changed ? "changed" : ""}
-            .value=${fields[field.key] ?? ""} aria-invalid=${error ? "true" : "false"} aria-describedby=${error ? `${hintId} ${errorId}` : hintId}
+            .value=${fields[field.key] ?? ""} aria-invalid=${bad ? "true" : "false"} aria-describedby=${bad ? `${hintId} ${errorId}` : hintId}
             @input=${(e: Event) => this._editWinter(role, { [field.key]: (e.target as HTMLInputElement).value })}><span aria-hidden="true">${spec.unit}</span></span></label>
           <small id=${hintId} class=${warn ? "warn" : ""}>${warn ? warning : hint.text}${role === "illuminance" ? html` · ${l.t("winter.light_off_hint")}` : nothing}</small></div>`;
       })}</div>
