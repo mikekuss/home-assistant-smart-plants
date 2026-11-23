@@ -165,26 +165,29 @@ the placement.
 
 To add them, open the plant's **Settings** tab, expand **Other targets** and select **Add winter
 values**. The editor shows one group per check the plant has a sensor for: temperature, soil
-moisture, light, fertilizer level and air humidity. It starts from the current values. Change
-only what should be different in winter; a check you leave as it is keeps its normal values.
+temperature, soil moisture, light, fertilizer level and air humidity. It starts from the current
+values. Change only what should be different in winter; a check you leave as it is keeps its
+normal values.
 The values where an alert turns off again keep the same distance as the normal ones. The editor
 suggests:
 
-- for temperature, the lowest temperature the species survives, when OpenPlantBook has it,
+- for temperature and soil temperature, the lowest temperature the species survives, when
+  OpenPlantBook has it (soil temperature accepts −20 to 60 °C, so a colder value isn't
+  suggested there),
 - for soil moisture, about two thirds of the normal *Needs water below* and three quarters of
   *Ideal*,
 - for light, 0 lx, which turns the low light alert off,
 - for fertilizer level, half the normal lower bound.
 
 It suggests nothing for air humidity, because dry heating air is a real problem in winter. A
-temperature floor below the species' survival temperature shows a warning.
+temperature or soil temperature floor below the species' survival temperature shows a warning.
 
 While winter values apply, the plant page shows **Winter values until end of** *month* (rest
 period) or **Winter values · dormant storage**. Select it to see what changes, such as
 *Temperature 0–35 °C instead of 10–35 °C*. Ranges that use a winter value show a snowflake, and
 the overview and the dashboard card show a snowflake next to the status. A plant in dormant
-storage without winter values that reports *Too cold*, *Low light* or *Needs water* offers
-**Add winter values** next to the problem.
+storage without winter values that reports *Too cold*, *Soil too cold*, *Low light* or *Needs
+water* offers **Add winter values** next to the problem.
 
 The problem sensors use the winter values while they apply, so automations keep working
 without changes. The binary sensors of a plant with winter values report whether they apply,

@@ -4,8 +4,8 @@
 // distance to those bounds. The backend decides when winter applies; this
 // module only derives, validates and describes the values.
 import type { Localizer, MessageKey } from "./localize.js";
-import { CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, keys, moistureRole, roleSourceConfig, speciesCommonName, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowLightOverrides, validateTemperatureStressOverrides } from "./model.js";
-import type { ConductivityStressInput, HumidityStressInput, LowLightStressInput, TemperatureStressInput } from "./model.js";
+import { CONDUCTIVITY_STRESS_BUILTIN_DEFAULTS, HUMIDITY_STRESS_BUILTIN_DEFAULTS, LOW_LIGHT_STRESS_BUILTIN_DEFAULTS, SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, TEMPERATURE_STRESS_BUILTIN_DEFAULTS, keys, moistureRole, roleSourceConfig, speciesCommonName, validateConductivityStressOverrides, validateHumidityStressOverrides, validateLowLightOverrides, validateSoilTemperatureStressOverrides, validateTemperatureStressOverrides } from "./model.js";
+import type { ConductivityStressInput, HumidityStressInput, LowLightStressInput, SoilTemperatureStressInput, TemperatureStressInput } from "./model.js";
 import type { PlantOverview, PlantProblem, RoleReading, WinterReason, WinterView } from "./overview-model.js";
 import { formatRange, formatValue, readingLabel } from "./status.js";
 import type { TargetRange } from "./status.js";
@@ -39,6 +39,11 @@ interface WinterSpec {
 export const WINTER_SPECS: Record<WinterRole, WinterSpec> = {
   temperature: {
     unit: "°C", step: "0.1", builtin: TEMPERATURE_STRESS_BUILTIN_DEFAULTS, error: "winter.error_temperature",
+    keys: ["cold_threshold_celsius", "cold_clear_celsius", "hot_clear_celsius", "hot_threshold_celsius"],
+    fields: [{ key: "cold_threshold_celsius", label: "winter.field_cold", clear: "cold_clear_celsius" }, { key: "hot_threshold_celsius", label: "winter.field_hot", clear: "hot_clear_celsius" }],
+  },
+  soil_temperature: {
+    unit: "°C", step: "0.1", builtin: SOIL_TEMPERATURE_STRESS_BUILTIN_DEFAULTS, error: "winter.error_soil_temperature",
     keys: ["cold_threshold_celsius", "cold_clear_celsius", "hot_clear_celsius", "hot_threshold_celsius"],
     fields: [{ key: "cold_threshold_celsius", label: "winter.field_cold", clear: "cold_clear_celsius" }, { key: "hot_threshold_celsius", label: "winter.field_hot", clear: "hot_clear_celsius" }],
   },
@@ -168,6 +173,7 @@ export function validateWinterRole(role: WinterRole, fields: Record<string, stri
       return ok ? { values, error: null } : fail;
     }
     case "temperature": return validateTemperatureStressOverrides(text as TemperatureStressInput, l).error ? fail : { values, error: null };
+    case "soil_temperature": return validateSoilTemperatureStressOverrides(text as SoilTemperatureStressInput, l).error ? fail : { values, error: null };
     case "humidity": return validateHumidityStressOverrides(text as HumidityStressInput, l).error ? fail : { values, error: null };
     case "conductivity": return validateConductivityStressOverrides(text as ConductivityStressInput, l).error ? fail : { values, error: null };
     case "illuminance": return validateLowLightOverrides(text as LowLightStressInput, l).error ? fail : { values, error: null };
@@ -224,9 +230,14 @@ export interface WinterSuggestion { text: string; apply: Record<string, string> 
 export function winterSuggestion(l: Localizer, plant: PlantRecord, role: WinterRole, fields: Record<string, string> | undefined, normal: Record<string, number>): WinterSuggestion | null {
   const current = (key: string) => parseField(fields?.[key]);
   switch (role) {
-    case "temperature": {
+    case "temperature":
+    case "soil_temperature": {
+      // Both checks suggest the lowest temperature the species survives.
       const survival = survivalTemperature(plant);
       if (survival === null || current("cold_threshold_celsius") === survival) return null;
+      // Soil temperature accepts a narrower range than the air (−20 to 60 °C),
+      // so a hardy species' survival value may not fit it.
+      if (role === "soil_temperature" && validateWinterRole(role, { cold_threshold_celsius: String(survival), hot_threshold_celsius: String(normal.hot_threshold_celsius) }, normal, l).error) return null;
       return { text: l.t("winter.suggest_temperature", { value: formatValue(l, survival, "°C"), species: speciesName(l, plant) }), apply: { cold_threshold_celsius: String(survival) } };
     }
     case "moisture": {
@@ -262,7 +273,8 @@ export function survivalWarning(l: Localizer, plant: PlantRecord, fields: Record
 // The target range a set of thresholds gives, as the plant page shows ranges.
 export function winterRange(role: WinterRole, values: Record<string, number>): TargetRange {
   switch (role) {
-    case "temperature": return { min: values.cold_threshold_celsius!, max: values.hot_threshold_celsius! };
+    case "temperature":
+    case "soil_temperature": return { min: values.cold_threshold_celsius!, max: values.hot_threshold_celsius! };
     case "moisture": return { min: values.min!, target: values.target!, max: values.max! };
     case "illuminance": return { min: values.target_lux!, max: null };
     case "conductivity": return { min: values.low_threshold_micro_siemens_per_cm!, max: values.high_threshold_micro_siemens_per_cm! };
@@ -366,7 +378,7 @@ export function winterRangeText(l: Localizer, role: string, reading: RoleReading
 }
 
 // Problems the hint offers winter values for.
-const HINT_PROBLEMS: readonly PlantProblem[] = [{ role: "temperature", kind: "too_cold" }, { role: "illuminance", kind: "low_light" }, { role: "moisture", kind: "needs_water" }];
+const HINT_PROBLEMS: readonly PlantProblem[] = [{ role: "temperature", kind: "too_cold" }, { role: "soil_temperature", kind: "too_cold" }, { role: "illuminance", kind: "low_light" }, { role: "moisture", kind: "needs_water" }];
 // The "In dormant storage? Add winter values" hint: only for a plant in
 // dormant storage without winter values that shows one of those problems.
 export function showWinterHint(plant: PlantRecord, overview: PlantOverview | undefined): boolean {

@@ -215,6 +215,8 @@ async def test_current_minor_requires_the_winter_field(
         {"moisture": {"min": 30, "target": 20, "max": 55}},
         {"illuminance": {"target_lux": 0.0, "clear_lux": 5.0}},
         {"humidity": "dry"},
+        # Soil temperature accepts -20 to 60 °C, a narrower range than the air.
+        {"soil_temperature": {**WINTER_TEMPERATURE, "cold_threshold_celsius": -25.0}},
         ["temperature"],
     ],
 )
@@ -820,3 +822,121 @@ async def test_diagnostics_do_not_count_paused_plants_as_active(
 
     assert inventory["winter_values_count"] == 1
     assert inventory["winter_values_active_count"] == 0
+
+
+# --- Soil temperature ---------------------------------------------------------
+
+SOIL_TEMPERATURE_SENSOR = "sensor.mock_garage_soil_temperature"
+
+
+async def _garage_oleander_soil(
+    hass: HomeAssistant, manager: SmartPlantsManager, *, celsius: str = "5"
+) -> PlantRecord:
+    """Oleander with a soil temperature sensor in a cold garage."""
+    hass.states.async_set(
+        SOIL_TEMPERATURE_SENSOR, celsius, {"unit_of_measurement": "°C"}
+    )
+    plant = await manager.async_create_plant(name="Oleander")
+    plant = await manager.async_set_role_sources(
+        plant.id,
+        role="soil_temperature",
+        expected_revision=plant.revision,
+        sources=[{"entity_id": SOIL_TEMPERATURE_SENSOR}],
+    )
+    await hass.async_block_till_done()
+    return plant
+
+
+def _soil_temperature_stress(manager: SmartPlantsManager, plant_id: str) -> str:
+    controller = manager.get_role_controller(plant_id, "soil_temperature")
+    assert controller is not None
+    evaluation = controller.current_evaluation
+    return str(evaluation.soil_temperature_stress.reason)
+
+
+async def test_soil_temperature_winter_values_end_the_cold_alert(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    # Soil at 5 °C is too cold below the normal 10 °C. In dormant storage the
+    # winter floor of 2 °C applies, so the alert ends at once and the overview
+    # shows the winter range next to the normal one.
+    entry = await _setup(hass)
+    client = await hass_ws_client(hass)
+    freezer.move_to(JUNE)
+    manager = _manager(entry)
+    plant = await _garage_oleander_soil(hass, manager)
+    plant = await manager.async_set_winter_thresholds(
+        plant.id,
+        expected_revision=plant.revision,
+        winter_thresholds={
+            "soil_temperature": {
+                "cold_threshold_celsius": 2.0,
+                "cold_clear_celsius": 4.0,
+                "hot_clear_celsius": 32.0,
+                "hot_threshold_celsius": 35.0,
+            }
+        },
+    )
+    await hass.async_block_till_done()
+    assert _soil_temperature_stress(manager, plant.id) == "cold_stress"
+
+    plant = await manager.async_update_plant(
+        plant.id,
+        expected_revision=plant.revision,
+        placement=PlantPlacement(mode="dormant_storage"),
+    )
+    await hass.async_block_till_done()
+
+    assert _soil_temperature_stress(manager, plant.id) == "soil_temperature_ok"
+    attributes = _binary_attributes(hass, manager, plant.id, "soil_temperature_stress")
+    assert attributes["winter_values"] is True
+    assert attributes["winter_reason"] == "dormant_storage"
+    overview = await _send(client, {"type": "smart_plants/plants/overview"})
+    (summary,) = overview["result"]["plants"]
+    soil = summary["roles"]["soil_temperature"]
+    assert soil["range"]["min"] == 2.0
+    assert soil["normal_range"]["min"] == 10.0
+    assert summary["winter"]["roles"] == ["soil_temperature"]
+
+    # Back in its normal place, the normal floor applies again.
+    await manager.async_update_plant(
+        plant.id, expected_revision=plant.revision, placement=None
+    )
+    await hass.async_block_till_done()
+    assert _soil_temperature_stress(manager, plant.id) == "cold_stress"
+
+
+async def test_soil_temperature_switch_keeps_an_unchanged_side(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    # The winter values keep the normal cold bounds (10/12 °C): too cold at
+    # 11 °C stays on when winter starts.
+    freezer.move_to(JUNE)
+    manager = _manager(await _setup(hass))
+    plant = await _garage_oleander_soil(hass, manager, celsius="5")
+    plant = await manager.async_set_winter_thresholds(
+        plant.id,
+        expected_revision=plant.revision,
+        winter_thresholds={
+            "soil_temperature": {
+                "cold_threshold_celsius": 10.0,
+                "cold_clear_celsius": 12.0,
+                "hot_clear_celsius": 28.0,
+                "hot_threshold_celsius": 30.0,
+            }
+        },
+    )
+    hass.states.async_set(SOIL_TEMPERATURE_SENSOR, "11", {"unit_of_measurement": "°C"})
+    await hass.async_block_till_done()
+    assert _soil_temperature_stress(manager, plant.id) == "cold_stress"
+
+    await manager.async_update_plant(
+        plant.id,
+        expected_revision=plant.revision,
+        placement=PlantPlacement(mode="dormant_storage"),
+    )
+    await hass.async_block_till_done()
+
+    assert _soil_temperature_stress(manager, plant.id) == "cold_stress"

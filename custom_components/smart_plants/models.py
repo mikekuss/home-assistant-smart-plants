@@ -2865,6 +2865,7 @@ def thresholds_changed(previous: Any, config: Any, keys: Iterable[str]) -> bool:
 # Roles whose problem thresholds a plant can replace with winter values.
 WINTER_THRESHOLD_ROLES: Final = (
     "temperature",
+    "soil_temperature",
     "moisture",
     "illuminance",
     "conductivity",

@@ -1346,6 +1346,7 @@ export const en = {
   "winter.use": "Use",
   "winter.warn_survival": "Colder than {species} survives ({value}).",
   "winter.error_temperature": "Keep Too cold below well under Too warm above, between −40 and 80 °C.",
+  "winter.error_soil_temperature": "Keep Too cold below well under Too warm above, between −20 and 60 °C.",
   "winter.error_moisture": "Use whole numbers from 1 to 99 that go up from Needs water below to Ideal to Too wet above, at least 4 % apart from first to last.",
   "winter.error_light": "Enter a value from 0 to {max} lx.",
   "winter.error_conductivity": "Keep Too low below well under Too high above, between 0 and 10,000 µS/cm.",

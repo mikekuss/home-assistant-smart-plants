@@ -1347,6 +1347,7 @@ export const de: Catalog = {
   "winter.use": "Übernehmen",
   "winter.warn_survival": "Kälter, als {species} verträgt ({value}).",
   "winter.error_temperature": "„Zu kalt unter“ muss deutlich unter „Zu warm über“ liegen, zwischen −40 und 80 °C.",
+  "winter.error_soil_temperature": "„Zu kalt unter“ muss deutlich unter „Zu warm über“ liegen, zwischen −20 und 60 °C.",
   "winter.error_moisture": "Nutze ganze Zahlen von 1 bis 99, die von „Braucht Wasser unter“ über „Ideal“ bis „Zu nass über“ ansteigen, vom ersten bis zum letzten Wert mindestens 4 % auseinander.",
   "winter.error_light": "Gib einen Wert von 0 bis {max} lx ein.",
   "winter.error_conductivity": "„Zu niedrig unter“ muss deutlich unter „Zu hoch über“ liegen, zwischen 0 und 10.000 µS/cm.",

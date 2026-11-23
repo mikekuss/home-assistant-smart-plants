@@ -628,6 +628,7 @@ function rt(e) {
 }
 var it = [
 	"temperature",
+	"soil_temperature",
 	"moisture",
 	"illuminance",
 	"conductivity",
@@ -3308,6 +3309,7 @@ var Gn = {
 	"winter.use": "Übernehmen",
 	"winter.warn_survival": "Kälter, als {species} verträgt ({value}).",
 	"winter.error_temperature": "„Zu kalt unter“ muss deutlich unter „Zu warm über“ liegen, zwischen −40 und 80 °C.",
+	"winter.error_soil_temperature": "„Zu kalt unter“ muss deutlich unter „Zu warm über“ liegen, zwischen −20 und 60 °C.",
 	"winter.error_moisture": "Nutze ganze Zahlen von 1 bis 99, die von „Braucht Wasser unter“ über „Ideal“ bis „Zu nass über“ ansteigen, vom ersten bis zum letzten Wert mindestens 4 % auseinander.",
 	"winter.error_light": "Gib einen Wert von 0 bis {max} lx ein.",
 	"winter.error_conductivity": "„Zu niedrig unter“ muss deutlich unter „Zu hoch über“ liegen, zwischen 0 und 10.000 µS/cm.",
@@ -4629,6 +4631,7 @@ var Gn = {
 	"winter.use": "Use",
 	"winter.warn_survival": "Colder than {species} survives ({value}).",
 	"winter.error_temperature": "Keep Too cold below well under Too warm above, between −40 and 80 °C.",
+	"winter.error_soil_temperature": "Keep Too cold below well under Too warm above, between −20 and 60 °C.",
 	"winter.error_moisture": "Use whole numbers from 1 to 99 that go up from Needs water below to Ideal to Too wet above, at least 4 % apart from first to last.",
 	"winter.error_light": "Enter a value from 0 to {max} lx.",
 	"winter.error_conductivity": "Keep Too low below well under Too high above, between 0 and 10,000 µS/cm.",
@@ -8313,6 +8316,27 @@ var hs = 2e5, gs = "dormant_storage", _s = {
 			clear: "hot_clear_celsius"
 		}]
 	},
+	soil_temperature: {
+		unit: "°C",
+		step: "0.1",
+		builtin: Qr,
+		error: "winter.error_soil_temperature",
+		keys: [
+			"cold_threshold_celsius",
+			"cold_clear_celsius",
+			"hot_clear_celsius",
+			"hot_threshold_celsius"
+		],
+		fields: [{
+			key: "cold_threshold_celsius",
+			label: "winter.field_cold",
+			clear: "cold_clear_celsius"
+		}, {
+			key: "hot_threshold_celsius",
+			label: "winter.field_hot",
+			clear: "hot_clear_celsius"
+		}]
+	},
 	moisture: {
 		unit: "%",
 		step: "1",
@@ -8480,6 +8504,10 @@ function Os(e, t, n, r) {
 			values: c,
 			error: null
 		};
+		case "soil_temperature": return ai(l, r).error ? o : {
+			values: c,
+			error: null
+		};
 		case "humidity": return Ar(l, r).error ? o : {
 			values: c,
 			error: null
@@ -8536,14 +8564,18 @@ function Ps(e, t) {
 function Fs(e, t, n, r, i) {
 	let a = (e) => Es(r?.[e]);
 	switch (n) {
-		case "temperature": {
-			let n = Ns(t);
-			return n === null || a("cold_threshold_celsius") === n ? null : {
+		case "temperature":
+		case "soil_temperature": {
+			let r = Ns(t);
+			return r === null || a("cold_threshold_celsius") === r || n === "soil_temperature" && Os(n, {
+				cold_threshold_celsius: String(r),
+				hot_threshold_celsius: String(i.hot_threshold_celsius)
+			}, i, e).error ? null : {
 				text: e.t("winter.suggest_temperature", {
-					value: N(e, n, "°C"),
+					value: N(e, r, "°C"),
 					species: Ms(e, t)
 				}),
-				apply: { cold_threshold_celsius: String(n) }
+				apply: { cold_threshold_celsius: String(r) }
 			};
 		}
 		case "moisture": {
@@ -8588,7 +8620,8 @@ function Is(e, t, n) {
 }
 function Ls(e, t) {
 	switch (e) {
-		case "temperature": return {
+		case "temperature":
+		case "soil_temperature": return {
 			min: t.cold_threshold_celsius,
 			max: t.hot_threshold_celsius
 		};
@@ -8694,6 +8727,10 @@ function Xs(e, t, n) {
 var Zs = [
 	{
 		role: "temperature",
+		kind: "too_cold"
+	},
+	{
+		role: "soil_temperature",
 		kind: "too_cold"
 	},
 	{
@@ -14180,7 +14217,7 @@ var $ = class e extends S {
       </div></dialog>`;
 	}
 	_renderWinterGroup(e, t, n, r) {
-		let i = this._l, a = _s[t], o = ws(e, t), s = Fs(i, e, t, n, o), c = t === "temperature" ? Is(i, e, n) : null, l = `winter-${t}-error`;
+		let i = this._l, a = _s[t], o = ws(e, t), s = Fs(i, e, t, n, o), c = t === "temperature" || t === "soil_temperature" ? Is(i, e, n) : null, l = `winter-${t}-error`;
 		return b`<fieldset class="winter-group"><legend><ha-icon aria-hidden="true" .icon=${j[t].icon}></ha-icon>${M(i, t)}</legend>
       <div class="winter-fields">${a.fields.map((e) => {
 			let s = js(i, t, e.key, n[e.key], o), u = c !== null && e.key === "cold_threshold_celsius", d = `winter-${t}-${e.key}-hint`;
