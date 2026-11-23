@@ -186,8 +186,8 @@ While winter values apply, the plant page shows **Winter values until end of** *
 period) or **Winter values · dormant storage**. Select it to see what changes, such as
 *Temperature 0–35 °C instead of 10–35 °C*. Ranges that use a winter value show a snowflake, and
 the overview and the dashboard card show a snowflake next to the status. A plant in dormant
-storage without winter values that reports *Too cold*, *Low light* or *Needs water* offers
-**Add winter values** next to the problem.
+storage without winter values that reports *Too cold*, *Soil too cold*, *Low light* or *Needs
+water* offers **Add winter values** next to the problem.
 
 The problem sensors use the winter values while they apply, so automations keep working
 without changes. The binary sensors of a plant with winter values report whether they apply,

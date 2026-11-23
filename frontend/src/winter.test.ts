@@ -167,6 +167,9 @@ describe("winter values logic", () => {
     expect(showWinterHint(plant({ placement: storage }), cold)).toBe(true);
     expect(showWinterHint(plant({ placement: storage }), { ...cold, problems: [{ role: "moisture", kind: "needs_water" }] })).toBe(true);
     expect(showWinterHint(plant({ placement: storage }), { ...cold, problems: [{ role: "illuminance", kind: "low_light" }] })).toBe(true);
+    expect(showWinterHint(plant({ placement: storage }), { ...cold, problems: [{ role: "soil_temperature", kind: "too_cold" }] })).toBe(true);
+    expect(showWinterHint(plant({ placement: storage }), { ...cold, problems: [{ role: "soil_temperature", kind: "too_hot" }] })).toBe(false);
+    expect(showWinterHint(plant(), { ...cold, problems: [{ role: "soil_temperature", kind: "too_cold" }] })).toBe(false);
     // Hidden by default: another problem, no problem, another placement, a
     // rest period alone, or winter values already set.
     expect(showWinterHint(plant({ placement: storage }), { ...cold, problems: [{ role: "temperature", kind: "too_hot" }] })).toBe(false);

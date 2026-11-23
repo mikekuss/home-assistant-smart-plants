@@ -8730,6 +8730,10 @@ var Zs = [
 		kind: "too_cold"
 	},
 	{
+		role: "soil_temperature",
+		kind: "too_cold"
+	},
+	{
 		role: "illuminance",
 		kind: "low_light"
 	},

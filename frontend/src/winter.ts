@@ -378,7 +378,7 @@ export function winterRangeText(l: Localizer, role: string, reading: RoleReading
 }
 
 // Problems the hint offers winter values for.
-const HINT_PROBLEMS: readonly PlantProblem[] = [{ role: "temperature", kind: "too_cold" }, { role: "illuminance", kind: "low_light" }, { role: "moisture", kind: "needs_water" }];
+const HINT_PROBLEMS: readonly PlantProblem[] = [{ role: "temperature", kind: "too_cold" }, { role: "soil_temperature", kind: "too_cold" }, { role: "illuminance", kind: "low_light" }, { role: "moisture", kind: "needs_water" }];
 // The "In dormant storage? Add winter values" hint: only for a plant in
 // dormant storage without winter values that shows one of those problems.
 export function showWinterHint(plant: PlantRecord, overview: PlantOverview | undefined): boolean {
