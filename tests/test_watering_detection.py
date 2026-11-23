@@ -16,7 +16,7 @@ from unittest.mock import patch
 
 import pytest
 from custom_components.smart_plants import button as button_module
-from custom_components.smart_plants.care import CareEvent
+from custom_components.smart_plants.care import CareEvent, care_summary
 from custom_components.smart_plants.const import (
     DOMAIN,
     SINGLETON_UNIQUE_ID,
@@ -34,11 +34,15 @@ from custom_components.smart_plants.storage import (
     SmartPlantsStore,
 )
 from custom_components.smart_plants.watering_detector import WateringDetector
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_mock_service,
+)
 from pytest_homeassistant_custom_component.typing import WebSocketGenerator
 
 from tests.helpers import plant_device
@@ -652,3 +656,149 @@ async def test_older_storage_cannot_hold_a_detected_watering(
     hass_storage[STORAGE_KEY] = _older_storage(plant)
     with pytest.raises(SmartPlantsInvalidStorageError, match="detected waterings"):
         await SmartPlantsStore(hass).async_load()
+
+
+def _state(hass: HomeAssistant, entity_id: str) -> str:
+    state = hass.states.get(entity_id)
+    assert state is not None
+    return state.state
+
+
+def _too_wet_entity(hass: HomeAssistant, plant_id: str) -> str:
+    device = plant_device(dr.async_get(hass), plant_id)
+    assert device is not None
+    (entity_id,) = (
+        entry.entity_id
+        for entry in er.async_entries_for_device(er.async_get(hass), device.id)
+        if entry.domain == "binary_sensor" and entry.entity_id.endswith("_too_wet")
+    )
+    return entity_id
+
+
+async def _wet_plant(
+    manager: SmartPlantsManager, hass: HomeAssistant
+) -> tuple[PlantRecord, str, list[str | None]]:
+    """Return an indoor plant at 40 % (max 55 %), its Too wet sensor and states."""
+    hass.states.async_set(SOIL, "40", PERCENT)
+    plant = await manager.async_create_plant(
+        name="Aloe", placement=PlantPlacement(mode="indoor")
+    )
+    plant = await manager.async_set_moisture_thresholds(
+        plant.id,
+        expected_revision=plant.revision,
+        moisture_min=20,
+        moisture_target=40,
+        moisture_max=55,
+    )
+    plant = await manager.async_set_moisture_sources(
+        plant.id, expected_revision=plant.revision, sources=[{"entity_id": SOIL}]
+    )
+    await hass.async_block_till_done()
+    assert _waterings(manager, plant.id) == []
+    too_wet = _too_wet_entity(hass, plant.id)
+    assert _state(hass, too_wet) == "off"
+    states: list[str | None] = []
+
+    @callback
+    def _record(event: Event) -> None:
+        if event.data["entity_id"] == too_wet:
+            new_state = event.data["new_state"]
+            states.append(new_state.state if new_state is not None else None)
+
+    hass.bus.async_listen("state_changed", _record)
+    return plant, too_wet, states
+
+
+async def test_a_detected_watering_never_turns_too_wet_on(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    freezer.move_to(T0)
+    manager = await _setup(hass)
+    plant, too_wet, states = await _wet_plant(manager, hass)
+    device = plant_device(dr.async_get(hass), plant.id)
+    assert device is not None
+    calls = async_mock_service(hass, "test", "record")
+    assert await async_setup_component(
+        hass,
+        "automation",
+        {
+            "automation": {
+                "alias": "too wet",
+                "triggers": [
+                    {
+                        "trigger": "smart_plants.problem_started",
+                        "target": {"device_id": device.id},
+                        "options": {"problems": ["too_wet"]},
+                    }
+                ],
+                "actions": [{"action": "test.record"}],
+            }
+        },
+    )
+    await hass.async_block_till_done()
+
+    # The water reaches the sensor: far above the maximum within a minute.
+    freezer.move_to(T0 + timedelta(minutes=1))
+    hass.states.async_set(SOIL, "90", PERCENT)
+    await hass.async_block_till_done()
+
+    (event,) = _waterings(manager, plant.id)
+    assert event.provenance == "sensor"
+    assert "on" not in states
+    assert _state(hass, too_wet) == "off"
+    assert calls == []
+
+    # The grace now comes from the logged watering and lasts its 24 hours.
+    freezer.move_to(T0 + timedelta(hours=2))
+    hass.states.async_set(SOIL, "88", PERCENT)
+    await hass.async_block_till_done()
+    assert "on" not in states
+    assert calls == []
+
+    # Without the logged watering, the soil is too wet and the automation runs.
+    await manager.async_delete_care_event(
+        plant.id, expected_revision=_revision(manager, plant.id), event_id=event.id
+    )
+    await hass.async_block_till_done()
+    assert _state(hass, too_wet) == "on"
+    assert len(calls) == 1
+
+
+async def test_a_detected_watering_that_is_not_saved_gets_no_grace(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    freezer.move_to(T0)
+    manager = await _setup(hass)
+    plant, too_wet, _states = await _wet_plant(manager, hass)
+
+    freezer.move_to(T0 + timedelta(minutes=1))
+    with patch.object(
+        manager, "async_add_watering", side_effect=RuntimeError("storage full")
+    ):
+        hass.states.async_set(SOIL, "90", PERCENT)
+        await hass.async_block_till_done()
+
+    assert _waterings(manager, plant.id) == []
+    assert _state(hass, too_wet) == "on"
+
+
+async def test_a_detected_watering_gets_the_local_date(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    await hass.config.async_set_time_zone("Europe/Berlin")
+    # 00:30 on 23 November in Berlin is still the 22nd in UTC.
+    start = datetime(2026, 11, 22, 23, 29, 5, 123456, tzinfo=UTC)
+    freezer.move_to(start)
+    manager = await _setup(hass)
+    plant = await _plant(manager, hass)
+
+    freezer.move_to(start + timedelta(minutes=1))
+    hass.states.async_set(SOIL, "95", PERCENT)
+    await hass.async_block_till_done()
+
+    (event,) = _waterings(manager, plant.id)
+    assert event.occurred_at == "2026-11-23T00:30:05+01:00"
+    assert event.local_date == "2026-11-23"
+    current = manager.get_plant(plant.id)
+    assert current is not None
+    assert care_summary(current.care_events)["last_watered_local_date"] == "2026-11-23"
