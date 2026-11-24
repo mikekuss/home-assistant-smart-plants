@@ -19,6 +19,7 @@ following the same two-phase pattern as the device reconciler.
 
 from __future__ import annotations
 
+import contextlib
 import io
 import logging
 import os
@@ -519,15 +520,22 @@ def write_variant_file(
 
     Written like ``write_image_file``: a crash mid-write must not leave a
     truncated file that browsers would keep showing as a broken picture.
+    A failed write (a full disk) removes its temp file, so the partial copy
+    does not take up space until the photo is removed.
     """
     name = _variant_file_name(image_id, size)
     variants_dir.mkdir(parents=True, exist_ok=True)
     tmp = variants_dir / f".{name}.tmp"
-    with tmp.open("wb") as handle:
-        handle.write(data)
-        handle.flush()
-        os.fsync(handle.fileno())
-    tmp.replace(variants_dir / name)
+    try:
+        with tmp.open("wb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        tmp.replace(variants_dir / name)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            tmp.unlink(missing_ok=True)
+        raise
 
 
 def delete_variant_files(variants_dir: Path, image_id: str) -> int:

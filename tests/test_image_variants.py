@@ -7,8 +7,10 @@ are plain Pillow and filesystem code.
 
 from __future__ import annotations
 
+import errno
 import io
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from custom_components.smart_plants.const import (
@@ -106,6 +108,19 @@ def test_variant_files_round_trip(tmp_path: Path) -> None:
     assert delete_variant_files(variants, _ID) == 2
     assert list(variants.iterdir()) == []
     assert delete_variant_files(variants, _ID) == 0
+
+
+def test_a_failed_variant_write_leaves_no_temp_file(tmp_path: Path) -> None:
+    variants = tmp_path / "thumbs"
+    with (
+        patch(
+            "custom_components.smart_plants.images.os.fsync",
+            side_effect=OSError(errno.ENOSPC, "No space left on device"),
+        ),
+        pytest.raises(OSError, match="No space"),
+    ):
+        write_variant_file(variants, _ID, "thumb", b"small")
+    assert list(variants.iterdir()) == []
 
 
 @pytest.mark.parametrize(
