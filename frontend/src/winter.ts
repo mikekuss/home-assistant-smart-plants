@@ -13,13 +13,10 @@ import { monthName, monthRange } from "./care-plan.js";
 import type { PlantRecord } from "./types.js";
 import { WINTER_ROLES } from "./validation.js";
 
-// Checks a plant can give winter values, in the order the editor lists them.
-export { WINTER_ROLES };
 // The highest light threshold the backend accepts.
 const LOW_LIGHT_MAX_LUX = 200_000;
 export type WinterRole = typeof WINTER_ROLES[number];
 export type WinterThresholds = Partial<Record<WinterRole, Record<string, number>>>;
-export type { WinterReason, WinterView } from "./overview-model.js";
 export const DORMANT_STORAGE = "dormant_storage";
 
 interface WinterField {
@@ -131,6 +128,20 @@ export function winterDraft(plant: PlantRecord): WinterDraft {
   }));
 }
 
+// The editor's draft after the stored winter values changed somewhere else:
+// fields the user changed since `base` keep their text, every other field
+// shows the new value from `next`.
+export function rebaseWinterDraft(draft: WinterDraft, base: WinterDraft, next: WinterDraft): WinterDraft {
+  return Object.fromEntries(Object.entries(next).map(([role, fields]) => {
+    const own = draft[role as WinterRole] ?? {}; const was = base[role as WinterRole] ?? {};
+    return [role, Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, own[key] !== undefined && own[key] !== was[key] ? own[key] : value]))];
+  }));
+}
+// Whether two sets of stored winter values are the same.
+export function sameWinterThresholds(a: WinterThresholds | null, b: WinterThresholds | null): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function parseField(text: string | undefined): number | null {
   const trimmed = (text ?? "").trim();
   if (trimmed === "") return null;
@@ -152,31 +163,31 @@ export function deriveWinterValues(role: WinterRole, bounds: Record<string, numb
 
 // One check's winter values, checked with the rules of its normal editor.
 // `values` holds every threshold key; null while a field is invalid.
-export function validateWinterRole(role: WinterRole, fields: Record<string, string>, normal: Record<string, number>, l: Localizer): { values: Record<string, number> | null; error: string | null } {
+// `invalid` names the fields the error is about: the empty ones, or every
+// field of the check when the values don't fit together.
+export function validateWinterRole(role: WinterRole, fields: Record<string, string>, normal: Record<string, number>, l: Localizer): { values: Record<string, number> | null; error: string | null; invalid: string[] } {
   const spec = WINTER_SPECS[role];
   // The light clear value keeps the normal distance above the target and
   // can't pass the 200,000 lx limit, so the target's upper bound depends on it.
   const lightMax = LOW_LIGHT_MAX_LUX - (normal.clear_lux! - normal.target_lux!);
-  const fail = { values: null, error: role === "illuminance" ? l.t(spec.error, { max: l.number(lightMax) }) : l.t(spec.error) };
-  const bounds: Record<string, number> = {};
-  for (const field of spec.fields) {
-    const value = parseField(fields[field.key]);
-    if (value === null) return fail;
-    bounds[field.key] = value;
-  }
+  const fail = { values: null, error: role === "illuminance" ? l.t(spec.error, { max: l.number(lightMax) }) : l.t(spec.error), invalid: spec.fields.map(field => field.key) };
+  const empty = spec.fields.filter(field => parseField(fields[field.key]) === null).map(field => field.key);
+  if (empty.length) return { values: null, error: l.t("winter.error_empty"), invalid: empty };
+  const bounds = Object.fromEntries(spec.fields.map(field => [field.key, parseField(fields[field.key])!]));
+  const ok = { values: null as Record<string, number> | null, error: null, invalid: [] as string[] };
   const values = deriveWinterValues(role, bounds, normal);
   const text = Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(value)]));
   switch (role) {
     case "moisture": {
       const [min, target, max] = [values.min!, values.target!, values.max!];
-      const ok = [min, target, max].every(v => Number.isInteger(v) && v >= 1 && v <= 99) && min < target && target < max && max - min >= 4;
-      return ok ? { values, error: null } : fail;
+      const valid = [min, target, max].every(v => Number.isInteger(v) && v >= 1 && v <= 99) && min < target && target < max && max - min >= 4;
+      return valid ? { ...ok, values } : fail;
     }
-    case "temperature": return validateTemperatureStressOverrides(text as TemperatureStressInput, l).error ? fail : { values, error: null };
-    case "soil_temperature": return validateSoilTemperatureStressOverrides(text as SoilTemperatureStressInput, l).error ? fail : { values, error: null };
-    case "humidity": return validateHumidityStressOverrides(text as HumidityStressInput, l).error ? fail : { values, error: null };
-    case "conductivity": return validateConductivityStressOverrides(text as ConductivityStressInput, l).error ? fail : { values, error: null };
-    case "illuminance": return validateLowLightOverrides(text as LowLightStressInput, l).error ? fail : { values, error: null };
+    case "temperature": return validateTemperatureStressOverrides(text as TemperatureStressInput, l).error ? fail : { ...ok, values };
+    case "soil_temperature": return validateSoilTemperatureStressOverrides(text as SoilTemperatureStressInput, l).error ? fail : { ...ok, values };
+    case "humidity": return validateHumidityStressOverrides(text as HumidityStressInput, l).error ? fail : { ...ok, values };
+    case "conductivity": return validateConductivityStressOverrides(text as ConductivityStressInput, l).error ? fail : { ...ok, values };
+    case "illuminance": return validateLowLightOverrides(text as LowLightStressInput, l).error ? fail : { ...ok, values };
   }
 }
 
@@ -185,19 +196,19 @@ const sameValues = (a: Record<string, number>, b: Record<string, number>) => Obj
 // What Save sends: only the checks whose winter values differ from their
 // normal ones, plus stored winter values of checks the editor doesn't show
 // (their sensor was removed). `thresholds` is null when nothing differs;
-// `errors` names each invalid check.
-export function winterPayload(plant: PlantRecord, draft: WinterDraft, l: Localizer): { thresholds: WinterThresholds | null; errors: Partial<Record<WinterRole, string>> } {
-  const out: WinterThresholds = {}; const errors: Partial<Record<WinterRole, string>> = {};
+// `errors` names each invalid check, `invalid` the fields each error is about.
+export function winterPayload(plant: PlantRecord, draft: WinterDraft, l: Localizer): { thresholds: WinterThresholds | null; errors: Partial<Record<WinterRole, string>>; invalid: Partial<Record<WinterRole, string[]>> } {
+  const out: WinterThresholds = {}; const errors: Partial<Record<WinterRole, string>> = {}; const invalid: Partial<Record<WinterRole, string[]>> = {};
   const stored = winterThresholds(plant);
   for (const role of WINTER_ROLES) {
     const fields = draft[role];
     if (!fields) { if (stored?.[role]) out[role] = stored[role]; continue; }
     const normal = normalThresholds(plant, role);
-    const { values, error } = validateWinterRole(role, fields, normal, l);
-    if (error || !values) { errors[role] = error ?? l.t(WINTER_SPECS[role].error); continue; }
-    if (!sameValues(values, normal)) out[role] = values;
+    const result = validateWinterRole(role, fields, normal, l);
+    if (result.error || !result.values) { errors[role] = result.error ?? l.t(WINTER_SPECS[role].error); invalid[role] = result.invalid; continue; }
+    if (!sameValues(result.values, normal)) out[role] = result.values;
   }
-  return { thresholds: Object.keys(out).length ? out : null, errors };
+  return { thresholds: Object.keys(out).length ? out : null, errors, invalid };
 }
 
 // "Same as normal" or "Normally 15 %" under a field.

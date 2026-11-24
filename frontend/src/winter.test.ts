@@ -6,7 +6,7 @@ import { parseOverview } from "./overview-model.js";
 import type { PlantOverview } from "./overview-model.js";
 import type { PlantRecord } from "./types.js";
 import { backendRoleDefaults, button, click, harness, overviewFor, panelText, role, sample, settle, snapshot } from "./test-helpers.js";
-import { deriveWinterValues, fieldHint, localWinterReason, nextRestStart, nextText, normalThresholds, showWinterHint, survivalWarning, validateWinterRole, winterChip, winterDraft, winterEditorRoles, winterLines, winterPayload, winterRangeText, winterReasonText, winterSuggestion, winterThresholds, winterWhen } from "./winter.js";
+import { deriveWinterValues, fieldHint, localWinterReason, nextRestStart, nextText, normalThresholds, rebaseWinterDraft, sameWinterThresholds, showWinterHint, survivalWarning, validateWinterRole, winterChip, winterDraft, winterEditorRoles, winterLines, winterPayload, winterRangeText, winterReasonText, winterSuggestion, winterThresholds, winterWhen } from "./winter.js";
 
 const source = (id: string) => ({ sources: [{ entity_id: id, registry_id: null }], primary_entity_id: id });
 // A synthetic plant with sensors for soil moisture, temperature, light and
@@ -61,6 +61,11 @@ describe("winter values logic", () => {
     // Too close: the derived clear values would cross.
     expect(validateWinterRole("temperature", { cold_threshold_celsius: "33", hot_threshold_celsius: "35" }, temperature, ENGLISH).error).toBe(ENGLISH.t("winter.error_temperature"));
     expect(validateWinterRole("temperature", { cold_threshold_celsius: "", hot_threshold_celsius: "35" }, temperature, ENGLISH).values).toBeNull();
+    // An empty field asks for a value and names only that field; values that
+    // don't fit together name every field of the check.
+    expect(validateWinterRole("temperature", { cold_threshold_celsius: "", hot_threshold_celsius: "35" }, temperature, ENGLISH)).toEqual({ values: null, error: "Enter a value.", invalid: ["cold_threshold_celsius"] });
+    expect(validateWinterRole("temperature", { cold_threshold_celsius: "33", hot_threshold_celsius: "35" }, temperature, ENGLISH).invalid).toEqual(["cold_threshold_celsius", "hot_threshold_celsius"]);
+    expect(validateWinterRole("temperature", { cold_threshold_celsius: "0", hot_threshold_celsius: "35" }, temperature, ENGLISH).invalid).toEqual([]);
     const moisture = normalThresholds(plant(), "moisture");
     expect(validateWinterRole("moisture", { min: "10", target: "25", max: "55" }, moisture, ENGLISH).error).toBeNull();
     expect(validateWinterRole("moisture", { min: "10.5", target: "25", max: "55" }, moisture, ENGLISH).error).not.toBeNull();
@@ -72,12 +77,22 @@ describe("winter values logic", () => {
   it("sends only the checks that differ, every key as a number", () => {
     const p = plant();
     const draft = winterDraft(p);
-    expect(winterPayload(p, draft, ENGLISH)).toEqual({ thresholds: null, errors: {} });
+    expect(winterPayload(p, draft, ENGLISH)).toEqual({ thresholds: null, errors: {}, invalid: {} });
     draft.temperature = { cold_threshold_celsius: "0", hot_threshold_celsius: "35" };
     draft.illuminance = { target_lux: "0" };
-    expect(winterPayload(p, draft, ENGLISH)).toEqual({ thresholds: winterSet, errors: {} });
+    expect(winterPayload(p, draft, ENGLISH)).toEqual({ thresholds: winterSet, errors: {}, invalid: {} });
     draft.moisture = { min: "x", target: "25", max: "55" };
-    expect(winterPayload(p, draft, ENGLISH).errors).toEqual({ moisture: ENGLISH.t("winter.error_moisture") });
+    expect(winterPayload(p, draft, ENGLISH)).toMatchObject({ errors: { moisture: "Enter a value." }, invalid: { moisture: ["min"] } });
+    draft.moisture = { min: "30", target: "25", max: "55" };
+    expect(winterPayload(p, draft, ENGLISH)).toMatchObject({ errors: { moisture: ENGLISH.t("winter.error_moisture") }, invalid: { moisture: ["min", "target", "max"] } });
+  });
+  it("keeps the user's fields and takes the other new values after a change elsewhere", () => {
+    const base = { temperature: { cold_threshold_celsius: "10", hot_threshold_celsius: "35" }, illuminance: { target_lux: "500" } };
+    const draft = { temperature: { cold_threshold_celsius: "0", hot_threshold_celsius: "35" }, illuminance: { target_lux: "500" } };
+    const next = { temperature: { cold_threshold_celsius: "10", hot_threshold_celsius: "30" }, illuminance: { target_lux: "0" }, moisture: { min: "10", target: "25", max: "55" } };
+    expect(rebaseWinterDraft(draft, base, next)).toEqual({ temperature: { cold_threshold_celsius: "0", hot_threshold_celsius: "30" }, illuminance: { target_lux: "0" }, moisture: { min: "10", target: "25", max: "55" } });
+    expect(sameWinterThresholds(winterSet, structuredClone(winterSet))).toBe(true);
+    expect(sameWinterThresholds(winterSet, null)).toBe(false);
   });
   it("keeps the winter values of a check whose sensor is gone", () => {
     const p = plant({ winter_thresholds: { humidity: { dry_threshold_percent: 20, dry_clear_percent: 25, damp_clear_percent: 80, damp_threshold_percent: 85 } } });
@@ -211,6 +226,7 @@ async function mount(initial: PlantRecord, overview: (p: PlantRecord) => PlantOv
     if (msg.type === "smart_plants/plants/list") return { plants: [current] };
     if (msg.type === "smart_plants/plants/overview") return { plants: [overview(current)] };
     if (msg.type === "smart_plants/plants/set_winter_thresholds") {
+      if (msg.expected_revision !== current.revision) return Promise.reject({ code: "revision_conflict", message: "stale" });
       current = { ...current, revision: current.revision + 1, winter_thresholds: msg.winter_thresholds as Record<string, Record<string, number>> | null };
       return { plant: current };
     }
@@ -218,7 +234,9 @@ async function mount(initial: PlantRecord, overview: (p: PlantRecord) => PlantOv
   });
   const el = new SmartPlantsPanel(); el.hass = h.hass; document.body.append(el);
   await settle(el); await click(el, initial.name); await settle(el);
-  return { el, h };
+  // Another tab or client changes the plant; the panel sees it on its next read.
+  const elsewhere = (changes: Partial<PlantRecord>) => { current = { ...current, ...changes, revision: current.revision + 1 }; };
+  return { el, h, elsewhere };
 }
 const shadow = (el: SmartPlantsPanel) => el.shadowRoot!;
 async function openSettings(el: SmartPlantsPanel, expand = false): Promise<void> {
@@ -308,6 +326,125 @@ describe("winter values on the plant page", () => {
     expect(card.textContent).toContain("Temperature 0–35 °C instead of 10–35 °C");
     expect(card.textContent).toContain("Next: from December 1 (rest period).");
     expect(shadow(el).querySelector(".winter-entry")).toBeNull();
+  });
+  it("doesn't overwrite winter values changed elsewhere while the editor is open", async () => {
+    const { el, h, elsewhere } = await mount(plant({ winter_thresholds: winterSet, rest_period: { start_month: 12, end_month: 2 } }));
+    await openSettings(el);
+    const toasts: string[] = [];
+    el.addEventListener("hass-notification", e => toasts.push((e as CustomEvent<{ message: string }>).detail.message));
+    await click(el, "Edit winter values");
+    const dialog = () => shadow(el).querySelector("dialog.winter-dialog")!;
+    const input = (key: string) => dialog().querySelector<HTMLInputElement>(`input[aria-describedby^="winter-temperature-${key}-hint"]`)!;
+    // Another tab lowers Too warm above to 30 °C before this panel reads it.
+    const otherTab = { ...winterSet, temperature: { ...winterSet.temperature, hot_clear_celsius: 27, hot_threshold_celsius: 30 } };
+    elsewhere({ winter_thresholds: otherTab });
+    const cold = input("cold_threshold_celsius");
+    cold.value = "-2"; cold.dispatchEvent(new Event("input")); await settle(el);
+    await click(el, "Save winter values"); await settle(el);
+    // The first write fails on the revision; nothing is sent again.
+    const writes = h.calls.filter(c => c.type === "smart_plants/plants/set_winter_thresholds");
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatchObject({ expected_revision: 1 });
+    expect(toasts).not.toContain("Winter values saved.");
+    // The dialog stays open: the user's field is kept, the other field shows the new value.
+    expect(dialog()).not.toBeNull();
+    expect(input("cold_threshold_celsius").value).toBe("-2");
+    expect(input("hot_threshold_celsius").value).toBe("30");
+    expect(dialog().textContent).toContain(ENGLISH.t("winter.changed_elsewhere"));
+    // No conflict banner: the dialog shows the change itself.
+    expect(panelText(el)).not.toContain(ENGLISH.t("conflict.heading"));
+    // Saving again sends both changes on the new revision.
+    await click(el, "Save winter values"); await settle(el);
+    expect(h.calls.filter(c => c.type === "smart_plants/plants/set_winter_thresholds").at(-1)).toEqual({
+      type: "smart_plants/plants/set_winter_thresholds", plant_id: sample.id, expected_revision: 2,
+      winter_thresholds: { ...otherTab, temperature: { cold_threshold_celsius: -2, cold_clear_celsius: 0, hot_clear_celsius: 27, hot_threshold_celsius: 30 } },
+    });
+    expect(toasts).toContain("Winter values saved.");
+    expect(shadow(el).querySelector("dialog.winter-dialog")).toBeNull();
+  });
+  it("shows winter values changed elsewhere in the open editor on the next read", async () => {
+    const { el, h, elsewhere } = await mount(plant({ winter_thresholds: winterSet }));
+    await openSettings(el);
+    await click(el, "Edit winter values");
+    const dialog = () => shadow(el).querySelector("dialog.winter-dialog")!;
+    const input = (key: string) => dialog().querySelector<HTMLInputElement>(`input[aria-describedby^="winter-temperature-${key}-hint"]`)!;
+    const cold = input("cold_threshold_celsius");
+    cold.value = "-2"; cold.dispatchEvent(new Event("input")); await settle(el);
+    elsewhere({ winter_thresholds: { ...winterSet, temperature: { ...winterSet.temperature, hot_clear_celsius: 27, hot_threshold_celsius: 30 } } });
+    await (el as unknown as { _refresh(loading: boolean): Promise<void> })._refresh(false); await settle(el);
+    expect(input("cold_threshold_celsius").value).toBe("-2");
+    expect(input("hot_threshold_celsius").value).toBe("30");
+    expect(dialog().textContent).toContain(ENGLISH.t("winter.changed_elsewhere"));
+    expect(panelText(el)).not.toContain(ENGLISH.t("conflict.heading"));
+    await click(el, "Save winter values"); await settle(el);
+    const writes = h.calls.filter(c => c.type === "smart_plants/plants/set_winter_thresholds");
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatchObject({ expected_revision: 2, winter_thresholds: { temperature: { cold_threshold_celsius: -2, hot_threshold_celsius: 30 } } });
+  });
+  it("saves again after a care-only change elsewhere and follows its own write", async () => {
+    const { el, h, elsewhere } = await mount(plant({ winter_thresholds: winterSet }));
+    await openSettings(el);
+    const toasts: string[] = [];
+    el.addEventListener("hass-notification", e => toasts.push((e as CustomEvent<{ message: string }>).detail.message));
+    await click(el, "Edit winter values");
+    elsewhere({ snoozed_until: "2026-11-30T22:59:59Z" });
+    const cold = shadow(el).querySelector<HTMLInputElement>("dialog.winter-dialog fieldset input")!;
+    cold.value = "-2"; cold.dispatchEvent(new Event("input")); await settle(el);
+    await click(el, "Save winter values"); await settle(el);
+    expect(h.calls.filter(c => c.type === "smart_plants/plants/set_winter_thresholds").map(c => c.expected_revision)).toEqual([1, 2]);
+    expect(toasts).toContain("Winter values saved.");
+    expect(panelText(el)).not.toContain(ENGLISH.t("conflict.heading"));
+  });
+  it("doesn't save over another change made elsewhere meanwhile", async () => {
+    const { el, h, elsewhere } = await mount(plant({ winter_thresholds: winterSet }));
+    await openSettings(el);
+    await click(el, "Edit winter values");
+    elsewhere({ name: "Cellar Oleander" });
+    const cold = shadow(el).querySelector<HTMLInputElement>("dialog.winter-dialog fieldset input")!;
+    cold.value = "-2"; cold.dispatchEvent(new Event("input")); await settle(el);
+    await click(el, "Save winter values"); await settle(el);
+    expect(h.calls.filter(c => c.type === "smart_plants/plants/set_winter_thresholds")).toHaveLength(1);
+    const dialog = shadow(el).querySelector("dialog.winter-dialog")!;
+    expect(dialog.textContent).toContain(ENGLISH.t("winter.conflict"));
+    expect(button(shadow(el), "Save winter values").disabled).toBe(true);
+    const banner = [...shadow(el).querySelectorAll("section.notice")].find(section => section.textContent?.includes(ENGLISH.t("conflict.heading")))!;
+    expect([...banner.querySelectorAll("li")].map(li => li.textContent)).toEqual(['Name: "Garage Oleander" → "Cellar Oleander"']);
+  });
+  it("leaves winter values changed elsewhere alone on Undo", async () => {
+    const { el, h, elsewhere } = await mount(plant({ winter_thresholds: winterSet }));
+    await openSettings(el);
+    const toasts: { message: string; action?: { text: string; action: () => void } }[] = [];
+    el.addEventListener("hass-notification", e => toasts.push((e as CustomEvent).detail));
+    await click(el, "Remove");
+    const confirm = shadow(el).querySelector("dialog.winter-remove-dialog")!;
+    [...confirm.querySelectorAll("button")].find(b => b.textContent?.trim() === "Remove")!.click(); await settle(el); await settle(el);
+    const writes = h.calls.filter(c => c.type === "smart_plants/plants/set_winter_thresholds").length;
+    elsewhere({ winter_thresholds: { illuminance: winterSet.illuminance } });
+    toasts.at(-1)!.action!.action(); await settle(el); await settle(el);
+    expect(h.calls.filter(c => c.type === "smart_plants/plants/set_winter_thresholds").length).toBe(writes + 1);
+    expect(toasts.at(-1)?.message).toBe("Couldn't put the winter values back. Add them again under Settings.");
+  });
+  it("names a change of only the winter values in the conflict banner", async () => {
+    const { el, elsewhere } = await mount(plant({ winter_thresholds: winterSet }));
+    elsewhere({ winter_thresholds: null });
+    await (el as unknown as { _refresh(loading: boolean): Promise<void> })._refresh(false); await settle(el);
+    const banner = [...shadow(el).querySelectorAll("section.notice")].find(section => section.textContent?.includes("changed somewhere else"))!;
+    expect([...banner.querySelectorAll("li")].map(li => li.textContent)).toEqual(["Winter values changed."]);
+  });
+  it("asks for a value in an emptied field and marks only that field", async () => {
+    const { el } = await mount(plant({ winter_thresholds: winterSet }));
+    await openSettings(el);
+    await click(el, "Edit winter values");
+    const dialog = shadow(el).querySelector("dialog.winter-dialog")!;
+    const [cold, hot] = [...dialog.querySelectorAll<HTMLInputElement>("fieldset input")];
+    cold!.value = ""; cold!.dispatchEvent(new Event("input")); await settle(el);
+    expect(dialog.textContent).toContain("Enter a value.");
+    expect(dialog.textContent).not.toContain(ENGLISH.t("winter.error_temperature"));
+    expect(cold!.getAttribute("aria-invalid")).toBe("true");
+    expect(cold!.getAttribute("aria-describedby")).toContain("winter-temperature-error");
+    expect(hot!.getAttribute("aria-invalid")).toBe("false");
+    expect(hot!.getAttribute("aria-describedby")).not.toContain("winter-temperature-error");
+    expect(button(shadow(el), "Save winter values").disabled).toBe(true);
   });
   it("removes winter values after a confirmation and offers Undo", async () => {
     const { el, h } = await mount(plant({ winter_thresholds: winterSet }));

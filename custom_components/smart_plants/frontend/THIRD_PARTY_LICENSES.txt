@@ -2,8 +2,9 @@ Third-party software bundled in smart-plants-panel.js and smart-plants-card-full
 ==================================================================================
 
 smart-plants-panel.js (the Smart Plants panel) and smart-plants-card-full.js
-(the content of the Smart Plants dashboard card) are minified builds of
-Smart Plants (MIT, see the LICENSE file in the repository root). Each of
+(the content of the Smart Plants dashboard card) are bundled, minified
+builds of Smart Plants that keep their line breaks (MIT, see the LICENSE
+file in the repository root). Each of
 them includes the following third-party packages:
 
 - lit                    (https://github.com/lit/lit)

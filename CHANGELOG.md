@@ -33,15 +33,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   The care history marks these entries, a watering logged within 6 hours replaces the detected
   one, also from the card, the **Watered** button and the `smart_plants.log_care` action, and a
   change of the sensors behind the value doesn't count as a watering.
-- The add-plant wizard asks for the **Placement** in its first step, and an info icon below
-  **Placement** explains what it changes.
+- An info icon below **Placement** in the add-plant wizard explains what the placement changes.
 
 ### Changed
 
+- The add-plant wizard asks for the **Placement** in its first step instead of in the collapsed
+  details of its review step.
 - A logged watering now also keeps *Too wet* off for 24 hours, as it already did for *Needs
   water*. Right after a watering the sensor reads the fresh water, often far above the
   maximum, so every watering turned *Too wet* on for hours and the plant showed as a problem.
   Soil that is still above the maximum after the 24 hours turns *Too wet* on as before.
+- Storage moves to a new format with winter values, watering detection and the species'
+  temperature and air humidity ranges. Existing data is migrated automatically on the first
+  start, and earlier versions cannot read the migrated data. To roll back, restore
+  `.storage/smart_plants.inventory.backup`; see
+  [Roll back to an earlier version](docs/installation.md#roll-back-to-an-earlier-version).
 
 ### Fixed
 
