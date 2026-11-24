@@ -59,10 +59,15 @@ class MoisturePlantController:
         self._care_events: tuple[CareEvent, ...] = ()
         self._unsub_watering_deadline: Callable[[], None] | None = None
         self._watering_detector = WateringDetector()
-        self._on_watering_detected: Callable[[str, datetime], None] | None = None
+        self._on_watering_detected: Callable[[str, datetime], bool] | None = None
         # The sources behind the value the detector saw last; when they
         # change, the value can jump without any water.
         self._detector_members: tuple[str, ...] | None = None
+        # A detected watering is saved by a task that runs after this reading
+        # was evaluated. Until it is in the care log, its time starts the
+        # grace here, so the reading that showed the water never counts as
+        # too wet.
+        self._detected_grace_start: datetime | None = None
         self._tracker = SourceTracker(
             hass,
             is_valid=adapter.is_valid,
@@ -120,13 +125,41 @@ class MoisturePlantController:
 
     def set_care_events(self, events: tuple[CareEvent, ...]) -> None:
         self._care_events = events
+        if self._detected_grace_start is not None and self._logged_since(
+            self._detected_grace_start
+        ):
+            self._detected_grace_start = None
+        if self._active:
+            self._recompute_and_notify(dt_util.utcnow())
+
+    def _logged_since(self, start: datetime) -> bool:
+        # The log keeps whole seconds, so the saved detected watering can be
+        # up to a second before the moment it was detected.
+        earliest = start.replace(microsecond=0)
+        return any(
+            event.kind == "watering"
+            and (occurred := dt_util.parse_datetime(event.occurred_at)) is not None
+            and occurred >= earliest
+            for event in self._care_events
+        )
+
+    def discard_detected_watering(self) -> None:
+        """Stop the grace of a detected watering that could not be saved."""
+        if self._detected_grace_start is None:
+            return
+        self._detected_grace_start = None
         if self._active:
             self._recompute_and_notify(dt_util.utcnow())
 
     def set_watering_detection(
-        self, on_detected: Callable[[str, datetime], None] | None
+        self, on_detected: Callable[[str, datetime], bool] | None
     ) -> None:
-        """Call ``on_detected(plant_id, when)`` for a sudden rise, or stop."""
+        """
+        Call ``on_detected(plant_id, when)`` for a sudden rise, or stop.
+
+        ``on_detected`` returns whether it will log the watering; only then
+        does the reading get the watering's grace.
+        """
         self._on_watering_detected = on_detected
         self._reset_watering_detector()
 
@@ -157,6 +190,8 @@ class MoisturePlantController:
         if clear_alert:
             self._clear_alert(previous)
         # New sources, aggregation or main sensor change the value by themselves.
+        # A detected watering's grace stays: its save is still on the way and
+        # ends that grace either way, logged or discarded.
         self._reset_watering_detector()
         self._tracker.configure(
             config.sources, stale_after=timedelta(seconds=config.stale_after_seconds)
@@ -201,13 +236,18 @@ class MoisturePlantController:
         # Every logged watering counts, whatever logged it: the panel, an
         # action call after an irrigation valve ran, or an automation.
         now = self._evaluation_now
-        deadlines = [
-            deadline
+        starts = [
+            occurred
             for event in self._care_events
             if event.kind == "watering"
             and (occurred := dt_util.parse_datetime(event.occurred_at)) is not None
-            and occurred <= now
-            and (deadline := occurred + timedelta(hours=24)) > now
+        ]
+        if self._detected_grace_start is not None:
+            starts.append(self._detected_grace_start)
+        deadlines = [
+            deadline
+            for occurred in starts
+            if occurred <= now and (deadline := occurred + timedelta(hours=24)) > now
         ]
         return max(deadlines) if deadlines else None
 
@@ -223,13 +263,18 @@ class MoisturePlantController:
         # deadline at which it ends.
         deadline = self._watering_grace_deadline()
         result = self._evaluate_now(deadline)
+        # A reading that shows a watering is judged with that watering's
+        # grace, before any alert can latch on it.
+        if self._detect_watering(now, result):
+            self._detected_grace_start = now
+            deadline = self._watering_grace_deadline()
+            result = self._evaluate_now(deadline)
         # Unavailability is observational, not a healthy sample. Keep latches
         # until a future valid aggregate crosses an explicit off boundary.
         if result.computed_available:
             self._previous_needs_water = result.needs_water
             self._previous_too_wet = result.too_wet
         self._evaluation = result
-        self._detect_watering(now, result)
         if self._active and deadline is not None:
             self._unsub_watering_deadline = async_track_point_in_time(
                 self._hass, self._handle_watering_deadline, deadline
@@ -240,20 +285,22 @@ class MoisturePlantController:
             except Exception:
                 _LOGGER.exception("moisture controller listener raised; continuing")
 
-    def _detect_watering(self, now: datetime, result: MoistureEvaluation) -> None:
+    def _detect_watering(self, now: datetime, result: MoistureEvaluation) -> bool:
+        """Feed the detector; return True for a new watering that will be logged."""
         if not self._active or self._on_watering_detected is None:
-            return
+            return False
         if not result.computed_available or result.computed_percent is None:
             # Without a value the sources come back one by one; start afresh.
             self._reset_watering_detector()
-            return
+            return False
         if result.members != self._detector_members:
             self._watering_detector.reset()
             self._detector_members = result.members
-        if self._watering_detector.observe(
+        if not self._watering_detector.observe(
             now, float(result.computed_percent), self._care_events
         ):
-            self._on_watering_detected(self._plant_id, now)
+            return False
+        return self._on_watering_detected(self._plant_id, now)
 
     @callback
     def _handle_watering_deadline(self, _now: datetime) -> None:

@@ -983,21 +983,28 @@ class SmartPlantsManager:
         )
 
     @callback
-    def _handle_detected_watering(self, plant_id: str, when: datetime) -> None:
+    def _handle_detected_watering(self, plant_id: str, when: datetime) -> bool:
+        """Log a watering the soil moisture showed; return whether it will be."""
         if self._closing or self._unavailable:
-            return
+            return False
+        # Not eager: the controller is still evaluating the reading and starts
+        # the watering's grace once this returns, so the save and its result
+        # must come after that.
         task = self._hass.async_create_task(
-            self._async_log_detected_watering(plant_id, when)
+            self._async_log_detected_watering(plant_id, when), eager_start=False
         )
         self._detected_watering_tasks.add(task)
         task.add_done_callback(self._detected_watering_tasks.discard)
+        return True
 
     async def _async_log_detected_watering(self, plant_id: str, when: datetime) -> None:
         try:
             await self.async_add_watering(
                 plant_id,
                 expected_revision=None,
-                occurred_at=when.isoformat(),
+                # Local time in whole seconds, like every other entry, so the
+                # watering's local date is the day it happened.
+                occurred_at=dt_util.as_local(when).replace(microsecond=0).isoformat(),
                 note=None,
                 provenance="sensor",
             )
@@ -1007,6 +1014,13 @@ class SmartPlantsManager:
             _LOGGER.warning(
                 "Could not log the watering detected for plant %s: %s", plant_id, err
             )
+            if self._closing:
+                return
+            # Without the logged watering there is no grace either.
+            controller = self.get_moisture_controller(plant_id)
+            discard = getattr(controller, "discard_detected_watering", None)
+            if callable(discard):
+                discard()
         else:
             _LOGGER.debug("Logged a watering detected for plant %s", plant_id)
 
