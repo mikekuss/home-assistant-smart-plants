@@ -7,6 +7,11 @@ sanitizes it with Pillow, re-encodes to WebP, and writes it under
 identifier. The directory sits outside ``custom_components/`` so a
 HACS-style integration replacement never touches user data.
 
+Smaller copies of each photo (variants, see ``IMAGE_VARIANT_SIZES``) are
+made on first request and kept under ``<config>/.cache/smart_plants/thumbs/``
+as ``<image_id>-<size>.webp``. They can always be made again from the stored
+photo, so losing them costs only the time to regenerate them.
+
 Nothing here mutates the manager or its published snapshot; the manager
 brackets the filesystem side effects with a typed ``PendingOperation``
 following the same two-phase pattern as the device reconciler.
@@ -29,13 +34,18 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from .const import (
     IMAGE_ALLOWED_INPUT_TYPES,
+    IMAGE_CACHE_DIRNAME,
     IMAGE_MAX_DECODE_PIXELS,
     IMAGE_MAX_DIMENSION,
     IMAGE_MAX_UPLOAD_BYTES,
     IMAGE_OUTPUT_CONTENT_TYPE,
     IMAGE_OUTPUT_EXTENSION,
     IMAGE_STORAGE_DIRNAME,
+    IMAGE_VARIANT_DIRNAME,
+    IMAGE_VARIANT_QUALITY,
+    IMAGE_VARIANT_SIZES,
 )
+from .thumbhash import image_thumbhash
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -85,6 +95,8 @@ class ProcessedImage:
     width: int
     height: int
     data: bytes
+    # Base64 ThumbHash of the sanitized pixels, for a blurred placeholder.
+    thumbhash: str
 
 
 def get_images_dir(hass: HomeAssistant) -> Path:
@@ -237,6 +249,7 @@ def validate_and_reencode(raw: bytes, declared_content_type: str) -> ProcessedIm
     _probe_header(payload, declared_content_type)
     sanitized = _decode_and_sanitize(payload)
 
+    thumbhash = image_thumbhash(sanitized)
     buffer = io.BytesIO()
     sanitized.save(buffer, format="WEBP", quality=85, method=6)
     encoded = buffer.getvalue()
@@ -247,6 +260,7 @@ def validate_and_reencode(raw: bytes, declared_content_type: str) -> ProcessedIm
         width=sanitized.width,
         height=sanitized.height,
         data=encoded,
+        thumbhash=thumbhash,
     )
 
 
@@ -402,3 +416,192 @@ def list_image_files(images_dir: Path) -> list[tuple[str, float]]:
             continue
         results.append((stem, mtime))
     return results
+
+
+# --- Variants and ThumbHash of stored photos --------------------------------
+
+
+def _check_stored_format(image: Any) -> None:
+    if (image.format or "").upper() != "WEBP":
+        raise ImageValidationError("stored image is not a WebP file")
+
+
+def _decode_stored(webp_bytes: bytes) -> Any:
+    """
+    Decode a stored photo to RGB pixels.
+
+    The file was written by ``write_image_file``, but anything with access to
+    the config folder can replace it, so it gets the same decode ceiling as
+    an upload: the declared size is checked before pixels are allocated.
+    """
+    try:
+        with Image.open(io.BytesIO(webp_bytes)) as decoded:
+            _check_stored_format(decoded)
+            _check_decoded_size(decoded)
+            decoded.load()
+            _check_decoded_size(decoded)
+            return decoded.convert("RGB")
+    except ImageValidationError:
+        raise
+    except UnidentifiedImageError as err:
+        raise ImageValidationError("stored image is not a recognized image") from err
+    except _BOMB_ERRORS as err:
+        raise ImageValidationError(_DIMENSION_ERROR) from err
+    except (OSError, ValueError) as err:
+        raise ImageValidationError("stored image could not be decoded") from err
+
+
+def make_variant(webp_bytes: bytes, longest: int) -> bytes:
+    """
+    Return a WebP copy of a stored photo at most ``longest`` px on each side.
+
+    Blocking (Pillow decode / encode); run it in an executor. The aspect
+    ratio is kept, and a photo that is already small enough keeps its size
+    because ``thumbnail`` never enlarges.
+    """
+    image = _decode_stored(webp_bytes)
+    image.thumbnail((longest, longest), Image.Resampling.LANCZOS)
+    buffer = io.BytesIO()
+    image.save(buffer, format="WEBP", quality=IMAGE_VARIANT_QUALITY, method=4)
+    return buffer.getvalue()
+
+
+def stored_image_thumbhash(images_dir: Path, image_id: str) -> str:
+    """
+    Return the ThumbHash of the stored photo ``image_id``.
+
+    Blocking. Raises ``ImageNotFoundError`` for a missing file and
+    ``ImageValidationError`` for one that cannot be decoded.
+    """
+    image = _decode_stored(read_image_file(images_dir, image_id))
+    return image_thumbhash(image)
+
+
+def get_cache_dir(hass: HomeAssistant) -> Path:
+    """
+    Absolute path to ``<config>/.cache/smart_plants/``.
+
+    Home Assistant keeps data that can be regenerated under its cache path,
+    and its backups leave that folder out.
+    """
+    return Path(hass.config.cache_path(IMAGE_CACHE_DIRNAME))
+
+
+def get_variants_dir(hass: HomeAssistant) -> Path:
+    """Absolute path to the variant cache under ``get_cache_dir``."""
+    return Path(hass.config.cache_path(IMAGE_CACHE_DIRNAME, IMAGE_VARIANT_DIRNAME))
+
+
+def _variant_file_name(image_id: str, size: str) -> str:
+    # Only a server-generated id and a known size name ever reach the
+    # filesystem, so a request cannot point outside the cache folder.
+    if not _is_safe_image_id(image_id):
+        raise ImageValidationError("image id is malformed")
+    if size not in IMAGE_VARIANT_SIZES:
+        raise ImageValidationError("image size is not supported")
+    return f"{image_id}-{size}{IMAGE_OUTPUT_EXTENSION}"
+
+
+def read_variant_file(variants_dir: Path, image_id: str, size: str) -> bytes | None:
+    """Return a cached variant, or ``None`` when it was not made yet."""
+    path = variants_dir / _variant_file_name(image_id, size)
+    try:
+        return path.read_bytes()
+    except FileNotFoundError:
+        return None
+
+
+def write_variant_file(
+    variants_dir: Path, image_id: str, size: str, data: bytes
+) -> None:
+    """
+    Atomically write a variant to the cache.
+
+    Written like ``write_image_file``: a crash mid-write must not leave a
+    truncated file that browsers would keep showing as a broken picture.
+    """
+    name = _variant_file_name(image_id, size)
+    variants_dir.mkdir(parents=True, exist_ok=True)
+    tmp = variants_dir / f".{name}.tmp"
+    with tmp.open("wb") as handle:
+        handle.write(data)
+        handle.flush()
+        os.fsync(handle.fileno())
+    tmp.replace(variants_dir / name)
+
+
+def delete_variant_files(variants_dir: Path, image_id: str) -> int:
+    """Remove every cached variant of ``image_id``; return how many went."""
+    if not _is_safe_image_id(image_id):
+        return 0
+    removed = 0
+    for size in IMAGE_VARIANT_SIZES:
+        name = _variant_file_name(image_id, size)
+        for path in (variants_dir / name, variants_dir / f".{name}.tmp"):
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                continue
+            removed += 1
+    return removed
+
+
+def list_variant_image_ids(variants_dir: Path) -> set[str]:
+    """
+    Return the image ids that have at least one cached variant.
+
+    Unfinished temp files count too, so pruning an id removes them as well.
+    Names of any other shape are skipped.
+    """
+    try:
+        entries = list(variants_dir.iterdir())
+    except FileNotFoundError:
+        return set()
+    suffix = IMAGE_OUTPUT_EXTENSION
+    found: set[str] = set()
+    for entry in entries:
+        name = entry.name
+        if name.startswith(".") and name.endswith(f"{suffix}.tmp"):
+            name = name[1 : -len(".tmp")]
+        if not name.endswith(suffix):
+            continue
+        image_id, _, size = name[: -len(suffix)].partition("-")
+        if size in IMAGE_VARIANT_SIZES and _is_safe_image_id(image_id):
+            found.add(image_id)
+    return found
+
+
+def delete_image_and_variants(
+    images_dir: Path, variants_dir: Path, image_id: str
+) -> bool:
+    """
+    Remove a stored photo and then its cached variants.
+
+    Returns whether the photo file was removed. The variants are only a
+    cache, so failing to remove one is logged and never fails the caller.
+    """
+    removed = delete_image_file(images_dir, image_id)
+    try:
+        delete_variant_files(variants_dir, image_id)
+    except OSError:
+        _LOGGER.debug("Smart Plants could not remove the cached copies of a photo")
+    return removed
+
+
+def remove_cache_dir(hass: HomeAssistant) -> bool:
+    """
+    Delete ``<config>/.cache/smart_plants/`` with every cached variant.
+
+    Returns True when the folder is gone. A missing folder is already clean.
+    """
+    directory = get_cache_dir(hass)
+    try:
+        shutil.rmtree(directory)
+    except FileNotFoundError:
+        return True
+    except OSError:
+        _LOGGER.warning(
+            "Smart Plants could not remove its cache directory %s", directory
+        )
+        return False
+    return True

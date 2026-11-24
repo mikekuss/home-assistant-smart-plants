@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+from types import MappingProxyType
+
 DOMAIN = "smart_plants"
 NAME = "Smart Plants"
 
@@ -30,6 +33,10 @@ STORAGE_MINOR_VERSION = 22
 # sensor-driven changes never bump a plant revision.
 READING_STATE_STORAGE_KEY = f"{DOMAIN}.reading_state"
 READING_STATE_STORAGE_VERSION = 1
+# ThumbHash placeholders of the stored photos; a cache that is rebuilt from
+# the photo files when it is missing.
+PHOTO_META_STORAGE_KEY = f"{DOMAIN}.photo_meta"
+PHOTO_META_STORAGE_VERSION = 1
 
 OPENPLANTBOOK_PROVIDER = "openplantbook"
 MANUAL_PROVIDER = "manual"
@@ -67,6 +74,20 @@ IMAGE_ALLOWED_INPUT_TYPES: frozenset[str] = frozenset(
 )
 IMAGE_OUTPUT_CONTENT_TYPE = "image/webp"
 IMAGE_OUTPUT_EXTENSION = ".webp"
+
+# Smaller copies of each photo for avatars, by name and longest side in
+# pixels; ``thumb2x`` serves screens with twice the pixel density. They are
+# made on first request and kept under ``hass.config.cache_path``, which
+# holds data that can be regenerated and is left out of backups.
+IMAGE_THUMB_SIZE = 320
+IMAGE_THUMB_2X_SIZE = 640
+IMAGE_VARIANT_SIZES: Mapping[str, int] = MappingProxyType(
+    {"thumb": IMAGE_THUMB_SIZE, "thumb2x": IMAGE_THUMB_2X_SIZE}
+)
+IMAGE_VARIANT_QUALITY = 75
+# Folder under the cache path; the variants sit in its ``thumbs`` folder.
+IMAGE_CACHE_DIRNAME = "smart_plants"
+IMAGE_VARIANT_DIRNAME = "thumbs"
 
 # Fired on the event bus when a retired plant is deleted for good. That change
 # touches no registry, so open panels listen for this to refresh their count.

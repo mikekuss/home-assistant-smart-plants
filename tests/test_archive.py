@@ -1010,7 +1010,7 @@ async def test_websocket_retire_list_get_restore_delete(
     assert summary["event_count"] == 1
 
     listed = await call({"type": "smart_plants/plants/list"})
-    assert listed["result"] == {"plants": [], "archived_count": 1}
+    assert listed["result"] == {"plants": [], "archived_count": 1, "photo_meta": {}}
     archive = await call({"type": "smart_plants/archive/list"})
     assert [item["id"] for item in archive["result"]["plants"]] == [plant.id]
     detail = await call({"type": "smart_plants/archive/get", "plant_id": plant.id})

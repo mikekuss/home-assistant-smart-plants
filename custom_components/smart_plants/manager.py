@@ -39,7 +39,7 @@ from .care import (
     task_matches_event,
     utc_timestamp,
 )
-from .const import DOMAIN, EVENT_ARCHIVE_UPDATED
+from .const import DOMAIN, EVENT_ARCHIVE_UPDATED, IMAGE_VARIANT_SIZES
 from .events import (
     EventCallback,
     PlantAddedEvent,
@@ -51,11 +51,21 @@ from .events import (
 )
 from .forecast_reader import REFRESH_INTERVAL
 from .images import (
-    delete_image_file,
+    ImageNotFoundError,
+    ImageValidationError,
+    delete_image_and_variants,
+    delete_variant_files,
     ensure_images_dir,
     get_images_dir,
+    get_variants_dir,
+    list_variant_image_ids,
+    make_variant,
+    read_image_file,
+    read_variant_file,
+    stored_image_thumbhash,
     validate_and_reencode,
     write_image_file,
+    write_variant_file,
 )
 from .models import (
     ARCHIVED_AREA_NAME_MAX_LEN,
@@ -81,11 +91,13 @@ from .models import (
     normalize_acquired_at,
     parse_care_schedule,
     parse_winter_thresholds,
+    referenced_image_ids,
     require_iso_date,
     validate_care_task_instructions,
     validate_care_task_name,
     validate_care_tasks,
 )
+from .photo_meta import PhotoMetaStore
 from .reading_tracker import ReadingTracker
 from .roles import (
     keep_species_thresholds,
@@ -274,6 +286,16 @@ class SmartPlantsManager:
         self._reconciler = reconciler
         # Feeds reading care tasks from their sensors; created on load.
         self._reading_tracker: ReadingTracker | None = None
+        # ThumbHash placeholders of the stored photos, and the background
+        # pass that fills in missing ones and drops unused ones after setup.
+        self._photo_meta = PhotoMetaStore(hass)
+        self._photo_task: asyncio.Task[None] | None = None
+        # Making a smaller copy of a photo decodes up to 2048 x 2048 pixels.
+        # One at a time keeps a small device responsive when a list of
+        # plants asks for many copies at once; the per-photo lock makes
+        # concurrent requests for the same photo share one copy.
+        self._variant_slots = asyncio.Semaphore(1)
+        self._variant_locks: dict[str, tuple[asyncio.Lock, int]] = {}
         # Ordered list of live event subscribers. A callback added later
         # is fired later, so a consumer can rely on prior subscribers
         # having observed the event before it runs. Unsubscribe uses the
@@ -610,6 +632,7 @@ class SmartPlantsManager:
         """Load and start all manager resources as one transaction."""
         try:
             self._snapshot = await self._store.async_load()
+            await self._photo_meta.async_load()
             await self._async_clear_ended_snoozes()
             await self._async_canonicalize_registered_sources()
             self._start_registry_tracking()
@@ -904,6 +927,7 @@ class SmartPlantsManager:
         self._closing = True
         self._wizard_drafts.clear()
         self._cancel_snooze_timers()
+        await self._async_stop_photo_task()
         self._stop_winter_check()
         if self._unsub_registry is not None:
             try:
@@ -951,6 +975,10 @@ class SmartPlantsManager:
             self._close_all_controllers()
         except Exception:
             _LOGGER.exception("Smart Plants role controller close failed")
+        try:
+            await self._photo_meta.async_close()
+        except Exception:
+            _LOGGER.exception("Smart Plants could not save its photo placeholders")
         self._event_deliveries.clear()
         self._synced_plants.clear()
         self._subscribers.clear()
@@ -2877,9 +2905,7 @@ class SmartPlantsManager:
                         # authoritative for the same image.
                         pass
                     else:
-                        await self._hass.async_add_executor_job(
-                            delete_image_file, images_dir, image_id
-                        )
+                        await self._async_delete_photo(images_dir, image_id)
                 remaining = tuple(
                     t for t in self._snapshot.tombstones if t.plant_id != plant_id
                 )
@@ -3504,15 +3530,14 @@ class SmartPlantsManager:
                 pending_operations=cleared_ops,
             )
             await self._async_publish(target_snapshot)
+            self._photo_meta.set(processed.image_id, processed.thumbhash)
 
             if previous_image_id is not None and not _is_image_still_referenced(
                 previous_image_id,
                 self._snapshot,
                 exclude_plant_id=plant_id,
             ):
-                await self._hass.async_add_executor_job(
-                    delete_image_file, images_dir, previous_image_id
-                )
+                await self._async_delete_photo(images_dir, previous_image_id)
             event = PlantUpdatedEvent(
                 kind="plant_updated", plant=updated, previous=current
             )
@@ -3581,15 +3606,182 @@ class SmartPlantsManager:
                 self._snapshot,
                 exclude_plant_id=plant_id,
             ):
-                await self._hass.async_add_executor_job(
-                    delete_image_file, images_dir, previous_image_id
-                )
+                await self._async_delete_photo(images_dir, previous_image_id)
             event = PlantUpdatedEvent(
                 kind="plant_updated", plant=updated, previous=current
             )
             self._prepare_event(event)
         await self._dispatch_event(event)
         return updated
+
+    async def _async_delete_photo(self, images_dir: Any, image_id: str) -> None:
+        """
+        Remove a photo no record needs any more, with its cached data.
+
+        The placeholder and the smaller copies are only a cache; failing to
+        remove one is logged and never fails the change that removed the
+        photo.
+        """
+        self._photo_meta.discard(image_id)
+        await self._hass.async_add_executor_job(
+            delete_image_and_variants,
+            images_dir,
+            get_variants_dir(self._hass),
+            image_id,
+        )
+
+    # --- Photo placeholders and smaller copies ----------------------------
+
+    @property
+    def photo_meta_count(self) -> int:
+        """How many photos have a stored placeholder."""
+        return len(self._photo_meta)
+
+    def photo_meta_for(self, image_ids: Iterable[str]) -> dict[str, dict[str, str]]:
+        """Return ``{image_id: {"thumbhash": ...}}`` for the ids that have one."""
+        return self._photo_meta.for_images(image_ids)
+
+    def start_photo_maintenance(self) -> None:
+        """
+        Fill in missing placeholders and drop unused cache data, in the background.
+
+        Called once setup has replayed unfinished changes, so the inventory
+        it reads is the settled one. Setup does not wait for it.
+        """
+        if self._photo_task is not None or self._closing or self._unavailable:
+            return
+        self._photo_task = self._hass.async_create_background_task(
+            self._async_maintain_photos(), name="smart_plants photo placeholders"
+        )
+
+    async def _async_stop_photo_task(self) -> None:
+        task, self._photo_task = self._photo_task, None
+        if task is None or task.done():
+            return
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    async def _async_maintain_photos(self) -> None:
+        try:
+            await self._async_backfill_placeholders()
+            await self._async_prune_photo_cache()
+            await self._photo_meta.async_flush()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            _LOGGER.exception("Smart Plants could not update its photo placeholders")
+
+    async def _async_backfill_placeholders(self) -> None:
+        """Compute the placeholder of each needed photo that has none, one by one."""
+        images_dir = get_images_dir(self._hass)
+        for image_id in sorted(referenced_image_ids(self._snapshot)):
+            if self._closing:
+                return
+            if self._photo_meta.get(image_id) is not None:
+                continue
+            try:
+                thumbhash = await self._hass.async_add_executor_job(
+                    stored_image_thumbhash, images_dir, image_id
+                )
+            except ImageNotFoundError:
+                # An unfinished upload, or a file lost outside Home Assistant.
+                continue
+            except ImageValidationError, OSError:
+                _LOGGER.debug("Smart Plants could not read a photo for its placeholder")
+                continue
+            # The photo may have been replaced while it was decoded.
+            if image_id in referenced_image_ids(self._snapshot):
+                self._photo_meta.set(image_id, thumbhash)
+
+    async def _async_prune_photo_cache(self) -> None:
+        """
+        Drop placeholders and smaller copies of photos no record needs.
+
+        This also catches what an interrupted change or the startup cleanup of
+        photo files left behind.
+        """
+        self._photo_meta.prune(referenced_image_ids(self._snapshot))
+        variants_dir = get_variants_dir(self._hass)
+        cached = await self._hass.async_add_executor_job(
+            list_variant_image_ids, variants_dir
+        )
+        for image_id in sorted(cached - referenced_image_ids(self._snapshot)):
+            if self._closing:
+                return
+            try:
+                await self._hass.async_add_executor_job(
+                    delete_variant_files, variants_dir, image_id
+                )
+            except OSError:
+                _LOGGER.debug("Smart Plants could not remove a cached photo copy")
+
+    async def async_image_variant(self, image_id: str, size: str) -> bytes:
+        """
+        Return the smaller copy ``size`` of the stored photo ``image_id``.
+
+        A cached copy is served as is. Otherwise the copy is made from the
+        stored photo and cached; when the cache cannot be written (a full or
+        read-only disk), the copy is still returned. Raises
+        ``ImageNotFoundError`` when the stored photo is missing.
+        """
+        longest = IMAGE_VARIANT_SIZES[size]
+        variants_dir = get_variants_dir(self._hass)
+        cached = await self._async_read_variant(variants_dir, image_id, size)
+        if cached is not None:
+            return cached
+        lock, users = self._variant_locks.get(image_id, (asyncio.Lock(), 0))
+        self._variant_locks[image_id] = (lock, users + 1)
+        try:
+            async with lock:
+                # Another request may have made the copy while this one waited.
+                cached = await self._async_read_variant(variants_dir, image_id, size)
+                if cached is not None:
+                    return cached
+                async with self._variant_slots:
+                    stored = await self._hass.async_add_executor_job(
+                        read_image_file, get_images_dir(self._hass), image_id
+                    )
+                    variant = await self._hass.async_add_executor_job(
+                        make_variant, stored, longest
+                    )
+                await self._async_cache_variant(variants_dir, image_id, size, variant)
+                return variant
+        finally:
+            lock, users = self._variant_locks[image_id]
+            if users <= 1:
+                del self._variant_locks[image_id]
+            else:
+                self._variant_locks[image_id] = (lock, users - 1)
+
+    async def _async_read_variant(
+        self, variants_dir: Any, image_id: str, size: str
+    ) -> bytes | None:
+        try:
+            return await self._hass.async_add_executor_job(
+                read_variant_file, variants_dir, image_id, size
+            )
+        except OSError:
+            # An unreadable cache entry is made again.
+            return None
+
+    async def _async_cache_variant(
+        self, variants_dir: Any, image_id: str, size: str, variant: bytes
+    ) -> None:
+        try:
+            await self._hass.async_add_executor_job(
+                write_variant_file, variants_dir, image_id, size, variant
+            )
+        except OSError:
+            _LOGGER.debug("Smart Plants could not cache a smaller photo copy")
+            return
+        # The photo may have been removed while its copy was made; the copy
+        # would then outlive it until the next start.
+        if image_id not in referenced_image_ids(self._snapshot):
+            with contextlib.suppress(OSError):
+                await self._hass.async_add_executor_job(
+                    delete_variant_files, variants_dir, image_id
+                )
 
     async def async_create_internal_record(self, name: str) -> PlantRecord:
         """Back-compat shim for name-only callers; forwards to async_create_plant."""
