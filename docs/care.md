@@ -33,6 +33,11 @@ of the rise:
 
 - Water reaching the sensor raises its reading this fast; soil drying or a sensor settling in
   the pot changes it by a few points a day.
+- Many sensors only send a reading when the value changes, or repeat the same whole percent for
+  hours. The reading before the hour still counts as the value when the hour began, as long as
+  the sensor sent it, or repeated it, in the past 24 hours and hasn't passed its **Not updating
+  after** time (24 hours by default) since. So 40 % in the morning, no new reading all day, and
+  85 % in the evening is a watering. A rise from 40 % to 56 % over five silent hours counts too.
 - A watering logged in the 6 hours before, by hand or by Smart Plants, wins, so a watering is
   never logged twice. The soil settling after a watering doesn't log another one either.
 - A watering you log within 6 hours of one Smart Plants detected takes its place with your time
@@ -45,8 +50,9 @@ of the rise:
 - With several sensors, the value can jump without any water when a sensor drops out, comes
   back, is added or is swapped. Smart Plants then starts watching afresh instead of logging a
   watering. The same happens after a change to the sensors or how they combine.
-- Smart Plants keeps the readings of the last hour in memory only, so it can't recognize a
-  watering while Home Assistant restarts.
+- Smart Plants keeps these readings in memory only. After Home Assistant restarts, or a plant
+  is paused and resumed, it starts from the first reading it gets, so a watering in between is
+  only logged when that reading still shows the soil from before.
 
 Outdoors, rain raises the soil moisture just the same, so the **Placement** of the plant
 decides by default:
