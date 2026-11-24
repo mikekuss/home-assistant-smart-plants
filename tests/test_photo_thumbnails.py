@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import io
 import json
+import threading
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -347,6 +348,36 @@ async def test_concurrent_requests_share_one_copy(
     assert len({body for _, body in results}) == 1
     assert generator.call_count == 1
     # The per-photo locks are released once no request waits on them.
+    assert manager._variant_locks == {}
+
+
+async def test_a_copy_made_while_its_photo_goes_is_not_kept(
+    hass: HomeAssistant, hass_client: ClientSessionGenerator
+) -> None:
+    _entry, manager = await _setup(hass)
+    plant = await _plant_with_photo(manager)
+    client = await hass_client()
+    entered = threading.Event()
+    release = threading.Event()
+
+    def _slow_variant(data: bytes, longest: int) -> bytes:
+        entered.set()
+        assert release.wait(timeout=10)
+        return make_variant(data, longest)
+
+    # A plain function, not a mock: the test harness runs mocks inline on the
+    # event loop instead of in the executor.
+    with patch("custom_components.smart_plants.manager.make_variant", _slow_variant):
+        request = asyncio.ensure_future(_get(client, plant.id, "?size=thumb"))
+        assert await hass.async_add_executor_job(entered.wait, 10)
+        await manager.async_delete_image(plant.id, expected_revision=plant.revision)
+        release.set()
+        response, data = await request
+    # The request that was already running still gets its copy, but the
+    # cache keeps nothing of a photo that is gone.
+    assert response.status == 200
+    assert _dimensions(data) == (320, 256)
+    assert _variant_names(hass) == set()
     assert manager._variant_locks == {}
 
 

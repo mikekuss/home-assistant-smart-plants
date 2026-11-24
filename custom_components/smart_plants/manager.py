@@ -3681,17 +3681,24 @@ class SmartPlantsManager:
             if self._photo_meta.get(image_id) is not None:
                 continue
             try:
-                thumbhash = await self._hass.async_add_executor_job(
-                    stored_image_thumbhash, images_dir, image_id
-                )
+                # Shares the slot of the smaller copies: a decode of a full
+                # photo either way, and one at a time keeps a small device
+                # responsive.
+                async with self._variant_slots:
+                    thumbhash = await self._hass.async_add_executor_job(
+                        stored_image_thumbhash, images_dir, image_id
+                    )
             except ImageNotFoundError:
                 # An unfinished upload, or a file lost outside Home Assistant.
                 continue
             except ImageValidationError, OSError:
                 _LOGGER.debug("Smart Plants could not read a photo for its placeholder")
                 continue
-            # The photo may have been replaced while it was decoded.
-            if image_id in referenced_image_ids(self._snapshot):
+            # The photo may have been replaced while it was decoded, or an
+            # unfinished upload may have finished and stored the hash of
+            # its own pixels, which is kept.
+            still_needed = image_id in referenced_image_ids(self._snapshot)
+            if still_needed and self._photo_meta.get(image_id) is None:
                 self._photo_meta.set(image_id, thumbhash)
 
     async def _async_prune_photo_cache(self) -> None:
