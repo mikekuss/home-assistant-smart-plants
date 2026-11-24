@@ -605,6 +605,28 @@ async def test_store_set_prune_and_flush(
     assert hass_storage[PHOTO_META_STORAGE_KEY]["data"] == {"photos": {}}
 
 
+async def test_a_failed_flush_is_written_on_close(
+    hass: HomeAssistant, hass_storage: dict[str, Any]
+) -> None:
+    store = PhotoMetaStore(hass)
+    await store.async_load()
+    store.set(_STALE_ID, _STALE_HASH)
+    with (
+        patch(
+            "homeassistant.helpers.storage.Store.async_save",
+            side_effect=OSError("No space left on device"),
+        ),
+        pytest.raises(OSError, match="No space"),
+    ):
+        await store.async_flush()
+    assert PHOTO_META_STORAGE_KEY not in hass_storage
+
+    await store.async_close()
+    assert hass_storage[PHOTO_META_STORAGE_KEY]["data"] == {
+        "photos": {_STALE_ID: {"thumbhash": _STALE_HASH}}
+    }
+
+
 # --- Integration removal ---------------------------------------------------------
 
 

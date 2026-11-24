@@ -149,8 +149,13 @@ class PhotoMetaStore:
         """Write pending changes now instead of after the save delay."""
         if not self._dirty or self._closed:
             return
-        self._dirty = False
-        await self._store.async_save(self._payload())
+        try:
+            await self._store.async_save(self._payload())
+        except BaseException:
+            # A failed or cancelled write may not have reached the disk;
+            # the close on unload tries again.
+            self._dirty = True
+            raise
 
     async def async_close(self) -> None:
         """Write pending changes and accept no further ones."""
