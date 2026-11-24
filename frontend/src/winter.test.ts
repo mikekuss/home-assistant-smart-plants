@@ -117,9 +117,10 @@ describe("winter values logic", () => {
   });
   it("warns, without blocking, about a floor colder than the species survives", () => {
     const p = plant({ species });
-    expect(survivalWarning(ENGLISH, p, { cold_threshold_celsius: "-2" })).toBe("Colder than Oleander survives (0 °C).");
-    expect(survivalWarning(ENGLISH, p, { cold_threshold_celsius: "0" })).toBeNull();
-    expect(survivalWarning(ENGLISH, plant(), { cold_threshold_celsius: "-2" })).toBeNull();
+    const normal = normalThresholds(p, "temperature");
+    expect(survivalWarning(ENGLISH, p, "temperature", { cold_threshold_celsius: "-2" }, normal)).toBe("Colder than Oleander survives (0 °C).");
+    expect(survivalWarning(ENGLISH, p, "temperature", { cold_threshold_celsius: "0" }, normal)).toBeNull();
+    expect(survivalWarning(ENGLISH, plant(), "temperature", { cold_threshold_celsius: "-2" }, normalThresholds(plant(), "temperature"))).toBeNull();
     const draft = { ...winterDraft(p), temperature: { cold_threshold_celsius: "-2", hot_threshold_celsius: "35" } };
     expect(winterPayload(p, draft, ENGLISH).errors).toEqual({});
   });
@@ -132,12 +133,27 @@ describe("winter values logic", () => {
     expect(normal).toEqual({ cold_threshold_celsius: 10, cold_clear_celsius: 12, hot_clear_celsius: 32, hot_threshold_celsius: 35 });
     expect(winterDraft(p).soil_temperature).toEqual({ cold_threshold_celsius: "10", hot_threshold_celsius: "35" });
     expect(winterSuggestion(ENGLISH, p, "soil_temperature", { cold_threshold_celsius: "10", hot_threshold_celsius: "35" }, normal)?.apply).toEqual({ cold_threshold_celsius: "0" });
-    expect(survivalWarning(ENGLISH, p, { cold_threshold_celsius: "-2" })).toBe("Colder than Oleander survives (0 °C).");
+    expect(survivalWarning(ENGLISH, p, "soil_temperature", { cold_threshold_celsius: "-2" }, normal)).toBe("Colder than Oleander survives (0 °C).");
     // The soil check accepts −20 to 60 °C: a hardy species gets no suggestion.
     const hardy = { ...p, species: { ...species, snapshot: { ...species.snapshot, survival_min_temperature: -25 } } };
     expect(winterSuggestion(ENGLISH, hardy, "soil_temperature", { cold_threshold_celsius: "10", hot_threshold_celsius: "35" }, normal)).toBeNull();
     expect(winterSuggestion(ENGLISH, hardy, "temperature", { cold_threshold_celsius: "10", hot_threshold_celsius: "35" }, normalThresholds(hardy, "temperature"))?.apply).toEqual({ cold_threshold_celsius: "-25" });
     expect(validateWinterRole("soil_temperature", { cold_threshold_celsius: "-25", hot_threshold_celsius: "35" }, normal, ENGLISH).error).toBe(ENGLISH.t("winter.error_soil_temperature"));
+    // Survival at or above the normal soil floor says nothing about the soil:
+    // no suggestion and no warning, while the air keeps both.
+    for (const survival of [10, 15]) {
+      const tropical = { ...p, species: { ...species, snapshot: { ...species.snapshot, survival_min_temperature: survival } } };
+      expect(winterSuggestion(ENGLISH, tropical, "soil_temperature", { cold_threshold_celsius: "10", hot_threshold_celsius: "35" }, normal)).toBeNull();
+      expect(survivalWarning(ENGLISH, tropical, "soil_temperature", { cold_threshold_celsius: "10", hot_threshold_celsius: "35" }, normal)).toBeNull();
+      expect(survivalWarning(ENGLISH, tropical, "soil_temperature", { cold_threshold_celsius: "5", hot_threshold_celsius: "35" }, normal)).toBeNull();
+      expect(survivalWarning(ENGLISH, tropical, "temperature", { cold_threshold_celsius: "5", hot_threshold_celsius: "35" }, normalThresholds(tropical, "temperature"))).toBe(`Colder than Oleander survives (${survival} °C).`);
+    }
+    // The normal soil floor the survival is compared with is the plant's own.
+    const raised = { ...p, roles: { ...p.roles!, soil_temperature: { ...p.roles!.soil_temperature!, stress_threshold_overrides: { cold_threshold_celsius: 16, cold_clear_celsius: 18 } } } } as typeof p;
+    const raisedNormal = normalThresholds(raised, "soil_temperature");
+    const warm = { ...raised, species: { ...species, snapshot: { ...species.snapshot, survival_min_temperature: 15 } } };
+    expect(winterSuggestion(ENGLISH, warm, "soil_temperature", { cold_threshold_celsius: "16", hot_threshold_celsius: "35" }, raisedNormal)?.apply).toEqual({ cold_threshold_celsius: "15" });
+    expect(survivalWarning(ENGLISH, warm, "soil_temperature", { cold_threshold_celsius: "12", hot_threshold_celsius: "35" }, raisedNormal)).toBe("Colder than Oleander survives (15 °C).");
     const draft = { ...winterDraft(p), soil_temperature: { cold_threshold_celsius: "2", hot_threshold_celsius: "35" } };
     expect(winterPayload(p, draft, ENGLISH).thresholds).toEqual({ soil_temperature: { cold_threshold_celsius: 2, cold_clear_celsius: 4, hot_threshold_celsius: 35, hot_clear_celsius: 32 } });
     const reading = { value: 5, unit: "°C", state: "ok", range: { min: 2, target: null, max: 35 }, clear: null, normal_range: { min: 10, target: null, max: 35 }, last_reported: null, sources: [] } as unknown as Parameters<typeof winterRangeText>[2];

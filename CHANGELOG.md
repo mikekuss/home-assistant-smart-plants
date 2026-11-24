@@ -33,7 +33,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   The care history marks these entries, a watering logged within 6 hours replaces the detected
   one, also from the card, the **Watered** button and the `smart_plants.log_care` action, and a
   change of the sensors behind the value doesn't count as a watering.
-- An info icon below **Placement** in the add-plant wizard explains what the placement changes.
+- An info icon below **Placement**, in the add-plant wizard and under **Settings** > **More
+  details**, explains what the placement changes.
 
 ### Changed
 

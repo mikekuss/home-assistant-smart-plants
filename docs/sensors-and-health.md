@@ -171,16 +171,19 @@ normal values.
 The values where an alert turns off again keep the same distance as the normal ones. The editor
 suggests:
 
-- for temperature and soil temperature, the lowest temperature the species survives, when
-  OpenPlantBook has it (soil temperature accepts −20 to 60 °C, so a colder value isn't
-  suggested there),
+- for temperature, the lowest temperature the species survives, when OpenPlantBook has it,
+- for soil temperature, the same value, but only when it is below the plant's normal *Too cold
+  below* for the soil, so winter never makes the soil check stricter (soil temperature accepts
+  −20 to 60 °C, so a colder value isn't suggested there either),
 - for soil moisture, about two thirds of the normal *Needs water below* and three quarters of
   *Ideal*,
 - for light, 0 lx, which turns the low light alert off,
 - for fertilizer level, half the normal lower bound.
 
 It suggests nothing for air humidity, because dry heating air is a real problem in winter. A
-temperature or soil temperature floor below the species' survival temperature shows a warning.
+temperature floor below the species' survival temperature shows a warning. For soil temperature
+the warning follows the suggestion: it only appears when the survival temperature is below the
+normal soil floor.
 
 While winter values apply, the plant page shows **Winter values until end of** *month* (rest
 period) or **Winter values · dormant storage**. Select it to see what changes, such as

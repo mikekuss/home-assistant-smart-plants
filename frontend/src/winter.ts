@@ -228,6 +228,14 @@ export function survivalTemperature(plant: PlantRecord): number | null {
   const value = plant.species?.snapshot.survival_min_temperature;
   return finite(value) ? value : null;
 }
+// The survival temperature a check's winter floor goes by. It is a value for
+// the air, so for the soil it only counts below the normal soil floor: a
+// winter value never makes that floor stricter than the rest of the year.
+function survivalFor(plant: PlantRecord, role: "temperature" | "soil_temperature", normal: Record<string, number>): number | null {
+  const survival = survivalTemperature(plant);
+  if (survival === null) return null;
+  return role === "soil_temperature" && !(survival < normal.cold_threshold_celsius!) ? null : survival;
+}
 
 // A moisture suggestion rounds to steps of 5 %, unless that would undo it.
 function roundMoisture(value: number, normal: number): number {
@@ -243,8 +251,9 @@ export function winterSuggestion(l: Localizer, plant: PlantRecord, role: WinterR
   switch (role) {
     case "temperature":
     case "soil_temperature": {
-      // Both checks suggest the lowest temperature the species survives.
-      const survival = survivalTemperature(plant);
+      // Both checks suggest the lowest temperature the species survives, the
+      // soil only when that is below its normal floor.
+      const survival = survivalFor(plant, role, normal);
       if (survival === null || current("cold_threshold_celsius") === survival) return null;
       // Soil temperature accepts a narrower range than the air (−20 to 60 °C),
       // so a hardy species' survival value may not fit it.
@@ -272,8 +281,8 @@ export function winterSuggestion(l: Localizer, plant: PlantRecord, role: WinterR
 }
 
 // A warning, not an error: a floor colder than the species survives.
-export function survivalWarning(l: Localizer, plant: PlantRecord, fields: Record<string, string> | undefined): string | null {
-  const survival = survivalTemperature(plant);
+export function survivalWarning(l: Localizer, plant: PlantRecord, role: "temperature" | "soil_temperature", fields: Record<string, string> | undefined, normal: Record<string, number>): string | null {
+  const survival = survivalFor(plant, role, normal);
   const floor = parseField(fields?.cold_threshold_celsius);
   if (survival === null || floor === null || floor >= survival) return null;
   return l.t("winter.warn_survival", { species: speciesName(l, plant), value: formatValue(l, survival, "°C") });
