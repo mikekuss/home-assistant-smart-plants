@@ -94,7 +94,54 @@ def test_a_slow_rise_or_a_small_one_is_not() -> None:
 def test_the_rise_must_happen_within_the_hour() -> None:
     detector = WateringDetector()
     assert detector.observe(T0, 10, ()) is False
-    assert detector.observe(T0 + timedelta(minutes=70), 30, ()) is False
+    assert detector.observe(T0 + timedelta(minutes=30), 18, ()) is False
+    # 10 ended at 30 minutes, over an hour before this reading: 18 counts.
+    assert detector.observe(T0 + timedelta(minutes=95), 30, ()) is False
+
+
+def test_the_last_reading_before_the_hour_is_the_baseline() -> None:
+    # A sensor that only reports changes stays silent while the soil keeps
+    # its value; that value held until the jump.
+    detector = WateringDetector()
+    assert detector.observe(T0, 40, ()) is False
+    assert detector.observe(T0 + timedelta(hours=5), 85, ()) is True
+    # Up to 24 hours.
+    day = WateringDetector()
+    assert day.observe(T0, 40, ()) is False
+    assert day.observe(T0 + timedelta(hours=24), 85, ()) is True
+
+
+def test_a_baseline_older_than_a_day_does_not_count() -> None:
+    detector = WateringDetector()
+    assert detector.observe(T0, 40, ()) is False
+    assert detector.observe(T0 + timedelta(hours=24, minutes=1), 85, ()) is False
+    # The new reading is the baseline from now on.
+    assert detector.observe(T0 + timedelta(hours=25), 86, ()) is False
+
+
+def test_a_repeated_value_keeps_the_baseline_fresh() -> None:
+    detector = WateringDetector()
+    assert detector.observe(T0, 40, ()) is False
+    for hour in range(1, 31):
+        detector.still_reads(T0 + timedelta(hours=hour))
+    assert detector.observe(T0 + timedelta(hours=30, minutes=10), 85, ()) is True
+
+
+def test_a_repeated_value_does_not_stretch_an_older_one() -> None:
+    detector = WateringDetector()
+    assert detector.observe(T0, 10, ()) is False
+    assert detector.observe(T0 + timedelta(minutes=30), 20, ()) is False
+    # 20 is repeated for hours, 10 ended at 30 minutes.
+    for minutes in range(40, 200, 10):
+        detector.still_reads(T0 + timedelta(minutes=minutes))
+    assert detector.observe(T0 + timedelta(minutes=200), 34, ()) is False
+    assert detector.observe(T0 + timedelta(minutes=201), 35, ()) is True
+
+
+def test_a_repeated_value_before_any_reading_is_ignored() -> None:
+    detector = WateringDetector()
+    detector.still_reads(T0)
+    assert detector.observe(T0 + timedelta(minutes=1), 40, ()) is False
 
 
 def test_a_logged_watering_wins() -> None:
@@ -762,6 +809,100 @@ async def test_a_detected_watering_never_turns_too_wet_on(
     await hass.async_block_till_done()
     assert _state(hass, too_wet) == "on"
     assert len(calls) == 1
+
+
+async def test_a_watering_after_a_silent_sensor_is_logged(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    freezer.move_to(T0)
+    manager = await _setup(hass)
+    plant, too_wet, states = await _wet_plant(manager, hass)
+
+    # The sensor only reports changes: nothing for five hours, then the water.
+    freezer.move_to(T0 + timedelta(hours=5))
+    hass.states.async_set(SOIL, "85", PERCENT)
+    await hass.async_block_till_done()
+
+    (event,) = _waterings(manager, plant.id)
+    assert event.provenance == "sensor"
+    assert dt_util.parse_datetime(event.occurred_at) == T0 + timedelta(hours=5)
+    assert "on" not in states
+    assert _state(hass, too_wet) == "off"
+
+
+async def test_a_watering_after_a_repeated_value_is_logged(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    freezer.move_to(T0)
+    manager = await _setup(hass)
+    plant, too_wet, states = await _wet_plant(manager, hass)
+    controller = manager.get_moisture_controller(plant.id)
+    assert controller is not None
+    evaluation = controller.current_evaluation
+    # The first repeat ends the grace a new sensor gets, which evaluates once.
+    freezer.move_to(T0 + timedelta(minutes=30))
+    hass.states.async_set(SOIL, "40", PERCENT)
+    await hass.async_block_till_done()
+    notified: list[None] = []
+    controller.add_listener(lambda: notified.append(None))
+
+    # The sensor repeats 40 every hour for longer than a day.
+    for hour in range(1, 27):
+        freezer.move_to(T0 + timedelta(hours=hour))
+        hass.states.async_set(SOIL, "40", PERCENT)
+        await hass.async_block_till_done()
+    # A repeated value changes nothing the plant shows and evaluates nothing,
+    # apart from the regular check for a sensor that stopped updating.
+    assert controller.current_evaluation == evaluation
+    assert len(notified) <= 1
+    assert states == []
+
+    freezer.move_to(T0 + timedelta(hours=26, minutes=10))
+    hass.states.async_set(SOIL, "85", PERCENT)
+    await hass.async_block_till_done()
+
+    (event,) = _waterings(manager, plant.id)
+    assert event.provenance == "sensor"
+    assert "on" not in states
+    assert _state(hass, too_wet) == "off"
+
+
+async def test_readings_while_disabled_are_no_baseline(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    freezer.move_to(T0)
+    manager = await _setup(hass)
+    plant, _too_wet, _states = await _wet_plant(manager, hass)
+    await manager.async_disable_plant(
+        plant.id, expected_revision=_revision(manager, plant.id)
+    )
+    await hass.async_block_till_done()
+
+    freezer.move_to(T0 + timedelta(hours=5))
+    hass.states.async_set(SOIL, "85", PERCENT)
+    await hass.async_block_till_done()
+    freezer.move_to(T0 + timedelta(hours=10))
+    await manager.async_reenable_plant(
+        plant.id, expected_revision=_revision(manager, plant.id)
+    )
+    await hass.async_block_till_done()
+
+    assert _waterings(manager, plant.id) == []
+
+
+async def test_a_reading_after_a_day_of_silence_is_no_watering(
+    hass: HomeAssistant, freezer: Any
+) -> None:
+    freezer.move_to(T0)
+    manager = await _setup(hass)
+    plant, too_wet, _states = await _wet_plant(manager, hass)
+
+    freezer.move_to(T0 + timedelta(hours=25))
+    hass.states.async_set(SOIL, "85", PERCENT)
+    await hass.async_block_till_done()
+
+    assert _waterings(manager, plant.id) == []
+    assert _state(hass, too_wet) == "on"
 
 
 async def test_a_detected_watering_that_is_not_saved_gets_no_grace(
