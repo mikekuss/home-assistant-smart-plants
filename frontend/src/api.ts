@@ -475,12 +475,16 @@ export const api = {
     });
   },
 
+  // `imageId` names the photo the caller expects. The server lets the browser
+  // cache the photo only when it matches the current one, and a new photo gets
+  // a new id, so a replaced photo is never served from the cache.
   async fetchImage(
     hass: HomeAssistantLike,
     plantId: string,
+    imageId: string,
     signal?: AbortSignal,
   ): Promise<Blob> {
-    const url = `/api/smart_plants/plants/${encodeURIComponent(plantId)}/image`;
+    const url = `/api/smart_plants/plants/${encodeURIComponent(plantId)}/image?v=${encodeURIComponent(imageId)}`;
     const headers: Record<string, string> = {};
     if (hass.auth?.accessToken) {
       headers["Authorization"] = `Bearer ${hass.auth.accessToken}`;

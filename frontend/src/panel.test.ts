@@ -192,7 +192,7 @@ describe("SmartPlantsPanel overview thumbnails", () => {
   // Connection events ("ready") and registry event subscriptions of the open panel.
   let events: Map<string, () => void>;
   let registryCallbacks: (() => void)[];
-  const imageCalls = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/image")).length;
+  const imageCalls = () => vi.mocked(fetch).mock.calls.filter(([url]) => new URL(String(url), "http://localhost").pathname.endsWith("/image")).length;
   let now = 1_000_000;
 
   beforeEach(() => {

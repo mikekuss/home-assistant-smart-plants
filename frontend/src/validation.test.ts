@@ -62,7 +62,7 @@ describe("untrusted runtime responses", () => {
   });
   it.each(["text/html", "image/svg+xml", "image/png"])("rejects unexpected protected image content type %s", async type => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["bytes"], { type }))));
-    await expect(api.fetchImage(harness().hass, sample.id)).rejects.toMatchObject({ code: "invalid_response" });
+    await expect(api.fetchImage(harness().hass, sample.id, "00112233445566778899aabbccddeeff")).rejects.toMatchObject({ code: "invalid_response" });
   });
   it("rejects an image mutation response for a different plant", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ plant: { ...sample, id: "another-plant" } }))));

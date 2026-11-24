@@ -100,7 +100,7 @@ task ones, also has `snoozed` and `snoozed_until` (see [Snoozed plants](#snoozed
   `low_light`, `low_conductivity`, `high_conductivity`, `high_co2`, `battery_low`, and `stress`
   for a problem without a direction. It lists a reading also while its problem sensor is
   disabled, so the dashboard card shows the same status as the panel.
-- `photo_id`: the ID of the plant's photo, or `null`.
+- `photo_id`: the ID of the plant's photo, or `null`. Not recorded in history.
 - `reason`: why the sensor has its state. It's the problem while on, for example `cold_stress`,
   `dry_stress` or `low_light`. While off it's `temperature_ok`, `enough_light`, `nighttime` or
   the like.
