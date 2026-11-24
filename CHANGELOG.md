@@ -51,8 +51,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
-- The panel now lets the browser cache plant photos, so the plant list and the plant page no
-  longer download every photo again each time they open.
+- The panel now lets the browser cache plant photos, so the plant list, the plant page and
+  **Retired plants** no longer download every photo again each time they open.
 - The `photo_id` attribute of *Sensor stale* is no longer stored in history.
 - On a phone, opening **Several sensors for one reading** or **Troubleshooting** on the Sensors
   tab no longer lays the section's content over the next card. The section now grows to fit its

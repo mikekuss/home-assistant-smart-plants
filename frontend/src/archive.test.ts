@@ -209,6 +209,20 @@ describe("the archive page", () => {
     expect(text).not.toContain("With you");
   });
 
+  it("asks for the retired plant's current photo by its id", async () => {
+    const image = { id: "img-old", content_type: "image/webp", width: 1, height: 1, created_at: summary.created_at };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["image"], { type: "image/webp" }))));
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:retired");
+    try {
+      const h = archiveHarness(msg => msg.type === "smart_plants/archive/list" ? { plants: [{ ...summary, image }] } : undefined);
+      const el = await mount(h.hass);
+      await choose(el, "archive"); await archivePage(el);
+      await vi.waitFor(() => expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toContain("/api/smart_plants/plants/old/image?v=img-old"));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("restores without sensors other plants use unless asked", async () => {
     const restored = { ...structuredClone(sample), id: "old", name: "Basil 2" };
     const h = archiveHarness(msg => {
