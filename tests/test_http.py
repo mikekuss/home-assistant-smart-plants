@@ -15,6 +15,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from custom_components.smart_plants import binary_sensor
 from custom_components.smart_plants.const import (
     DOMAIN,
     IMAGE_MAX_DIMENSION,
@@ -226,6 +227,12 @@ async def test_sensor_stale_reports_photo_id(
     state = hass.states.get(entity_id)
     assert state is not None
     assert state.attributes["photo_id"] is None
+
+
+def test_sensor_stale_photo_id_stays_out_of_the_recorder() -> None:
+    unrecorded = binary_sensor._SensorStaleBinary._unrecorded_attributes
+    assert "photo_id" in unrecorded
+    assert {"snoozed", "snoozed_until"} <= unrecorded
 
 
 # --- Happy path ---------------------------------------------------------

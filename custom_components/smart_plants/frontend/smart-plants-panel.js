@@ -1930,24 +1930,24 @@ var L = {
 			expected_revision: n
 		});
 	},
-	async fetchImage(e, t, n) {
-		let r = `/api/smart_plants/plants/${encodeURIComponent(t)}/image`, i = {};
-		e.auth?.accessToken && (i.Authorization = `Bearer ${e.auth.accessToken}`);
-		let a, o = {
+	async fetchImage(e, t, n, r) {
+		let i = `/api/smart_plants/plants/${encodeURIComponent(t)}/image?v=${encodeURIComponent(n)}`, a = {};
+		e.auth?.accessToken && (a.Authorization = `Bearer ${e.auth.accessToken}`);
+		let o, s = {
 			method: "GET",
-			headers: i,
+			headers: a,
 			credentials: "same-origin"
 		};
-		n && (o.signal = n);
+		r && (s.signal = r);
 		try {
-			a = await fetch(r, o);
+			o = await fetch(i, s);
 		} catch (e) {
 			throw e instanceof DOMException && e.name === "AbortError" ? e : new F("unknown_error", "Image request failed. Retry when connected.");
 		}
-		if (!a.ok) throw new F("unknown_error", `HTTP ${a.status}`);
-		let s = await a.blob();
-		if (s.type !== "image/webp" || s.size === 0) throw new F("invalid_response", "The image response is incompatible. Refresh and retry.");
-		return s;
+		if (!o.ok) throw new F("unknown_error", `HTTP ${o.status}`);
+		let c = await o.blob();
+		if (c.type !== "image/webp" || c.size === 0) throw new F("invalid_response", "The image response is incompatible. Refresh and retry.");
+		return c;
 	},
 	async uploadImage(e, t, n, r) {
 		return Wn(e, `/api/smart_plants/plants/${encodeURIComponent(t)}/image?expected_revision=${n}`, {
@@ -11291,7 +11291,7 @@ var Z = class extends S {
 		let t = this.hass, n = e.image;
 		if (!t || !n) return;
 		let r = `${e.id}/${n.id}`;
-		this._photos[r] || this._photoRequests.has(r) || (this._photoRequests.add(r), L.fetchImage(t, e.id).then((e) => {
+		this._photos[r] || this._photoRequests.has(r) || (this._photoRequests.add(r), L.fetchImage(t, e.id, n.id).then((e) => {
 			this.isConnected && (this._photos = {
 				...this._photos,
 				[r]: URL.createObjectURL(e)
@@ -12151,7 +12151,7 @@ var $ = class e extends S {
 			if (r && (r.retryAt === null || a < r.retryAt)) continue;
 			this._thumbnailKeys[t] = i;
 			let o = new AbortController();
-			this._thumbnailAborts.set(t, o), L.fetchImage(e, t, o.signal).then((e) => {
+			this._thumbnailAborts.set(t, o), L.fetchImage(e, t, n.get(t), o.signal).then((e) => {
 				o.signal.aborted || this._thumbnailKeys[t] !== i || (this._thumbnailAborts.delete(t), this._thumbnailRetries.delete(t), this._thumbnails = {
 					...this._thumbnails,
 					[t]: URL.createObjectURL(e)
@@ -12177,9 +12177,9 @@ var $ = class e extends S {
 			return;
 		}
 		let e = this._view.kind === "detail" ? this._plantById(this._view.plantId) : void 0, t = this.hass && e?.image ? `${this.hass.auth?.accessToken ?? ""}:${e.id}:${e.revision}:${e.image.id}` : null;
-		if (t === this._imageKey || !this.isConnected || (this._clearImage(), this._imageKey = t, !t || !this.hass || !e)) return;
+		if (t === this._imageKey || !this.isConnected || (this._clearImage(), this._imageKey = t, !t || !this.hass || !e?.image)) return;
 		let n = this._imageRequest, r = new AbortController();
-		this._imageAbort = r, this._imageLoading = !0, L.fetchImage(this.hass, e.id, r.signal).then((e) => {
+		this._imageAbort = r, this._imageLoading = !0, L.fetchImage(this.hass, e.id, e.image.id, r.signal).then((e) => {
 			let t = URL.createObjectURL(e);
 			n !== this._imageRequest || !this.isConnected ? URL.revokeObjectURL(t) : (this._imageAbort = void 0, this._imageUrl = t, this._imageLoading = !1);
 		}).catch((e) => {

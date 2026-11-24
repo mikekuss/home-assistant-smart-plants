@@ -97,6 +97,12 @@ describe("SmartPlantsPanel image loading", () => {
       expect(URL.createObjectURL).toHaveBeenCalledTimes(2);
     });
     await element.updateComplete;
+    // Each request names the photo it expects, so the browser cache never
+    // answers for a replaced photo.
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual([
+      "/api/smart_plants/plants/plt-1/image?v=img-1",
+      "/api/smart_plants/plants/plt-1/image?v=img-2",
+    ]);
   });
 
   it("revokes a stale response after image replacement", async () => {
@@ -192,7 +198,7 @@ describe("SmartPlantsPanel overview thumbnails", () => {
   // Connection events ("ready") and registry event subscriptions of the open panel.
   let events: Map<string, () => void>;
   let registryCallbacks: (() => void)[];
-  const imageCalls = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/image")).length;
+  const imageCalls = () => vi.mocked(fetch).mock.calls.filter(([url]) => new URL(String(url), "http://localhost").pathname.endsWith("/image")).length;
   let now = 1_000_000;
 
   beforeEach(() => {
@@ -273,6 +279,7 @@ describe("SmartPlantsPanel overview thumbnails", () => {
     (panel as unknown as { _plants: PlantRecord[] })._plants = [{ ...plant, revision: 2, image: { ...plant.image!, id: "img-2" } }];
     await poll(panel, 1);
     expect(imageCalls()).toBe(6);
+    expect(String(vi.mocked(fetch).mock.calls.at(-1)![0])).toBe("/api/smart_plants/plants/plt-1/image?v=img-2");
     await poll(panel, 1);
     expect(imageCalls()).toBe(6);
   });

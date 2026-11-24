@@ -576,7 +576,7 @@ export class SmartPlantsPanel extends LitElement {
       if (retry && (retry.retryAt === null || now < retry.retryAt)) continue;
       this._thumbnailKeys[id] = key;
       const abort = new AbortController(); this._thumbnailAborts.set(id, abort);
-      void api.fetchImage(hass, id, abort.signal).then(blob => {
+      void api.fetchImage(hass, id, images.get(id)!, abort.signal).then(blob => {
         if (abort.signal.aborted || this._thumbnailKeys[id] !== key) return;
         this._thumbnailAborts.delete(id); this._thumbnailRetries.delete(id);
         this._thumbnails = { ...this._thumbnails, [id]: URL.createObjectURL(blob) };
@@ -602,9 +602,9 @@ export class SmartPlantsPanel extends LitElement {
     const key = this.hass && plant?.image ? `${this.hass.auth?.accessToken ?? ""}:${plant.id}:${plant.revision}:${plant.image.id}` : null;
     if (key === this._imageKey || !this.isConnected) return;
     this._clearImage(); this._imageKey = key;
-    if (!key || !this.hass || !plant) return;
+    if (!key || !this.hass || !plant?.image) return;
     const request = this._imageRequest; const abort = new AbortController(); this._imageAbort = abort; this._imageLoading = true;
-    void api.fetchImage(this.hass, plant.id, abort.signal).then(blob => {
+    void api.fetchImage(this.hass, plant.id, plant.image.id, abort.signal).then(blob => {
       const url = URL.createObjectURL(blob);
       if (request !== this._imageRequest || !this.isConnected) { URL.revokeObjectURL(url); return; }
       this._imageAbort = undefined; this._imageUrl = url; this._imageLoading = false;

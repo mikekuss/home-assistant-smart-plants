@@ -154,7 +154,7 @@ export class SmartPlantsArchive extends LitElement {
     const key = `${plant.id}/${image.id}`;
     if (this._photos[key] || this._photoRequests.has(key)) return;
     this._photoRequests.add(key);
-    void api.fetchImage(hass, plant.id).then(blob => {
+    void api.fetchImage(hass, plant.id, image.id).then(blob => {
       if (!this.isConnected) return;
       this._photos = { ...this._photos, [key]: URL.createObjectURL(blob) };
     }).catch(() => undefined).finally(() => this._photoRequests.delete(key));

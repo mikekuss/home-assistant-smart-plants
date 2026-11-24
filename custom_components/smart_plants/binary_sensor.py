@@ -250,6 +250,9 @@ class _SensorStaleBinary(_MoistureBinaryBase):
     # It reports on the assigned sensors, not on the plant itself.
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _computed_gated = False
+    # The dashboard card reads the photo id from the current state only. Its
+    # history is of no use, so the recorder leaves it out.
+    _unrecorded_attributes = SNOOZE_ATTRIBUTES | {"photo_id"}
 
     def __init__(self, manager: SmartPlantsManager, plant_id: str) -> None:
         super().__init__(manager, plant_id, ROLE_SENSOR_STALE)

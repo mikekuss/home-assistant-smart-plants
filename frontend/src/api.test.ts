@@ -170,9 +170,9 @@ describe("api.fetchImage", () => {
         ...fakeHass(() => ({})),
         auth: { accessToken: "secret-token" },
       };
-      await api.fetchImage(hass, "a b/c");
+      await api.fetchImage(hass, "a b/c", "00112233445566778899aabbccddeeff");
       expect(global.fetch).toHaveBeenCalledWith(
-        "/api/smart_plants/plants/a%20b%2Fc/image",
+        "/api/smart_plants/plants/a%20b%2Fc/image?v=00112233445566778899aabbccddeeff",
         expect.objectContaining({
           method: "GET",
           headers: { Authorization: "Bearer secret-token" },
