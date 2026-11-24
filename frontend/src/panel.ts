@@ -2498,7 +2498,7 @@ export class SmartPlantsPanel extends LitElement {
     const l = this._l; const spec = WINTER_SPECS[role];
     const normal = normalThresholds(plant, role);
     const suggestion = winterSuggestion(l, plant, role, fields, normal);
-    const warning = role === "temperature" || role === "soil_temperature" ? survivalWarning(l, plant, fields) : null;
+    const warning = role === "temperature" || role === "soil_temperature" ? survivalWarning(l, plant, role, fields, normal) : null;
     const errorId = `winter-${role}-error`;
     return html`<fieldset class="winter-group"><legend><ha-icon aria-hidden="true" .icon=${ROLE_META[role].icon}></ha-icon>${readingLabel(l, role)}</legend>
       <div class="winter-fields">${spec.fields.map(field => {
