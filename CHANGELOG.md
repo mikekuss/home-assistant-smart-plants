@@ -25,14 +25,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   values as your own. Readings a plant already had keep the built-in values until you refresh
   its species.
 - **Log waterings from the soil moisture sensor.** When a plant's soil moisture rises by 15
-  points or more within an hour, Smart Plants logs a watering at that time, unless one was logged
-  in the 6 hours before. The entry's `provenance` is `sensor`. Waterings nobody logged by hand
-  now count for *Last watered* and the 24-hour grace. By default the plant's **Placement**
-  decides: on indoors and in a greenhouse, off elsewhere, where rain raises the soil moisture
-  too. **Settings** > **More details** sets it per plant. Existing plants start with it off.
-  The care history marks these entries, a watering logged within 6 hours replaces the detected
-  one, also from the card, the **Watered** button and the `smart_plants.log_care` action, and a
-  change of the sensors behind the value doesn't count as a watering.
+  points or more within an hour, Smart Plants logs a watering at that time, unless one was
+  logged in the 6 hours before. A sensor that only reports changes, or repeats the same value,
+  counts with its last reading from the past 24 hours. The entry's `provenance` is `sensor`.
+  Waterings nobody logged by hand now count for *Last watered* and the 24-hour grace. By default
+  the plant's **Placement** decides: on indoors and in a greenhouse, off elsewhere, where rain
+  raises the soil moisture too. **Settings** > **More details** sets it per plant. Existing
+  plants start with it off. The care history marks these entries, a watering logged within 6
+  hours replaces the detected one, also from the card, the **Watered** button and the
+  `smart_plants.log_care` action, and a change of the sensors behind the value doesn't count as
+  a watering.
 - An info icon below **Placement** in the add-plant wizard explains what the placement changes.
 
 ### Changed

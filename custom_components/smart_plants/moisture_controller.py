@@ -72,6 +72,7 @@ class MoisturePlantController:
             hass,
             is_valid=adapter.is_valid,
             on_change=self._recompute_and_notify,
+            on_report=self._on_report,
         )
         self._tracker.configure(
             config.sources, stale_after=timedelta(seconds=config.stale_after_seconds)
@@ -116,6 +117,9 @@ class MoisturePlantController:
         self._active = False
         self._cancel_watering_deadline()
         self._tracker.stop()
+        # Readings that arrive while stopped are never seen, so the value seen
+        # last says nothing about the soil when monitoring resumes.
+        self._reset_watering_detector()
 
     def close(self) -> None:
         """Permanently release tracker resources."""
@@ -301,6 +305,15 @@ class MoisturePlantController:
         ):
             return False
         return self._on_watering_detected(self._plant_id, now)
+
+    @callback
+    def _on_report(self, now: datetime) -> None:
+        # An identical re-report leaves the value and every output as they
+        # are, so nothing is evaluated. It only tells the detector that the
+        # value it saw last still holds, which keeps the baseline for the next
+        # watering fresh.
+        if self._active and self._on_watering_detected is not None:
+            self._watering_detector.still_reads(now)
 
     @callback
     def _handle_watering_deadline(self, _now: datetime) -> None:
