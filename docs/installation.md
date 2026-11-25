@@ -103,7 +103,7 @@ says the storage was created by a newer version. Then:
    pick the version. Otherwise, [install that release manually](#install-manually).
 2. Stop Home Assistant. Copy `.storage/smart_plants.inventory.backup` over
    `.storage/smart_plants.inventory`. Smart Plants writes this copy right before each
-   conversion. If it's missing, restore the three Smart Plants locations from a backup made
+   conversion. If it's missing, restore the Smart Plants data from a backup made
    before the update (see [Backup and restore](#backup-and-restore)).
 3. Start Home Assistant and check that your plants and photos appear in the panel.
 
@@ -148,10 +148,13 @@ Smart Plants keeps its data in the Home Assistant configuration directory:
 | `.storage/smart_plants.inventory` | Plants, species data, thresholds, sensor assignments, care tasks, care history and photo references. |
 | `.storage/smart_plants.reading_state` | Whether each reading task is due or waiting. Without it, reading tasks start fresh, which can mean one extra reminder. |
 | `smart_plants/images/` | Plant photos as WebP files. |
+| `.storage/smart_plants.photo_meta` | A small placeholder value (ThumbHash) for each photo. Without it, Smart Plants computes them again from the photos. |
+| `.cache/smart_plants/` | Smaller copies of the photos, made when they're first requested. Smart Plants makes them again when they're missing. |
 
-A full Home Assistant backup contains all three. Restore all three from the same backup, and do
-it while Home Assistant is stopped if you copy files by hand. The sensors you assigned aren't
-part of this data. A missing sensor shows up in **Settings > System > Repairs** (see
+A full Home Assistant backup contains everything except `.cache/`, which Home Assistant leaves
+out of backups. Restore the rest from the same backup, and do it while Home Assistant is
+stopped if you copy files by hand. The sensors you assigned aren't part of this data. A missing
+sensor shows up in **Settings > System > Repairs** (see
 [When a sensor disappears](sensors-and-health.md#when-a-sensor-disappears)).
 
 ## Remove Smart Plants
@@ -168,6 +171,7 @@ part of this data. A missing sensor shows up in **Settings > System > Repairs** 
 4. Restart Home Assistant.
 
 Deleting the integration removes the plant devices and entities. By default it also deletes
-the three data locations above and the inventory backup copy. With **Preserve inventory**
-turned on, the data stays. Smart Plants never changes your automations, scripts or dashboards.
-Automations that use plant entities stop working until the entities exist again.
+the data locations above and the inventory backup copy. With **Preserve inventory** turned on,
+the data stays, except the smaller photo copies in `.cache/smart_plants/`. Smart Plants never
+changes your automations, scripts or dashboards. Automations that use plant entities stop
+working until the entities exist again.

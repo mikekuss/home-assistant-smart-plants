@@ -20,13 +20,14 @@ from .const import (
 from .device import SmartPlantsDeviceReconciler
 from .forecast_reader import refresh_minutes
 from .http import async_register as async_register_http
-from .images import ensure_images_dir, remove_images_dir
+from .images import ensure_images_dir, remove_cache_dir, remove_images_dir
 from .manager import SmartPlantsManager
 from .panel import (
     async_register_panel,
     async_register_static,
     async_unregister_panel,
 )
+from .photo_meta import PhotoMetaStore
 from .provider import SpeciesProviderService
 from .providers import build_provider_registry
 from .repairs import MissingSourceRepairMonitor
@@ -261,6 +262,9 @@ async def async_setup_entry(  # noqa: PLR0915
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
         panel_registration_started = True
         await async_register_panel(hass)
+        # Photo placeholders for older photos are computed in the background;
+        # unloading the manager cancels this.
+        manager.start_photo_maintenance()
     except SmartPlantsStorageError as err:
         await _rollback()
         raise ConfigEntryError(
@@ -313,10 +317,15 @@ async def async_remove_entry(
         CONF_PRESERVE_INVENTORY_ON_REMOVAL,
         DEFAULT_PRESERVE_INVENTORY_ON_REMOVAL,
     )
+    # The smaller photo copies under the cache path go in both cases: a
+    # reinstall makes them again on demand, and without one they would stay
+    # on disk for nothing. A failure only leaves regenerable files behind,
+    # so it does not fail the removal.
+    await hass.async_add_executor_job(remove_cache_dir, hass)
     if preserve:
-        # Preservation is an opt-in reinstall aid: the inventory file
-        # and every referenced image survive so a subsequent
-        # re-configuration picks the plants back up unchanged.
+        # Preservation is an opt-in reinstall aid: the inventory file,
+        # every referenced image and the photo placeholders survive so a
+        # subsequent re-configuration picks the plants back up unchanged.
         return
 
     # Default removal deletes the entire image data directory alongside
@@ -326,3 +335,4 @@ async def async_remove_entry(
     if not removed:
         raise SmartPlantsStorageError("Smart Plants image directory removal failed")
     await async_remove_storage(hass)
+    await PhotoMetaStore(hass).async_remove()

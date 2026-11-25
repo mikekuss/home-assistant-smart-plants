@@ -53,7 +53,12 @@ async def async_get_config_entry_diagnostics(
             },
         },
         "provider": provider,
-        "inventory": _inventory_summary(runtime.manager.snapshot),
+        "inventory": {
+            **_inventory_summary(runtime.manager.snapshot),
+            # Only how many photos have a placeholder; the ids and hashes
+            # identify photos and say nothing about a malfunction.
+            "photo_meta_count": runtime.manager.photo_meta_count,
+        },
         "reading_care_tasks": _reading_task_summary(runtime.manager),
     }
 

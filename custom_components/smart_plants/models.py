@@ -4150,6 +4150,26 @@ def archived_image_ids(records: Iterable[ArchivedPlant]) -> frozenset[str]:
     return frozenset(record.image.id for record in records if record.image is not None)
 
 
+def referenced_image_ids(snapshot: InventorySnapshot) -> frozenset[str]:
+    """
+    Every photo id the inventory still needs.
+
+    The photos of live and retired plants, plus the new photo of each
+    unfinished upload, whose file may already be on disk.
+    """
+    referenced = {
+        plant.image.id for plant in snapshot.plants.values() if plant.image is not None
+    }
+    referenced.update(archived_image_ids(snapshot.archived_plants.values()))
+    for operation in snapshot.pending_operations:
+        if operation.kind not in ("create_image", "replace_image"):
+            continue
+        new_image = operation.payload.get("new_image")
+        if isinstance(new_image, Mapping) and isinstance(new_image.get("id"), str):
+            referenced.add(new_image["id"])
+    return frozenset(referenced)
+
+
 # --- Recovery-schema payload dispatch ------------------------------------
 #
 # Kind → payload validator. Kept at module bottom so validators declared

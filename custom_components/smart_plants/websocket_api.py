@@ -7,15 +7,18 @@ compatibly):
 Commands (all admin-only):
 
 * ``smart_plants/plants/list`` -> ``{"plants": [PlantListView, ...],
-  "archived_count"}``; ``archived_count`` is the number of retired plants.
-  ``PlantListView`` is a ``PlantView`` without ``care_events``: the care
-  history comes from ``smart_plants/care/list``, the last watering from
-  ``smart_plants/plants/overview``.
+  "archived_count", "photo_meta"}``; ``archived_count`` is the number of
+  retired plants. ``PlantListView`` is a ``PlantView`` without
+  ``care_events``: the care history comes from ``smart_plants/care/list``,
+  the last watering from ``smart_plants/plants/overview``. ``photo_meta``
+  is ``{image_id: {"thumbhash"}}`` for the photos in the reply whose
+  placeholder is known (see below).
 * ``smart_plants/plants/archive`` -> ``{"archived": ArchivedSummary}``;
   retires a plant: its device and entities are removed, its sensors are
   free, and a plain record with photo and care log stays.
-* ``smart_plants/archive/list`` -> ``{"plants": [ArchivedSummary, ...]}``,
-  the most recently retired first.
+* ``smart_plants/archive/list`` -> ``{"plants": [ArchivedSummary, ...],
+  "photo_meta"}``, the most recently retired first; ``photo_meta`` as for
+  ``smart_plants/plants/list``.
 * ``smart_plants/archive/get`` -> ``{"plant": ArchivedView}``; the summary
   plus ``events`` (care log, newest first), ``placement``, ``tags`` and
   ``sources`` (``{role: [entity_id, ...]}``).
@@ -77,6 +80,11 @@ Commands (all admin-only):
   ends ``snooze_many`` set, as its ``plants`` list them) guards an undo: a
   plant whose end is no longer the expected one was changed since and keeps
   it, and its id is listed in ``skipped``.
+
+``photo_meta`` maps an image id to ``{"thumbhash"}``, the base64 ThumbHash of
+that photo, from which a client can draw a blurred placeholder while the photo
+loads. A photo whose placeholder is not computed yet has no entry, so the
+object can be empty.
 
 Both multi-plant snooze commands save once: if one plant fails validation or
 the save fails, no plant changes.
@@ -463,11 +471,15 @@ async def _handle_list(
     if manager is None:
         _reply_not_loaded(connection, msg["id"])
         return
+    plants = manager.list_plants()
     connection.send_result(
         msg["id"],
         {
-            "plants": [plant.as_list_view() for plant in manager.list_plants()],
+            "plants": [plant.as_list_view() for plant in plants],
             "archived_count": len(manager.list_archived()),
+            "photo_meta": manager.photo_meta_for(
+                plant.image.id for plant in plants if plant.image is not None
+            ),
         },
     )
 
@@ -2089,9 +2101,15 @@ async def _handle_archive_list(
     if manager is None:
         _reply_not_loaded(connection, msg["id"])
         return
+    archived = manager.list_archived()
     connection.send_result(
         msg["id"],
-        {"plants": [_archived_summary(item) for item in manager.list_archived()]},
+        {
+            "plants": [_archived_summary(item) for item in archived],
+            "photo_meta": manager.photo_meta_for(
+                item.image.id for item in archived if item.image is not None
+            ),
+        },
     )
 
 

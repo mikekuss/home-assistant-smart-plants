@@ -39,9 +39,10 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN, IMAGE_ORPHAN_GRACE_SECONDS
 from .images import (
-    delete_image_file,
+    delete_image_and_variants,
     delete_stale_tmp_files,
     get_images_dir,
+    get_variants_dir,
     list_image_files,
 )
 from .roles import entity_roles
@@ -110,6 +111,17 @@ class SmartPlantsDeviceReconciler:
         # Photos of retired plants. Set for each replay pass; no cleanup
         # path may unlink one of them.
         self._archived_image_ids: frozenset[str] = frozenset()
+
+    async def _async_delete_image(self, images_dir: Any, image_id: str) -> None:
+        # The cached smaller copies go with the photo. Its placeholder is
+        # dropped by the manager's pass after the startup replay, which
+        # removes placeholders of every photo no record needs.
+        await self._hass.async_add_executor_job(
+            delete_image_and_variants,
+            images_dir,
+            get_variants_dir(self._hass),
+            image_id,
+        )
 
     def _registry(self) -> dr.DeviceRegistry:
         return dr.async_get(self._hass)
@@ -447,9 +459,7 @@ class SmartPlantsDeviceReconciler:
                 completed_ops=completed_ops,
                 protected=self._archived_image_ids,
             ):
-                await self._hass.async_add_executor_job(
-                    delete_image_file, images_dir, payload_image
-                )
+                await self._async_delete_image(images_dir, payload_image)
             if (
                 cleanup_complete
                 and tombstone.payload.get("cleanup_phase") == "registry_persisted"
@@ -479,9 +489,7 @@ class SmartPlantsDeviceReconciler:
                     continue
                 if mtime >= cutoff:
                     continue
-                await self._hass.async_add_executor_job(
-                    delete_image_file, images_dir, image_id
-                )
+                await self._async_delete_image(images_dir, image_id)
 
             # Interrupted write_image_file leaves a ``.<id>.webp.tmp`` file
             # behind. Only reap ones older than the grace period so a
@@ -554,9 +562,7 @@ class SmartPlantsDeviceReconciler:
                 completed_ops={*completed_ops, op.op_id},
                 protected=self._archived_image_ids,
             ):
-                await self._hass.async_add_executor_job(
-                    delete_image_file, images_dir, new_image.id
-                )
+                await self._async_delete_image(images_dir, new_image.id)
             return True
 
         if not file_present:
@@ -580,9 +586,7 @@ class SmartPlantsDeviceReconciler:
                     protected=self._archived_image_ids,
                 )
             ):
-                await self._hass.async_add_executor_job(
-                    delete_image_file, images_dir, previous_image_id
-                )
+                await self._async_delete_image(images_dir, previous_image_id)
             return True
 
         current_image_id = plant.image.id if plant.image is not None else None
@@ -636,9 +640,7 @@ class SmartPlantsDeviceReconciler:
             completed_ops={*completed_ops, op.op_id},
             protected=self._archived_image_ids,
         ):
-            await self._hass.async_add_executor_job(
-                delete_image_file, images_dir, image_id
-            )
+            await self._async_delete_image(images_dir, image_id)
 
     async def _replay_image_delete(  # noqa: PLR0913
         self,
@@ -685,9 +687,7 @@ class SmartPlantsDeviceReconciler:
             completed_ops=completed_ops,
             protected=self._archived_image_ids,
         ):
-            await self._hass.async_add_executor_job(
-                delete_image_file, images_dir, previous_image_id
-            )
+            await self._async_delete_image(images_dir, previous_image_id)
         return True
 
 

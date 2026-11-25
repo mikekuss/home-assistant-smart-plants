@@ -74,7 +74,7 @@ async def test_list_empty(
     await client.send_json_auto_id({"type": "smart_plants/plants/list"})
     response = await client.receive_json()
     assert response["success"] is True
-    assert response["result"] == {"plants": [], "archived_count": 0}
+    assert response["result"] == {"plants": [], "archived_count": 0, "photo_meta": {}}
 
 
 async def test_role_api_rejects_unknown_role(

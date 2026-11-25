@@ -6,7 +6,10 @@ Three routes, all under ``/api/smart_plants/plants/{plant_id}/image``:
 * ``GET``    → returns the plant's current WebP bytes. With ``?v=`` set
   to the current image id (the ``photo_id`` attribute of the plant's
   Sensor stale entity), the browser may cache the response for good,
-  because a new photo gets a new id.
+  because a new photo gets a new id. With ``?size=thumb`` (at most 320 px
+  on the longer side) or ``?size=thumb2x`` (640 px) it returns a smaller
+  WebP copy, made on first request and cached; any other ``size`` is
+  ``invalid_format``.
 * ``POST``   → validates the upload, re-encodes to WebP, and attaches
   it to the plant. ``expected_revision`` is required as a query param.
 * ``DELETE`` → detaches and removes the image file. ``expected_revision``
@@ -33,7 +36,12 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers.http import HomeAssistantView
 
 from .api_errors import ERR_STORAGE_FAILED, ERR_STORAGE_FULL, storage_error_reply
-from .const import DOMAIN, IMAGE_MAX_UPLOAD_BYTES, IMAGE_OUTPUT_CONTENT_TYPE
+from .const import (
+    DOMAIN,
+    IMAGE_MAX_UPLOAD_BYTES,
+    IMAGE_OUTPUT_CONTENT_TYPE,
+    IMAGE_VARIANT_SIZES,
+)
 from .images import (
     ImageNotFoundError,
     ImageValidationError,
@@ -205,6 +213,13 @@ class SmartPlantsImageView(HomeAssistantView):
                 ERR_INTEGRATION_NOT_LOADED,
                 "Smart Plants is not loaded",
             )
+        size = request.query.get("size")
+        if size is not None and size not in IMAGE_VARIANT_SIZES:
+            return _error_response(
+                HTTPStatus.BAD_REQUEST,
+                ERR_INVALID_FORMAT,
+                f"size must be one of {', '.join(IMAGE_VARIANT_SIZES)}",
+            )
         try:
             plant: PlantRecord | ArchivedPlant
             try:
@@ -217,10 +232,14 @@ class SmartPlantsImageView(HomeAssistantView):
                 return _error_response(
                     HTTPStatus.NOT_FOUND, ERR_NOT_FOUND, "plant has no image"
                 )
-            images_dir = get_images_dir(hass)
-            data = await hass.async_add_executor_job(
-                read_image_file, images_dir, plant.image.id
-            )
+            if size is None:
+                data = await hass.async_add_executor_job(
+                    read_image_file, get_images_dir(hass), plant.image.id
+                )
+                content_type = plant.image.content_type or IMAGE_OUTPUT_CONTENT_TYPE
+            else:
+                data = await manager.async_image_variant(plant.image.id, size)
+                content_type = IMAGE_OUTPUT_CONTENT_TYPE
         except SmartPlantsPlantNotFoundError:
             return _error_response(
                 HTTPStatus.NOT_FOUND, ERR_NOT_FOUND, "plant not found"
@@ -240,7 +259,7 @@ class SmartPlantsImageView(HomeAssistantView):
             )
         return web.Response(
             body=data,
-            content_type=plant.image.content_type or IMAGE_OUTPUT_CONTENT_TYPE,
+            content_type=content_type,
             headers={
                 "Cache-Control": (
                     _CACHE_CURRENT_IMAGE
