@@ -138,10 +138,12 @@ The defaults are in [Sensors and health](sensors-and-health.md#built-in-threshol
 Add a photo under **Photo** on the **Settings** tab. JPEG, PNG and WebP work, up to 40 MiB and
 64 megapixels. On an iPhone or iPad, iOS hands over a HEIC photo as JPEG. HEIC files on a
 computer, such as iPhone photos copied to a Mac, work in Safari on macOS. Other desktop browsers
-can't read HEIC and show a message instead; convert the photo to JPEG first. The browser scales
-a photo to 2048 × 2048 pixels and 5 MiB, and Smart Plants stores it upright as WebP without
-metadata such as the location. Every signed-in user can view photos. Only administrators can
-change them.
+can't read HEIC and show a message instead; convert the photo to JPEG first. Before the upload,
+the browser scales a photo to at most 2048 × 2048 pixels and reduces it to under 1 MB, lowering
+the quality and then the size until it fits, so a reverse proxy in front of Home Assistant
+accepts it. Smart Plants stores it upright as WebP without metadata such as the location. Every
+signed-in user can view photos. Only administrators can change them. If a proxy still refuses
+photos, see [Troubleshooting](troubleshooting.md#the-photo-was-larger-than-a-proxy-in-front-of-home-assistant-allows).
 
 ## Edit plant details
 

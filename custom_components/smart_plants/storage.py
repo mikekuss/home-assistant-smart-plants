@@ -112,6 +112,15 @@ class SmartPlantsStorageFullError(SmartPlantsStorageError):
     pass
 
 
+class SmartPlantsDiskFullError(SmartPlantsStorageError):
+    """
+    A file could not be written because the disk is full or read-only.
+
+    Unlike a full inventory, deleting Smart Plants data does not help; the
+    user has to free space on the Home Assistant disk.
+    """
+
+
 class SmartPlantsPendingOperationsFullError(
     HomeAssistantError, SmartPlantsStorageError
 ):

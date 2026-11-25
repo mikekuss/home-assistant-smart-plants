@@ -17,6 +17,7 @@ and the low-level file helpers to prove:
 from __future__ import annotations
 
 import contextlib
+import errno
 import io
 import struct
 import subprocess
@@ -24,6 +25,7 @@ import sys
 import warnings
 import zlib
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from custom_components.smart_plants.const import (
@@ -269,6 +271,20 @@ def test_write_read_delete_roundtrip(tmp_path: Path) -> None:
     assert delete_image_file(tmp_path, image_id) is True
     with pytest.raises(ImageNotFoundError):
         read_image_file(tmp_path, image_id)
+
+
+@pytest.mark.parametrize("step", ["os.fsync", "Path.replace"])
+def test_failed_write_removes_the_temp_file(tmp_path: Path, step: str) -> None:
+    image_id = "0123456789abcdef0123456789abcdef"
+    full = OSError(errno.ENOSPC, "No space left on device")
+    with (
+        patch(f"custom_components.smart_plants.images.{step}", side_effect=full),
+        pytest.raises(OSError, match="No space left") as info,
+    ):
+        write_image_file(tmp_path / "images", image_id, b"hello")
+    # The caller sees the original error, and nothing is left on disk.
+    assert info.value is full
+    assert list((tmp_path / "images").iterdir()) == []
 
 
 def test_delete_nonexistent_is_false(tmp_path: Path) -> None:

@@ -607,7 +607,10 @@ async function sendHttp<T>(
   }
   if (!response.ok) {
     const err = parsed as { error?: { code?: string; message?: string } } | null;
-    const code = err?.error?.code ?? "unknown_error";
+    // A reverse proxy in front of Home Assistant (such as the NGINX add-on)
+    // refuses a large body with its own 413 page; Home Assistant's own 413
+    // carries a JSON error and keeps its code.
+    const code = err?.error?.code ?? (response.status === 413 ? "upload_too_large" : "unknown_error");
     // Only photo requests use this path, so a rejected field is the photo itself.
     const mapped = code === "invalid_format" ? "invalid_image" : code;
     throw new ApiError(typeof mapped === "string" ? mapped : "unknown_error", "Image request failed. Use a valid JPEG, PNG or WebP up to 5 MiB and 2048 × 2048 pixels.");

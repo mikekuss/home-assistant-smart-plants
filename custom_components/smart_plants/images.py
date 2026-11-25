@@ -278,11 +278,19 @@ def write_image_file(images_dir: Path, image_id: str, data: bytes) -> None:
     images_dir.mkdir(parents=True, exist_ok=True)
     final = images_dir / f"{image_id}{IMAGE_OUTPUT_EXTENSION}"
     tmp = images_dir / _tmp_file_name(image_id)
-    with tmp.open("wb") as handle:
-        handle.write(data)
-        handle.flush()
-        os.fsync(handle.fileno())
-    tmp.replace(final)
+    try:
+        with tmp.open("wb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        tmp.replace(final)
+    except BaseException:
+        # A full disk fails the write or the fsync. Remove the partial temp
+        # file now instead of leaving it to the startup sweep a day later;
+        # the original error is the one the caller sees.
+        with contextlib.suppress(OSError):
+            tmp.unlink(missing_ok=True)
+        raise
 
 
 def read_image_file(images_dir: Path, image_id: str) -> bytes:

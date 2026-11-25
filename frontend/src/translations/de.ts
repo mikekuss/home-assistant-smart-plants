@@ -43,6 +43,8 @@ export const de: Catalog = {
   "api_error.storage_full": "Der Speicher von Smart Plants ist voll, deshalb wurde die Änderung nicht gespeichert. Lösche alte Einträge oder Notizen im Pflegeprotokoll und versuche es erneut.",
   "api_error.pending_operations_full": "Smart Plants hat zu viele unvollständige Änderungen, deshalb wurde die Änderung nicht gespeichert. Starte Home Assistant neu, um sie abzuschließen, und versuche es dann erneut.",
   "api_error.storage_failed": "Smart Plants konnte die Änderung nicht speichern. Es wurde nichts geändert. Prüfe das Home-Assistant-Protokoll und versuche es dann erneut.",
+  "api_error.upload_too_large": "Das Foto war größer, als ein Proxy vor Home Assistant erlaubt. Wenn du das NGINX-Add-on nutzt, erhöhe dessen Option Max body size (in MB) und versuche es dann erneut.",
+  "api_error.disk_full": "Der Datenträger von Home Assistant ist voll oder schreibgeschützt, deshalb wurde das Foto nicht gespeichert. Gib Speicherplatz frei und versuche es dann erneut.",
 
   "error.disconnected": "Verbindung getrennt. Lokale Änderungen und Wiederholungen beim Erstellen bleiben erhalten. Stelle die Verbindung vor dem Speichern wieder her.",
   "error.registry_updates": "Registrierungsaktualisierungen nicht verfügbar; stelle die Verbindung wieder her, um native Änderungen erneut zu laden.",
@@ -199,6 +201,7 @@ export const de: Catalog = {
   "image_error.type_or_input_size": "Wähle ein nicht leeres JPEG-, PNG-, WebP- oder HEIC-Bild mit höchstens 40 MiB.",
   "image_error.too_many_pixels": "Das Bild hat mehr als 64 Megapixel. Wähle ein kleineres Bild.",
   "image_error.resize": "Das Bild konnte für den Upload nicht verkleinert werden. Wähle ein kleineres JPEG-, PNG- oder WebP-Bild.",
+  "image_error.too_large_to_upload": "Dieses Foto konnte nicht klein genug für den Upload gemacht werden (unter 1 MB). Wähle ein Foto mit weniger Megapixeln oder weniger feinen Details.",
 
   "created.notice": "{name} wurde erstellt.",
   "created.uploading": "Das ausgewählte Foto wird hochgeladen …",

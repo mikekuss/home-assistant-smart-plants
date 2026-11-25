@@ -916,6 +916,9 @@
     "storage_failed": {
       "message": "Smart Plants could not save the change. Nothing was changed. Check the Home Assistant log, then try again."
     },
+    "disk_full": {
+      "message": "Home Assistant's disk is full or read-only, so the photo wasn't saved. Free up space on the disk, then try again."
+    },
     "plant_not_found": {
       "message": "This plant no longer exists."
     },
