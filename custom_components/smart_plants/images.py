@@ -504,12 +504,20 @@ def _variant_file_name(image_id: str, size: str) -> str:
 
 
 def read_variant_file(variants_dir: Path, image_id: str, size: str) -> bytes | None:
-    """Return a cached variant, or ``None`` when it was not made yet."""
+    """
+    Return a cached variant, or ``None`` when it was not made yet.
+
+    A file that is empty or not WebP also counts as not made yet, so it is
+    made again instead of being served: browsers keep the response for a year.
+    """
     path = variants_dir / _variant_file_name(image_id, size)
     try:
-        return path.read_bytes()
+        data = path.read_bytes()
     except FileNotFoundError:
         return None
+    if data[:4] != b"RIFF" or data[8:12] != b"WEBP":
+        return None
+    return data
 
 
 def write_variant_file(

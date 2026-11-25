@@ -98,9 +98,14 @@ def test_stored_image_thumbhash(tmp_path: Path) -> None:
 def test_variant_files_round_trip(tmp_path: Path) -> None:
     variants = tmp_path / "thumbs"
     assert read_variant_file(variants, _ID, "thumb") is None
-    write_variant_file(variants, _ID, "thumb", b"small")
-    write_variant_file(variants, _ID, "thumb2x", b"larger")
-    assert read_variant_file(variants, _ID, "thumb") == b"small"
+    small = b"RIFF\x04\x00\x00\x00WEBPsmall"
+    write_variant_file(variants, _ID, "thumb", small)
+    write_variant_file(variants, _ID, "thumb2x", b"RIFF\x05\x00\x00\x00WEBPlarger")
+    assert read_variant_file(variants, _ID, "thumb") == small
+    # Anything that is not WebP counts as not made yet.
+    write_variant_file(variants, _ID, "thumb", b"")
+    assert read_variant_file(variants, _ID, "thumb") is None
+    write_variant_file(variants, _ID, "thumb", small)
     assert sorted(path.name for path in variants.iterdir()) == [
         f"{_ID}-thumb.webp",
         f"{_ID}-thumb2x.webp",

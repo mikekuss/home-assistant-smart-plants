@@ -296,6 +296,9 @@ class SmartPlantsManager:
         # concurrent requests for the same photo share one copy.
         self._variant_slots = asyncio.Semaphore(1)
         self._variant_locks: dict[str, tuple[asyncio.Lock, int]] = {}
+        # Stored photos no smaller copy can be made of. They are served as
+        # they are, without decoding them again on every request.
+        self._uncopyable_photos: set[str] = set()
         # Ordered list of live event subscribers. A callback added later
         # is fired later, so a consumer can rely on prior subscribers
         # having observed the event before it runs. Unsubscribe uses the
@@ -3530,7 +3533,12 @@ class SmartPlantsManager:
                 pending_operations=cleared_ops,
             )
             await self._async_publish(target_snapshot)
-            self._photo_meta.set(processed.image_id, processed.thumbhash)
+            try:
+                self._photo_meta.set(processed.image_id, processed.thumbhash)
+            except ValueError:
+                # The upload is saved by now and must not fail. A placeholder
+                # that cannot be stored is computed again after the next start.
+                _LOGGER.debug("Smart Plants could not store a photo placeholder")
 
             if previous_image_id is not None and not _is_image_still_referenced(
                 previous_image_id,
@@ -3623,6 +3631,7 @@ class SmartPlantsManager:
         photo.
         """
         self._photo_meta.discard(image_id)
+        self._uncopyable_photos.discard(image_id)
         await self._hass.async_add_executor_job(
             delete_image_and_variants,
             images_dir,
@@ -3745,13 +3754,29 @@ class SmartPlantsManager:
                 cached = await self._async_read_variant(variants_dir, image_id, size)
                 if cached is not None:
                     return cached
+                if image_id in self._uncopyable_photos:
+                    return await self._hass.async_add_executor_job(
+                        read_image_file, get_images_dir(self._hass), image_id
+                    )
                 async with self._variant_slots:
                     stored = await self._hass.async_add_executor_job(
                         read_image_file, get_images_dir(self._hass), image_id
                     )
-                    variant = await self._hass.async_add_executor_job(
-                        make_variant, stored, longest
-                    )
+                    try:
+                        variant = await self._hass.async_add_executor_job(
+                            make_variant, stored, longest
+                        )
+                    except ImageValidationError:
+                        # A damaged file on disk. Serving it as it is gives the
+                        # same result as asking for the photo without a size,
+                        # and the warning is written once, not on every request.
+                        self._uncopyable_photos.add(image_id)
+                        _LOGGER.warning(
+                            "Smart Plants could not make a smaller copy of a stored "
+                            "plant photo and serves the stored photo instead; the "
+                            "file may be damaged"
+                        )
+                        return stored
                 await self._async_cache_variant(variants_dir, image_id, size, variant)
                 return variant
         finally:

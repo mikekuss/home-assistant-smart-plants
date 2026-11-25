@@ -336,19 +336,115 @@ async def test_concurrent_requests_share_one_copy(
 ) -> None:
     _entry, manager = await _setup(hass)
     plant = await _plant_with_photo(manager)
+    image_id = _photo_id(plant)
+    client = await hass_client()
+    entered = threading.Event()
+    release = threading.Event()
+    calls: list[int] = []
+
+    def _slow_variant(data: bytes, longest: int) -> bytes:
+        calls.append(longest)
+        entered.set()
+        assert release.wait(timeout=10)
+        return make_variant(data, longest)
+
+    # A plain function that blocks in the executor, so the other requests
+    # arrive while the first copy is still being made. A mock would run
+    # inline on the event loop and finish before they get there.
+    with patch("custom_components.smart_plants.manager.make_variant", _slow_variant):
+        requests = [
+            asyncio.ensure_future(_get(client, plant.id, "?size=thumb"))
+            for _ in range(3)
+        ]
+        assert await hass.async_add_executor_job(entered.wait, 10)
+        for _ in range(500):
+            if manager._variant_locks.get(image_id, (None, 0))[1] == 3:
+                break
+            await asyncio.sleep(0.01)
+        assert manager._variant_locks[image_id][1] == 3
+        release.set()
+        results = await asyncio.gather(*requests)
+    assert [response.status for response, _ in results] == [200, 200, 200]
+    assert len({body for _, body in results}) == 1
+    # The two requests that waited find the copy the first one made.
+    assert calls == [320]
+    # The per-photo locks are released once no request waits on them.
+    assert manager._variant_locks == {}
+
+
+async def test_get_size_serves_a_damaged_photo_as_stored(
+    hass: HomeAssistant,
+    hass_client: ClientSessionGenerator,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    _entry, manager = await _setup(hass)
+    plant = await _plant_with_photo(manager)
+    image_id = _photo_id(plant)
+    stored = Path(hass.config.path(IMAGE_STORAGE_DIRNAME)) / f"{image_id}.webp"
+    damaged = b"RIFF\x10\x00\x00\x00WEBPVP8 not a picture"
+    stored.write_bytes(damaged)
     client = await hass_client()
 
     with patch(
         "custom_components.smart_plants.manager.make_variant", wraps=make_variant
     ) as generator:
-        results = await asyncio.gather(
-            *(_get(client, plant.id, "?size=thumb") for _ in range(3))
-        )
-    assert [response.status for response, _ in results] == [200, 200, 200]
-    assert len({body for _, body in results}) == 1
+        for size in ("thumb", "thumb", "thumb2x"):
+            response, data = await _get(client, plant.id, f"?size={size}")
+            assert response.status == 200
+            assert data == damaged
+    # Decoded once; later requests serve the file without trying again.
     assert generator.call_count == 1
-    # The per-photo locks are released once no request waits on them.
-    assert manager._variant_locks == {}
+    assert _variant_names(hass) == set()
+    warnings = [r for r in caplog.records if "smaller copy" in r.getMessage()]
+    assert len(warnings) == 1
+    assert warnings[0].levelname == "WARNING"
+    assert "Traceback" not in caplog.text
+
+    # A new photo is copied again.
+    replaced = await manager.async_upsert_image(
+        plant.id,
+        expected_revision=manager.get_plant(plant.id).revision,
+        raw_bytes=_jpeg(),
+        declared_content_type="image/jpeg",
+    )
+    response, data = await _get(client, replaced.id, "?size=thumb")
+    assert response.status == 200
+    assert _dimensions(data) == (320, 256)
+    assert manager._uncopyable_photos == set()
+
+
+async def test_upload_is_saved_when_its_placeholder_cannot_be_stored(
+    hass: HomeAssistant,
+) -> None:
+    _entry, manager = await _setup(hass)
+    with patch.object(manager._photo_meta, "set", side_effect=ValueError("bad hash")):
+        plant = await _plant_with_photo(manager)
+    image_id = _photo_id(plant)
+    assert manager.get_plant(plant.id).image == plant.image
+    assert manager.photo_meta_for([image_id]) == {}
+
+
+@pytest.mark.parametrize(
+    "content",
+    [b"", b"RIFF", b"\x89PNG\r\n\x1a\n0000", b"RIFF\x00\x00\x00\x00WEBX"],
+)
+async def test_get_size_makes_an_empty_or_foreign_cache_file_again(
+    hass: HomeAssistant, hass_client: ClientSessionGenerator, content: bytes
+) -> None:
+    _entry, manager = await _setup(hass)
+    plant = await _plant_with_photo(manager)
+    image_id = _photo_id(plant)
+    directory = _variants_dir(hass)
+    directory.mkdir(parents=True, exist_ok=True)
+    cached = directory / f"{image_id}-thumb.webp"
+    cached.write_bytes(content)
+
+    response, data = await _get(
+        await hass_client(), plant.id, f"?size=thumb&v={image_id}"
+    )
+    assert response.status == 200
+    assert _dimensions(data) == (320, 256)
+    assert cached.read_bytes() == data
 
 
 async def test_a_copy_made_while_its_photo_goes_is_not_kept(
