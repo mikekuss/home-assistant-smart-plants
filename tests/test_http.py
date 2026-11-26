@@ -8,7 +8,10 @@ consistent with the WebSocket API.
 
 from __future__ import annotations
 
+import errno
 import io
+import os
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -35,7 +38,9 @@ from custom_components.smart_plants.storage import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.storage import Store
 from homeassistant.setup import async_setup_component
+from homeassistant.util.file import WriteError
 from PIL import Image
 from pytest_homeassistant_custom_component.common import CLIENT_ID, MockConfigEntry
 from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
@@ -714,3 +719,173 @@ async def test_delete_reports_a_failed_save(
     assert resp.status == status
     _assert_save_error(await resp.json(), code)
     assert manager.get_plant(plant.id).image == with_photo.image
+
+
+@pytest.mark.parametrize("code", [errno.ENOSPC, errno.EDQUOT, errno.EROFS])
+async def test_upload_reports_a_full_or_read_only_disk(
+    hass: HomeAssistant, hass_client: ClientSessionGenerator, code: int
+) -> None:
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    with_photo = await manager.async_upsert_image(
+        plant.id,
+        expected_revision=plant.revision,
+        raw_bytes=_jpeg(),
+        declared_content_type="image/jpeg",
+    )
+    images_dir = Path(hass.config.path(IMAGE_STORAGE_DIRNAME))
+    files_before = sorted(images_dir.iterdir())
+    client = await hass_client()
+    with patch(
+        "custom_components.smart_plants.images.os.fsync",
+        side_effect=OSError(code, "disk error"),
+    ):
+        resp = await client.post(
+            f"{_url(plant.id)}?expected_revision={with_photo.revision}",
+            data=_jpeg(width=300, height=200),
+            headers={"Content-Type": "image/jpeg"},
+        )
+    assert resp.status == 507
+    assert (await resp.json())["error"]["code"] == "disk_full"
+    # The plant keeps its photo and revision, nothing is left to replay and
+    # no partial file stays behind.
+    current = manager.get_plant(plant.id)
+    assert current.revision == with_photo.revision
+    assert current.image == with_photo.image
+    assert manager.snapshot.pending_operations == ()
+    assert sorted(images_dir.iterdir()) == files_before
+
+
+async def test_upload_drops_its_intent_after_another_write_error(
+    hass: HomeAssistant, hass_client: ClientSessionGenerator
+) -> None:
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    client = await hass_client()
+    with patch(
+        "custom_components.smart_plants.images.os.fsync",
+        side_effect=OSError(errno.EIO, "input/output error"),
+    ):
+        resp = await client.post(
+            f"{_url(plant.id)}?expected_revision={plant.revision}",
+            data=_jpeg(),
+            headers={"Content-Type": "image/jpeg"},
+        )
+    assert resp.status == 500
+    assert (await resp.json())["error"]["code"] == "unknown_error"
+    current = manager.get_plant(plant.id)
+    assert current.revision == plant.revision
+    assert current.image is None
+    assert manager.snapshot.pending_operations == ()
+
+
+def _failing_store_write(
+    store: object, code: int, *, after: int = 0
+) -> Callable[..., Awaitable[None]]:
+    """
+    Fail the writes of ``store`` after the first ``after`` ones.
+
+    Home Assistant's store raises a ``WriteError`` from the ``OSError`` of
+    the file write; this does the same.
+    """
+    write = Store._async_write_data
+    calls = 0
+
+    async def failing_write(self: Store[Any], *args: Any) -> None:
+        nonlocal calls
+        if self is store:
+            calls += 1
+            if calls > after:
+                error = OSError(code, os.strerror(code))
+                raise WriteError(error) from error
+        await write(self, *args)
+
+    return failing_write
+
+
+@pytest.mark.parametrize("code", [errno.ENOSPC, errno.EROFS])
+async def test_upload_reports_a_full_or_read_only_disk_when_saving(
+    hass: HomeAssistant, hass_client: ClientSessionGenerator, code: int
+) -> None:
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    with_photo = await manager.async_upsert_image(
+        plant.id,
+        expected_revision=plant.revision,
+        raw_bytes=_jpeg(),
+        declared_content_type="image/jpeg",
+    )
+    images_dir = Path(hass.config.path(IMAGE_STORAGE_DIRNAME))
+    files_before = sorted(images_dir.iterdir())
+    client = await hass_client()
+    # The inventory is on the same disk as the photos, so its save fails
+    # first, before the photo is written.
+    with patch.object(
+        Store, "_async_write_data", _failing_store_write(manager._store._store, code)
+    ):
+        resp = await client.post(
+            f"{_url(plant.id)}?expected_revision={with_photo.revision}",
+            data=_jpeg(width=300, height=200),
+            headers={"Content-Type": "image/jpeg"},
+        )
+    assert resp.status == 507
+    assert (await resp.json())["error"]["code"] == "disk_full"
+    current = manager.get_plant(plant.id)
+    assert current.revision == with_photo.revision
+    assert current.image == with_photo.image
+    assert manager.snapshot.pending_operations == ()
+    assert sorted(images_dir.iterdir()) == files_before
+
+
+async def test_upload_reports_a_full_disk_when_saving_the_new_photo(
+    hass: HomeAssistant, hass_client: ClientSessionGenerator
+) -> None:
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    client = await hass_client()
+    # The disk fills up while the photo is written: the save that records
+    # the upload succeeds, the one that attaches the photo fails.
+    with patch.object(
+        Store,
+        "_async_write_data",
+        _failing_store_write(manager._store._store, errno.ENOSPC, after=1),
+    ):
+        resp = await client.post(
+            f"{_url(plant.id)}?expected_revision={plant.revision}",
+            data=_jpeg(),
+            headers={"Content-Type": "image/jpeg"},
+        )
+    assert resp.status == 507
+    assert (await resp.json())["error"]["code"] == "disk_full"
+    current = manager.get_plant(plant.id)
+    assert current.revision == plant.revision
+    assert current.image is None
+
+
+async def test_upload_reports_another_save_error_as_a_failed_save(
+    hass: HomeAssistant, hass_client: ClientSessionGenerator
+) -> None:
+    entry = await _setup(hass)
+    manager: SmartPlantsManager = entry.runtime_data.manager
+    plant = await manager.async_create_plant(name="Aloe")
+    client = await hass_client()
+    with patch.object(
+        Store,
+        "_async_write_data",
+        _failing_store_write(manager._store._store, errno.EIO),
+    ):
+        resp = await client.post(
+            f"{_url(plant.id)}?expected_revision={plant.revision}",
+            data=_jpeg(),
+            headers={"Content-Type": "image/jpeg"},
+        )
+    assert resp.status == 500
+    assert (await resp.json())["error"]["code"] == "storage_failed"
+    current = manager.get_plant(plant.id)
+    assert current.revision == plant.revision
+    assert current.image is None
+    assert manager.snapshot.pending_operations == ()

@@ -169,6 +169,21 @@ interface Conflict { before: PlantRecord; after: PlantRecord; changes: string[] 
 // unit is a separate select and a note's text has its own limit.
 const CARE_DETAIL_FIELDS: Partial<Record<CareEvent["kind"], readonly string[]>> = { fertilizing: ["product", "amount"], pruning: ["part"], repotting: ["container", "medium"], pest_control: ["pest", "product"] };
 
+// Uploads a photo against `revision`. Another change saved in the meantime
+// (a detected watering, for example) makes the server answer
+// revision_conflict; the photo doesn't depend on the plant's other fields, so
+// the plant is read again and the upload retried once with its new revision,
+// if `retry` allows it. A second conflict is the caller's to report.
+async function uploadPhoto(hass: HomeAssistantLike, plantId: string, revision: number, file: File, retry: (latest: PlantRecord) => boolean = () => true): Promise<PlantRecord> {
+  try { return await api.uploadImage(hass, plantId, revision, file); }
+  catch (e) {
+    if (!(e instanceof ApiError && e.code === "revision_conflict")) throw e;
+    const latest = (await api.list(hass)).find(p => p.id === plantId);
+    if (!latest || latest.revision === revision || !retry(latest)) throw e;
+    return await api.uploadImage(hass, plantId, latest.revision, file);
+  }
+}
+
 // Local wall-clock time with its UTC offset, as care events are recorded.
 function localTimestamp(date: Date): string {
   const offset = -date.getTimezoneOffset();
@@ -1216,8 +1231,11 @@ export class SmartPlantsPanel extends LitElement {
       return kind === "moisture" && edit.moisture ? api.configureMoisture(hass, base.id, base.revision, canonicalMoisture(edit.moisture, this._entities)) : api.update(hass, input);
     }, false, kind);
   }
-  private async _mutate(operation: () => Promise<PlantRecord | void>, deleted = false, saved?: SaveKind): Promise<void> {
-    if (this._formBusy || this._blocked || this._conflict) return;
+  // `photo` marks a photo upload. It can't overwrite the plant's fields, so it
+  // goes ahead while a conflict waits for review; see _photoUploaded for how
+  // its result is taken over.
+  private async _mutate(operation: () => Promise<PlantRecord | void>, deleted = false, saved?: SaveKind, photo = false): Promise<void> {
+    if (this._formBusy || this._blocked || (this._conflict && !photo)) return;
     this._formBusy = true; this._error = "";
     const context = this._context; const before = this._base; const selectedArea = this._edits?.area;
     this._request++; // Reads admitted before this write must not overwrite its result.
@@ -1229,7 +1247,8 @@ export class SmartPlantsPanel extends LitElement {
         const latest = this._plantById(plant.id);
         if (latest && latest.revision > plant.revision) { await this._refresh(false); return; }
         this._plants = this._plants.map(p => p.id === plant.id ? plant : p);
-        if (before && this._base?.id === plant.id) this._rebaseEdits(before, plant, saved);
+        if (photo && before && this._base?.id === plant.id) this._photoUploaded(before, plant);
+        else if (before && this._base?.id === plant.id) this._rebaseEdits(before, plant, saved);
         if (saved === "area" && selectedArea !== undefined) { this._baseArea = selectedArea; this._edit({ area: selectedArea }); this._areaReview = false; }
         this._syncImage(); this._notice = this._l.t("notice.saved");
       }
@@ -1241,6 +1260,18 @@ export class SmartPlantsPanel extends LitElement {
       if (e instanceof ApiError && e.code === "revision_conflict") await this._refresh(false);
       if (e instanceof ApiError && ["integration_not_loaded", "unauthorized"].includes(e.code)) { this._blocked = true; this._clearImage(); }
     } finally { if (context === this._context) this._formBusy = false; if (deleted) this._removing = null; }
+  }
+  // Takes over the record a photo upload returned for the plant being edited
+  // from `before`. After a retry the photo sits on a later revision that also
+  // holds another change. Care data and the photo are adopted as usual; any
+  // other change is shown as a conflict, so that saving the user's edits can't
+  // overwrite it unseen. The user's own photo is never listed as a change
+  // made elsewhere, also not by the reads that follow.
+  private _photoUploaded(before: PlantRecord, plant: PlantRecord): void {
+    const withPhoto = (record: PlantRecord): PlantRecord => ({ ...record, image: plant.image });
+    if (!this._conflict && careOnlyChange(before, plant, ["image"])) { this._rebaseEdits(before, plant); return; }
+    this._setConflict(withPhoto(this._conflict?.before ?? before), plant);
+    if (this._base) this._base = withPhoto(this._base);
   }
   private _defaults(plant: PlantRecord): typeof builtin {
     const m = moistureRole(plant); return m ? { min: m.threshold_defaults.min.value, target: m.threshold_defaults.target.value, max: m.threshold_defaults.max.value } : builtin;
@@ -1672,10 +1703,13 @@ export class SmartPlantsPanel extends LitElement {
     try { upload = await prepareImage(file, this._l); }
     catch (e) { if (context === this._context) this._error = (e as Error).message; return; }
     finally { if (context === this._context) this._formBusy = false; }
-    if (context !== this._context || !this.isConnected || this._view.kind !== "detail" || this._view.plantId !== plant.id || this._base?.revision !== plant.revision) return;
-    const hass = this.hass;
+    // Leaving the plant page drops the photo. A change to the plant while the
+    // photo was prepared doesn't: it goes to the plant's latest revision.
+    if (context !== this._context || !this.isConnected || this._view.kind !== "detail" || this._view.plantId !== plant.id) return;
+    const hass = this.hass; const revision = this._plantById(plant.id)?.revision;
+    if (!hass || revision === undefined) return;
     // The authenticated backend decodes, checks dimensions, strips metadata and re-encodes.
-    await this._mutate(() => api.uploadImage(hass, plant.id, plant.revision, upload));
+    await this._mutate(() => uploadPhoto(hass, plant.id, revision, upload), false, undefined, true);
   }
   // Photo row of the Settings tab: current state, choose a file, remove.
   private _renderPhotoRow(plant: PlantRecord) {
@@ -2826,7 +2860,6 @@ export class SmartPlantsPanel extends LitElement {
     const l = this._l; const created = l.t("created.notice", { name: plant.name }); const uploading = l.t("created.uploading");
     const note = (photoText: string) => { this._creationPhoto = photoText; this._creationNotice = photoText ? `${created} ${photoText}` : created; };
     note(initialPhoto ? uploading : photo ? l.t("created.photo_skipped") : "");
-    const photoContext = this._context;
     // Reconcile through reads without rebasing or clearing unrelated pending
     // edits. Invalidate reads admitted before the creation result as usual.
     void this._refresh(false);
@@ -2838,11 +2871,14 @@ export class SmartPlantsPanel extends LitElement {
       // authoritative if the new plant is edited while its upload is pending.
       await validateImage(photo, l);
       if (!this.isConnected || this.hass?.connection !== hass.connection || this._blocked) return;
-      const uploaded = await api.uploadImage(hass, plant.id, plant.revision, photo);
+      // A retry after a conflict only adds the first photo; one set elsewhere stays.
+      const uploaded = await uploadPhoto(hass, plant.id, plant.revision, photo, latest => latest.image === null);
       if (!this.isConnected || this.hass?.connection !== hass.connection) return;
-      // The still-current created-plant editor can adopt its own photo revision
-      // while retaining dirty fields. Other contexts reconcile only via refresh.
-      if (photoContext === this._context && this._base?.id === plant.id && this._base.revision === plant.revision && !this._formBusy && !this._conflict) this._rebaseEdits(this._base, uploaded);
+      // An open editor of the created plant, also one opened from the
+      // confirmation while the photo was uploading, takes over its own photo
+      // while retaining dirty fields, unless the record it shows is already
+      // newer or a save is in flight. Other editors reconcile only via refresh.
+      if (this._base?.id === plant.id && this._base.revision < uploaded.revision && !this._formBusy) this._photoUploaded(this._base, uploaded);
       if (this._createdPlantId === plant.id) note(l.t("created.photo_uploaded"));
     } catch (error) {
       if (!this.isConnected || this.hass?.connection !== hass.connection) return;

@@ -236,6 +236,32 @@ describe("api.uploadImage", () => {
       global.fetch = originalFetch;
     }
   });
+
+  it.each([
+    ["a proxy's HTML page", "<html><body><h1>413 Request Entity Too Large</h1></body></html>", "upload_too_large"],
+    ["an empty body", "", "upload_too_large"],
+    ["Home Assistant's own JSON error", JSON.stringify({ error: { code: "invalid_format", message: "upload exceeds 5242880 bytes" } }), "invalid_image"],
+  ])("maps a 413 with %s", async (_name, body, code) => {
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn(async () => new Response(body, { status: 413, headers: { "Content-Type": body.startsWith("{") ? "application/json" : "text/html" } })) as never;
+    try {
+      const file = new File([new Uint8Array([1])], "photo.jpg", { type: "image/jpeg" });
+      await expect(api.uploadImage(fakeHass(() => ({})), "plt-1", 2, file)).rejects.toMatchObject({ name: "ApiError", code });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("keeps other errors without a JSON body generic", async () => {
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn(async () => new Response("<html>Bad Gateway</html>", { status: 502 })) as never;
+    try {
+      const file = new File([new Uint8Array([1])], "photo.jpg", { type: "image/jpeg" });
+      await expect(api.uploadImage(fakeHass(() => ({})), "plt-1", 2, file)).rejects.toMatchObject({ code: "unknown_error" });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
 
 describe("api.delete", () => {

@@ -18,6 +18,11 @@ async function detail(hass: HomeAssistantLike, section = "Settings"): Promise<Sm
   }
   return el;
 }
+// Picks a photo in the Settings tab.
+function choosePhoto(el: SmartPlantsPanel): void {
+  const input = el.shadowRoot!.querySelector<HTMLInputElement>('input[type="file"]')!;
+  Object.defineProperty(input, "files", { value: [pngFile()] }); input.dispatchEvent(new Event("change"));
+}
 // The dialog's Cancel button; the Settings rows have their own Cancel buttons.
 function dialogCancel(el: SmartPlantsPanel): HTMLButtonElement { return el.shadowRoot!.querySelector<HTMLButtonElement>("dialog .actions button")!; }
 async function cancelDialog(el: SmartPlantsPanel): Promise<void> { dialogCancel(el).click(); await settle(el); }
@@ -501,5 +506,143 @@ describe("local image validation and mutation", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: { code: "invalid_format", message: "Image decoding rejected" } }), { status: 400 })));
     const el = await detail(harness().hass); const input = el.shadowRoot!.querySelector<HTMLInputElement>('input[type="file"]')!; const file = pngFile(); Object.defineProperty(input, "files", { value: [file] }); input.dispatchEvent(new Event("change")); await settle(el);
     expect(fetch).toHaveBeenCalledWith(`/api/smart_plants/plants/${sample.id}/image?expected_revision=1`, expect.objectContaining({ method: "POST", body: file, headers: { Authorization: "Bearer test-token", "Content-Type": "image/png" } })); expect(el.shadowRoot?.textContent).toContain("Photos must be JPEG, PNG or WebP"); expect(el.shadowRoot?.textContent).not.toContain("Image decoding rejected");
+  });
+  it.each([
+    ["a proxy's 413 page", () => new Response("<html><h1>413 Request Entity Too Large</h1></html>", { status: 413 }), "larger than a proxy in front of Home Assistant allows"],
+    ["a full disk", () => Response.json({ error: { code: "disk_full", message: "the disk is full or read-only" } }, { status: 507 }), "Home Assistant's disk is full or read-only"],
+  ])("explains an upload refused by %s", async (_name, reply, message) => {
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 100, height: 100, close: vi.fn() }))); vi.stubGlobal("fetch", vi.fn(async () => reply()));
+    const el = await detail(harness().hass); choosePhoto(el); await settle(el);
+    expect(el.shadowRoot?.textContent).toContain(message); expect(el.shadowRoot?.textContent).not.toContain("Something went wrong");
+  });
+});
+describe("photo uploads while the plant changes", () => {
+  const photoImage = { id: "new-photo", content_type: "image/webp", width: 100, height: 100, created_at: sample.created_at };
+  // Answers a photo POST from `uploads` in turn; a photo GET gets a WebP blob.
+  function server(uploads: ((revision: number) => Response | Promise<Response>)[]) {
+    const posts: number[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method !== "POST") return new Response(new Blob([new Uint8Array(4)], { type: "image/webp" }));
+      const revision = Number(new URL(url, "http://localhost").searchParams.get("expected_revision")); posts.push(revision);
+      return uploads.shift()!(revision);
+    }));
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:photo"); vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    return posts;
+  }
+  const conflict = () => Response.json({ error: { code: "revision_conflict", message: "stale" } }, { status: 409 });
+  // The "changed somewhere else" banner, if shown.
+  const banner = (el: SmartPlantsPanel) => [...el.shadowRoot!.querySelectorAll("section.notice")].find(section => section.textContent?.includes("changed somewhere else"))?.textContent ?? "";
+  beforeEach(() => { vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 100, height: 100, close: vi.fn() }))); });
+  it("retries once with the plant's new revision after a conflict", async () => {
+    let plant: PlantRecord = structuredClone(sample);
+    const h = harness([sample], msg => msg.type === "smart_plants/plants/list" ? { plants: [plant] } : undefined); const el = await detail(h.hass);
+    const posts = server([
+      // A detected watering was saved while the photo was on its way.
+      () => { plant = { ...plant, revision: 2 }; return conflict(); },
+      revision => { plant = { ...plant, revision: revision + 1, image: photoImage }; return Response.json({ plant }); },
+    ]);
+    choosePhoto(el); await settle(el); await settle(el);
+    expect(posts).toEqual([1, 2]);
+    expect(el.shadowRoot?.textContent).not.toContain("changed somewhere else"); expect(el.shadowRoot?.textContent).toContain("Saved");
+  });
+  it("reports a second conflict", async () => {
+    let plant: PlantRecord = structuredClone(sample);
+    const h = harness([sample], msg => msg.type === "smart_plants/plants/list" ? { plants: [plant] } : undefined); const el = await detail(h.hass);
+    const posts = server([() => { plant = { ...plant, revision: 2 }; return conflict(); }, () => { plant = { ...plant, revision: 3 }; return conflict(); }]);
+    choosePhoto(el); await settle(el); await settle(el);
+    expect(posts).toEqual([1, 2]); expect(el.shadowRoot?.textContent).toContain("This plant was changed somewhere else");
+  });
+  it("shows a rename saved before the retry as a conflict instead of adopting it", async () => {
+    let plant: PlantRecord = structuredClone(sample);
+    const h = harness([sample], msg => msg.type === "smart_plants/plants/list" ? { plants: [plant] } : undefined); const el = await detail(h.hass);
+    await fill(el, "Category", "Unsaved category");
+    const posts = server([
+      // Another admin renamed the plant while the photo was on its way.
+      () => { plant = { ...plant, revision: 2, name: "Renamed Aloe" }; return conflict(); },
+      revision => { plant = { ...plant, revision: revision + 1, image: photoImage }; return Response.json({ plant }); },
+    ]);
+    choosePhoto(el); await settle(el); await settle(el);
+    expect(posts).toEqual([1, 2]);
+    expect(banner(el)).toContain("Renamed Aloe"); expect(banner(el)).not.toContain("Photo");
+    expect(field(el.shadowRoot!, "Category").value).toBe("Unsaved category"); expect(field(el.shadowRoot!, "Name").value).toBe("Aloe");
+    // Saving waits for the review, so the old name can't replace the new one.
+    expect(button(el.shadowRoot!, "Save name").closest("fieldset")?.disabled).toBe(true);
+    await click(el, "Keep my edits");
+    expect(field(el.shadowRoot!, "Name").value).toBe("Renamed Aloe"); expect(field(el.shadowRoot!, "Category").value).toBe("Unsaved category");
+    expect(h.calls.some(c => c.type === "smart_plants/plants/update")).toBe(false);
+  });
+  it("uploads a photo prepared while the plant changed to the plant's new revision", async () => {
+    const decoded = deferred<{ width: number; height: number; close: () => void }>(); vi.stubGlobal("createImageBitmap", vi.fn(() => decoded.promise));
+    let plant: PlantRecord = structuredClone(sample);
+    const h = harness([sample], msg => msg.type === "smart_plants/plants/list" ? { plants: [plant] } : undefined); const el = await detail(h.hass);
+    const posts = server([revision => { plant = { ...plant, revision: revision + 1, image: photoImage }; return Response.json({ plant }); }]);
+    choosePhoto(el); await settle(el);
+    // A detected watering arrives while the photo is being prepared.
+    plant = { ...plant, revision: 2 }; await (el as unknown as { _refresh(showLoading: boolean): Promise<void> })._refresh(false);
+    decoded.resolve({ width: 100, height: 100, close: vi.fn() }); await settle(el); await settle(el);
+    expect(posts).toEqual([2]); expect(el.shadowRoot?.textContent).toContain("Saved");
+  });
+  it("uploads a photo prepared while another admin renamed the plant and keeps the conflict for review", async () => {
+    const decoded = deferred<{ width: number; height: number; close: () => void }>(); vi.stubGlobal("createImageBitmap", vi.fn(() => decoded.promise));
+    let plant: PlantRecord = structuredClone(sample);
+    const h = harness([sample], msg => msg.type === "smart_plants/plants/list" ? { plants: [plant] } : undefined); const el = await detail(h.hass);
+    const posts = server([revision => { plant = { ...plant, revision: revision + 1, image: photoImage }; return Response.json({ plant }); }]);
+    choosePhoto(el); await settle(el);
+    plant = { ...plant, revision: 2, name: "Renamed Aloe" }; await (el as unknown as { _refresh(showLoading: boolean): Promise<void> })._refresh(false);
+    decoded.resolve({ width: 100, height: 100, close: vi.fn() }); await settle(el); await settle(el);
+    expect(posts).toEqual([2]);
+    // The banner lists the rename, not the user's own photo.
+    expect(banner(el)).toContain("Renamed Aloe"); expect(banner(el)).not.toContain("Photo");
+  });
+  it("retries the wizard's photo once after a conflict", async () => {
+    const created: PlantRecord = { ...structuredClone(sample), id: "created-plant", name: "Created plant" };
+    let plants = [structuredClone(sample)];
+    const h = harness(plants, msg => {
+      if (msg.type === "smart_plants/plants/list") return { plants };
+      if (msg.type === "smart_plants/wizard/create") { plants = [...plants, created]; return { plant: created }; }
+      return undefined;
+    });
+    const posts = server([
+      () => { plants = plants.map(p => p.id === created.id ? { ...p, revision: 2 } : p); return conflict(); },
+      revision => { const uploaded = { ...created, revision: revision + 1, image: photoImage }; plants = plants.map(p => p.id === created.id ? uploaded : p); return Response.json({ plant: uploaded }); },
+    ]);
+    const el = await mount(h.hass); await click(el, "Add plant");
+    const wizard = el.shadowRoot!.querySelector<SmartPlantsWizard>("smart-plants-wizard")!; await settle(wizard);
+    await fill(wizard, "Plant name", "Created plant");
+    const input = wizard.shadowRoot!.querySelector<HTMLInputElement>('input[type="file"]')!;
+    Object.defineProperty(input, "files", { value: [pngFile()] }); input.dispatchEvent(new Event("change")); await settle(wizard); await settle(wizard);
+    await click(wizard, "Next"); await click(wizard, "Skip for now"); await click(wizard, "Create plant");
+    await settle(el); await settle(wizard); await settle(el);
+    expect(posts).toEqual([1, 2]); expect(panelText(el)).toContain("Selected photo uploaded.");
+  });
+  it.each([
+    ["a bare revision bump", {}, false],
+    ["a rename", { name: "Renamed plant" }, true],
+  ])("takes over the wizard's photo on the created plant's open page after a retry following %s", async (_name, change, conflicts) => {
+    const created: PlantRecord = { ...structuredClone(sample), id: "created-plant", name: "Created plant" };
+    let plants = [structuredClone(sample)];
+    const h = harness(plants, msg => {
+      if (msg.type === "smart_plants/plants/list") return { plants };
+      if (msg.type === "smart_plants/wizard/create") { plants = [...plants, created]; return { plant: created }; }
+      return undefined;
+    });
+    const firstPost = deferred<void>();
+    const posts = server([
+      async () => { await firstPost.promise; plants = plants.map(p => p.id === created.id ? { ...p, ...change, revision: 2 } : p); return conflict(); },
+      revision => { const latest = plants.find(p => p.id === created.id)!; const uploaded = { ...latest, revision: revision + 1, image: photoImage }; plants = plants.map(p => p.id === created.id ? uploaded : p); return Response.json({ plant: uploaded }); },
+    ]);
+    const el = await mount(h.hass); await click(el, "Add plant");
+    const wizard = el.shadowRoot!.querySelector<SmartPlantsWizard>("smart-plants-wizard")!; await settle(wizard);
+    await fill(wizard, "Plant name", "Created plant");
+    const input = wizard.shadowRoot!.querySelector<HTMLInputElement>('input[type="file"]')!;
+    Object.defineProperty(input, "files", { value: [pngFile()] }); input.dispatchEvent(new Event("change")); await settle(wizard); await settle(wizard);
+    await click(wizard, "Next"); await click(wizard, "Skip for now"); await click(wizard, "Create plant"); await settle(el);
+    // The user opens the new plant and starts editing while its photo uploads.
+    await click(wizard, "Open plant"); await click(el, "Settings"); await click(el, "Rename"); await fill(el, "Category", "Unsaved category");
+    firstPost.resolve(); await settle(el); await settle(el); await settle(el);
+    expect(posts).toEqual([1, 2]);
+    expect(field(el.shadowRoot!, "Category").value).toBe("Unsaved category");
+    if (conflicts) { expect(banner(el)).toContain("Renamed plant"); expect(banner(el)).not.toContain("Photo"); }
+    else expect(banner(el)).toBe("");
   });
 });

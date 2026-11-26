@@ -35,7 +35,12 @@ from aiohttp import web
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.helpers.http import HomeAssistantView
 
-from .api_errors import ERR_STORAGE_FAILED, ERR_STORAGE_FULL, storage_error_reply
+from .api_errors import (
+    ERR_DISK_FULL,
+    ERR_STORAGE_FAILED,
+    ERR_STORAGE_FULL,
+    storage_error_reply,
+)
 from .const import (
     DOMAIN,
     IMAGE_MAX_UPLOAD_BYTES,
@@ -106,10 +111,12 @@ def _error_response(status: HTTPStatus, code: str, message: str) -> web.Response
     )
 
 
-# A full inventory is the server's storage limit (507); a full queue of
-# unfinished changes clears after a restart (503).
+# A full inventory is the server's storage limit (507), as is a full or
+# read-only disk; a full queue of unfinished changes clears after a
+# restart (503).
 _STORAGE_ERROR_STATUS = {
     ERR_STORAGE_FULL: HTTPStatus.INSUFFICIENT_STORAGE,
+    ERR_DISK_FULL: HTTPStatus.INSUFFICIENT_STORAGE,
     ERR_STORAGE_FAILED: HTTPStatus.INTERNAL_SERVER_ERROR,
 }
 

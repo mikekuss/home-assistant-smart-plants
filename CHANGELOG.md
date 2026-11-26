@@ -54,6 +54,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Phone photos now upload behind the NGINX add-on and other reverse proxies with a 1 MB limit:
+  the browser reduces every plant photo to under 1 MB first, also on an iPhone or iPad. A photo
+  the browser's image decoder refuses is opened another way, and one over 64 megapixels is
+  refused before the phone runs out of memory opening it. A proxy that still refuses a photo, a
+  photo that can't be made small enough and a full or read-only Home Assistant disk each get
+  their own message instead of *Something went wrong*.
+- A photo chosen while its plant changed in the background, for example by a detected watering,
+  is no longer dropped or refused as changed elsewhere; it is uploaded to the latest plant. A
+  change to other details in the meantime, such as a new name, is still shown for review, and
+  the new photo isn't listed as a change made elsewhere.
 - The panel now lets the browser cache plant photos, so the plant list, the plant page and
   **Retired plants** no longer download every photo again each time they open.
 - The `photo_id` attribute of *Sensor stale* is no longer stored in history.

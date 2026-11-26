@@ -42,6 +42,8 @@ export const en = {
   "api_error.storage_full": "Smart Plants storage is full, so the change wasn't saved. Delete old care log entries or notes, then try again.",
   "api_error.pending_operations_full": "Smart Plants has too many unfinished changes, so the change wasn't saved. Restart Home Assistant to complete them, then try again.",
   "api_error.storage_failed": "Smart Plants couldn't save the change. Nothing was changed. Check the Home Assistant log, then try again.",
+  "api_error.upload_too_large": "The photo was larger than a proxy in front of Home Assistant allows. If you use the NGINX add-on, raise its Max body size (in MB) option, then try again.",
+  "api_error.disk_full": "Home Assistant's disk is full or read-only, so the photo wasn't saved. Free up space on the disk, then try again.",
 
   "error.disconnected": "Disconnected. Local edits and creation retries are retained. Reconnect before saving.",
   "error.registry_updates": "Registry updates unavailable; reconnect to retry native changes.",
@@ -198,6 +200,7 @@ export const en = {
   "image_error.type_or_input_size": "Choose a nonempty JPEG, PNG, WebP or HEIC image up to 40 MiB.",
   "image_error.too_many_pixels": "This image has more than 64 megapixels. Choose a smaller image.",
   "image_error.resize": "This image could not be scaled down for upload. Choose a smaller JPEG, PNG or WebP.",
+  "image_error.too_large_to_upload": "This photo couldn't be made small enough to upload (under 1 MB). Choose a photo with fewer megapixels or less fine detail.",
 
   "created.notice": "{name} created.",
   "created.uploading": "Uploading its selected photo…",

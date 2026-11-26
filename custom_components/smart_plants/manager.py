@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import contextvars
+import errno
 import hashlib
 import inspect
 import logging
@@ -105,7 +106,12 @@ from .roles import (
     role_definitions,
     with_species_threshold_defaults,
 )
-from .storage import SmartPlantsStorageError, SmartPlantsStore, _utcnow_iso
+from .storage import (
+    SmartPlantsDiskFullError,
+    SmartPlantsStorageError,
+    SmartPlantsStore,
+    _utcnow_iso,
+)
 from .watering_detector import DETECTION_QUIET
 from .winter import (
     effective_thresholds,
@@ -3467,7 +3473,9 @@ class SmartPlantsManager:
         1. Validate + re-encode the upload (CPU work, off the event loop).
         2. Publish the intent snapshot: pending op appended, plant record
            unchanged so a crash before the file is on disk rolls back.
-        3. Write the WebP file atomically.
+        3. Write the WebP file atomically. When that fails, drop the
+           intent again. A full or read-only disk is reported as such,
+           whichever step it fails.
         4. Publish the target snapshot: plant.image points at the new
            record, revision bumps, pending op is cleared.
         5. Delete the previous file (orphan cleanup on crash).
@@ -3513,14 +3521,22 @@ class SmartPlantsManager:
                     pending_op,
                 ),
             )
-            await self._async_publish(intent_snapshot)
+            await self._async_publish_photo(intent_snapshot)
 
-            images_dir = await self._hass.async_add_executor_job(
-                ensure_images_dir, self._hass
-            )
-            await self._hass.async_add_executor_job(
-                write_image_file, images_dir, processed.image_id, processed.data
-            )
+            try:
+                images_dir = await self._hass.async_add_executor_job(
+                    ensure_images_dir, self._hass
+                )
+                await self._hass.async_add_executor_job(
+                    write_image_file, images_dir, processed.image_id, processed.data
+                )
+            except Exception as err:
+                await self._async_discard_unwritten_image(pending_op)
+                if _disk_unwritable(err):
+                    raise SmartPlantsDiskFullError(
+                        "the photo could not be written to disk"
+                    ) from err
+                raise
 
             updated = current.with_next_revision(image=new_image)
             cleared_ops = tuple(
@@ -3532,7 +3548,7 @@ class SmartPlantsManager:
                 self._snapshot.with_plant(updated),
                 pending_operations=cleared_ops,
             )
-            await self._async_publish(target_snapshot)
+            await self._async_publish_photo(target_snapshot)
             try:
                 self._photo_meta.set(processed.image_id, processed.thumbhash)
             except ValueError:
@@ -3552,6 +3568,59 @@ class SmartPlantsManager:
             self._prepare_event(event)
         await self._dispatch_event(event)
         return updated
+
+    async def _async_publish_photo(self, snapshot: InventorySnapshot) -> None:
+        """
+        Publish a step of a photo upload, naming a full or read-only disk.
+
+        The inventory file lives on the same disk as the photos, so a full
+        or read-only disk usually fails this save before the photo itself is
+        written. The panel then says so instead of reporting a failed save.
+        Like ``_async_publish``, a failed save leaves the in-memory snapshot
+        as it was.
+        """
+        try:
+            await self._async_publish(snapshot)
+        except SmartPlantsDiskFullError:
+            raise
+        except SmartPlantsStorageError as err:
+            if _disk_unwritable(err):
+                raise SmartPlantsDiskFullError(
+                    "the photo could not be saved to disk"
+                ) from err
+            raise
+
+    async def _async_discard_unwritten_image(
+        self, pending_op: PendingOperation
+    ) -> None:
+        """
+        Drop the intent of a photo whose file could not be written.
+
+        The plant record never pointed at the new file, so removing the
+        operation leaves the plant exactly as it was, without waiting for
+        replay at the next start. A full disk can fail this save as well;
+        the operation then stays pending and replay rolls it back, because
+        its file is missing.
+        """
+        remaining = tuple(
+            op
+            for op in self._snapshot.pending_operations
+            if op.op_id != pending_op.op_id
+        )
+        try:
+            await self._async_publish(
+                replace(
+                    self._snapshot,
+                    revision=self._snapshot.revision + 1,
+                    pending_operations=remaining,
+                )
+            )
+        except SmartPlantsStorageError:
+            _LOGGER.warning(
+                "Could not drop the unfinished photo change of %s; it is "
+                "rolled back at the next start",
+                pending_op.plant_id,
+            )
 
     async def async_delete_image(
         self, plant_id: str, *, expected_revision: int
@@ -3949,6 +4018,27 @@ class SmartPlantsManager:
 
 
 _IMAGE_OPERATION_KINDS = frozenset({"create_image", "replace_image", "delete_image"})
+
+# Write errors that mean the disk is full (ENOSPC, or EDQUOT for a quota)
+# or mounted read-only (EROFS); freeing space or remounting is the fix.
+_DISK_UNWRITABLE_ERRNOS = frozenset({errno.ENOSPC, errno.EDQUOT, errno.EROFS})
+
+
+def _disk_unwritable(err: BaseException) -> bool:
+    """
+    Return whether ``err`` or an error it was raised from is a disk error.
+
+    Home Assistant's store wraps the ``OSError`` of a failed write in its own
+    error, which ``SmartPlantsStore`` wraps again, so the chain is walked.
+    """
+    seen: set[int] = set()
+    current: BaseException | None = err
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, OSError) and current.errno in _DISK_UNWRITABLE_ERRNOS:
+            return True
+        current = current.__cause__ or current.__context__
+    return False
 
 
 def _without_image_operations(

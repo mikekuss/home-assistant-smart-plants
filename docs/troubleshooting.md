@@ -57,6 +57,26 @@ match the file type. A PNG renamed to `.jpg` is rejected. HEIC files only work i
 macOS. Other desktop browsers say they can't read HEIC photos; convert the photo to JPEG first.
 On an iPhone or iPad the panel doesn't offer HEIC, so iOS hands over a JPEG copy instead.
 
+### "The photo was larger than a proxy in front of Home Assistant allows"
+
+The browser reduces every photo to under 1 MB before the upload, which fits the default limit
+of most reverse proxies. A proxy set to a lower limit still refuses it. In the NGINX Home
+Assistant SSL proxy add-on (4.5.0 or later), raise **Max body size (in MB)**
+(`client_max_body_size_megabytes`) on its **Configuration** tab. For another proxy, raise its
+limit for the request body size, such as `client_max_body_size` in a plain NGINX setup.
+
+### "This photo couldn't be made small enough to upload"
+
+Even at 1280 pixels on the longer side and the lowest quality, the photo didn't get under
+1 MB. This is rare and happens with photos full of fine detail or noise. Crop the photo, or
+choose one with fewer megapixels.
+
+### "Home Assistant's disk is full or read-only"
+
+Smart Plants couldn't save the photo because the Home Assistant disk is full or mounted
+read-only. The plant keeps its previous photo. Free up space, for example by deleting old
+backups, then upload the photo again.
+
 ### "Smart Plants storage is full"
 
 All plants share one storage file of at most 8 MiB. Delete old care entries or long notes.
