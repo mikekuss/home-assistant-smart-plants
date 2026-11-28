@@ -46,6 +46,9 @@ const state = {
   evaluations: {}, health: {}, statistics: {}, failures: {}, malformed: {}, providerAvailable: true,
   conflictNext: false, loseCreateResponse: false, imageFailure: null,
   blobsCreated: [], blobsRevoked: [], imageSerial: 0,
+  // ThumbHash previews by image id, as the plant lists report them, and how
+  // many photo downloads ran at once.
+  photoMeta: {}, imageInFlight: 0, imageMaxInFlight: 0, imageDelay: 0,
   holdNext: {}, pending: {}, roleDefaults: copy(roleDefaults),
   // Retired plants, newest first, in the shape archive/get returns.
   archived: [],
@@ -289,6 +292,21 @@ if (params.has("reading")) state.seedReading(params.has("cold"), params.has("win
 if (params.has("forecast")) state.seedForecast(params.has("frost"), params.has("short"));
 if (params.has("suggest")) state.seedSuggestions();
 // Opt-in dormant storage for the first plant.
+// Opt-in photos: Garden Fern and a shelf of further plants have one, each with
+// a ThumbHash preview, and photo downloads take a moment, so that the plant list
+// loads them as they come into view and a few at a time.
+const PHOTO_THUMBHASH = "dPgNDYL4N6iId4iKdYl3eQd0iAro";
+state.seedPhotos = () => {
+  const shelf = Array.from({ length: 12 }, (_, i) => plant(20 + i, `Shelf Fern ${i + 1}`, { category: "Fern" }));
+  state.plants.push(...shelf); state.devices.push(...shelf.map(p => deviceFor(p, "garden")));
+  for (const p of [state.plants[1], ...shelf]) {
+    const id = uuid(900 + state.plants.indexOf(p)).replaceAll("-", "");
+    p.image = { id, content_type: "image/webp", width: 160, height: 120, created_at: now };
+    state.photoMeta[id] = { thumbhash: PHOTO_THUMBHASH };
+  }
+  state.imageDelay = 150;
+};
+if (params.has("photos")) state.seedPhotos();
 if (params.has("dormant")) state.plants[0].placement = { mode: "dormant_storage", exposure: null, rain_exposure: null, container: true };
 // Opt-in snoozed first plant; tests pin the clock so the end date reads the same.
 if (params.has("snoozed")) state.plants[0].snoozed_until = "2026-10-30T23:59:59Z";
@@ -378,7 +396,7 @@ async function respond(message) {
   switch (message.type) {
     case "smart_plants/panel/info": return { api_version: 1, schema_version: 1, providers: [{ provider: "manual", available: true, search_supported: false }, { provider: "openplantbook", available: state.providerAvailable, search_supported: true }] };
     // Like the backend, the list leaves the care history to care/list.
-    case "smart_plants/plants/list": return { plants: copy(state.plants).map(({ care_events: _history, ...p }) => p), archived_count: state.archived.length };
+    case "smart_plants/plants/list": return { plants: copy(state.plants).map(({ care_events: _history, ...p }) => p), archived_count: state.archived.length, photo_meta: copy(state.photoMeta) };
     case "smart_plants/plants/archive": {
       const at = new Date().toISOString(); const device = state.devices.find(d => d.identifiers[0][1] === p.id);
       const area = state.areas.find(a => a.area_id === device?.area_id)?.name ?? null;
@@ -387,7 +405,7 @@ async function respond(message) {
       state.plants = state.plants.filter(v => v.id !== p.id); state.devices = state.devices.filter(d => d.identifiers[0][1] !== p.id);
       state.archived.unshift(record); return { archived: archivedSummary(record) };
     }
-    case "smart_plants/archive/list": return { plants: state.archived.map(archivedSummary) };
+    case "smart_plants/archive/list": return { plants: state.archived.map(archivedSummary), photo_meta: copy(state.photoMeta) };
     case "smart_plants/archive/get": { const r = state.archived.find(v => v.id === message.plant_id); if (!r) reject("not_found"); return { plant: { ...copy(r), event_count: r.events.length } }; }
     case "smart_plants/archive/restore_check": {
       const r = state.archived.find(v => v.id === message.plant_id); if (!r) reject("not_found");
@@ -613,7 +631,16 @@ window.fetch = async (input, init = {}) => {
   if (headers.get("Authorization") !== "Bearer playwright-token") return Response.json({ error: { code: "unauthorized" } }, { status: 401 });
   const p = find(decodeURIComponent(url.pathname.split("/")[4]));
   if (state.imageFailure) return Response.json({ error: { code: state.imageFailure, message: "PRIVATE_SENTINEL" } }, { status: 400 });
-  if (method === "GET") return hold("image/GET", new Response(imageBlob, { headers: { "Content-Type": "image/webp" } }));
+  if (method === "GET") {
+    // The path may name a smaller copy (`&size=thumb` or `thumb2x`); the stub
+    // answers with the same small picture for every size.
+    state.imageInFlight++; state.imageMaxInFlight = Math.max(state.imageMaxInFlight, state.imageInFlight);
+    try {
+      if (state.imageDelay) await new Promise(resolve => setTimeout(resolve, state.imageDelay));
+      if (init.signal?.aborted) throw new DOMException("The request was cancelled.", "AbortError");
+      return await hold("image/GET", new Response(imageBlob, { headers: { "Content-Type": "image/webp" } }));
+    } finally { state.imageInFlight--; }
+  }
   if (Number(url.searchParams.get("expected_revision")) !== p.revision) return Response.json({ error: { code: "revision_conflict" } }, { status: 409 });
   if (method === "POST") revise(p, { image: { id: uuid(800 + ++state.imageSerial), content_type: "image/webp", width: 160, height: 120, created_at: now } });
   else if (method === "DELETE") revise(p, { image: null });

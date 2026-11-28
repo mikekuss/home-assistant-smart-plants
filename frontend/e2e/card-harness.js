@@ -80,10 +80,13 @@ const hass = {
     if (msg.type === "smart_plants/care/list") return { revision: 4, events: record.calls.filter(c => c.data?.kind === "watering").map((c, i) => ({ id: `event-${i + 1}`, kind: "watering", occurred_at: c.data.occurred_at })) };
     return {};
   },
-  // The image view: a green square for Office Aloe's current photo, 404 otherwise.
+  // The image view: a green square for Office Aloe's current photo, in any of
+  // its sizes (`&size=thumb` or `thumb2x`), 404 otherwise.
   async fetchWithAuth(path) {
     record.fetches.push(path);
-    if (path !== `/api/smart_plants/plants/${plants[0].id}/image?v=${OFFICE_ALOE_PHOTO}`) return new Response(null, { status: 404 });
+    const url = new URL(path, location.href);
+    const size = url.searchParams.get("size");
+    if (url.pathname !== `/api/smart_plants/plants/${plants[0].id}/image` || url.searchParams.get("v") !== OFFICE_ALOE_PHOTO || (size !== null && size !== "thumb" && size !== "thumb2x")) return new Response(null, { status: 404 });
     const canvas = document.createElement("canvas");
     canvas.width = canvas.height = 8;
     const context = canvas.getContext("2d");

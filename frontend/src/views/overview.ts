@@ -1,5 +1,6 @@
 import { LitElement, css, html, nothing } from "lit";
 import { property, state } from "lit/decorators.js";
+import { repeat } from "lit/directives/repeat.js";
 import "../components/index.js";
 import { fadeIn } from "../components/motion.js";
 import { skeletonStyles, themeFallbacks } from "../components/shared-styles.js";
@@ -8,7 +9,7 @@ import type { Localizer, MessageKey } from "../localize.js";
 import { OVERVIEW_FILTERS, OVERVIEW_SORTS, cardReason, chipText, groupByArea, matchesFilter, matchesSearch, secondaryReadings, sortItems, wateredText } from "../overview-model.js";
 import type { OverviewFilter, OverviewItem, OverviewSort, PlantOverview } from "../overview-model.js";
 import { speciesSearchNames } from "../model.js";
-import type { PlantRecord } from "../types.js";
+import type { PhotoMeta, PlantRecord } from "../types.js";
 import { careLine, dueTasks, localDate } from "../care-plan.js";
 import { activeSnooze, snoozeChipText } from "../snooze.js";
 
@@ -25,6 +26,9 @@ const TILES: Record<OverviewFilter, { label: MessageKey; count: [MessageKey, Mes
 };
 const SORT_LABELS: Record<OverviewSort, MessageKey> = { attention: "overview.sort_attention", name: "overview.sort_name", area: "overview.sort_area" };
 const SORT_ICONS: Record<OverviewSort, string> = { attention: "mdi:alert-circle-outline", name: "mdi:sort-alphabetical-ascending", area: "mdi:texture-box" };
+
+// A downloaded card photo and the image id it shows.
+export interface Thumbnail { imageId: string; blob: Blob }
 
 interface CardItem extends OverviewItem { plant: PlantRecord; overview: PlantOverview | undefined; species: string | null; careDue: boolean }
 
@@ -161,7 +165,10 @@ export class SmartPlantsOverview extends LitElement {
   @property({ attribute: false }) public plants: PlantRecord[] = [];
   @property({ attribute: false }) public overview: Record<string, PlantOverview> = {};
   @property({ attribute: false }) public areaNames: Record<string, string | null> = {};
-  @property({ attribute: false }) public thumbnails: Record<string, string> = {};
+  // Card photos by plant, loaded once a card asks for its photo with
+  // `photo-wanted`, and the ThumbHash previews shown until then.
+  @property({ attribute: false }) public thumbnails: Record<string, Thumbnail> = {};
+  @property({ attribute: false }) public photoMeta: PhotoMeta = {};
   @property({ attribute: false }) public watering: ReadonlySet<string> = new Set();
   @property({ type: Boolean }) public loading = false;
   // The first status read is still open: placeholders instead of cards.
@@ -274,9 +281,10 @@ export class SmartPlantsOverview extends LitElement {
   }
 
   private _renderList(items: CardItem[]) {
-    if (this._sort !== "area") return html`<ul class="grid">${sortItems(items, this._sort).map(item => html`<li>${this._renderCard(item)}</li>`)}</ul>`;
+    // Keyed, so a card that moves in the order keeps its photo on screen.
+    if (this._sort !== "area") return html`<ul class="grid">${repeat(sortItems(items, this._sort), item => item.id, item => html`<li>${this._renderCard(item)}</li>`)}</ul>`;
     return groupByArea(items).map(group => html`<h2 class="group-heading"><ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${group.area ?? this.l.t("overview.no_area")} <span class="n">· ${this.l.number(group.items.length)}</span></h2>
-      <ul class="grid">${group.items.map(item => html`<li>${this._renderCard(item)}</li>`)}</ul>`);
+      <ul class="grid">${repeat(group.items, item => item.id, item => html`<li>${this._renderCard(item)}</li>`)}</ul>`);
   }
 
   private _renderCard(item: CardItem) {
@@ -289,7 +297,7 @@ export class SmartPlantsOverview extends LitElement {
     const now = this.now ?? Date.now();
     const snoozed = snoozeChipText(l, o ? o.snoozed_until : plant.snoozed_until, localDate(new Date(now).toISOString(), this.timeZone) ?? "", this.timeZone, now);
     return html`<article class="card" aria-labelledby=${headingId}>
-      <div class="head"><sp-plant-avatar .src=${this.thumbnails[plant.id] ?? null} .name=${plant.name} .l=${l}></sp-plant-avatar>
+      <div class="head">${this._renderPhoto(plant)}
         <div class="title"><div role="heading" aria-level=${this._sort === "area" ? "3" : "2"}><button type="button" class="name" id=${headingId} @click=${() => this._emit("open-plant", { plantId: plant.id } satisfies OpenPlantDetail)}>${plant.name}</button></div>
           <span class="sub">${item.areaName ? html`<ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${item.areaName}` : nothing}${item.areaName && item.species ? " · " : ""}${item.species ? html`<i>${item.species}</i>` : nothing}</span></div></div>
       ${o && chip ? html`<div class="status"><div class="chiprow"><sp-status-chip .status=${o.status} .label=${chip.label} .more=${chip.more} .l=${l}></sp-status-chip>${snoozed ? html`<sp-snooze-chip .label=${snoozed}></sp-snooze-chip>` : nothing}${o.winter?.active ? html`<sp-winter-icon .label=${l.t("winter.icon_label")}></sp-winter-icon>` : nothing}</div>${reason ? html`<span class="reason">${reason}</span>` : nothing}</div>` : nothing}
@@ -303,6 +311,12 @@ export class SmartPlantsOverview extends LitElement {
       <div class="foot"><span class="last"><ha-icon aria-hidden="true" icon="mdi:history"></ha-icon>${wateredText(l, o?.last_watered_at ?? null, this.now)}</span>
         <button type="button" class="tonal" ?disabled=${this.blocked || this.watering.has(plant.id)} aria-label=${l.t("overview.log_watering_label", { name: plant.name })} @click=${() => this._emit("log-watering", { plantId: plant.id })}><ha-icon aria-hidden="true" icon="mdi:water"></ha-icon>${l.t("card.log_watering")}</button></div>
     </article>`;
+  }
+
+  private _renderPhoto(plant: PlantRecord) {
+    const imageId = plant.image?.id ?? null; const thumbnail = this.thumbnails[plant.id];
+    return html`<sp-plant-photo .photoId=${imageId} .photo=${imageId && thumbnail?.imageId === imageId ? thumbnail.blob : null}
+      .thumbhash=${imageId ? this.photoMeta[imageId]?.thumbhash ?? null : null} .name=${plant.name} .l=${this.l}></sp-plant-photo>`;
   }
 
   // One line naming the due care tasks: "Care: Prune, Fertilize +1".

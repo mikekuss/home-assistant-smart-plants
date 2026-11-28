@@ -4,6 +4,7 @@
 // archive commands. The panel shows this page only once a plant was retired.
 import { LitElement, css, html, nothing } from "lit";
 import { property, state } from "lit/decorators.js";
+import { repeat } from "lit/directives/repeat.js";
 import type { PropertyValues } from "lit";
 import { api, ApiError } from "../api.js";
 import { isMessageKey } from "../localize.js";
@@ -14,7 +15,8 @@ import { styles } from "../styles.js";
 import { themeFallbacks } from "../components/shared-styles.js";
 import "../components/index.js";
 import { CARE_ICONS, careDetails, plantStyles } from "./plant.js";
-import type { ArchivedPlantSummary, ArchivedPlantView, HomeAssistantLike, PlantRecord, RestoreCheck } from "../types.js";
+import type { ArchivedPlantSummary, ArchivedPlantView, HomeAssistantLike, PhotoMeta, PhotoSize, PlantRecord, RestoreCheck } from "../types.js";
+import { photoQueue } from "../photo-queue.js";
 import { inputMaxLength, withinChars } from "../text.js";
 
 // Whole months from `start` to `end`, for "Monitored for 2 years, 3 months".
@@ -97,7 +99,9 @@ export class SmartPlantsArchive extends LitElement {
   @state() private _list: ArchivedPlantSummary[] | null = null;
   @state() private _detail: ArchivedPlantView | null = null;
   @state() private _error = "";
-  @state() private _photos: Record<string, string> = {};
+  // Downloaded photos by plant, photo and size; ThumbHash previews by image id.
+  @state() private _photos: Record<string, Blob> = {};
+  @state() private _photoMeta: PhotoMeta = {};
   @state() private _dialog: "restore" | "delete" | null = null;
   @state() private _check: RestoreCheck | null = null;
   @state() private _name = "";
@@ -105,14 +109,16 @@ export class SmartPlantsArchive extends LitElement {
   @state() private _busy = false;
   @state() private _dialogError = "";
   private _request = 0;
-  private _photoRequests = new Set<string>();
+  private _photoRequests = new Map<string, AbortController>();
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
-    for (const url of Object.values(this._photos)) URL.revokeObjectURL(url);
-    this._photos = {}; this._photoRequests.clear(); this._request++;
+    this._cancelPhotos();
+    this._photos = {}; this._request++;
   }
   protected willUpdate(changed: PropertyValues<this>): void {
+    // The photos of the page left behind are no longer wanted.
+    if (changed.has("plantId")) this._cancelPhotos();
     if (changed.has("plantId") || (changed.has("hass") && !changed.get("hass") && this.hass)) void this._load();
     else if (changed.has("archivedCount") && changed.get("archivedCount") !== undefined && !this.plantId) void this._load();
   }
@@ -136,11 +142,11 @@ export class SmartPlantsArchive extends LitElement {
         this._detail = null;
         const detail = await api.archiveGet(hass, plantId);
         if (request !== this._request) return;
-        this._detail = detail; this._photo(detail);
+        this._detail = detail;
       } else {
-        const list = await api.archiveList(hass);
+        const { plants, photoMeta } = await api.archiveList(hass);
         if (request !== this._request) return;
-        this._list = list; list.forEach(item => this._photo(item));
+        this._list = plants; this._photoMeta = { ...this._photoMeta, ...photoMeta };
       }
     } catch (e) {
       if (request !== this._request) return;
@@ -148,19 +154,28 @@ export class SmartPlantsArchive extends LitElement {
       this._error = this._friendly(e);
     }
   }
-  private _photo(plant: ArchivedPlantSummary): void {
+  private _cancelPhotos(): void {
+    for (const abort of this._photoRequests.values()) abort.abort();
+    this._photoRequests.clear();
+  }
+  // Fetches a photo once its tile comes near the screen: a small copy for the
+  // list, a larger one for the plant's page.
+  private _photo(plant: ArchivedPlantSummary, size: PhotoSize): void {
     const hass = this.hass; const image = plant.image;
     if (!hass || !image) return;
-    const key = `${plant.id}/${image.id}`;
+    const key = `${plant.id}/${image.id}/${size}`;
     if (this._photos[key] || this._photoRequests.has(key)) return;
-    this._photoRequests.add(key);
-    void api.fetchImage(hass, plant.id, image.id).then(blob => {
-      if (!this.isConnected) return;
-      this._photos = { ...this._photos, [key]: URL.createObjectURL(blob) };
-    }).catch(() => undefined).finally(() => this._photoRequests.delete(key));
+    const abort = new AbortController(); this._photoRequests.set(key, abort);
+    void photoQueue.run(() => api.fetchImage(hass, plant.id, image.id, abort.signal, size), abort.signal).then(blob => {
+      if (abort.signal.aborted || !this.isConnected) return;
+      this._photos = { ...this._photos, [key]: blob };
+    }).catch(() => undefined).finally(() => { if (this._photoRequests.get(key) === abort) this._photoRequests.delete(key); });
   }
-  private _photoUrl(plant: ArchivedPlantSummary): string | null {
-    return plant.image ? this._photos[`${plant.id}/${plant.image.id}`] ?? null : null;
+  private _renderPhoto(plant: ArchivedPlantSummary, size: PhotoSize) {
+    const image = plant.image;
+    return html`<sp-plant-photo size=${size === "thumb" ? "small" : "large"} .l=${this.l} .name=${plant.name} .photoId=${image?.id ?? null}
+      .photo=${image ? this._photos[`${plant.id}/${image.id}/${size}`] ?? null : null} .thumbhash=${image ? this._photoMeta[image.id]?.thumbhash ?? null : null}
+      @photo-wanted=${() => this._photo(plant, size)}></sp-plant-photo>`;
   }
   private _open(plantId: string | null, replace = false): void {
     this.dispatchEvent(new CustomEvent("archive-open", { detail: { plantId, replace } }));
@@ -234,11 +249,11 @@ export class SmartPlantsArchive extends LitElement {
     if (!list) return html`<p class="muted" role="status">${l.t("archive.loading")}</p>`;
     if (!list.length) return html`<div class="archive"><p>${l.t("archive.empty")}</p><div><button type="button" @click=${() => this.dispatchEvent(new CustomEvent("archive-close"))}>${l.t("panel.back_to_overview")}</button></div></div>`;
     return html`<div class="archive"><p class="muted intro">${l.t("archive.intro")}</p>
-      <section class="sp-card" aria-label=${l.t("archive.title")}><ul class="archive-list">${list.map(plant => {
+      <section class="sp-card" aria-label=${l.t("archive.title")}><ul class="archive-list">${repeat(list, plant => plant.id, plant => {
         const species = speciesText(l, plant);
         const dates = l.t("archive.date_range", { start: monthYear(l, plant.acquired_at ?? plant.created_at), end: monthYear(l, plant.archived_at) });
         return html`<li><button type="button" class="archive-row" @click=${() => this._open(plant.id)}>
-          <sp-plant-avatar .l=${l} .name=${plant.name} .src=${this._photoUrl(plant)}></sp-plant-avatar>
+          ${this._renderPhoto(plant, "thumb")}
           <span class="row-text"><span>${plant.name}</span>${species ? html`<span class="small muted">${species}</span>` : nothing}</span>
           <span class="small muted">${dates}</span></button></li>`;
       })}</ul></section></div>`;
@@ -254,7 +269,7 @@ export class SmartPlantsArchive extends LitElement {
       .filter(([, n]) => n > 0).map(([kind, n]) => l.t("archive.care_count", { kind: l.t(`care_kind.${kind}`), count: n })).join(" · ");
     return html`<div class="archive pd">
       <section class="sp-card"><div class="hero">
-        <sp-plant-avatar size="large" .l=${l} .name=${plant.name} .src=${this._photoUrl(plant)}></sp-plant-avatar>
+        ${this._renderPhoto(plant, "thumb2x")}
         <div class="row-text"><h2>${plant.name}</h2>${species ? html`<span class="muted">${species}</span>` : nothing}${plant.area_name ? html`<span class="small muted">${plant.area_name}</span>` : nothing}</div></div>
         <dl class="facts">
           ${plant.acquired_at ? html`<dt>${l.t("archive.fact_acquired")}</dt><dd>${dayText(l, plant.acquired_at)}</dd>` : nothing}

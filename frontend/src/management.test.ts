@@ -83,7 +83,7 @@ describe("overview and lifecycle", () => {
     expect(panelText(el)).toContain("original wizard photo was not uploaded");
     expect(panelText(el)).toContain("explicitly upload a photo if wanted");
     await click(wizard, "Back to plants"); await click(el, "Replayed plant");
-    const avatar = el.shadowRoot!.querySelector("sp-plant-avatar")!; await settle(avatar as unknown as SmartPlantsPanel);
+    const avatar = el.shadowRoot!.querySelector("sp-plant-photo")!; await settle(avatar as unknown as SmartPlantsPanel);
     if (removed) expect(avatar.shadowRoot!.querySelector("img")).toBeNull();
     else expect(avatar.shadowRoot!.querySelector("img")?.getAttribute("src")).toBe("blob:stored-photo");
   });
@@ -188,7 +188,7 @@ describe("overview and lifecycle", () => {
     await fill(wizard, "Plant name", "Created plant"); await click(wizard, "Next"); await click(wizard, "Skip for now"); await click(wizard, "Create plant"); await settle(el);
     await click(wizard, "Open plant"); await settle(el);
     expect(el.shadowRoot!.querySelector("smart-plants-wizard")).toBeNull();
-    expect(el.shadowRoot!.querySelector("sp-plant-avatar")).not.toBeNull();
+    expect(el.shadowRoot!.querySelector("sp-plant-photo")).not.toBeNull();
     expect([...el.shadowRoot!.querySelectorAll("h1, h2, [role=heading]")].some(h => h.textContent?.trim() === "Created plant")).toBe(true);
   });
   it("shows unload errors and blocks all writes until refresh succeeds", async () => {

@@ -227,7 +227,9 @@ export class SmartPlantsPlantCardContent extends LitElement {
     this._photoLoading = true;
     this._photoRetryAt = null;
     this._photoAttempts++;
-    const path = `/api/${DOMAIN}/plants/${encodeURIComponent(plantId)}/image?v=${encodeURIComponent(photoId)}`;
+    // The card shows the photo at most 56 px wide, so the 320 px copy is
+    // enough for any screen.
+    const path = `/api/${DOMAIN}/plants/${encodeURIComponent(plantId)}/image?v=${encodeURIComponent(photoId)}&size=thumb`;
     const fetching = hass.fetchWithAuth ? hass.fetchWithAuth(path) : fetch(path, { credentials: "same-origin" });
     void fetching.then(async response => {
       const blob = response.ok ? await response.blob() : null;

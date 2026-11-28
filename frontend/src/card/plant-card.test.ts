@@ -431,7 +431,7 @@ describe("photo", () => {
   const PHOTO = "fedcba9876543210fedcba9876543210";
   const STALE = "binary_sensor.office_aloe_sensor_stale";
   const stale = (attributes: Record<string, unknown>, value = "off"): CardState => ({ entity_id: STALE, state: value, attributes: { sources: 1, ...attributes } });
-  const photoUrl = (id: string) => `/api/smart_plants/plants/${PLANT_ID}/image?v=${id}`;
+  const photoUrl = (id: string) => `/api/smart_plants/plants/${PLANT_ID}/image?v=${id}&size=thumb`;
   const avatar = (content: Element) => $<HTMLElement & { src: string | null }>(content, "sp-plant-avatar")!;
   function serve(hass: Hass): string[] {
     const fetches: string[] = [];

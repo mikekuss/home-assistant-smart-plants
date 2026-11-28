@@ -717,6 +717,9 @@ test("late image reads and uploads cannot replace a newer navigation context", a
   await detail(page); await photo(page, "Add photo");
   await expect(page.getByAltText("Photo of Office Aloe")).toHaveJSProperty("naturalWidth", 160);
   await backToOverview(page);
+  // The card asks for its photo once it is on screen; let that download
+  // finish, so that the hold below catches the plant page's own read.
+  await expect(cards(page).filter({ hasText: "Office Aloe" }).getByAltText("Photo of Office Aloe")).toHaveJSProperty("naturalWidth", 160);
   await page.evaluate(() => { window.__smartPlantsHarness.holdNext["image/GET"] = true; });
   await button(page, "Office Aloe").click(); await show(page, "Settings");
   await expect(page.getByText("Loading photo…", { exact: true })).toBeVisible();
@@ -724,12 +727,11 @@ test("late image reads and uploads cannot replace a newer navigation context", a
   await button(page, "Garden Fern").click(); await show(page, "Settings");
   await page.evaluate(() => window.__smartPlantsHarness.release("image/GET"));
   await expect(page.getByText("No photo yet.", { exact: true })).toBeVisible();
-  // Every plant page photo blob is released; only live overview thumbnails remain.
+  // Every photo blob is released: the plant page has no photo, and the
+  // overview cards, which make their own object URLs, aren't drawn meanwhile.
   await expect.poll(() => page.evaluate(() => {
     const h = window.__smartPlantsHarness;
-    const panel = document.querySelector("smart-plants-panel") as unknown as { _thumbnails: Record<string, string> };
-    const thumbnails = Object.values(panel._thumbnails);
-    return h.blobsCreated.filter(url => !thumbnails.includes(url)).every(url => h.blobsRevoked.includes(url));
+    return h.blobsCreated.every(url => h.blobsRevoked.includes(url));
   })).toBe(true);
   await backToOverview(page); await button(page, "Office Aloe").click(); await show(page, "Settings");
   await expect(page.getByAltText("Photo of Office Aloe")).toHaveJSProperty("naturalWidth", 160);

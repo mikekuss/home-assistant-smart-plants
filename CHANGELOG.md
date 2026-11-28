@@ -40,6 +40,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- The plant list and plant pages load smaller copies of the photos, only when they come into
+  view, and show a blurred preview in the photo's colours while a photo loads. Large plant
+  lists open faster and use less data on phones. The dashboard card also loads the smaller
+  copy.
 - The add-plant wizard asks for the **Placement** in its first step instead of in the collapsed
   details of its review step.
 - A logged watering now also keeps *Too wet* off for 24 hours, as it already did for *Needs

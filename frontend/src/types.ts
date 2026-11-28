@@ -12,6 +12,12 @@ export interface PlantImage {
   created_at: string;
 }
 
+// Smaller copies of a stored photo: at most 320 or 640 px on the longer side.
+export type PhotoSize = "thumb" | "thumb2x";
+// What the plant lists know about each photo, by image id: its ThumbHash, a
+// tiny blurred preview shown while the photo loads.
+export type PhotoMeta = Record<string, { thumbhash: string }>;
+
 export interface PlantPlacement {
   mode: string;
   exposure: string | null;

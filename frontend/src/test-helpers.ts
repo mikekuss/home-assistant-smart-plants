@@ -134,3 +134,22 @@ export async function fill(element: { shadowRoot: ShadowRoot | null; updateCompl
   const input = field(element.shadowRoot!, label); input.value = value; input.dispatchEvent(new Event(input.tagName === "SELECT" ? "change" : "input", { bubbles: true })); await settle(element);
 }
 export function deferred<T>() { let resolve!: (value: T) => void; let reject!: (reason: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
+// An IntersectionObserver the test drives: nothing is on screen until
+// `show(...)` names a photo element or `showAll()` is called.
+export function manualVisibility() {
+  const observed = new Map<Element, IntersectionObserverCallback>();
+  class ManualObserver {
+    constructor(private readonly _callback: IntersectionObserverCallback) {}
+    observe(target: Element): void { observed.set(target, this._callback); }
+    unobserve(target: Element): void { observed.delete(target); }
+    disconnect(): void { for (const [target, callback] of observed) if (callback === this._callback) observed.delete(target); }
+    takeRecords(): IntersectionObserverEntry[] { return []; }
+  }
+  vi.stubGlobal("IntersectionObserver", ManualObserver);
+  const report = (target: Element) => observed.get(target)?.([{ target, isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+  return {
+    observed: () => observed.size,
+    show(photo: Element): void { const tile = photo.shadowRoot?.querySelector(".tile"); if (tile) report(tile); },
+    showAll(): void { for (const target of [...observed.keys()]) report(target); },
+  };
+}

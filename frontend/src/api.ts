@@ -12,7 +12,7 @@ import type {
   MoistureInput, HAArea, HAEntity, HADevice, HAState, Evaluation,
   HealthEvaluation, PlantPlacement, PlantSpecies, SensorSource,
   CareHistory, CareEvent, CareTaskInput, CareTaskChanges, CareTaskCompletion, RestPeriod,
-  ArchivedPlantSummary, ArchivedPlantView, RestoreCheck,
+  ArchivedPlantSummary, ArchivedPlantView, RestoreCheck, PhotoMeta, PhotoSize,
 } from "./types.js";
 import { validPlant, validPlantList, validResponse, validState } from "./validation.js";
 import { parseOverview } from "./overview-model.js";
@@ -312,10 +312,10 @@ export const api = {
     return (await api.listWithArchive(hass)).plants;
   },
 
-  // The live plants, and how many plants are retired.
+  // The live plants, how many plants are retired and the photo previews.
   // `rejected` names the records the panel could not read.
-  async listWithArchive(hass: HomeAssistantLike): Promise<{ plants: PlantRecord[]; rejected: string[]; archivedCount: number }> {
-    const result = await send<{ plants: PlantRecord[]; archived_count?: unknown }>(hass, {
+  async listWithArchive(hass: HomeAssistantLike): Promise<{ plants: PlantRecord[]; rejected: string[]; archivedCount: number; photoMeta: PhotoMeta }> {
+    const result = await send<{ plants: PlantRecord[]; archived_count?: unknown; photo_meta?: unknown }>(hass, {
       type: "smart_plants/plants/list",
     });
     const count = result.archived_count;
@@ -323,6 +323,7 @@ export const api = {
     return {
       plants: plants as PlantRecord[], rejected,
       archivedCount: typeof count === "number" && Number.isInteger(count) && count > 0 ? count : 0,
+      photoMeta: parsePhotoMeta(result.photo_meta),
     };
   },
 
@@ -330,10 +331,10 @@ export const api = {
     return (await send<{ archived: ArchivedPlantSummary }>(hass, { type: "smart_plants/plants/archive", plant_id: plantId, expected_revision: expectedRevision })).archived;
   },
 
-  async archiveList(hass: HomeAssistantLike): Promise<ArchivedPlantSummary[]> {
-    const result = await send<{ plants?: unknown }>(hass, { type: "smart_plants/archive/list" });
+  async archiveList(hass: HomeAssistantLike): Promise<{ plants: ArchivedPlantSummary[]; photoMeta: PhotoMeta }> {
+    const result = await send<{ plants?: unknown; photo_meta?: unknown }>(hass, { type: "smart_plants/archive/list" });
     if (!Array.isArray(result?.plants)) throw new ApiError("invalid_response", "Invalid archive response.");
-    return result.plants as ArchivedPlantSummary[];
+    return { plants: result.plants as ArchivedPlantSummary[], photoMeta: parsePhotoMeta(result.photo_meta) };
   },
 
   async archiveGet(hass: HomeAssistantLike, plantId: string): Promise<ArchivedPlantView> {
@@ -477,14 +478,16 @@ export const api = {
 
   // `imageId` names the photo the caller expects. The server lets the browser
   // cache the photo only when it matches the current one, and a new photo gets
-  // a new id, so a replaced photo is never served from the cache.
+  // a new id, so a replaced photo is never served from the cache. `size` asks
+  // for a smaller copy; without it the stored photo comes.
   async fetchImage(
     hass: HomeAssistantLike,
     plantId: string,
     imageId: string,
     signal?: AbortSignal,
+    size?: PhotoSize,
   ): Promise<Blob> {
-    const url = `/api/smart_plants/plants/${encodeURIComponent(plantId)}/image?v=${encodeURIComponent(imageId)}`;
+    const url = `/api/smart_plants/plants/${encodeURIComponent(plantId)}/image?v=${encodeURIComponent(imageId)}${size ? `&size=${size}` : ""}`;
     const headers: Record<string, string> = {};
     if (hass.auth?.accessToken) {
       headers["Authorization"] = `Bearer ${hass.auth.accessToken}`;
@@ -552,6 +555,21 @@ function registryList<T>(value: unknown, valid: (entry: Record<string, unknown>)
     throw new ApiError("invalid_response", "Home Assistant registry/state response is incompatible. Reload and retry.");
   }
   return value.filter(v => typeof v === "object" && v !== null && !Array.isArray(v) && valid(v as Record<string, unknown>)) as T[];
+}
+
+// The `photo_meta` of a plant list: ThumbHashes by image id. A ThumbHash is
+// a few dozen base64 characters; any entry that doesn't look like one is
+// left out, and the photo then loads without a preview.
+const IMAGE_ID = /^[0-9a-f]{32}$/;
+const THUMBHASH = /^[A-Za-z0-9+/]+={0,2}$/;
+export function parsePhotoMeta(value: unknown): PhotoMeta {
+  const meta: PhotoMeta = {};
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return meta;
+  for (const [id, entry] of Object.entries(value)) {
+    const hash: unknown = typeof entry === "object" && entry !== null ? (entry as { thumbhash?: unknown }).thumbhash : undefined;
+    if (IMAGE_ID.test(id) && typeof hash === "string" && hash.length <= 64 && THUMBHASH.test(hash)) meta[id] = { thumbhash: hash };
+  }
+  return meta;
 }
 
 // The automation entity IDs of a `search/related` result; other item types are ignored.

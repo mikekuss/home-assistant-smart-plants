@@ -23,9 +23,9 @@ const plant: PlantRecord = {
   },
 };
 
-// The plant photo is shown by the header avatar.
+// The plant photo is shown by the header photo.
 function avatarImg(element: Element): HTMLImageElement | null | undefined {
-  return element.shadowRoot?.querySelector("sp-plant-avatar")?.shadowRoot?.querySelector("img");
+  return element.shadowRoot?.querySelector("sp-plant-photo")?.shadowRoot?.querySelector("img");
 }
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -71,7 +71,7 @@ describe("SmartPlantsPanel image loading", () => {
     vi.unstubAllGlobals();
   });
 
-  it("creates a blob URL and revokes it when replaced", async () => {
+  it("creates a blob URL and revokes it when the photo is replaced", async () => {
     const element = await openDetail([plant]);
     await vi.waitFor(() => {
       expect(URL.createObjectURL).toHaveBeenCalledOnce();
@@ -92,20 +92,20 @@ describe("SmartPlantsPanel image loading", () => {
     internals.requestUpdate();
     await element.updateComplete;
 
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:photo");
+    await vi.waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:photo"));
     await vi.waitFor(() => {
       expect(URL.createObjectURL).toHaveBeenCalledTimes(2);
     });
     await element.updateComplete;
     // Each request names the photo it expects, so the browser cache never
-    // answers for a replaced photo.
+    // answers for a replaced photo, and asks for the copy sized for the page.
     expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toEqual([
-      "/api/smart_plants/plants/plt-1/image?v=img-1",
-      "/api/smart_plants/plants/plt-1/image?v=img-2",
+      "/api/smart_plants/plants/plt-1/image?v=img-1&size=thumb2x",
+      "/api/smart_plants/plants/plt-1/image?v=img-2&size=thumb2x",
     ]);
   });
 
-  it("revokes a stale response after image replacement", async () => {
+  it("never shows a stale response after image replacement", async () => {
     const pending = deferred<Response>();
     vi.mocked(fetch).mockReturnValueOnce(pending.promise);
     const element = await openDetail([plant]);
@@ -124,10 +124,13 @@ describe("SmartPlantsPanel image loading", () => {
     internals.requestUpdate();
     await element.updateComplete;
 
+    // Only the replacement gets an object URL; the late answer for the old
+    // photo is dropped.
+    await vi.waitFor(() => expect(URL.createObjectURL).toHaveBeenCalledOnce());
     pending.resolve(new Response(new Blob(["stale"], { type: "image/webp" })));
-    await vi.waitFor(() => {
-      expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:photo");
-    });
+    await settle(element); await settle(element);
+    expect(URL.createObjectURL).toHaveBeenCalledOnce();
+    expect(await (vi.mocked(URL.createObjectURL).mock.calls[0]![0] as Blob).text()).toBe("image");
   });
 
   it("revokes the active blob URL on disconnect", async () => {
@@ -136,6 +139,7 @@ describe("SmartPlantsPanel image loading", () => {
       expect(URL.createObjectURL).toHaveBeenCalledOnce();
     });
     element.remove();
+    await Promise.resolve();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:photo");
   });
 
@@ -157,19 +161,34 @@ describe("SmartPlantsPanel image loading", () => {
     expect(element.shadowRoot?.textContent).toContain("No photo yet.");
   });
 
-  it("aborts image fetch and revokes a late response after navigation", async () => {
+  it("aborts image fetch and drops a late response after navigation", async () => {
     const pending = deferred<Response>(); vi.mocked(fetch).mockReturnValueOnce(pending.promise);
     const element = await openDetail([plant]); const signal = vi.mocked(fetch).mock.calls[0]?.[1]?.signal;
     await click(element, "Back to overview"); expect(signal?.aborted).toBe(true);
     pending.resolve(new Response(new Blob(["late"], { type: "image/webp" }))); await settle(element);
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:photo"); expect(avatarImg(element)).toBeFalsy();
+    expect(URL.createObjectURL).not.toHaveBeenCalled(); expect(avatarImg(element)).toBeFalsy();
   });
 
-  it("refetches protected images when HA rotates the access token", async () => {
+  it("loads protected images again when HA rotates the access token and keeps the photo meanwhile", async () => {
     const element = await openDetail([plant]); await settle(element);
+    await vi.waitFor(() => expect(avatarImg(element)?.getAttribute("src")).toBe("blob:photo"));
     element.hass = { ...element.hass!, auth: { accessToken: "rotated" } }; await settle(element);
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:photo");
     expect(fetch).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ headers: { Authorization: "Bearer rotated" } }));
+    await settle(element);
+    // The same photo again: it stays on screen without a new object URL.
+    expect(avatarImg(element)?.getAttribute("src")).toBe("blob:photo");
+    expect(URL.createObjectURL).toHaveBeenCalledOnce();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+  });
+
+  it("does not load the photo again after a save that keeps it", async () => {
+    const element = await openDetail([plant]);
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    const internals = element as unknown as { _plants: PlantRecord[]; _syncImage(): void; requestUpdate(): void };
+    internals._plants = [{ ...plant, revision: 2 }]; internals._syncImage(); internals.requestUpdate();
+    await settle(element);
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
   });
 
   it("removes an image using the authenticated revision-checked endpoint", async () => {
@@ -194,7 +213,7 @@ describe("SmartPlantsPanel image loading", () => {
 });
 
 describe("SmartPlantsPanel overview thumbnails", () => {
-  type Internals = { _syncThumbnails(): void; _thumbnails: Record<string, string> };
+  type Internals = { _syncThumbnails(): void; _thumbnails: Record<string, { imageId: string; blob: Blob }> };
   // Connection events ("ready") and registry event subscriptions of the open panel.
   let events: Map<string, () => void>;
   let registryCallbacks: (() => void)[];
@@ -266,7 +285,7 @@ describe("SmartPlantsPanel overview thumbnails", () => {
     vi.mocked(fetch).mockImplementation(async () => new Response(new Blob(["image"], { type: "image/webp" })));
     await poll(panel, 30_000);
     expect(imageCalls()).toBe(7);
-    await vi.waitFor(() => expect(panel._thumbnails[plant.id]).toBe("blob:thumb"));
+    await vi.waitFor(() => expect(panel._thumbnails[plant.id]).toMatchObject({ imageId: "img-1" }));
     // A loaded thumbnail is not fetched again.
     await poll(panel, 600_000);
     expect(imageCalls()).toBe(7);
@@ -279,7 +298,7 @@ describe("SmartPlantsPanel overview thumbnails", () => {
     (panel as unknown as { _plants: PlantRecord[] })._plants = [{ ...plant, revision: 2, image: { ...plant.image!, id: "img-2" } }];
     await poll(panel, 1);
     expect(imageCalls()).toBe(6);
-    expect(String(vi.mocked(fetch).mock.calls.at(-1)![0])).toBe("/api/smart_plants/plants/plt-1/image?v=img-2");
+    expect(String(vi.mocked(fetch).mock.calls.at(-1)![0])).toBe("/api/smart_plants/plants/plt-1/image?v=img-2&size=thumb");
     await poll(panel, 1);
     expect(imageCalls()).toBe(6);
   });

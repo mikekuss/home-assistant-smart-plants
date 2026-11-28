@@ -72,7 +72,7 @@ describe("text limits count characters, as the backend does", () => {
 
   it("accepts a retired plant whose name is at its limit", async () => {
     const archived = { id: "plant-9", revision: 2, name: full("plant_name"), created_at: "2026-06-01T08:00:00Z", archived_at: "2026-06-02T08:00:00Z", acquired_at: null, species: null, image: null, area_name: CHAR.repeat(100), event_count: 0 };
-    await expect(api.archiveList(harness([], () => ({ plants: [archived] })).hass)).resolves.toEqual([archived]);
+    await expect(api.archiveList(harness([], () => ({ plants: [archived] })).hass)).resolves.toEqual({ plants: [archived], photoMeta: {} });
   });
 
   it("lets the editors save text at the limit and refuses one more character", () => {
