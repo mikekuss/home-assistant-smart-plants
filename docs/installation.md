@@ -97,7 +97,9 @@ A browser tab that was open during the restart shows *Smart Plants was updated* 
 
 If the earlier version loads your plants, installing it is enough. If the newer version
 converted the data, the earlier version refuses it, and **Settings > Devices & services**
-says the storage was created by a newer version. Then:
+says the storage was created by a newer version. Don't delete the integration while it shows
+this error: with **Preserve inventory** off (the default), removing it deletes your plants,
+their photos and the backup copy the rollback needs, even though setup failed. Instead:
 
 1. Install the earlier version. In HACS, open Smart Plants, select **⋮ > Redownload** and
    pick the version. Otherwise, [install that release manually](#install-manually).

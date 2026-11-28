@@ -173,8 +173,9 @@ suggests:
 
 - for temperature, the lowest temperature the species survives, when OpenPlantBook has it,
 - for soil temperature, the same value, but only when it is below the plant's normal *Too cold
-  below* for the soil, so winter never makes the soil check stricter (soil temperature accepts
-  −20 to 60 °C, so a colder value isn't suggested there either),
+  below* for the soil, so the suggestion never makes the soil check stricter (you can still
+  enter a stricter value; soil temperature accepts −20 to 60 °C, so a colder value isn't
+  suggested there either),
 - for soil moisture, about two thirds of the normal *Needs water below* and three quarters of
   *Ideal*,
 - for light, 0 lx, which turns the low light alert off,

@@ -120,7 +120,7 @@ export const de: Catalog = {
   "watering_detection.follow_off": "Wie der Standort (aus)",
   "watering_detection.on": "An",
   "watering_detection.off": "Aus",
-  "watering_detection.hint": "Ein Anstieg um 15 Punkte oder mehr innerhalb einer Stunde trägt ein Gießen ein, außer in den 6 Stunden davor wurde schon eines eingetragen.",
+  "watering_detection.hint": "Ein Anstieg um 15 Punkte oder mehr innerhalb einer Stunde oder seit dem letzten Messwert der 24 Stunden davor trägt ein Gießen ein, außer in den 6 Stunden davor wurde schon eines eingetragen.",
   "exposure.label": "Sonneneinstrahlung",
   "exposure.full_sun": "volle Sonne",
   "exposure.partial_sun": "Halbschatten",

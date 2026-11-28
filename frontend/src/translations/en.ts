@@ -119,7 +119,7 @@ export const en = {
   "watering_detection.follow_off": "Follow placement (off)",
   "watering_detection.on": "On",
   "watering_detection.off": "Off",
-  "watering_detection.hint": "A rise of 15 points or more within an hour logs a watering, unless one was logged in the 6 hours before.",
+  "watering_detection.hint": "A rise of 15 points or more within an hour, or since the last reading from up to 24 hours before, logs a watering, unless one was logged in the 6 hours before.",
   "exposure.label": "Sun exposure",
   "exposure.full_sun": "full sun",
   "exposure.partial_sun": "partial sun",
