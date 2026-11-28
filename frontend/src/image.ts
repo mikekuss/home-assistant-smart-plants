@@ -24,8 +24,8 @@ const TYPES = ["image/jpeg", "image/png", "image/webp"];
 // prepareImage always re-encodes them, so the backend never receives HEIC.
 const HEIC_TYPES = ["image/heic", "image/heif"];
 const HEIC_BRANDS = ["heic", "heix", "mif1", "msf1"];
-// Without a HEIC codec the OS may report no type for a .heic file.
-const isHeic = (file: File) => HEIC_TYPES.includes(file.type) || (file.type === "" && /\.hei[cf]$/i.test(file.name));
+// Without a HEIC codec the OS may report no type, or a generic one, for a .heic file.
+const isHeic = (file: File) => HEIC_TYPES.includes(file.type) || ((file.type === "" || file.type === "application/octet-stream") && /\.hei[cf]$/i.test(file.name));
 // iPadOS reports itself as a Mac; a touch screen tells them apart.
 const isIos = (nav: Pick<Navigator, "userAgent" | "maxTouchPoints">) =>
   /iPhone|iPad|iPod/.test(nav.userAgent) || (/Macintosh/.test(nav.userAgent) && nav.maxTouchPoints > 1);
@@ -36,9 +36,17 @@ const isIos = (nav: Pick<Navigator, "userAgent" | "maxTouchPoints">) =>
 export const imageAccept = (nav: Pick<Navigator, "userAgent" | "maxTouchPoints"> = navigator): string =>
   (isIos(nav) ? TYPES : [...TYPES, ...HEIC_TYPES, ".heic", ".heif"]).join(",");
 
+// Some file pickers report no type or a generic one (WebKit on Windows does for
+// .webp), and some systems use the non-standard image/jpg. Such a file is taken
+// for what its first bytes say, if that is JPEG, PNG or WebP.
+const UNREPORTED_TYPES = ["", "application/octet-stream", "image/jpg"];
+
+// Returns the format the file's first bytes show. A file whose reported type
+// is a real image type must match its content.
 async function sniff(file: File, maxBytes: number, l: Localizer, allowHeic: boolean): Promise<string> {
   const heic = allowHeic && isHeic(file);
-  if ((!heic && !TYPES.includes(file.type)) || file.size === 0 || file.size > maxBytes) {
+  const unreported = !heic && UNREPORTED_TYPES.includes(file.type);
+  if ((!heic && !unreported && !TYPES.includes(file.type)) || file.size === 0 || file.size > maxBytes) {
     throw new Error(l.t(maxBytes > IMAGE_MAX_BYTES ? "image_error.type_or_input_size" : "image_error.type_or_size"));
   }
   let bytes: Uint8Array;
@@ -49,7 +57,8 @@ async function sniff(file: File, maxBytes: number, l: Localizer, allowHeic: bool
   const format = prefix(0xff, 0xd8, 0xff) ? "image/jpeg" : prefix(0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10) ? "image/png" :
     prefix(82, 73, 70, 70) && bytes[8] === 87 && bytes[9] === 69 && bytes[10] === 66 && bytes[11] === 80 ? "image/webp" :
     ascii(4, 8) === "ftyp" && HEIC_BRANDS.includes(ascii(8, 12)) ? "image/heic" : null;
-  if (format === null || format !== (heic ? "image/heic" : file.type)) throw new Error(l.t("image_error.signature"));
+  const expected = heic ? "image/heic" : unreported ? (format !== null && TYPES.includes(format) ? format : null) : file.type;
+  if (format === null || format !== expected) throw new Error(l.t("image_error.signature"));
   return format;
 }
 
@@ -167,7 +176,13 @@ export async function prepareImage(file: File, l: Localizer = ENGLISH): Promise<
   try {
     if (!validSize(width, height)) throw new Error(l.t("image_error.decode"));
     if (width * height > IMAGE_MAX_INPUT_PIXELS) throw new Error(l.t("image_error.too_many_pixels"));
-    if (!heic && width <= IMAGE_MAX_DIMENSION && height <= IMAGE_MAX_DIMENSION && file.size <= IMAGE_UPLOAD_MAX_BYTES) return file;
+    // A file that already fits goes up as it is, so a transparent PNG keeps
+    // its transparency here even where the browser can only encode JPEG.
+    // The server checks the upload's type against its content, so a file
+    // reported without a usable type gets the type its bytes show.
+    if (!heic && width <= IMAGE_MAX_DIMENSION && height <= IMAGE_MAX_DIMENSION && file.size <= IMAGE_UPLOAD_MAX_BYTES) {
+      return file.type === format ? file : new File([file], file.name, { type: format, lastModified: file.lastModified });
+    }
     const target = document.createElement("canvas"); canvas = target;
     let webp = canEncodeWebp(); let drawn = 0;
     for (const longest of UPLOAD_DIMENSIONS) {

@@ -7,9 +7,10 @@ module is a Python port of ``rgbaToThumbHash`` from the ThumbHash reference
 implementation by Evan Wallace (https://github.com/evanw/thumbhash), so any
 ThumbHash decoder reads the result.
 
-Stored plant photos are always RGB without transparency, so only the path
-of the reference encoder for fully opaque images is ported: the alpha
-channel, and the extra header byte and coefficients it adds, never occur.
+Only the path of the reference encoder for fully opaque images is ported:
+the placeholder is always opaque. A photo with transparency is put on a
+white background first (see ``image_thumbhash``), so the alpha channel, and
+the extra header byte and coefficients it adds, never occur.
 
 The cosine is ``math.cos``. The C library behind it can differ from the
 ``Math.cos`` of a browser in the last bit of some results, which can move
@@ -177,10 +178,18 @@ def image_thumbhash(image: Image.Image) -> str:
     A copy is scaled down to fit 100x100 with its aspect ratio kept, as the
     reference encoder expects. The result is standard base64 with padding,
     the form browsers produce with ``btoa``.
+
+    The placeholder is opaque. An image with an alpha channel is scaled
+    down with it and then laid on white, the same background for every
+    photo, so the result depends only on the pixels.
     """
-    # ``convert`` returns a new image even for an RGB source, so the
-    # caller's image is never resized in place.
-    small = image.convert("RGB")
+    # ``convert`` returns a new image even for a source already in that
+    # mode, so the caller's image is never resized in place.
+    has_alpha = "A" in image.getbands()
+    small = image.convert("RGBA" if has_alpha else "RGB")
     small.thumbnail((THUMBHASH_MAX_SIZE, THUMBHASH_MAX_SIZE), Image.Resampling.LANCZOS)
+    if has_alpha:
+        white = Image.new("RGBA", small.size, (255, 255, 255, 255))
+        small = Image.alpha_composite(white, small).convert("RGB")
     digest = rgb_to_thumbhash(small.width, small.height, small.tobytes())
     return base64.b64encode(digest).decode("ascii")

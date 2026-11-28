@@ -196,6 +196,65 @@ def _check_decoded_size(image: Any) -> None:
         raise ImageValidationError(_OVERSIZED_DIMENSION_ERROR)
 
 
+# Modes Pillow uses for 16-bit grayscale PNGs (and "I" for the 32-bit
+# integer mode some Pillow versions open them in). 16-bit colour PNGs open
+# as 8-bit "RGB" or "RGBA" and need nothing extra.
+_WIDE_GRAY_MODES: Final = frozenset({"I", "I;16", "I;16B", "I;16L", "I;16N"})
+_OPAQUE_ALPHA: Final = (255, 255)
+
+
+def _to_eight_bit(image: Any) -> Any:
+    """
+    Scale 16-bit grayscale pixels to 8 bit; return other images unchanged.
+
+    A plain conversion to "L" clips every value above 255, which turns
+    nearly the whole picture white. Dividing by 257 maps 0-65535 onto
+    0-255, so a mid-gray stays mid-gray.
+    """
+    if image.mode not in _WIDE_GRAY_MODES:
+        return image
+    # The half step rounds instead of truncating.
+    scaled = image.convert("I").point(lambda value: value / 257 + 0.5).convert("L")
+    # A transparency colour is stored as a 16-bit value and no longer
+    # matches the scaled pixels: kept, it would hide the wrong pixels. Such
+    # files are rare, so the photo is stored opaque instead.
+    scaled.info.pop("transparency", None)
+    return scaled
+
+
+_PNG_SIGNATURE: Final = b"\x89PNG\r\n\x1a\n"
+_PNG_16_BIT_TRUECOLOUR: Final = b"\x10\x02"
+
+
+def _is_16_bit_truecolour_png(raw: bytes) -> bool:
+    """Whether ``raw`` is a PNG with 16-bit RGB samples and no alpha channel."""
+    # The IHDR chunk follows the signature; bit depth and colour type are
+    # its 9th and 10th data bytes.
+    return (
+        raw[:8] == _PNG_SIGNATURE
+        and raw[12:16] == b"IHDR"
+        and raw[24:26] == _PNG_16_BIT_TRUECOLOUR
+    )
+
+
+def _with_alpha_if_used(image: Any) -> Any:
+    """
+    Return ``image`` as RGBA when it has transparent pixels, else as RGB.
+
+    ``has_transparency_data`` covers alpha modes (RGBA, LA, PA), a palette
+    with transparent entries and a PNG ``transparency`` colour. Many such
+    files are fully opaque all the same, for example a screenshot saved
+    with an alpha channel, so the alpha channel is checked as well: only
+    a photo with at least one pixel below full opacity keeps it.
+    """
+    if image.has_transparency_data:
+        rgba = image.convert("RGBA")
+        if rgba.getchannel("A").getextrema() != _OPAQUE_ALPHA:
+            return rgba
+        return rgba.convert("RGB")
+    return image.convert("RGB")
+
+
 def _decode_and_sanitize(raw: bytes) -> Any:
     """
     Fully decode ``raw`` and drop metadata.
@@ -207,6 +266,9 @@ def _decode_and_sanitize(raw: bytes) -> Any:
     would store them sideways. Oversized dimensions are rejected (never
     resized): the stored image is exactly what was uploaded, re-encoded,
     or nothing at all.
+
+    A photo with transparent pixels comes back as RGBA and keeps them;
+    every other photo comes back as RGB.
     """
     try:
         with Image.open(io.BytesIO(raw)) as decoded:
@@ -215,8 +277,17 @@ def _decode_and_sanitize(raw: bytes) -> Any:
             _check_decoded_size(decoded)
             decoded.load()
             _check_decoded_size(decoded)
-            source = ImageOps.exif_transpose(decoded).convert("RGB")
-            sanitized = Image.new("RGB", source.size)
+            if _is_16_bit_truecolour_png(raw):
+                # Pillow reads such a PNG as 8-bit RGB but keeps its 16-bit
+                # transparency colour, which then hides the wrong pixels.
+                # Such files are rare, so the photo is stored opaque.
+                decoded.info.pop("transparency", None)
+            upright = _to_eight_bit(ImageOps.exif_transpose(decoded))
+            source = _with_alpha_if_used(upright)
+            # Copying the pixels into a new image leaves the source's
+            # ``info`` (EXIF, ICC profile, XMP) behind. Pasting without a
+            # mask copies the alpha channel as it is.
+            sanitized = Image.new(source.mode, source.size)
             sanitized.paste(source)
     except ImageValidationError:
         raise
@@ -244,7 +315,8 @@ def validate_and_reencode(raw: bytes, declared_content_type: str) -> ProcessedIm
        image; re-check decoded dimensions against
        ``IMAGE_MAX_DIMENSION``. Oversized uploads are rejected — never
        silently resized — so what the user sent is what the store keeps.
-    5. Re-encode to WebP and return the bytes plus final dimensions.
+    5. Re-encode to WebP, with alpha when the photo has transparent
+       pixels, and return the bytes plus final dimensions.
     """
     payload = _check_upload_envelope(raw, declared_content_type)
     _probe_header(payload, declared_content_type)
@@ -252,7 +324,14 @@ def validate_and_reencode(raw: bytes, declared_content_type: str) -> ProcessedIm
 
     thumbhash = image_thumbhash(sanitized)
     buffer = io.BytesIO()
-    sanitized.save(buffer, format="WEBP", quality=85, method=6)
+    # An RGBA image is saved as WebP with alpha. ``exact=False`` lets the
+    # encoder change the colour under fully transparent pixels, which no
+    # one sees and which makes the file smaller. The alpha plane is coded
+    # losslessly, and at ``method=6`` that takes several times longer than
+    # the colour; ``method=4`` is about as small and much faster on small
+    # devices.
+    method = 4 if sanitized.mode == "RGBA" else 6
+    sanitized.save(buffer, format="WEBP", quality=85, method=method, exact=False)
     encoded = buffer.getvalue()
 
     return ProcessedImage(
@@ -437,7 +516,7 @@ def _check_stored_format(image: Any) -> None:
 
 def _decode_stored(webp_bytes: bytes) -> Any:
     """
-    Decode a stored photo to RGB pixels.
+    Decode a stored photo to RGB pixels, or RGBA when it has alpha.
 
     The file was written by ``write_image_file``, but anything with access to
     the config folder can replace it, so it gets the same decode ceiling as
@@ -449,7 +528,7 @@ def _decode_stored(webp_bytes: bytes) -> Any:
             _check_decoded_size(decoded)
             decoded.load()
             _check_decoded_size(decoded)
-            return decoded.convert("RGB")
+            return decoded.convert("RGBA" if "A" in decoded.getbands() else "RGB")
     except ImageValidationError:
         raise
     except UnidentifiedImageError as err:
@@ -466,12 +545,16 @@ def make_variant(webp_bytes: bytes, longest: int) -> bytes:
 
     Blocking (Pillow decode / encode); run it in an executor. The aspect
     ratio is kept, and a photo that is already small enough keeps its size
-    because ``thumbnail`` never enlarges.
+    because ``thumbnail`` never enlarges. A photo with transparency keeps it;
+    Pillow scales RGBA with premultiplied alpha, so transparent pixels don't
+    bleed their hidden colour into the edges.
     """
     image = _decode_stored(webp_bytes)
     image.thumbnail((longest, longest), Image.Resampling.LANCZOS)
     buffer = io.BytesIO()
-    image.save(buffer, format="WEBP", quality=IMAGE_VARIANT_QUALITY, method=4)
+    image.save(
+        buffer, format="WEBP", quality=IMAGE_VARIANT_QUALITY, method=4, exact=False
+    )
     return buffer.getvalue()
 
 

@@ -161,6 +161,46 @@ describe("scaling photos before upload", () => {
     expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 2048, 1536); expect(result.type).toBe("image/webp");
   });
 });
+describe("files whose type the device doesn't report", () => {
+  const signatures: [string, number[]][] = [
+    ["image/jpeg", [0xff, 0xd8, 0xff, 0xe0]],
+    ["image/png", [137, 80, 78, 71, 13, 10, 26, 10]],
+    ["image/webp", [82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80]],
+  ];
+  const photo = (bytes: number[], type: string, name = "photo") => new File([new Uint8Array([...bytes, ...new Array<number>(16).fill(0)])], name, { type });
+  const cases = ["", "application/octet-stream", "image/jpg"].flatMap(type => signatures.map(([format, bytes]) => [type, format, bytes] as const));
+  it.each(cases)("accepts type %j with %s content and uploads it with that type", async (type, format, bytes) => {
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 800, height: 600, close: vi.fn() })));
+    const file = photo(bytes, type, "Plant photo");
+    const result = await prepareImage(file);
+    expect(result).not.toBe(file); expect(result.type).toBe(format); expect(result.name).toBe("Plant photo"); expect(result.size).toBe(file.size);
+    await expect(validateImage(result)).resolves.toHaveProperty("format", format);
+    await expect(validateImage(file)).resolves.toHaveProperty("format", format);
+  });
+  it("re-encodes such a file like any other when it is too large", async () => {
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 4000, height: 3000, close: vi.fn() })));
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage: vi.fn(), fillRect: vi.fn() } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((done: BlobCallback, type?: string) => { done(new Blob([new Uint8Array(100)], { type: type ?? "" })); });
+    const result = await prepareImage(photo(signatures[0]![1], "", "IMG_0003"));
+    expect(result.type).toBe("image/webp"); expect(result.name).toBe("IMG_0003.webp");
+  });
+  it("refuses other content without a type, and content that doesn't match a real image type", async () => {
+    const decode = vi.fn(); vi.stubGlobal("createImageBitmap", decode);
+    await expect(prepareImage(photo([71, 73, 70, 56, 57, 97], ""))).rejects.toThrow("content does not match");
+    await expect(prepareImage(photo([60, 115, 118, 103], "application/octet-stream"))).rejects.toThrow("content does not match");
+    await expect(prepareImage(photo(signatures[1]![1], "image/jpeg"))).rejects.toThrow("content does not match");
+    await expect(prepareImage(photo(signatures[0]![1], "image/webp"))).rejects.toThrow("content does not match");
+    await expect(validateImage(photo(signatures[2]![1], "image/png"))).rejects.toThrow("content does not match");
+    await expect(prepareImage(photo(signatures[0]![1], "image/gif"))).rejects.toThrow("up to 40 MiB");
+    expect(decode).not.toHaveBeenCalled();
+  });
+  it("keeps the size limits", async () => {
+    const empty = new File([], "photo", { type: "" });
+    await expect(prepareImage(empty)).rejects.toThrow("up to 40 MiB");
+    const large = new File([new Uint8Array(5 * 1024 * 1024 + 1)], "photo", { type: "application/octet-stream" });
+    await expect(validateImage(large)).rejects.toThrow("up to 5 MiB");
+  });
+});
 describe("pixel size from the file header", () => {
   const ascii = (text: string) => [...text].map(c => c.charCodeAt(0));
   const be16 = (n: number) => [n >> 8, n & 255]; const be32 = (n: number) => [n >>> 24, (n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -243,7 +283,7 @@ describe("HEIC photos from an iPhone", () => {
     expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 1200, 1600);
     expect(result.type).toBe("image/webp"); expect(result.name).toBe("IMG_0001.webp"); expect(close).toHaveBeenCalledOnce();
   });
-  it.each([["heix", "image/heic", "a.heic"], ["mif1", "image/heif", "a.heif"], ["msf1", "image/heif", "a.heif"], ["heic", "", "IMG_0002.HEIC"], ["mif1", "", "a.heif"]])(
+  it.each([["heix", "image/heic", "a.heic"], ["mif1", "image/heif", "a.heif"], ["msf1", "image/heif", "a.heif"], ["heic", "", "IMG_0002.HEIC"], ["mif1", "", "a.heif"], ["heic", "application/octet-stream", "IMG_0003.heic"]])(
     "accepts brand %s with type %j and name %s", async (brand, type, name) => {
       vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 100, height: 100, close: vi.fn() }))); canvas();
       await expect(prepareImage(heicFile(brand, type, name))).resolves.toBeInstanceOf(File);
@@ -261,7 +301,8 @@ describe("HEIC photos from an iPhone", () => {
     await expect(prepareImage(heicFile("heic", "image/jpeg", "a.jpg"))).rejects.toThrow("content does not match");
     await expect(prepareImage(heicFile("avif"))).rejects.toThrow("content does not match");
     await expect(prepareImage(new File([new Uint8Array([0xff, 0xd8, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0])], "a.heic", { type: "image/heic" }))).rejects.toThrow("content does not match");
-    await expect(prepareImage(heicFile("heic", "", "photo.bin"))).rejects.toThrow("up to 40 MiB");
+    // Without a type or a HEIC name, only JPEG, PNG and WebP content is taken.
+    await expect(prepareImage(heicFile("heic", "", "photo.bin"))).rejects.toThrow("content does not match");
     expect(decode).not.toHaveBeenCalled();
   });
   it("never passes HEIC on to the upload check", async () => {

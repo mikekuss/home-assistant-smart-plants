@@ -141,9 +141,11 @@ computer, such as iPhone photos copied to a Mac, work in Safari on macOS. Other 
 can't read HEIC and show a message instead; convert the photo to JPEG first. Before the upload,
 the browser scales a photo to at most 2048 × 2048 pixels and reduces it to under 1 MB, lowering
 the quality and then the size until it fits, so a reverse proxy in front of Home Assistant
-accepts it. Smart Plants stores it upright as WebP without metadata such as the location. Every
-signed-in user can view photos. Only administrators can change them. If a proxy still refuses
-photos, see [Troubleshooting](troubleshooting.md#the-photo-was-larger-than-a-proxy-in-front-of-home-assistant-allows).
+accepts it. Smart Plants stores it upright as WebP without metadata such as the location. A
+transparent background stays transparent. Only when Safari, or any browser on an iPhone or iPad,
+has to make a photo smaller does it get a white background, because these browsers can only
+make JPEG, which has no transparency. Every signed-in user can view photos. Only administrators
+can change them. If a proxy still refuses photos, see [Troubleshooting](troubleshooting.md#the-photo-was-larger-than-a-proxy-in-front-of-home-assistant-allows).
 
 ## Edit plant details
 
