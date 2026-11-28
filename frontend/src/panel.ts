@@ -11,6 +11,7 @@ import type { ProblemBinaryRole, SourceRole } from "./model.js";
 import "./components/index.js";
 import { fadeIn } from "./components/motion.js";
 import { photoRetryAt } from "./photo-retry.js";
+import { photoQueue } from "./photo-queue.js";
 import { infoTip, skeletonStyles, themeFallbacks } from "./components/shared-styles.js";
 import { isDefined } from "./ha-elements.js";
 import { chipText } from "./overview-model.js";
@@ -151,7 +152,8 @@ import type { FoundNotification } from "./notifications.js";
 import { RELATED_LIMIT, automationDetail, capRows, relatedAutomations } from "./related-automations.js";
 import type { AutomationRow, RelatedAutomations } from "./related-automations.js";
 import type { PlantOverview } from "./overview-model.js";
-import type { CareEvent, CareHistory, CareTask, Evaluation, HAArea, HADevice, HAEntity, HAState, HealthEvaluation, HomeAssistantLike, MoistureInput, PanelCapabilities, PanelInfo, PlantPlacement, PlantRecord, RoleSourceInput, SpeciesPreview, SpeciesSearchResult } from "./types.js";
+import type { CareEvent, CareHistory, CareTask, Evaluation, HAArea, HADevice, HAEntity, HAState, HealthEvaluation, HomeAssistantLike, MoistureInput, PanelCapabilities, PanelInfo, PhotoMeta, PlantPlacement, PlantRecord, RoleSourceInput, SpeciesPreview, SpeciesSearchResult } from "./types.js";
+import type { Thumbnail } from "./views/overview.js";
 import { SPECIES_QUERY_MAX, inputMaxLength, withinChars } from "./text.js";
 
 // The Notifications page remembers the plant it was opened from, so Back returns there.
@@ -268,7 +270,10 @@ export class SmartPlantsPanel extends LitElement {
   // Until the first status read is answered the overview shows placeholders,
   // not cards that would claim "0 need water" and then grow and reorder.
   @state() private _statusRead = false;
-  @state() private _thumbnails: Record<string, string> = {};
+  // Downloaded card photos by plant; the cards make their own object URLs.
+  @state() private _thumbnails: Record<string, Thumbnail> = {};
+  // ThumbHash previews by image id, from the plant list.
+  @state() private _photoMeta: PhotoMeta = {};
   @state() private _watering: ReadonlySet<string> = new Set();
   @state() private _edits: Edits | null = null;
   @state() private _conflict: Conflict | null = null;
@@ -283,7 +288,9 @@ export class SmartPlantsPanel extends LitElement {
   @state() private _relatedAllPlants: string[] = [];
   // Groups of the Automations card expanded with "Show all".
   @state() private _relatedExpanded: ReadonlySet<keyof RelatedAutomations> = new Set();
-  @state() private _imageUrl: string | null = null;
+  // The plant page photo and the image id it shows.
+  @state() private _image: Blob | null = null;
+  private _imageFor: string | null = null;
   @state() private _imageLoading = false;
   @state() private _imageError: string | null = null;
   @state() private _dialog: "delete" | "retire" | "species" | "care_task" | "care_automate" | "care_rest" | "snooze" | "snooze_all" | "winter" | "winter_remove" | null = null;
@@ -364,9 +371,11 @@ export class SmartPlantsPanel extends LitElement {
   private _imageKey: string | null = null;
   private _imageRequest = 0;
   private _imageAbort: AbortController | undefined;
-  // Card thumbnails: object URL key per plant and in-flight fetches.
+  // Card thumbnails: download key per plant and in-flight fetches.
   private _thumbnailKeys: Record<string, string> = {};
   private _thumbnailAborts = new Map<string, AbortController>();
+  // Plants whose card came near the screen. Only their photos are fetched.
+  private _thumbnailWanted = new Set<string>();
   // Failed thumbnail downloads per plant: the photo, failed attempts and when
   // the next one may start (null once none is left). A new access token
   // doesn't start over; a new photo or a restored connection does.
@@ -448,7 +457,7 @@ export class SmartPlantsPanel extends LitElement {
     document.addEventListener("visibilitychange", this._visible);
   }
   disconnectedCallback(): void {
-    this._context++; this._formBusy = false; this._request++; this._providerRequest++; this._clearImage(); this._clearThumbnails(); this._unbind(); clearInterval(this._timer); document.removeEventListener("visibilitychange", this._visible); this._clearCareTimer(); super.disconnectedCallback();
+    this._context++; this._formBusy = false; this._request++; this._providerRequest++; this._clearImage(); this._clearThumbnails(true); this._unbind(); clearInterval(this._timer); document.removeEventListener("visibilitychange", this._visible); this._clearCareTimer(); super.disconnectedCallback();
   }
   private readonly _visible = () => { if (!document.hidden) this._refreshQuietly(); };
   private _refreshQuietly(): void {
@@ -560,69 +569,90 @@ export class SmartPlantsPanel extends LitElement {
     this._notificationsAbort?.abort(); this._notificationsAbort = undefined;
     this._connection?.removeEventListener?.("ready", this._ready); this._connection?.removeEventListener?.("disconnected", this._disconnected); this._connection = undefined;
   }
-  private _clearThumbnails(): void {
+  // Drops the downloaded card photos. The cards that asked for theirs stay
+  // known unless `forget`: they don't ask again, and their photos load once
+  // the connection is back.
+  private _clearThumbnails(forget = false): void {
     for (const abort of this._thumbnailAborts.values()) abort.abort();
     this._thumbnailAborts.clear(); this._thumbnailRetries.clear();
-    for (const url of Object.values(this._thumbnails)) URL.revokeObjectURL(url);
+    if (forget) this._thumbnailWanted.clear();
     this._thumbnails = {}; this._thumbnailKeys = {};
   }
-  // Loads photos for the overview cards; unchanged photos keep their object URL.
+  // A card asks for its photo once it comes near the screen.
+  private _thumbnailNear(photoId: string): void {
+    const plant = this._plants.find(p => p.image?.id === photoId);
+    if (!plant || this._thumbnailWanted.has(plant.id)) return;
+    this._thumbnailWanted.add(plant.id); this._syncThumbnails();
+  }
+  // Loads the photos of the overview cards that came near the screen, as small
+  // copies and a few at a time. Photos already loaded stay with their cards.
   private _syncThumbnails(): void {
     if (this._blocked || !this.hass || this.hass.user?.is_admin === false || !this.isConnected) { this._clearThumbnails(); return; }
-    // Only the overview shows thumbnails; returning to it loads any that changed.
-    if (this._view.kind !== "list") return;
+    // Only the overview shows thumbnails. Leaving it cancels the downloads
+    // still open; back on it, its cards ask for their photos again.
+    if (this._view.kind !== "list") {
+      for (const [id, abort] of this._thumbnailAborts) { abort.abort(); delete this._thumbnailKeys[id]; }
+      this._thumbnailAborts.clear(); this._thumbnailWanted.clear();
+      return;
+    }
     const hass = this.hass; const token = hass.auth?.accessToken ?? "";
     const images = new Map(this._plants.filter(p => p.image).map(p => [p.id, p.image!.id]));
-    const wanted = new Map([...images].map(([id, imageId]) => [id, `${token}:${id}:${imageId}`]));
-    const next = { ...this._thumbnails };
+    const keyOf = (id: string, imageId: string) => `${token}:${id}:${imageId}`;
     for (const id of Object.keys(this._thumbnailKeys)) {
-      if (wanted.get(id) === this._thumbnailKeys[id]) continue;
+      const imageId = images.get(id);
+      if (imageId !== undefined && this._thumbnailKeys[id] === keyOf(id, imageId)) continue;
       this._thumbnailAborts.get(id)?.abort(); this._thumbnailAborts.delete(id);
-      if (next[id]) URL.revokeObjectURL(next[id]!);
-      delete next[id]; delete this._thumbnailKeys[id];
+      delete this._thumbnailKeys[id];
     }
-    this._thumbnails = next;
+    // A new or removed photo goes at once.
+    const stale = Object.keys(this._thumbnails).filter(id => this._thumbnails[id]!.imageId !== images.get(id));
+    if (stale.length) { const next = { ...this._thumbnails }; for (const id of stale) delete next[id]; this._thumbnails = next; }
     for (const [id, retry] of this._thumbnailRetries) if (images.get(id) !== retry.imageId) this._thumbnailRetries.delete(id);
     const now = Date.now();
-    for (const [id, key] of wanted) {
-      if (this._thumbnailKeys[id] === key) continue;
+    for (const [id, imageId] of images) {
+      const key = keyOf(id, imageId);
+      if (!this._thumbnailWanted.has(id) || this._thumbnailKeys[id] === key) continue;
+      // Already loaded: a new access token doesn't download the same photo again.
+      if (this._thumbnails[id]?.imageId === imageId) { this._thumbnailKeys[id] = key; continue; }
       // A failed photo waits for its retry instead of being fetched on every poll.
       const retry = this._thumbnailRetries.get(id);
       if (retry && (retry.retryAt === null || now < retry.retryAt)) continue;
       this._thumbnailKeys[id] = key;
       const abort = new AbortController(); this._thumbnailAborts.set(id, abort);
-      void api.fetchImage(hass, id, images.get(id)!, abort.signal).then(blob => {
+      void photoQueue.run(() => api.fetchImage(hass, id, imageId, abort.signal, "thumb"), abort.signal).then(blob => {
         if (abort.signal.aborted || this._thumbnailKeys[id] !== key) return;
         this._thumbnailAborts.delete(id); this._thumbnailRetries.delete(id);
-        this._thumbnails = { ...this._thumbnails, [id]: URL.createObjectURL(blob) };
+        this._thumbnails = { ...this._thumbnails, [id]: { imageId, blob } };
       }).catch(() => {
         // A missing photo falls back to the plant icon; the plant page shows photo errors.
-        if (this._thumbnailKeys[id] !== key) return;
+        if (abort.signal.aborted || this._thumbnailKeys[id] !== key) return;
         this._thumbnailAborts.delete(id); delete this._thumbnailKeys[id];
-        const imageId = images.get(id)!;
         const previous = this._thumbnailRetries.get(id);
         const attempts = (previous?.imageId === imageId ? previous.attempts : 0) + 1;
         this._thumbnailRetries.set(id, { imageId, attempts, retryAt: photoRetryAt(attempts) });
       });
     }
   }
-  private _clearImage(): void {
+  // `keep` leaves the photo on screen while the same photo loads again.
+  private _clearImage(keep = false): void {
     this._imageRequest++; this._imageAbort?.abort(); this._imageAbort = undefined; this._imageKey = null;
-    if (this._imageUrl) URL.revokeObjectURL(this._imageUrl);
-    this._imageUrl = null; this._imageLoading = false; this._imageError = null;
+    if (!keep) { this._image = null; this._imageFor = null; }
+    this._imageLoading = false; this._imageError = null;
   }
+  // The plant page photo comes ahead of the card photos still waiting. Its key
+  // leaves out the revision: a save that keeps the photo doesn't load it again.
   private _syncImage(): void {
     if (this._blocked || this.hass?.user?.is_admin === false) { this._clearImage(); return; }
     const plant = this._view.kind === "detail" ? this._plantById(this._view.plantId) : undefined;
-    const key = this.hass && plant?.image ? `${this.hass.auth?.accessToken ?? ""}:${plant.id}:${plant.revision}:${plant.image.id}` : null;
+    const key = this.hass && plant?.image ? `${this.hass.auth?.accessToken ?? ""}:${plant.id}:${plant.image.id}` : null;
     if (key === this._imageKey || !this.isConnected) return;
-    this._clearImage(); this._imageKey = key;
+    this._clearImage(this._image !== null && this._imageFor === plant?.image?.id); this._imageKey = key;
     if (!key || !this.hass || !plant?.image) return;
     const request = this._imageRequest; const abort = new AbortController(); this._imageAbort = abort; this._imageLoading = true;
-    void api.fetchImage(this.hass, plant.id, plant.image.id, abort.signal).then(blob => {
-      const url = URL.createObjectURL(blob);
-      if (request !== this._imageRequest || !this.isConnected) { URL.revokeObjectURL(url); return; }
-      this._imageAbort = undefined; this._imageUrl = url; this._imageLoading = false;
+    const hass = this.hass; const plantId = plant.id; const imageId = plant.image.id;
+    void photoQueue.run(() => api.fetchImage(hass, plantId, imageId, abort.signal, "thumb2x"), abort.signal, true).then(blob => {
+      if (request !== this._imageRequest || !this.isConnected) return;
+      this._imageAbort = undefined; this._image = blob; this._imageFor = imageId; this._imageLoading = false;
     }).catch((e: unknown) => {
       if (request !== this._imageRequest) return;
       this._imageAbort = undefined; this._imageLoading = false;
@@ -642,9 +672,9 @@ export class SmartPlantsPanel extends LitElement {
     if (showLoading) this._loading = true;
     try {
       const info = await api.info(hass);
-      const { plants, rejected, archivedCount } = await api.listWithArchive(hass);
+      const { plants, rejected, archivedCount, photoMeta } = await api.listWithArchive(hass);
       if (request !== this._request || !this.isConnected) return;
-      this._capabilities = info; this._blocked = false; this._plants = plants; this._rejected = rejected; this._archivedCount = archivedCount;
+      this._capabilities = info; this._blocked = false; this._plants = plants; this._rejected = rejected; this._archivedCount = archivedCount; this._photoMeta = photoMeta;
       this._updateAvailable = bundleOutdated(SmartPlantsPanel.bundleVersion, info.bundle_version);
       if (showLoading) this._error = "";
       if (this._base) {
@@ -2573,7 +2603,7 @@ export class SmartPlantsPanel extends LitElement {
     const winter = winterChip(l, plant, o?.winter);
     return html`<div class="sp-card header-card">
       <div class="hero">
-        <sp-plant-avatar size="large" .src=${this._imageUrl} .name=${plant.name} .l=${l} @photo-error=${() => { this._imageError = l.t("photo.decode_failed"); }}></sp-plant-avatar>
+        <sp-plant-photo size="large" .photoId=${plant.image?.id ?? null} .photo=${this._imageFor === plant.image?.id ? this._image : null} .thumbhash=${plant.image ? this._photoMeta[plant.image.id]?.thumbhash ?? null : null} .name=${plant.name} .l=${l} @photo-error=${() => { this._imageError = l.t("photo.decode_failed"); }}></sp-plant-photo>
         <div class="hero-text">
           <h2 class="hero-name">${plant.name}</h2>
           <div class="hero-meta">${areaId ? html`<span><ha-icon aria-hidden="true" icon="mdi:texture-box"></ha-icon>${this._areaName(areaId)}</span>` : nothing}
@@ -2934,8 +2964,8 @@ export class SmartPlantsPanel extends LitElement {
       ${this._creationNotice && this._view.kind !== "create" ? html`<p class="notice" role="status">${this._creationNotice}</p>${this._createdPlantId && !(this._view.kind === "detail" && this._view.plantId === this._createdPlantId) ? html`<button ?disabled=${this._formBusy} @click=${() => { if (this._createdPlantId) this._show({ kind: "detail", plantId: this._createdPlantId }); }}>${l.t("panel.open_created")}</button>` : nothing}` : nothing}
       ${this._view.kind === "list" && this._overviewError ? this._renderStatusError() : nothing}
       <smart-plants-overview ?hidden=${this._view.kind !== "list"} .l=${l} .plants=${this._plants} .overview=${this._overview} .areaNames=${this._plantAreaNames()}
-        .thumbnails=${this._thumbnails} .watering=${this._watering} .timeZone=${this._timeZone()} .loading=${this._loading} .pending=${!this._statusRead} .blocked=${this._blocked}
-        @open-plant=${(e: CustomEvent<OpenPlantDetail>) => this._openFromOverview(e.detail)} @add-plant=${() => this._show({ kind: "create" })} @log-watering=${(e: CustomEvent<{ plantId: string }>) => void this._logWatering(e.detail.plantId)}></smart-plants-overview>
+        .thumbnails=${this._thumbnails} .photoMeta=${this._photoMeta} .watering=${this._watering} .timeZone=${this._timeZone()} .loading=${this._loading} .pending=${!this._statusRead} .blocked=${this._blocked}
+        @photo-wanted=${(e: CustomEvent<{ photoId: string }>) => this._thumbnailNear(e.detail.photoId)} @open-plant=${(e: CustomEvent<OpenPlantDetail>) => this._openFromOverview(e.detail)} @add-plant=${() => this._show({ kind: "create" })} @log-watering=${(e: CustomEvent<{ plantId: string }>) => void this._logWatering(e.detail.plantId)}></smart-plants-overview>
       ${this._view.kind === "detail" ? this._renderDetail(this._view.plantId) : nothing}
       ${this._view.kind === "notifications" ? html`<smart-plants-notifications-page .hass=${this.hass} .l=${l} .plants=${this._plants} .devices=${this._devices} .states=${this._states} .found=${this._notifications}
         @notifications-add=${(e: CustomEvent<{ trigger: HTMLElement }>) => this._openNotifications(e.detail.trigger)}></smart-plants-notifications-page>` : nothing}

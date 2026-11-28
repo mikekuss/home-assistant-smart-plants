@@ -78,7 +78,7 @@ for (const role of ["admin", "user"] as const) {
     await expect(photo).toBeVisible();
     await expect.poll(() => photo.evaluate(img => (img as HTMLImageElement).naturalWidth)).toBe(8);
     for (const name of ["Kitchen Basil", "Balcony Lavender"]) await expect(card(page, name).locator("sp-plant-avatar img")).toHaveCount(0);
-    expect((await record(page)).fetches).toEqual(["/api/smart_plants/plants/00000000000040008000000000000001/image?v=0000000000004000800000000000a10e"]);
+    expect((await record(page)).fetches).toEqual(["/api/smart_plants/plants/00000000000040008000000000000001/image?v=0000000000004000800000000000a10e&size=thumb"]);
   });
 }
 

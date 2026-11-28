@@ -3,7 +3,7 @@ import { SmartPlantsPanel, retiredSensors } from "./panel.js";
 import { ENGLISH, createLocalizer } from "./localize.js";
 import { daysBetween, durationText, monthsBetween } from "./views/archive.js";
 import type { SmartPlantsArchive } from "./views/archive.js";
-import { button, click, harness, sample, settle } from "./test-helpers.js";
+import { button, click, harness, manualVisibility, sample, settle } from "./test-helpers.js";
 import type { ArchivedPlantSummary, ArchivedPlantView, HomeAssistantLike, PlantRecord, RestoreCheck } from "./types.js";
 
 const summary: ArchivedPlantSummary = {
@@ -217,7 +217,37 @@ describe("the archive page", () => {
       const h = archiveHarness(msg => msg.type === "smart_plants/archive/list" ? { plants: [{ ...summary, image }] } : undefined);
       const el = await mount(h.hass);
       await choose(el, "archive"); await archivePage(el);
-      await vi.waitFor(() => expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toContain("/api/smart_plants/plants/old/image?v=img-old"));
+      await vi.waitFor(() => expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).toContain("/api/smart_plants/plants/old/image?v=img-old&size=thumb"));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("loads a retired plant's photo once it comes near the screen, small in the list and larger on its page", async () => {
+    const imageId = "0123456789abcdef0123456789abcdef"; const hash = "b9gVDYT4V2eGeXd7hXeIeQd5hG+4";
+    const image = { id: imageId, content_type: "image/webp", width: 1, height: 1, created_at: summary.created_at };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["image"], { type: "image/webp" }))));
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:retired");
+    const screen = manualVisibility();
+    try {
+      const h = archiveHarness(msg => msg.type === "smart_plants/archive/list" ? { plants: [{ ...summary, image }], photo_meta: { [imageId]: { thumbhash: hash } } }
+        : msg.type === "smart_plants/archive/get" ? { plant: { ...view, image } } : undefined);
+      const el = await mount(h.hass);
+      await choose(el, "archive"); let page = await archivePage(el);
+      const photo = () => page.shadowRoot!.querySelector("sp-plant-photo")!;
+      expect(photo().thumbhash).toBe(hash);
+      expect(fetch).not.toHaveBeenCalled();
+      screen.show(photo());
+      await vi.waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+      expect(String(vi.mocked(fetch).mock.calls[0]![0])).toBe(`/api/smart_plants/plants/old/image?v=${imageId}&size=thumb`);
+      await settle(page);
+      expect(photo().shadowRoot!.querySelector("img")?.getAttribute("src")).toBe("blob:retired");
+      page.shadowRoot!.querySelector<HTMLButtonElement>(".archive-row")!.click(); await settle(el); page = await archivePage(el);
+      // The page keeps the preview it read with the list.
+      expect(photo().thumbhash).toBe(hash);
+      screen.show(photo());
+      await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+      expect(String(vi.mocked(fetch).mock.calls[1]![0])).toBe(`/api/smart_plants/plants/old/image?v=${imageId}&size=thumb2x`);
     } finally {
       vi.unstubAllGlobals();
     }

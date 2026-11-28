@@ -64,8 +64,9 @@ Select a plant to open its page. The header shows the photo, status with every r
 to four readings, with **Watered** and **Log care** next to it. The page's address is
 `/smart-plants/plant/<plant ID>`, so you can link to a plant from a dashboard.
 
-On the overview, a plant whose photo can't be downloaded shows the plant icon. The panel tries
-again on later refreshes, waiting longer each time. After five attempts it waits until the
+On the overview, a plant whose photo can't be downloaded shows the plant icon, or a blurred
+preview in the photo's colours once Smart Plants has made one. The panel tries again on later
+refreshes, waiting longer each time. After five attempts it waits until the
 connection to Home Assistant comes back.
 
 ![Plant page in the Smart Plants panel](images/plant-detail.png)
