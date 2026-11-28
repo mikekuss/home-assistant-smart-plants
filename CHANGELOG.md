@@ -43,7 +43,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The plant list and plant pages load smaller copies of the photos, only when they come into
   view, and show a blurred preview in the photo's colours while a photo loads. Large plant
   lists open faster and use less data on phones. The dashboard card also loads the smaller
-  copy.
+  copy. The copies live in `.cache/smart_plants/`, which Home Assistant backups leave out;
+  Smart Plants makes them again when they're missing.
 - The add-plant wizard asks for the **Placement** in its first step instead of in the collapsed
   details of its review step.
 - A logged watering now also keeps *Too wet* off for 24 hours, as it already did for *Needs
@@ -55,6 +56,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   start, and earlier versions cannot read the migrated data. To roll back, restore
   `.storage/smart_plants.inventory.backup`; see
   [Roll back to an earlier version](docs/installation.md#roll-back-to-an-earlier-version).
+  Don't delete the integration to roll back; that also deletes this backup copy.
 
 ### Fixed
 
@@ -83,9 +85,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The overview tiles and the plant count use the singular for one plant: *1 Problem* and
   *1 of 1 plant* instead of *1 Problems* and *1 of 1 plants*, in English, German and Italian.
   The tile for all plants reads **Plants**.
-- Home Assistant 2026.11 no longer logs deprecation warnings for Smart Plants' device lookups.
-  The report for all plants, `smart_plants.log_care` on a plant device and archiving a plant used
-  device registry calls that stop working in Home Assistant 2027.8 to 2027.10.
+- Smart Plants no longer logs deprecation warnings for its device lookups, which Home Assistant
+  2026.9 and 2026.10 started to report. The report for all plants, `smart_plants.log_care` on a
+  plant device and archiving a plant used device registry calls that stop working in Home
+  Assistant 2027.8 to 2027.10.
 - Smart Plants starts after an update even when converting the stored data takes it a little
   over the 8 MiB storage limit. Before, setup failed for a store that was just under the limit.
 - `smart_plants.snooze` with *All plants* skips a plant that is paused while the action runs,

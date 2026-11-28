@@ -22,7 +22,8 @@ needed.
 - **One status per plant.** *Needs water*, *Too wet*, *Low light* and other problem sensors,
   plus a health score. You can change every threshold per plant.
 - **Care log.** Log watering, fertilizing, pruning, repotting, pest control and notes. The
-  **Watered** button logs a watering with one tap.
+  **Watered** button logs a watering with one tap, and Smart Plants can log a watering by itself
+  when the soil moisture jumps (on by default for new indoor and greenhouse plants).
 - **Automations without entity IDs.** Smart Plants triggers, conditions and actions work with
   plants, areas, labels or all plants at once.
 - **Dashboard card.** Shows a plant with its status, readings and a **Watered** button, also
@@ -35,6 +36,7 @@ Optional, when you need them:
 - **Notifications.** A daily plant report or a message when a plant needs water, set up from
   the panel.
 - **Snooze.** Mute a plant's alerts while you're on vacation.
+- **Winter values.** Separate thresholds for a rest period or a plant in dormant storage.
 - **Species data from [OpenPlantBook](https://open.plantbook.io/).** Look up a species and
   review its targets before you apply them.
 

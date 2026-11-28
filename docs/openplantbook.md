@@ -45,12 +45,12 @@ sensor later takes them from the species too. These ranges never stop a species 
 applied: when they don't fit your own values, the reading keeps the built-in ones, and the
 species preview says so below the ranges.
 
-For a plant that had its species before this version:
+For a plant that had its species before Smart Plants 0.20.0:
 
 - **Readings it already had** keep the built-in temperature and humidity values.
 - **A temperature reading it gets afterwards** takes the species range right away.
-- **The air humidity range** isn't in species data stored before this version, so a new
-  humidity reading keeps the built-in values.
+- **The air humidity range** isn't in species data stored before Smart Plants 0.20.0, so a
+  new humidity reading keeps the built-in values.
 
 **Preview species refresh**, once accepted, brings both ranges to the readings the plant has.
 

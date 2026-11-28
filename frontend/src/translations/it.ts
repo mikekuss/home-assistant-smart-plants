@@ -117,7 +117,7 @@ export const it: LanguageCatalog = {
   "watering_detection.follow_off": "Come la posizione (spento)",
   "watering_detection.on": "Attivo",
   "watering_detection.off": "Spento",
-  "watering_detection.hint": "Una salita di 15 punti o più in un'ora registra un'annaffiatura, a meno che non ne sia già stata registrata una nelle 6 ore precedenti.",
+  "watering_detection.hint": "Una salita di 15 punti o più in un'ora registra un'annaffiatura, a meno che non ne sia già stata registrata una nelle 6 ore precedenti. Se il sensore non ha inviato letture, la salita si calcola dall'ultima lettura delle ultime 24 ore.",
   "exposure.label": "Esposizione al sole",
   "exposure.full_sun": "pieno sole",
   "exposure.partial_sun": "sole parziale",

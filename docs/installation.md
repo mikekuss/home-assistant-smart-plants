@@ -97,7 +97,10 @@ A browser tab that was open during the restart shows *Smart Plants was updated* 
 
 If the earlier version loads your plants, installing it is enough. If the newer version
 converted the data, the earlier version refuses it, and **Settings > Devices & services**
-says the storage was created by a newer version. Then:
+says the storage was created by a newer version. Don't delete the integration while it shows
+this error. Deleting it removes your plants, their photos and the backup copy the rollback
+needs, even though setup failed, unless **Preserve inventory when the integration is removed**
+is on (it is off by default). Instead:
 
 1. Install the earlier version. In HACS, open Smart Plants, select **⋮ > Redownload** and
    pick the version. Otherwise, [install that release manually](#install-manually).
@@ -161,7 +164,8 @@ sensor shows up in **Settings > System > Repairs** (see
 
 > [!WARNING]
 > With the default options, deleting the integration deletes all your plants, retired plants,
-> care history and photos for good. Only a Home Assistant backup brings them back.
+> care history and photos for good, also when its setup failed. Only a Home Assistant backup
+> brings them back.
 
 1. To keep your plants for a later reinstall, first turn on **Preserve inventory when the
    integration is removed** in the [options](#options).

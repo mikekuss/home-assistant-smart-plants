@@ -4,14 +4,14 @@
 
 - [Installation](installation.md): install, options, updates, backup and removal
 - [Getting started](getting-started.md): the panel, your first plant, sensors and thresholds
-- [Care](care.md): care log, care reminders and rest periods
+- [Care](care.md): care log, detected waterings, care reminders and rest periods
 - [Notifications](notifications.md): ready-made notifications from the panel
 - [Dashboard card](dashboard-card.md): a plant on any dashboard
 - [OpenPlantBook](openplantbook.md): optional species data
 
 ## Reference
 
-- [Sensors and health](sensors-and-health.md): roles, units, thresholds and the health score
+- [Sensors and health](sensors-and-health.md): roles, units, thresholds, winter values and the health score
 - [Entities](entities.md): every entity and attribute
 - [Automations](automations.md): triggers, conditions, actions and examples
 
