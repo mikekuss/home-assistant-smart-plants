@@ -60,6 +60,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   refused before the phone runs out of memory opening it. A proxy that still refuses a photo, a
   photo that can't be made small enough and a full or read-only Home Assistant disk each get
   their own message instead of *Something went wrong*.
+- Plant photos with a transparent background keep it instead of being stored on black. Only a
+  photo that Safari, or any browser on an iPhone or iPad, has to make smaller gets a white
+  background, since these browsers can only make JPEG. A 16-bit grayscale PNG is no longer
+  stored white, and a photo whose file type the device doesn't report, or reports as
+  `image/jpg`, is accepted when it is a JPEG, PNG or WebP. The same goes for a `.heic` photo
+  reported as `application/octet-stream`.
 - A photo chosen while its plant changed in the background, for example by a detected watering,
   is no longer dropped or refused as changed elsewhere; it is uploaded to the latest plant. A
   change to other details in the meantime, such as a new name, is still shown for review, and
