@@ -4,6 +4,7 @@ import copy
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -94,6 +95,38 @@ _INVENTORY_MAX_BYTES: Final = 8 * 1024 * 1024
 _INVENTORY_LOAD_HEADROOM_BYTES: Final = 64 * 1024
 # The inventory as it was before the last migration, in its original version.
 STORAGE_BACKUP_KEY: Final = f"{STORAGE_KEY}.backup"
+# Home Assistant's Store writes "version" and "minor_version" first, so the
+# start of the file is enough to read them.
+_STORAGE_HEADER_BYTES: Final = 256
+_STORAGE_HEADER: Final = re.compile(
+    rb'\s*\{\s*"version"\s*:\s*(\d+)\s*,\s*"minor_version"\s*:\s*(\d+)'
+)
+
+
+def supported_inventory_version() -> dict[str, int]:
+    """Return the inventory storage version this release reads and writes."""
+    return {"version": STORAGE_MAJOR_VERSION, "minor_version": STORAGE_MINOR_VERSION}
+
+
+def stored_inventory_version(hass: HomeAssistant) -> dict[str, int] | None:
+    """
+    Read the version numbers from the start of the inventory file.
+
+    Blocking; run it in the executor. Only the two numbers are taken and
+    nothing else in the file is parsed, so the result is safe to log and to
+    put into diagnostics. None means the file is missing, unreadable, or
+    doesn't start the way Home Assistant writes storage files.
+    """
+    path = Path(hass.config.path(".storage", STORAGE_KEY))
+    try:
+        with path.open("rb") as file:
+            header = file.read(_STORAGE_HEADER_BYTES)
+    except OSError:
+        return None
+    match = _STORAGE_HEADER.match(header)
+    if match is None:
+        return None
+    return {"version": int(match[1]), "minor_version": int(match[2])}
 
 
 class SmartPlantsStorageError(Exception):

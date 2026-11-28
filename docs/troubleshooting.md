@@ -1,28 +1,66 @@
 # Troubleshooting
 
+When you [report a bug](#report-a-bug), the diagnostics file and the log usually show the
+cause. Everything below stays on your system until you attach it yourself.
+
 ## Download diagnostics
 
-Go to **Settings > Devices & services > Smart Plants** and select **⋮ > Download
-diagnostics**. The file contains settings, counts and states, for example how many plants,
-sensors per role and care tasks exist. It doesn't contain plant names, entity IDs, readings,
-thresholds, care history, photos or credentials. Look through it before you post it.
+1. Go to **Settings > Devices & services** and open **Smart Plants**.
+2. Select **⋮** next to the Smart Plants entry, then **Download diagnostics**.
+3. Attach the downloaded `.json` file to your bug report.
 
-Each plant also has its own diagnostics. Open the plant and select **⋮ > Download diagnostics** in its top card.
-That file contains the plant's configuration, its sensor and automation entity IDs and its
-current evaluation, without the plant name, notes, photo or credentials. The **Sensors** tab
-shows the same evaluation under **Troubleshooting**.
+The file is redacted: it contains versions, settings, counts and states, for example how many
+plants, sensors per role and care tasks exist. It doesn't contain plant names, readings,
+thresholds, care history, photos or OpenPlantBook credentials. Home Assistant adds the open
+repairs of Smart Plants: a repair for a missing sensor is listed with the sensor's entity ID
+and an internal plant ID. Look through the file before you post it.
+
+Home Assistant offers the download only while Smart Plants is set up. If setup failed, copy the
+error shown on the Smart Plants entry and attach the log instead. When the stored data can't be
+loaded, the log names the storage version on disk and the one your Smart Plants version
+supports.
+
+For a problem with one plant, also download that plant's diagnostics: open the plant and select
+**⋮ > Download diagnostics** in its top card. That file contains the plant's configuration,
+its sensor and automation entity IDs and its current evaluation, without the plant name,
+notes, photo or credentials. The **Sensors** tab shows the same evaluation under
+**Troubleshooting**.
 
 ## Turn on debug logging
 
-Go to **Settings > Devices & services > Smart Plants** and select **⋮ > Enable debug
-logging**. Reproduce the problem, then turn it off to download the log. Or add this to
-`configuration.yaml` and restart:
+1. Go to **Settings > Devices & services**, open **Smart Plants** and select **⋮** at the top
+   right **> Enable debug logging**.
+2. Reproduce the problem.
+3. Select **⋮** at the top right **> Disable debug logging**. Your browser then downloads the
+   log file.
+4. Paste the lines that mention `smart_plants` into your bug report.
+
+Or add this to `configuration.yaml` and restart:
 
 ```yaml
 logger:
   logs:
     custom_components.smart_plants: debug
 ```
+
+Errors are logged without debug logging too. Find them under **Settings > System > Logs**:
+search for `smart_plants` and open an entry to see its full text. For most panel commands, an
+unexpected error logs the command, the error type and where in Smart Plants it was raised, but
+not what you entered. Other errors are logged with their full message and traceback, which can
+contain plant names or entity IDs.
+
+## Browser console errors
+
+For problems in the panel or the dashboard card, the browser often knows more than the log.
+
+1. Open the page with the problem in a desktop browser.
+2. Open the developer tools: **F12** or **Ctrl+Shift+I**, on a Mac **Cmd+Option+I**. In
+   Safari, first turn on **Show features for web developers** in the advanced settings.
+3. Select the **Console** tab, reload the page and repeat what went wrong.
+4. Copy the red error lines into your bug report.
+
+The console can show your Home Assistant address and entity IDs. Remove what you don't want to
+share. If the problem only happens in the companion app, say so in the report.
 
 ## Panel
 
@@ -182,6 +220,10 @@ For OpenPlantBook messages, see [OpenPlantBook](openplantbook.md#troubleshooting
 ## Report a bug
 
 Search the [issues](https://github.com/mikekuss/home-assistant-smart-plants/issues) first, then
-open a bug report. Include your Home Assistant and Smart Plants versions, the steps to
-reproduce, the diagnostics file and debug log lines. For panel problems, add your browser and
-any console errors.
+open a bug report. Include:
+
+- your Home Assistant and Smart Plants versions,
+- the steps to reproduce,
+- the [diagnostics file](#download-diagnostics),
+- the log lines, ideally with [debug logging](#turn-on-debug-logging),
+- for panel or card problems, your browser and its [console errors](#browser-console-errors).

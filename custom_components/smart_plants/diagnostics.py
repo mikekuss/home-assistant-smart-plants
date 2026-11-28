@@ -16,6 +16,7 @@ from .const import (
 from .forecast_reader import refresh_minutes
 from .models import ReadingSchedule
 from .roles import role_definitions
+from .storage import stored_inventory_version, supported_inventory_version
 from .winter import winter_active
 
 if TYPE_CHECKING:
@@ -27,31 +28,30 @@ if TYPE_CHECKING:
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: SmartPlantsConfigEntry
 ) -> dict[str, Any]:
-    del hass
-    runtime = entry.runtime_data
+    setup: dict[str, Any] = {
+        "state": entry.state.value,
+        # Only the translation key: the placeholders can hold error text that
+        # quotes stored data.
+        "error_key": entry.error_reason_translation_key,
+    }
+    runtime = getattr(entry, "runtime_data", None)
+    if runtime is None:
+        # Setup failed or has not finished, so there is no inventory to
+        # summarise. Report what tells such failures apart: the entry state,
+        # the error key and which storage version is on disk.
+        setup["stored_inventory_version"] = await hass.async_add_executor_job(
+            stored_inventory_version, hass
+        )
+        setup["supported_inventory_version"] = supported_inventory_version()
+        return {"setup": setup, "entry": _entry_summary(entry)}
     provider = (
         dict(runtime.provider_service.diagnostics())
         if runtime.provider_service is not None
         else {"available": False}
     )
     return {
-        "entry": {
-            "data": {
-                CONF_OPENPLANTBOOK_ENABLED: bool(
-                    entry.data.get(CONF_OPENPLANTBOOK_ENABLED, False)
-                ),
-                "credentials_configured": bool(
-                    entry.data.get(CONF_OPENPLANTBOOK_CLIENT_ID)
-                    and entry.data.get(CONF_OPENPLANTBOOK_CLIENT_SECRET)
-                ),
-            },
-            "options": {
-                CONF_PRESERVE_INVENTORY_ON_REMOVAL: bool(
-                    entry.options.get(CONF_PRESERVE_INVENTORY_ON_REMOVAL, False)
-                ),
-                CONF_FORECAST_REFRESH_MINUTES: refresh_minutes(entry.options),
-            },
-        },
+        "setup": setup,
+        "entry": _entry_summary(entry),
         "provider": provider,
         "inventory": {
             **_inventory_summary(runtime.manager.snapshot),
@@ -60,6 +60,26 @@ async def async_get_config_entry_diagnostics(
             "photo_meta_count": runtime.manager.photo_meta_count,
         },
         "reading_care_tasks": _reading_task_summary(runtime.manager),
+    }
+
+
+def _entry_summary(entry: SmartPlantsConfigEntry) -> dict[str, Any]:
+    return {
+        "data": {
+            CONF_OPENPLANTBOOK_ENABLED: bool(
+                entry.data.get(CONF_OPENPLANTBOOK_ENABLED, False)
+            ),
+            "credentials_configured": bool(
+                entry.data.get(CONF_OPENPLANTBOOK_CLIENT_ID)
+                and entry.data.get(CONF_OPENPLANTBOOK_CLIENT_SECRET)
+            ),
+        },
+        "options": {
+            CONF_PRESERVE_INVENTORY_ON_REMOVAL: bool(
+                entry.options.get(CONF_PRESERVE_INVENTORY_ON_REMOVAL, False)
+            ),
+            CONF_FORECAST_REFRESH_MINUTES: refresh_minutes(entry.options),
+        },
     }
 
 

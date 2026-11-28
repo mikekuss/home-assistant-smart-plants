@@ -128,6 +128,60 @@ async def test_role_api_sanitizes_unexpected_error(
     assert response["error"] == {"code": ERR_UNKNOWN, "message": "internal error"}
 
 
+async def test_panel_command_logs_error_type_and_origin_without_user_text(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    entry = await _setup(hass)
+    client = await hass_ws_client(hass)
+    with patch.object(
+        entry.runtime_data.manager,
+        "async_configure_moisture",
+        side_effect=LookupError("secret-message-text"),
+    ):
+        await client.send_json_auto_id(
+            {
+                "type": "smart_plants/moisture/configure",
+                "plant_id": "secret-request-value",
+                "expected_revision": 1,
+                "moisture": {
+                    "sources": [],
+                    "primary_entity_id": "sensor.secret_request_entity",
+                    "aggregation": "primary",
+                    "stale_after_seconds": 3600,
+                    "threshold_overrides": {"min": None, "target": None, "max": None},
+                },
+            }
+        )
+        response = await client.receive_json()
+    assert response["error"] == {"code": ERR_UNKNOWN, "message": "internal error"}
+    records = [
+        record
+        for record in caplog.records
+        if record.getMessage().startswith("Unhandled error in ")
+    ]
+    assert len(records) == 1
+    message = records[0].getMessage()
+    assert "smart_plants/moisture/configure" in message
+    assert "LookupError" in message
+    assert "websocket_api.py, _execute_panel_command(), line " in message
+    assert records[0].exc_info is None
+    # Home Assistant's own debug log echoes received messages, so only this
+    # integration's records are checked.
+    ours = "\n".join(
+        f"{record.getMessage()} {record.exc_text or ''}"
+        for record in caplog.records
+        if record.name.startswith("custom_components.smart_plants")
+    )
+    for private_value in (
+        "secret-message-text",
+        "secret-request-value",
+        "secret_request_entity",
+    ):
+        assert private_value not in ours
+
+
 async def test_list_requires_admin(
     hass: HomeAssistant,
     hass_ws_client: WebSocketGenerator,

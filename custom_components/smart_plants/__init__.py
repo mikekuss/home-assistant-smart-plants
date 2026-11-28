@@ -32,7 +32,12 @@ from .provider import SpeciesProviderService
 from .providers import build_provider_registry
 from .repairs import MissingSourceRepairMonitor
 from .services import async_setup_services
-from .storage import SmartPlantsStorageError, async_remove_storage
+from .storage import (
+    SmartPlantsStorageError,
+    async_remove_storage,
+    stored_inventory_version,
+    supported_inventory_version,
+)
 from .websocket_api import async_register as async_register_websocket
 
 _LOGGER = logging.getLogger(__name__)
@@ -112,6 +117,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     await async_register_static(hass)
     await hass.async_add_executor_job(ensure_images_dir, hass)
     return True
+
+
+def _format_version(version: dict[str, int] | None) -> str:
+    if version is None:
+        return "unknown"
+    return f"{version['version']}.{version['minor_version']}"
 
 
 async def async_setup_entry(  # noqa: PLR0915
@@ -267,6 +278,17 @@ async def async_setup_entry(  # noqa: PLR0915
         manager.start_photo_maintenance()
     except SmartPlantsStorageError as err:
         await _rollback()
+        # Home Assistant offers no diagnostics download for an entry that
+        # failed to set up, so the log names the versions. Only the two
+        # version numbers are read from the file, nothing it stores. No
+        # traceback: Home Assistant already logs the setup error itself.
+        stored = await hass.async_add_executor_job(stored_inventory_version, hass)
+        _LOGGER.error(  # noqa: TRY400
+            "Smart Plants storage could not be loaded; stored version %s, "
+            "supported version %s",
+            _format_version(stored),
+            _format_version(supported_inventory_version()),
+        )
         raise ConfigEntryError(
             translation_domain=DOMAIN,
             translation_key="storage_load_failed",
