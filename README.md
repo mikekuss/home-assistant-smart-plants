@@ -22,8 +22,8 @@ needed.
 - **One status per plant.** *Needs water*, *Too wet*, *Low light* and other problem sensors,
   plus a health score. You can change every threshold per plant.
 - **Care log.** Log watering, fertilizing, pruning, repotting, pest control and notes. The
-  **Watered** button logs a watering with one tap, and indoor plants can log waterings from the
-  soil moisture sensor.
+  **Watered** button logs a watering with one tap, and Smart Plants can log a watering by itself
+  when the soil moisture jumps (on by default for new indoor and greenhouse plants).
 - **Automations without entity IDs.** Smart Plants triggers, conditions and actions work with
   plants, areas, labels or all plants at once.
 - **Dashboard card.** Shows a plant with its status, readings and a **Watered** button, also

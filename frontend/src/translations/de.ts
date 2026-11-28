@@ -120,7 +120,7 @@ export const de: Catalog = {
   "watering_detection.follow_off": "Wie der Standort (aus)",
   "watering_detection.on": "An",
   "watering_detection.off": "Aus",
-  "watering_detection.hint": "Ein Anstieg um 15 Punkte oder mehr innerhalb einer Stunde oder seit dem letzten Messwert der 24 Stunden davor trägt ein Gießen ein, außer in den 6 Stunden davor wurde schon eines eingetragen.",
+  "watering_detection.hint": "Steigt die Bodenfeuchte innerhalb einer Stunde um 15 Punkte oder mehr, wird ein Gießen eingetragen, außer in den 6 Stunden davor wurde schon eines eingetragen. Hat der Sensor länger nichts gemeldet, zählt der Anstieg ab seinem letzten Messwert der vergangenen 24 Stunden.",
   "exposure.label": "Sonneneinstrahlung",
   "exposure.full_sun": "volle Sonne",
   "exposure.partial_sun": "Halbschatten",
