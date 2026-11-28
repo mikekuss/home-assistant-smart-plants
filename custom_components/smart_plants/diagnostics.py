@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.util import dt as dt_util
@@ -12,6 +14,9 @@ from .const import (
     CONF_OPENPLANTBOOK_CLIENT_SECRET,
     CONF_OPENPLANTBOOK_ENABLED,
     CONF_PRESERVE_INVENTORY_ON_REMOVAL,
+    STORAGE_KEY,
+    STORAGE_MAJOR_VERSION,
+    STORAGE_MINOR_VERSION,
 )
 from .forecast_reader import refresh_minutes
 from .models import ReadingSchedule
@@ -24,34 +29,44 @@ if TYPE_CHECKING:
     from . import SmartPlantsConfigEntry
 
 
+# Home Assistant writes "version" and "minor_version" first in every storage
+# file, so the start of the file is enough to read them.
+_STORAGE_HEADER_BYTES = 256
+_STORAGE_HEADER = re.compile(
+    rb'\s*\{\s*"version"\s*:\s*(\d+)\s*,\s*"minor_version"\s*:\s*(\d+)'
+)
+
+
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: SmartPlantsConfigEntry
 ) -> dict[str, Any]:
-    del hass
-    runtime = entry.runtime_data
+    setup: dict[str, Any] = {
+        "state": entry.state.value,
+        # Only the translation key: the placeholders can hold error text that
+        # quotes stored data.
+        "error_key": entry.error_reason_translation_key,
+    }
+    runtime = getattr(entry, "runtime_data", None)
+    if runtime is None:
+        # Setup failed or has not finished, so there is no inventory to
+        # summarise. Report what tells such failures apart: the entry state,
+        # the error key and which storage version is on disk.
+        setup["stored_inventory_version"] = await hass.async_add_executor_job(
+            _stored_inventory_version, Path(hass.config.path(".storage", STORAGE_KEY))
+        )
+        setup["supported_inventory_version"] = {
+            "version": STORAGE_MAJOR_VERSION,
+            "minor_version": STORAGE_MINOR_VERSION,
+        }
+        return {"setup": setup, "entry": _entry_summary(entry)}
     provider = (
         dict(runtime.provider_service.diagnostics())
         if runtime.provider_service is not None
         else {"available": False}
     )
     return {
-        "entry": {
-            "data": {
-                CONF_OPENPLANTBOOK_ENABLED: bool(
-                    entry.data.get(CONF_OPENPLANTBOOK_ENABLED, False)
-                ),
-                "credentials_configured": bool(
-                    entry.data.get(CONF_OPENPLANTBOOK_CLIENT_ID)
-                    and entry.data.get(CONF_OPENPLANTBOOK_CLIENT_SECRET)
-                ),
-            },
-            "options": {
-                CONF_PRESERVE_INVENTORY_ON_REMOVAL: bool(
-                    entry.options.get(CONF_PRESERVE_INVENTORY_ON_REMOVAL, False)
-                ),
-                CONF_FORECAST_REFRESH_MINUTES: refresh_minutes(entry.options),
-            },
-        },
+        "setup": setup,
+        "entry": _entry_summary(entry),
         "provider": provider,
         "inventory": {
             **_inventory_summary(runtime.manager.snapshot),
@@ -61,6 +76,45 @@ async def async_get_config_entry_diagnostics(
         },
         "reading_care_tasks": _reading_task_summary(runtime.manager),
     }
+
+
+def _entry_summary(entry: SmartPlantsConfigEntry) -> dict[str, Any]:
+    return {
+        "data": {
+            CONF_OPENPLANTBOOK_ENABLED: bool(
+                entry.data.get(CONF_OPENPLANTBOOK_ENABLED, False)
+            ),
+            "credentials_configured": bool(
+                entry.data.get(CONF_OPENPLANTBOOK_CLIENT_ID)
+                and entry.data.get(CONF_OPENPLANTBOOK_CLIENT_SECRET)
+            ),
+        },
+        "options": {
+            CONF_PRESERVE_INVENTORY_ON_REMOVAL: bool(
+                entry.options.get(CONF_PRESERVE_INVENTORY_ON_REMOVAL, False)
+            ),
+            CONF_FORECAST_REFRESH_MINUTES: refresh_minutes(entry.options),
+        },
+    }
+
+
+def _stored_inventory_version(path: Path) -> dict[str, int] | None:
+    """
+    Read the storage version from the start of the inventory file.
+
+    Only the two version numbers are taken; nothing else in the file is
+    parsed or reported. None means the file is missing or unreadable, or
+    does not start the way Home Assistant writes storage files.
+    """
+    try:
+        with path.open("rb") as file:
+            header = file.read(_STORAGE_HEADER_BYTES)
+    except OSError:
+        return None
+    match = _STORAGE_HEADER.match(header)
+    if match is None:
+        return None
+    return {"version": int(match[1]), "minor_version": int(match[2])}
 
 
 def _inventory_summary(snapshot: Any) -> dict[str, Any]:

@@ -94,6 +94,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   plant took it while the dialog was open. The dialog then offers a free name.
 - `smart_plants.get_report` recognizes the *All plants* entity when the target gives its
   registry ID instead of its entity ID.
+- Bug reports carry more to go on. An unexpected error in the panel now logs the error type
+  and where in Smart Plants it was raised, still without what you entered; before, the log
+  only named the command. The bug report form and
+  [Troubleshooting](docs/troubleshooting.md#report-a-bug) explain where to find the
+  diagnostics, the debug log and browser console errors.
 
 ## [0.19.0] - 2026-11-21
 

@@ -173,7 +173,9 @@ compared against
 from __future__ import annotations
 
 import logging
+import traceback
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.websocket_api import async_register_command
@@ -250,6 +252,7 @@ ERR_PROVIDER_OUTAGE = "provider_outage"
 ERR_PROVIDER_MALFORMED = "provider_malformed_response"
 
 _UNKNOWN_ERROR_MESSAGE = "internal error"
+_PACKAGE_DIR = Path(__file__).parent
 _PLANT_ID_MAX_LEN = 200
 _SHORT_TEXT_MAX_LEN = 500
 _PROVIDER_KEY_MAX_LEN = 60
@@ -1950,6 +1953,25 @@ async def _execute_panel_command(
     return {"plant": _plant_view(plant)}
 
 
+def _error_origin(err: BaseException) -> str:
+    """
+    Name the innermost frame of this integration that the error passed.
+
+    Returns ``file.py, function(), line N`` and nothing from the frame's
+    values, so it can be logged without the request data. Frames outside
+    the integration (Home Assistant, libraries) are skipped; their names
+    say little without the message.
+    """
+    origin = "unknown location"
+    # walk_tb, unlike extract_tb, reads no source lines, so nothing blocks
+    # the event loop on file access.
+    for frame, line in traceback.walk_tb(err.__traceback__):
+        path = Path(frame.f_code.co_filename)
+        if path.is_relative_to(_PACKAGE_DIR):
+            origin = f"{path.name}, {frame.f_code.co_name}(), line {line}"
+    return origin
+
+
 def _panel_handler(command: str, fields: dict[vol.Marker | str, Any]) -> Any:
     @websocket_command({vol.Required("type"): command, **fields})
     @require_admin
@@ -1976,8 +1998,14 @@ def _panel_handler(command: str, fields: dict[vol.Marker | str, Any]) -> Any:
             mapped = _manager_error(err)
             if mapped is None:
                 # Do not log request fields, capabilities, or provider
-                # exception bodies.
-                _LOGGER.error("Unhandled error in %s", command)  # noqa: TRY400
+                # exception bodies: an exception message can quote user text.
+                # The type and where it was raised point to the cause.
+                _LOGGER.error(  # noqa: TRY400
+                    "Unhandled error in %s: %s raised in %s",
+                    command,
+                    type(err).__name__,
+                    _error_origin(err),
+                )
                 mapped = (ERR_UNKNOWN, _UNKNOWN_ERROR_MESSAGE)
             elif mapped[0] == ERR_STORAGE_FAILED:
                 # Name only the error type, as above.
