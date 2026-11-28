@@ -40,6 +40,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- Error logs and the bug report form give more detail. For most panel commands, an unexpected
+  error now logs its type and where in Smart Plants it was raised, still without what you
+  entered; before, the log only named the command. When the stored data can't be loaded, the
+  log names the storage version on disk and the supported one. The bug report form and
+  [Troubleshooting](docs/troubleshooting.md#report-a-bug) explain where to find the
+  diagnostics, the debug log and browser console errors.
 - The plant list and plant pages load smaller copies of the photos, only when they come into
   view, and show a blurred preview in the photo's colours while a photo loads. Large plant
   lists open faster and use less data on phones. The dashboard card also loads the smaller
@@ -94,11 +100,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   plant took it while the dialog was open. The dialog then offers a free name.
 - `smart_plants.get_report` recognizes the *All plants* entity when the target gives its
   registry ID instead of its entity ID.
-- Bug reports carry more to go on. An unexpected error in the panel now logs the error type
-  and where in Smart Plants it was raised, still without what you entered; before, the log
-  only named the command. The bug report form and
-  [Troubleshooting](docs/troubleshooting.md#report-a-bug) explain where to find the
-  diagnostics, the debug log and browser console errors.
 
 ## [0.19.0] - 2026-11-21
 

@@ -10,12 +10,15 @@ cause. Everything below stays on your system until you attach it yourself.
 3. Attach the downloaded `.json` file to your bug report.
 
 The file is redacted: it contains versions, settings, counts and states, for example how many
-plants, sensors per role and care tasks exist. It doesn't contain plant names, entity IDs,
-readings, thresholds, care history, photos or OpenPlantBook credentials. Look through it before
-you post it.
+plants, sensors per role and care tasks exist. It doesn't contain plant names, readings,
+thresholds, care history, photos or OpenPlantBook credentials. Home Assistant adds the open
+repairs of Smart Plants: a repair for a missing sensor is listed with the sensor's entity ID
+and an internal plant ID. Look through the file before you post it.
 
 Home Assistant offers the download only while Smart Plants is set up. If setup failed, copy the
-error shown on the Smart Plants entry and attach the log instead.
+error shown on the Smart Plants entry and attach the log instead. When the stored data can't be
+loaded, the log names the storage version on disk and the one your Smart Plants version
+supports.
 
 For a problem with one plant, also download that plant's diagnostics: open the plant and select
 **⋮ > Download diagnostics** in its top card. That file contains the plant's configuration,
@@ -25,10 +28,11 @@ notes, photo or credentials. The **Sensors** tab shows the same evaluation under
 
 ## Turn on debug logging
 
-1. Go to **Settings > Devices & services**, open **Smart Plants** and select **⋮ > Enable debug
-   logging**.
+1. Go to **Settings > Devices & services**, open **Smart Plants** and select **⋮** at the top
+   right **> Enable debug logging**.
 2. Reproduce the problem.
-3. Select **⋮ > Disable debug logging**. Your browser then downloads the log file.
+3. Select **⋮** at the top right **> Disable debug logging**. Your browser then downloads the
+   log file.
 4. Paste the lines that mention `smart_plants` into your bug report.
 
 Or add this to `configuration.yaml` and restart:
@@ -40,9 +44,10 @@ logger:
 ```
 
 Errors are logged without debug logging too. Find them under **Settings > System > Logs**:
-search for `smart_plants` and open an entry to see its full text. An unexpected panel error
-logs the command, the error type and where in Smart Plants it was raised, but not what you
-entered.
+search for `smart_plants` and open an entry to see its full text. For most panel commands, an
+unexpected error logs the command, the error type and where in Smart Plants it was raised, but
+not what you entered. Other errors are logged with their full message and traceback, which can
+contain plant names or entity IDs.
 
 ## Browser console errors
 

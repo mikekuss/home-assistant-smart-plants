@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.util import dt as dt_util
@@ -14,27 +12,17 @@ from .const import (
     CONF_OPENPLANTBOOK_CLIENT_SECRET,
     CONF_OPENPLANTBOOK_ENABLED,
     CONF_PRESERVE_INVENTORY_ON_REMOVAL,
-    STORAGE_KEY,
-    STORAGE_MAJOR_VERSION,
-    STORAGE_MINOR_VERSION,
 )
 from .forecast_reader import refresh_minutes
 from .models import ReadingSchedule
 from .roles import role_definitions
+from .storage import stored_inventory_version, supported_inventory_version
 from .winter import winter_active
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
     from . import SmartPlantsConfigEntry
-
-
-# Home Assistant writes "version" and "minor_version" first in every storage
-# file, so the start of the file is enough to read them.
-_STORAGE_HEADER_BYTES = 256
-_STORAGE_HEADER = re.compile(
-    rb'\s*\{\s*"version"\s*:\s*(\d+)\s*,\s*"minor_version"\s*:\s*(\d+)'
-)
 
 
 async def async_get_config_entry_diagnostics(
@@ -52,12 +40,9 @@ async def async_get_config_entry_diagnostics(
         # summarise. Report what tells such failures apart: the entry state,
         # the error key and which storage version is on disk.
         setup["stored_inventory_version"] = await hass.async_add_executor_job(
-            _stored_inventory_version, Path(hass.config.path(".storage", STORAGE_KEY))
+            stored_inventory_version, hass
         )
-        setup["supported_inventory_version"] = {
-            "version": STORAGE_MAJOR_VERSION,
-            "minor_version": STORAGE_MINOR_VERSION,
-        }
+        setup["supported_inventory_version"] = supported_inventory_version()
         return {"setup": setup, "entry": _entry_summary(entry)}
     provider = (
         dict(runtime.provider_service.diagnostics())
@@ -96,25 +81,6 @@ def _entry_summary(entry: SmartPlantsConfigEntry) -> dict[str, Any]:
             CONF_FORECAST_REFRESH_MINUTES: refresh_minutes(entry.options),
         },
     }
-
-
-def _stored_inventory_version(path: Path) -> dict[str, int] | None:
-    """
-    Read the storage version from the start of the inventory file.
-
-    Only the two version numbers are taken; nothing else in the file is
-    parsed or reported. None means the file is missing or unreadable, or
-    does not start the way Home Assistant writes storage files.
-    """
-    try:
-        with path.open("rb") as file:
-            header = file.read(_STORAGE_HEADER_BYTES)
-    except OSError:
-        return None
-    match = _STORAGE_HEADER.match(header)
-    if match is None:
-        return None
-    return {"version": int(match[1]), "minor_version": int(match[2])}
 
 
 def _inventory_summary(snapshot: Any) -> dict[str, Any]:

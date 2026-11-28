@@ -50,13 +50,13 @@ body:
       label: Diagnostics
       description: |
         Settings → Devices & services → Smart Plants → ⋮ next to the entry → Download diagnostics, then drag the file in here.
-        The file is redacted: no plant names, entity IDs, readings or credentials. If setup failed, Home Assistant offers no download; paste the error shown on the entry instead.
+        The file is redacted: no plant names, readings or credentials. An open Smart Plants repair is listed with the entity ID of its sensor. If setup failed, Home Assistant offers no download; paste the error shown on the entry and the log instead.
   - type: textarea
     id: logs
     attributes:
       label: Relevant log output
       description: |
-        Settings → Devices & services → Smart Plants → ⋮ → Enable debug logging, reproduce the problem, then Disable debug logging to download the log. Paste the lines that mention `smart_plants`.
+        Settings → Devices & services → Smart Plants → ⋮ at the top right → Enable debug logging, reproduce the problem, then Disable debug logging there to download the log. Paste the lines that mention `smart_plants`.
         Without debug logging, errors are under Settings → System → Logs.
       render: text
   - type: textarea
